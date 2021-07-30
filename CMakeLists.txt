@@ -1,0 +1,40 @@
+CMAKE_MINIMUM_REQUIRED ( VERSION 3.1.0 )
+
+PROJECT (KIRARAY)
+
+SET (EXPORT_COMPILE_COMMANDS 1)
+
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+
+add_subdirectory(src/ext)
+
+SET ( KRR_CORE_SOURCE
+	src/core/light.cpp
+)
+
+SET ( KRR_CORE_HEADERS
+	src/core/kiraray.h
+)
+
+FILE ( GLOB KRR_SOURCE
+	src/ext/*
+)
+
+INCLUDE_DIRECTORIES ( src )
+INCLUDE_DIRECTORIES ( src/core )
+
+ADD_LIBRARY ( krr_lib STATIC
+	${KRR_CORE_SOURCE}
+	${KRR_CORE_HEADERS}
+	${KRR_SOURCE}
+)
+SET_TARGET_PROPERTIES (krr_lib PROPERTIES LINKER_LANGUAGE C++)
+
+SET(ALL_KRR_LIBS
+	krr_lib
+	assimp
+)
+
+ADD_EXECUTABLE ( kiraray src/main/kiraray.cpp )
+
+TARGET_LINK_LIBRARIES (kiraray ${ALL_KRR_LIBS})
