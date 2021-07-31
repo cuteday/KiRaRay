@@ -39,3 +39,4 @@ CMakeSettings.json
 # Build
 build
 out
+.DS_Store
