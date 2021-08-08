@@ -11,3 +11,11 @@ IF(APPLE)
 ENDIF()
 ADD_SUBDIRECTORY(assimp)
 INCLUDE_DIRECTORIES(assimp/include)
+SET(ASSIMP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/assimp/include PARENT_SCOPE)
+
+# Enoki
+ADD_SUBDIRECTORY(enoki)
+INCLUDE_DIRECTORIES(enoki/include)
+SET(ENOKI_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/enoki/include PARENT_SCOPE)
+enoki_set_compile_flags()
+enoki_set_native_flags()
