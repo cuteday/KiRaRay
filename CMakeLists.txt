@@ -26,6 +26,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # CUDA compiler setup
 ###############################################################################
 enable_language(CUDA)
+find_package(CUDA REQUIRED)
 
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
@@ -75,6 +76,7 @@ INCLUDE_DIRECTORIES (
 	src/cuda
 	${ASSIMP_INCLUDE_DIRS}
 	${ENOKI_INCLUDE_DIRS}
+	${CUDA_INCLUDE_DIRS}
 )
 
 ###############################################################################
@@ -93,4 +95,4 @@ SET(ALL_KRR_LIBS
 )
 
 ADD_EXECUTABLE ( kiraray src/main/kiraray.cpp )
-TARGET_LINK_LIBRARIES (kiraray ${ALL_KRR_LIBS})
+TARGET_LINK_LIBRARIES (kiraray ${ALL_KRR_LIBS} )
