@@ -1,7 +1,9 @@
 CMAKE_MINIMUM_REQUIRED ( VERSION 3.17 )
 
 PROJECT (KIRARAY
-	DESCRIPTION "A codebase for rendering odds&ends.")
+	DESCRIPTION "A codebase for rendering odds&ends."
+	LANGUAGES C CXX CUDA
+)
 SET (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 ###############################################################################
@@ -25,8 +27,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 ###############################################################################
 # CUDA compiler setup
 ###############################################################################
-enable_language(CUDA)
-find_package(CUDA REQUIRED)
 
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
@@ -52,11 +52,26 @@ string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
 set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 message(STATUS "Automatically detected GPU architectures: ${CUDA_ARCH_LIST}")
 
+if (NOT CUDA_INCLUDE_DIRS)
+	message(STATUS "Setting CUDA include directory to: ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+    set(CUDA_INCLUDE_DIRS ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+endif()
+
+
 ###############################################################################
 # include files
 ###############################################################################
+
 ADD_SUBDIRECTORY(src/ext)
 ADD_SUBDIRECTORY(src/cuda)
+
+INCLUDE_DIRECTORIES ( 
+	src 
+	src/core
+	src/cuda
+	${ASSIMP_INCLUDE_DIRS}
+	${CUDA_INCLUDE_DIRS}
+)
 
 SET ( KRR_CORE_SOURCE
 	src/core/light.cpp
@@ -67,16 +82,7 @@ SET ( KRR_CORE_HEADERS
 )
 
 FILE ( GLOB KRR_SOURCE
-	src/ext/*
-)
-
-INCLUDE_DIRECTORIES ( 
-	src 
-	src/core
-	src/cuda
-	${ASSIMP_INCLUDE_DIRS}
-	${ENOKI_INCLUDE_DIRS}
-	${CUDA_INCLUDE_DIRS}
+	#src/ext/*
 )
 
 ###############################################################################
@@ -92,7 +98,8 @@ SET(ALL_KRR_LIBS
 	krr
 	krr-cuda
 	assimp
+	${CUDA_LIBRARIES} cuda cublas
 )
 
 ADD_EXECUTABLE ( kiraray src/main/kiraray.cpp )
-TARGET_LINK_LIBRARIES (kiraray ${ALL_KRR_LIBS} )
+TARGET_LINK_LIBRARIES (kiraray PUBLIC ${ALL_KRR_LIBS} )

@@ -1,6 +1,4 @@
 [submodule "src/ext/assimp"]
 	path = src/ext/assimp
 	url = https://github.com/assimp/assimp.git
-[submodule "src/ext/enoki"]
-	path = src/ext/enoki
-	url = https://github.com/mitsuba-renderer/enoki.git
+
