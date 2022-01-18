@@ -61,6 +61,7 @@ endif()
 # other dependencies
 ###############################################################################
 INCLUDE (common/cmake/FindOptiX.cmake)
+find_package(OpenGL REQUIRED)
 ADD_SUBDIRECTORY(src/ext)
 ADD_SUBDIRECTORY(src/cuda)
 
@@ -104,6 +105,8 @@ SET(ALL_KRR_LIBS
 	krr-cuda
 	assimp
 	owl::owl
+	OpenGL::GL
+	glfw
 	${CUDA_LIBRARIES} cuda cublas
 )
 
