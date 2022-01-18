@@ -10,6 +10,7 @@
 #include <cmath>
 #include <algorithm>
 #include <sstream>
+#include <vector>
 
 #define NAMESPACE_KRR_BEGIN namespace krr {
 #define NAMESPACE_KRR_END }	
@@ -59,22 +60,7 @@
 
 #define KRR_NOTIMPLEMENTED throw std::runtime_error(std::string(__PRETTY_FUNCTION__)+" not implemented")
 
-#ifdef WIN32
-# define KRR_TERMINAL_RED ""
-# define KRR_TERMINAL_GREEN ""
-# define KRR_TERMINAL_LIGHT_GREEN ""
-# define KRR_TERMINAL_YELLOW ""
-# define KRR_TERMINAL_BLUE ""
-# define KRR_TERMINAL_LIGHT_BLUE ""
-# define KRR_TERMINAL_RESET ""
-# define KRR_TERMINAL_DEFAULT KRR_TERMINAL_RESET
-# define KRR_TERMINAL_BOLD ""
 
-# define KRR_TERMINAL_MAGENTA ""
-# define KRR_TERMINAL_LIGHT_MAGENTA ""
-# define KRR_TERMINAL_CYAN ""
-# define KRR_TERMINAL_LIGHT_RED ""
-#else
 # define KRR_TERMINAL_RED "\033[0;31m"
 # define KRR_TERMINAL_GREEN "\033[0;32m"
 # define KRR_TERMINAL_LIGHT_GREEN "\033[1;32m"
@@ -84,12 +70,10 @@
 # define KRR_TERMINAL_RESET "\033[0m"
 # define KRR_TERMINAL_DEFAULT KRR_TERMINAL_RESET
 # define KRR_TERMINAL_BOLD "\033[1;1m"
-
 # define KRR_TERMINAL_MAGENTA "\e[35m"
 # define KRR_TERMINAL_LIGHT_MAGENTA "\e[95m"
 # define KRR_TERMINAL_CYAN "\e[36m"
 # define KRR_TERMINAL_LIGHT_RED "\033[1;31m"
-#endif
 
 #ifdef _MSC_VER
 # define KRR_ALIGN(alignment) __declspec(align(alignment)) 

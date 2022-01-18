@@ -61,67 +61,7 @@ endif()
 # other dependencies
 ###############################################################################
 INCLUDE (common/cmake/FindOptiX.cmake)
+INCLUDE (common/cmake/configure_optix.cmake)
 find_package(OpenGL REQUIRED)
-ADD_SUBDIRECTORY(src/ext)
-ADD_SUBDIRECTORY(src/cuda)
 
-###############################################################################
-# include files
-###############################################################################
-
-INCLUDE_DIRECTORIES ( 
-	src 
-	src/core
-	src/cuda
-	${ASSIMP_INCLUDE_DIRS}
-	${OWL_INCLUDE_DIRS}
-	${GLFW_INCLUDE_DIRS}
-	${CUDA_INCLUDE_DIRS}
-	${OptiX_INCLUDE}
-)
-
-SET ( KRR_CORE_SOURCE
-	src/core/window.cpp
-	src/core/light.cpp
-)
-
-SET ( KRR_CORE_HEADERS
-	src/core/kiraray.h
-	src/core/window.h
-	src/core/common.h
-	# maths
-	src/core/math/math.h
-	src/core/math/constants.h
-	src/core/math/vec.h
-	src/core/math/vec/compare.h
-	src/core/math/vec/rotate.h
-	src/core/math/vec/functors.h
-
-)
-
-FILE ( GLOB KRR_SOURCE
-	#src/ext/*
-	src/main/*
-)
-
-###############################################################################
-# linking and executables
-###############################################################################
-ADD_LIBRARY ( krr STATIC
-	${KRR_CORE_SOURCE}
-	${KRR_CORE_HEADERS}
-	${KRR_SOURCE}
-)
-
-SET(ALL_KRR_LIBS
-	krr
-	krr-cuda
-	assimp
-	owl::owl
-	OpenGL::GL
-	glfw
-	${CUDA_LIBRARIES} cuda cublas
-)
-
-ADD_EXECUTABLE ( kiraray src/main/kiraray.cpp )
-TARGET_LINK_LIBRARIES (kiraray PUBLIC ${ALL_KRR_LIBS} )
+ADD_SUBDIRECTORY (src)
