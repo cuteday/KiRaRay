@@ -57,20 +57,25 @@ if (NOT CUDA_INCLUDE_DIRS)
     set(CUDA_INCLUDE_DIRS ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 endif()
 
+###############################################################################
+# other dependencies
+###############################################################################
+INCLUDE (common/cmake/FindOptiX.cmake)
+ADD_SUBDIRECTORY(src/ext)
+ADD_SUBDIRECTORY(src/cuda)
 
 ###############################################################################
 # include files
 ###############################################################################
-
-ADD_SUBDIRECTORY(src/ext)
-ADD_SUBDIRECTORY(src/cuda)
 
 INCLUDE_DIRECTORIES ( 
 	src 
 	src/core
 	src/cuda
 	${ASSIMP_INCLUDE_DIRS}
+	${OWL_INCLUDE_DIRS}
 	${CUDA_INCLUDE_DIRS}
+	${OptiX_INCLUDE}
 )
 
 SET ( KRR_CORE_SOURCE
@@ -98,6 +103,7 @@ SET(ALL_KRR_LIBS
 	krr
 	krr-cuda
 	assimp
+	owl::owl
 	${CUDA_LIBRARIES} cuda cublas
 )
 

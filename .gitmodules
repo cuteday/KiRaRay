@@ -2,3 +2,6 @@
 	path = src/ext/assimp
 	url = https://github.com/assimp/assimp.git
 
+[submodule "src/ext/owl"]
+	path = src/ext/owl
+	url = https://github.com/owl-project/owl.git

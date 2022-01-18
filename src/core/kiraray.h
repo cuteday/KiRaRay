@@ -2,5 +2,6 @@
 
 #include <iostream>
 
-#include "assimp/Importer.hpp"
+#include <owl/owl.h>
+#include <assimp/Importer.hpp>
 
