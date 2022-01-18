@@ -75,20 +75,33 @@ INCLUDE_DIRECTORIES (
 	src/cuda
 	${ASSIMP_INCLUDE_DIRS}
 	${OWL_INCLUDE_DIRS}
+	${GLFW_INCLUDE_DIRS}
 	${CUDA_INCLUDE_DIRS}
 	${OptiX_INCLUDE}
 )
 
 SET ( KRR_CORE_SOURCE
+	src/core/window.cpp
 	src/core/light.cpp
 )
 
 SET ( KRR_CORE_HEADERS
 	src/core/kiraray.h
+	src/core/window.h
+	src/core/common.h
+	# maths
+	src/core/math/math.h
+	src/core/math/constants.h
+	src/core/math/vec.h
+	src/core/math/vec/compare.h
+	src/core/math/vec/rotate.h
+	src/core/math/vec/functors.h
+
 )
 
 FILE ( GLOB KRR_SOURCE
 	#src/ext/*
+	src/main/*
 )
 
 ###############################################################################
