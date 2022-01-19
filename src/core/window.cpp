@@ -2,6 +2,30 @@
 
 NAMESPACE_KRR_BEGIN
 
+inline const char* getGLErrorString(GLenum error)
+{
+  switch (error)
+	{
+	case GL_NO_ERROR:            return "No error";
+	case GL_INVALID_ENUM:        return "Invalid enum";
+	case GL_INVALID_VALUE:       return "Invalid value";
+	case GL_INVALID_OPERATION:   return "Invalid operation";
+	case GL_STACK_OVERFLOW:      return "Stack overflow";
+	case GL_STACK_UNDERFLOW:     return "Stack underflow";
+	case GL_OUT_OF_MEMORY:       return "Out of memory";
+	default:                     return "Unknown GL error";
+	}
+}
+
+void initGLFW()
+{
+	static bool alreadyInitialized = false;
+	if (alreadyInitialized) return;
+	if (!glfwInit())
+		exit(EXIT_FAILURE);
+	alreadyInitialized = true;
+}
+
 static void glfw_error_callback(int error, const char *description)
 {
 	fprintf(stderr, "Error: %s\n", description);
@@ -27,6 +51,11 @@ WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVs
 	glfwSetWindowUserPointer(handle, this);
 	glfwMakeContextCurrent(handle);
 	glfwSwapInterval((enableVsync) ? 1 : 0);
+}
+
+WindowApp::~WindowApp(){
+	glfwDestroyWindow(handle);
+	glfwTerminate();
 }
 
 void WindowApp::resize(const vec2i &size)
@@ -86,6 +115,7 @@ void WindowApp::draw()
 		GL_CHECK(cudaGraphicsMapResources(1, &cuDisplayTexture));
 
 		cudaArray_t array;
+		// render data are put into fbPointer, which is mapped onto fbTexture
 		GL_CHECK(cudaGraphicsSubResourceGetMappedArray(&array, cuDisplayTexture, 0, 0));
 		{
 			cudaMemcpy2DToArray(array,
@@ -100,6 +130,7 @@ void WindowApp::draw()
 	}
 	else
 	{
+		// if cuda graphics interop failed, use opengl api to copy data into fbTexture
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbTexture));
 		glEnable(GL_TEXTURE_2D);
 		GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0,
@@ -162,6 +193,9 @@ void WindowApp::run()
 		glfwSwapBuffers(handle);
 		glfwPollEvents();
 	}
+
+	glfwDestroyWindow(handle);
+	glfwTerminate();
 }
 
 NAMESPACE_KRR_END

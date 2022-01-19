@@ -1,4 +1,7 @@
+#include <optix_function_table_definition.h>
+
 #include "renderer.h"
+#include "shaders/LaunchParams.h"
 
 NAMESPACE_KRR_BEGIN
 
@@ -31,41 +34,40 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord
 	int objectID;
 };
 
-RendererApp::RendererApp() : WindowApp("CuteRenderer", {1920, 1080})
-{
-	initOptix();
+Renderer::Renderer(){
+    initOptix();
 
-    std::cout << "#osc: creating optix context ..." << std::endl;
+    std::cout << "#krr: creating optix context ..." << std::endl;
     createContext();
       
-    std::cout << "#osc: setting up module ..." << std::endl;
+    std::cout << "#krr: setting up module ..." << std::endl;
     createModule();
 
-    std::cout << "#osc: creating raygen programs ..." << std::endl;
+    std::cout << "#krr: creating raygen programs ..." << std::endl;
     createRaygenPrograms();
-    std::cout << "#osc: creating miss programs ..." << std::endl;
+    std::cout << "#krr: creating miss programs ..." << std::endl;
     createMissPrograms();
-    std::cout << "#osc: creating hitgroup programs ..." << std::endl;
+    std::cout << "#krr: creating hitgroup programs ..." << std::endl;
     createHitgroupPrograms();
 
-    std::cout << "#osc: setting up optix pipeline ..." << std::endl;
+    std::cout << "#krr: setting up optix pipeline ..." << std::endl;
     createPipeline();
 
-    std::cout << "#osc: building SBT ..." << std::endl;
+    std::cout << "#krr: building SBT ..." << std::endl;
     buildSBT();
 
     launchParamsBuffer.alloc(sizeof(launchParams));
-    std::cout << "#osc: context, module, pipeline, etc, all set up ..." << std::endl;
+    std::cout << "#krr: context, module, pipeline, etc, all set up ..." << std::endl;
 
     std::cout << KRR_TERMINAL_GREEN;
-    std::cout << "#osc: Optix 7 Sample fully set up" << std::endl;
+    std::cout << "#krr: Optix 7 Sample fully set up" << std::endl;
     std::cout << KRR_TERMINAL_DEFAULT;
 
 }
 
-void RendererApp::initOptix()
+void Renderer::initOptix()
   {
-    std::cout << "#osc: initializing optix..." << std::endl;
+    std::cout << "#krr: initializing optix..." << std::endl;
       
     // -------------------------------------------------------
     // check for available optix7 capable devices
@@ -74,15 +76,15 @@ void RendererApp::initOptix()
     int numDevices;
     cudaGetDeviceCount(&numDevices);
     if (numDevices == 0)
-      throw std::runtime_error("#osc: no CUDA capable devices found!");
-    std::cout << "#osc: found " << numDevices << " CUDA devices" << std::endl;
+      throw std::runtime_error("#krr: no CUDA capable devices found!");
+    std::cout << "#krr: found " << numDevices << " CUDA devices" << std::endl;
 
     // -------------------------------------------------------
     // initialize optix
     // -------------------------------------------------------
     OPTIX_CHECK( optixInit() );
     std::cout << KRR_TERMINAL_GREEN
-              << "#osc: successfully initialized optix... yay!"
+              << "#krr: successfully initialized optix... yay!"
               << KRR_TERMINAL_DEFAULT << std::endl;
   }
 
@@ -96,7 +98,7 @@ void RendererApp::initOptix()
 
   /*! creates and configures a optix device context (in this simple
       example, only for the primary GPU device) */
-  void RendererApp::createContext()
+  void Renderer::createContext()
   {
     // for this sample, do everything on one device
     const int deviceID = 0;
@@ -104,7 +106,7 @@ void RendererApp::initOptix()
     CUDA_CHECK(StreamCreate(&stream));
       
     cudaGetDeviceProperties(&deviceProps, deviceID);
-    std::cout << "#osc: running on device: " << deviceProps.name << std::endl;
+    std::cout << "#krr: running on device: " << deviceProps.name << std::endl;
       
     CUresult  cuRes = cuCtxGetCurrent(&cudaContext);
     if( cuRes != CUDA_SUCCESS ) 
@@ -120,7 +122,7 @@ void RendererApp::initOptix()
   /*! creates the module that contains all the programs we are going
       to use. in this simple example, we use a single module from a
       single .cu file, using a single embedded ptx string */
-  void RendererApp::createModule()
+  void Renderer::createModule()
   {
     moduleCompileOptions.maxRegisterCount  = 50;
     moduleCompileOptions.optLevel          = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
@@ -154,7 +156,7 @@ void RendererApp::initOptix()
 
 
   /*! does all setup for the raygen program(s) we are going to use */
-  void RendererApp::createRaygenPrograms()
+  void Renderer::createRaygenPrograms()
   {
     // we do a single ray gen program in this example:
     raygenPGs.resize(1);
@@ -179,7 +181,7 @@ void RendererApp::initOptix()
   }
     
   /*! does all setup for the miss program(s) we are going to use */
-  void RendererApp::createMissPrograms()
+  void Renderer::createMissPrograms()
   {
     // we do a single ray gen program in this example:
     missPGs.resize(1);
@@ -204,7 +206,7 @@ void RendererApp::initOptix()
   }
     
   /*! does all setup for the hitgroup program(s) we are going to use */
-  void RendererApp::createHitgroupPrograms()
+  void Renderer::createHitgroupPrograms()
   {
     // for this simple example, we set up a single hit group
     hitgroupPGs.resize(1);
@@ -231,7 +233,7 @@ void RendererApp::initOptix()
     
 
   /*! assembles the full pipeline of all programs */
-  void RendererApp::createPipeline()
+  void Renderer::createPipeline()
   {
     std::vector<OptixProgramGroup> programGroups;
     for (auto pg : raygenPGs)
@@ -272,7 +274,7 @@ void RendererApp::initOptix()
 
 
   /*! constructs the shader binding table */
-  void RendererApp::buildSBT()
+  void Renderer::buildSBT()
   {
     // ------------------------------------------------------------------
     // build raygen records
@@ -284,7 +286,7 @@ void RendererApp::initOptix()
       rec.data = nullptr; /* for now ... */
       raygenRecords.push_back(rec);
     }
-    raygenRecordsBuffer.alloc_and_upload(raygenRecords);
+    raygenRecordsBuffer.alloc_and_copy_from_host(raygenRecords);
     sbt.raygenRecord = raygenRecordsBuffer.d_pointer();
 
     // ------------------------------------------------------------------
@@ -297,7 +299,7 @@ void RendererApp::initOptix()
       rec.data = nullptr; /* for now ... */
       missRecords.push_back(rec);
     }
-    missRecordsBuffer.alloc_and_upload(missRecords);
+    missRecordsBuffer.alloc_and_copy_from_host(missRecords);
     sbt.missRecordBase          = missRecordsBuffer.d_pointer();
     sbt.missRecordStrideInBytes = sizeof(MissRecord);
     sbt.missRecordCount         = (int)missRecords.size();
@@ -318,7 +320,7 @@ void RendererApp::initOptix()
       rec.objectID = i;
       hitgroupRecords.push_back(rec);
     }
-    hitgroupRecordsBuffer.alloc_and_upload(hitgroupRecords);
+    hitgroupRecordsBuffer.alloc_and_copy_from_host(hitgroupRecords);
     sbt.hitgroupRecordBase          = hitgroupRecordsBuffer.d_pointer();
     sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
     sbt.hitgroupRecordCount         = (int)hitgroupRecords.size();
@@ -327,13 +329,13 @@ void RendererApp::initOptix()
 
 
   /*! render one frame */
-  void RendererApp::render()
+  void Renderer::render()
   {
     // sanity check: make sure we launch only after first resize is
     // already done:
     if (launchParams.fbSize.x == 0) return;
 
-    launchParamsBuffer.upload(&launchParams,1);
+    launchParamsBuffer.copy_from_host(&launchParams,1);
     launchParams.frameID++;
       
     OPTIX_CHECK(optixLaunch(/*! pipeline we're launching launch: */
@@ -355,7 +357,7 @@ void RendererApp::initOptix()
   }
 
   /*! resize frame buffer to given resolution */
-  void RendererApp::resize(const vec2i &size)
+  void Renderer::resize(const vec2i &size)
   {
     // if window minimized
     if (size.x == 0 | size.y == 0) return;
@@ -370,10 +372,9 @@ void RendererApp::initOptix()
   }
 
   /*! download the rendered color buffer */
-  void RendererApp::downloadPixels(uint32_t h_pixels[])
+  CUDABuffer& Renderer::result()
   {
-    colorBuffer.download(h_pixels,
-                         launchParams.fbSize.x*launchParams.fbSize.y);
+      return colorBuffer;
   }
 
 NAMESPACE_KRR_END

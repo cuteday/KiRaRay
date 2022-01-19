@@ -8,11 +8,11 @@
 
 NAMESPACE_KRR_BEGIN
 
-class RendererApp:WindowApp{
+class Renderer{
 public:
-	RendererApp();
+    Renderer();
 
-	void initOptix();
+    void initOptix();
 
 	void createContext();
 
@@ -28,13 +28,14 @@ public:
 
 	void buildSBT();
 
-    void resize(const vec2i &size) override;
+    void resize(const vec2i &size);
 
-    void render() override;
+    void render();
 
-    void downloadPixels(uint32_t h_pixels[]);
+    CUDABuffer& result();
 
 protected:
+
 	CUcontext cudaContext;
 	CUstream stream;
 	cudaDeviceProp deviceProps;
@@ -60,6 +61,31 @@ protected:
     CUDABuffer   launchParamsBuffer;
 
     CUDABuffer colorBuffer;
+};
+
+class RenderApp : public WindowApp{
+
+public:
+
+	RenderApp(const char title[], vec2i size) : WindowApp(title, size) {}
+
+    void resize(const vec2i& size) override {
+        renderer.resize(size);
+        WindowApp::resize(size);
+    }
+
+    void render() override {
+        renderer.render();
+    }
+
+    void draw() override {
+        renderer.result().copy_to_device(fbPointer, fbSize.x * fbSize.y);
+        WindowApp::draw();
+    }
+
+
+private:
+    Renderer renderer;
 };
 
 NAMESPACE_KRR_END
