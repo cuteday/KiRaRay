@@ -5,3 +5,4 @@
 #include <optix.h>
 
 #include "common.h"
+#include "math/math.h"

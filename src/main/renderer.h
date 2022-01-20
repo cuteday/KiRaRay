@@ -6,6 +6,8 @@
 #include "gpu/buffer.h"
 #include "shaders/LaunchParams.h"
 
+
+
 NAMESPACE_KRR_BEGIN
 
 class Renderer{
@@ -26,7 +28,9 @@ public:
 
 	void createPipeline();
 
-	void buildSBT();
+    void buildSBT();
+
+    void buildAS();
 
     void resize(const vec2i &size);
 
@@ -70,12 +74,18 @@ public:
 	RenderApp(const char title[], vec2i size) : WindowApp(title, size) {}
 
     void resize(const vec2i& size) override {
-        renderer.resize(size);
         WindowApp::resize(size);
+        renderer.resize(size);
     }
 
     void render() override {
         renderer.render();
+    }
+
+    void draw_ui() override{
+        ImGui::Begin("KiRaRay");
+        ImGui::Text("Hello, world!");
+        ImGui::End();
     }
 
     void draw() override {

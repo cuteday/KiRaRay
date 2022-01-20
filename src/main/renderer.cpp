@@ -1,11 +1,10 @@
 #include <optix_function_table_definition.h>
 
 #include "renderer.h"
-#include "shaders/LaunchParams.h"
 
 NAMESPACE_KRR_BEGIN
 
-extern "C" char embedded_ptx_code[];
+extern "C" char PTX_CODE[];
 
 /*! SBT record for a raygen program */
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord
@@ -138,7 +137,7 @@ void Renderer::initOptix()
       
     pipelineLinkOptions.maxTraceDepth          = 2;
       
-    const std::string ptxCode = embedded_ptx_code;
+    const std::string ptxCode = PTX_CODE;
       
     char log[2048];
     size_t sizeof_log = sizeof( log );
@@ -326,7 +325,10 @@ void Renderer::initOptix()
     sbt.hitgroupRecordCount         = (int)hitgroupRecords.size();
   }
 
+  void Renderer::buildAS()
+  {
 
+  }
 
   /*! render one frame */
   void Renderer::render()
@@ -360,10 +362,10 @@ void Renderer::initOptix()
   void Renderer::resize(const vec2i &size)
   {
     // if window minimized
-    if (size.x == 0 | size.y == 0) return;
-    
+    if (size.x * size.y <= 0) return;
+
     // resize our cuda frame buffer
-    colorBuffer.resize(size.x*size.y*sizeof(uint32_t));
+    colorBuffer.resize(size.x * size.y * sizeof(uint32_t));
 
     // update the launch parameters that we'll pass to the optix
     // launch:

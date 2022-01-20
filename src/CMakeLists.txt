@@ -8,14 +8,16 @@ ADD_SUBDIRECTORY(cuda)
 message("Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 
 INCLUDE_DIRECTORIES ( 
-	${CMAKE_CURRENT_SOURCE_DIR}
 	core
+	${CMAKE_CURRENT_SOURCE_DIR}
 	${ASSIMP_INCLUDE_DIRS}
-	#${OWL_INCLUDE_DIRS}
 	${GLFW_INCLUDE_DIRS}
+	${IMGUI_INCLUDE_DIRS}
 	${CUDA_INCLUDE_DIRS}
 	${OptiX_INCLUDE}
 )
+
+message("optix include: ${OptiX_INCLUDE}")
 
 SET ( KRR_CORE_SOURCE
 	core/window.cpp
@@ -28,6 +30,8 @@ SET ( KRR_CORE_HEADERS
 	core/kiraray.h
 	core/window.h
 	core/common.h
+	# components
+	core/camera.h
 	# maths
 	core/math/math.h
 	core/math/constants.h
@@ -45,6 +49,7 @@ SET ( KRR_CORE_HEADERS
 SET ( KRR_SHADERS
 	shaders/LaunchParams.h
 	shaders/shader.cu
+	shaders/shared.h
 )
 
 FILE ( GLOB KRR_SOURCE
@@ -57,14 +62,14 @@ FILE ( GLOB KRR_SOURCE
 ###############################################################################
 
 # the argument's name must match the extern variable declared in host c++ code 
-cuda_compile_and_embed(embedded_ptx_code shaders/shader.cu)
+cuda_compile_and_embed(PTX_CODE shaders/shader.cu)
 
 ADD_LIBRARY ( krr STATIC
 	${KRR_CORE_SOURCE}
 	${KRR_CORE_HEADERS}
 	${KRR_SOURCE}
 	${KRR_SHADERS}
-	${embedded_ptx_code}
+	${PTX_CODE}
 )
 
 TARGET_LINK_LIBRARIES(krr PUBLIC ${optix_LIBRARY})
@@ -75,7 +80,8 @@ SET(ALL_KRR_LIBS
 	assimp
 	OpenGL::GL
 	glfw
-	${CUDA_LIBRARIES} cuda cublas
+	imgui
+	${CUDA_LIBRARIES}
 )
 
 ADD_EXECUTABLE ( kiraray main/kiraray.cpp )

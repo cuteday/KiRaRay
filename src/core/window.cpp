@@ -1,5 +1,8 @@
 #include "window.h"
 
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 NAMESPACE_KRR_BEGIN
 
 inline const char* getGLErrorString(GLenum error)
@@ -19,16 +22,59 @@ inline const char* getGLErrorString(GLenum error)
 
 void initGLFW()
 {
-	static bool alreadyInitialized = false;
-	if (alreadyInitialized) return;
+	static bool initialized = false;
+	if (initialized) return;
 	if (!glfwInit())
 		exit(EXIT_FAILURE);
-	alreadyInitialized = true;
+	initialized = true;
+}
+
+void initImGui(GLFWwindow* window){
+	static bool initialized = false;
+	if(initialized) return;
+	ImGui::CreateContext();
+	ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    ImGui::StyleColorsLight();
+    ImGui_ImplOpenGL3_Init("#version 150"); // Mac compatible: GL 3.2 + GLSL 150
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+}
+
+// glfw callback interface
+static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (ImGui::GetIO().WantCaptureKeyboard) return;
+	WindowApp* app = static_cast<WindowApp*>(glfwGetWindowUserPointer(window));
+	assert(app);
+	if (action == GLFW_PRESS) {
+		app->key(key, mods);
+	}
+}
+
+static void glfw_mouseMotion_callback(GLFWwindow* window, double x, double y)
+{
+	if (ImGui::GetIO().WantCaptureMouse) return;
+	WindowApp* app = static_cast<WindowApp*>(glfwGetWindowUserPointer(window));
+	assert(app);
+	app->mouseMotion(vec2i((int)x, (int)y));
+}
+
+static void glfw_mouseButton_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	if (ImGui::GetIO().WantCaptureMouse) return;
+	WindowApp* app = static_cast<WindowApp*>(glfwGetWindowUserPointer(window));
+	assert(app);
+	app->mouseButton(button, action, mods);
 }
 
 static void glfw_error_callback(int error, const char *description)
 {
 	fprintf(stderr, "Error: %s\n", description);
+}
+
+static void glfw_resize_callback(GLFWwindow* window, int width, int height) {
+	WindowApp* app = static_cast<WindowApp*>(glfwGetWindowUserPointer(window));
+	app->resize({ width, height });
 }
 
 WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVsync)
@@ -48,9 +94,16 @@ WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVs
 		exit(EXIT_FAILURE);
 	}
 
-	glfwSetWindowUserPointer(handle, this);
+	glfwSetWindowUserPointer(handle, this); // so we can get current "this" pointer in callback
 	glfwMakeContextCurrent(handle);
 	glfwSwapInterval((enableVsync) ? 1 : 0);
+
+	glfwSetFramebufferSizeCallback(handle, glfw_resize_callback);
+	glfwSetMouseButtonCallback(handle, glfw_mouseButton_callback);
+	glfwSetKeyCallback(handle, glfw_key_callback);
+	glfwSetCursorPosCallback(handle, glfw_mouseMotion_callback);
+
+	initImGui(handle);
 }
 
 WindowApp::~WindowApp(){
@@ -189,6 +242,17 @@ void WindowApp::run()
 	{
 		render();
 		draw();
+
+		if (renderUI) {
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
+
+			draw_ui();
+
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		}
 
 		glfwSwapBuffers(handle);
 		glfwPollEvents();

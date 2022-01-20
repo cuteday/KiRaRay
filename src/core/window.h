@@ -1,13 +1,11 @@
 #pragma once
 
 #include "kiraray.h"
-
 #include "GLFW/glfw3.h"
+#include "imgui.h"
 
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
-
-#include "math/vec.h"
 
 NAMESPACE_KRR_BEGIN
 
@@ -49,8 +47,6 @@ using namespace math;
       }                                                                 \
     while (0)
 
-void initGLFW();
-
 #endif
 
 class WindowApp{
@@ -68,18 +64,30 @@ public:
 
     virtual void draw();
 
-protected:
+    // glfw callbacks
+    virtual void key(int key, int mods) {};
+    virtual void mouseMotion(const vec2i& pos) {};
+    virtual void mouseButton(int button, int action, int mods) {};
+    inline vec2i getMousePos() const {
+        double x, y;
+        glfwGetCursorPos(handle, &x, &y);
+        return { (int)x, (int)y };
+    }
 
-	vec2i fbSize{0};
-	GLuint   fbTexture  {0};
-	cudaGraphicsResource_t cuDisplayTexture { 0 };
-	uint32_t *fbPointer { nullptr };
-	
-	/*! the glfw window handle */
-	GLFWwindow *handle { nullptr };
-	vec2i lastMousePos = { -1,-1 };
+    virtual void draw_ui() {};
 
-	bool resourceSharingSuccessful = false;
+  protected:
+    vec2i fbSize{0};
+    GLuint fbTexture{0};
+    cudaGraphicsResource_t cuDisplayTexture{0};
+    uint32_t *fbPointer{nullptr};
+
+    /*! the glfw window handle */
+    GLFWwindow *handle{nullptr};
+    vec2i lastMousePos = {-1, -1};
+
+    bool resourceSharingSuccessful = false;
+    bool renderUI = true;
 };
 
 NAMESPACE_KRR_END
