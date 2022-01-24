@@ -67,6 +67,8 @@ FILE ( GLOB KRR_SOURCE
 # linking and executables
 ###############################################################################
 
+MESSAGE(STATUS "Working directory set to: ${WORKING_DIRECTORY}")
+
 # the argument's name must match the extern variable declared in host c++ code 
 cuda_compile_and_embed(PTX_CODE shaders/shader.cu)
 
@@ -91,4 +93,6 @@ SET(ALL_KRR_LIBS
 )
 
 ADD_EXECUTABLE ( kiraray main/kiraray.cpp )
+SET_PROPERTY (TARGET kiraray PROPERTY WORKING_DIRECTORY "${WORKING_DIRECTORY}")
+SET_PROPERTY (TARGET kiraray PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${WORKING_DIRECTORY}")
 TARGET_LINK_LIBRARIES (kiraray PUBLIC ${ALL_KRR_LIBS} )

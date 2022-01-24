@@ -64,4 +64,6 @@ INCLUDE (common/cmake/FindOptiX.cmake)
 INCLUDE (common/cmake/configure_optix.cmake)
 find_package(OpenGL REQUIRED)
 
+SET(WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
 ADD_SUBDIRECTORY (src)

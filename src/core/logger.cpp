@@ -76,8 +76,8 @@ void Logger::log(Level level, const string& msg, bool terminate) {
     if (level <= sVerbosity) {
         std::string s = "";
 
-        if (sLogTime) s += Log::nowToString("%H:%M:%S ");
         if (sAnsiControlSequence) s += getLevelAnsiColor(level);
+        if (sLogTime) s += Log::nowToString("%H:%M:%S ");
 
         s += getLogLevelString(level) + std::string(" ") + msg + "\n";
 
