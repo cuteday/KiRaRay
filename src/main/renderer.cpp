@@ -2,7 +2,7 @@
 
 #include "renderer.h"
 
-NAMESPACE_KRR_BEGIN
+KRR_NAMESPACE_BEGIN
 
 extern "C" char PTX_CODE[];
 
@@ -58,10 +58,7 @@ Renderer::Renderer(){
     launchParamsBuffer.alloc(sizeof(launchParams));
     std::cout << "#krr: context, module, pipeline, etc, all set up ..." << std::endl;
 
-    std::cout << KRR_TERMINAL_GREEN;
-    std::cout << "#krr: Optix 7 Sample fully set up" << std::endl;
-    std::cout << KRR_TERMINAL_DEFAULT;
-
+    logSuccess("#krr: Optix 7 context fully set up");
 }
 
 void Renderer::initOptix()
@@ -82,9 +79,6 @@ void Renderer::initOptix()
     // initialize optix
     // -------------------------------------------------------
     OPTIX_CHECK( optixInit() );
-    std::cout << KRR_TERMINAL_GREEN
-              << "#krr: successfully initialized optix... yay!"
-              << KRR_TERMINAL_DEFAULT << std::endl;
   }
 
   static void context_log_cb(unsigned int level,
@@ -327,7 +321,7 @@ void Renderer::initOptix()
 
   void Renderer::buildAS()
   {
-
+      
   }
 
   /*! render one frame */
@@ -379,4 +373,4 @@ void Renderer::initOptix()
       return colorBuffer;
   }
 
-NAMESPACE_KRR_END
+KRR_NAMESPACE_END

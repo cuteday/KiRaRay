@@ -40,3 +40,6 @@ CMakeSettings.json
 build
 out
 .DS_Store
+
+# Assets and resource data
+common/assets

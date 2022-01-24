@@ -3,7 +3,7 @@
 #include "common.h" 
 #include "math/math.h"
 
-NAMESPACE_KRR_BEGIN
+KRR_NAMESPACE_BEGIN
 
 using namespace math;
 
@@ -19,4 +19,4 @@ public:
 	vec3f up;
 };
 
-NAMESPACE_KRR_END
+KRR_NAMESPACE_END

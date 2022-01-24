@@ -12,8 +12,12 @@
 #include <sstream>
 #include <vector>
 
-#define NAMESPACE_KRR_BEGIN namespace krr {
-#define NAMESPACE_KRR_END }	
+using std::string;
+
+typedef uint32_t uint;
+
+#define KRR_NAMESPACE_BEGIN namespace krr {
+#define KRR_NAMESPACE_END }	
 
 #if defined(_MSC_VER)
 #  define KRR_DLL_EXPORT __declspec(dllexport)
@@ -59,21 +63,9 @@
 #endif
 
 #define KRR_NOTIMPLEMENTED throw std::runtime_error(std::string(__PRETTY_FUNCTION__)+" not implemented")
+#define KRR_SHOULDNT_GO_HERE __assume(0)
 
 
-# define KRR_TERMINAL_RED "\033[0;31m"
-# define KRR_TERMINAL_GREEN "\033[0;32m"
-# define KRR_TERMINAL_LIGHT_GREEN "\033[1;32m"
-# define KRR_TERMINAL_YELLOW "\033[1;33m"
-# define KRR_TERMINAL_BLUE "\033[0;34m"
-# define KRR_TERMINAL_LIGHT_BLUE "\033[1;34m"
-# define KRR_TERMINAL_RESET "\033[0m"
-# define KRR_TERMINAL_DEFAULT KRR_TERMINAL_RESET
-# define KRR_TERMINAL_BOLD "\033[1;1m"
-# define KRR_TERMINAL_MAGENTA "\e[35m"
-# define KRR_TERMINAL_LIGHT_MAGENTA "\e[95m"
-# define KRR_TERMINAL_CYAN "\e[36m"
-# define KRR_TERMINAL_LIGHT_RED "\033[1;31m"
 
 #ifdef _MSC_VER
 # define KRR_ALIGN(alignment) __declspec(align(alignment)) 
@@ -81,7 +73,7 @@
 # define KRR_ALIGN(alignment) __attribute__((aligned(alignment)))
 #endif
 
-namespace owl {
+namespace krr {
   namespace common {
 
 #ifdef __CUDA_ARCH__
@@ -104,8 +96,6 @@ namespace owl {
     inline __both__ float saturate(const float &f) { return min(1.f,max(0.f,f)); }
 #endif
 
-    // inline __both__ float abs(float f)      { return fabsf(f); }
-    // inline __both__ double abs(double f)    { return fabs(f); }
     inline __both__ float rcp(float f)      { return 1.f/f; }
     inline __both__ double rcp(double d)    { return 1./d; }
   
@@ -116,79 +106,6 @@ namespace owl {
   
     using ::sin; // this is the double version
     using ::cos; // this is the double version
-    
-#ifdef __WIN32__
-#  define osp_snprintf sprintf_s
-#else
-#  define osp_snprintf snprintf
-#endif
-  
-    /*! added pretty-print function for large numbers, printing 10000000 as "10M" instead */
-    inline std::string prettyDouble(const double val) {
-      const double absVal = abs(val);
-      char result[1000];
-
-      if      (absVal >= 1e+18f) osp_snprintf(result,1000,"%.1f%c",float(val/1e18f),'E');
-      else if (absVal >= 1e+15f) osp_snprintf(result,1000,"%.1f%c",float(val/1e15f),'P');
-      else if (absVal >= 1e+12f) osp_snprintf(result,1000,"%.1f%c",float(val/1e12f),'T');
-      else if (absVal >= 1e+09f) osp_snprintf(result,1000,"%.1f%c",float(val/1e09f),'G');
-      else if (absVal >= 1e+06f) osp_snprintf(result,1000,"%.1f%c",float(val/1e06f),'M');
-      else if (absVal >= 1e+03f) osp_snprintf(result,1000,"%.1f%c",float(val/1e03f),'k');
-      else if (absVal <= 1e-12f) osp_snprintf(result,1000,"%.1f%c",float(val*1e15f),'f');
-      else if (absVal <= 1e-09f) osp_snprintf(result,1000,"%.1f%c",float(val*1e12f),'p');
-      else if (absVal <= 1e-06f) osp_snprintf(result,1000,"%.1f%c",float(val*1e09f),'n');
-      else if (absVal <= 1e-03f) osp_snprintf(result,1000,"%.1f%c",float(val*1e06f),'u');
-      else if (absVal <= 1e-00f) osp_snprintf(result,1000,"%.1f%c",float(val*1e03f),'m');
-      else osp_snprintf(result,1000,"%f",(float)val);
-
-      return result;
-    }
-
-    /*! return a nicely formatted number as in "3.4M" instead of
-        "3400000", etc, using mulitples of thousands (K), millions
-        (M), etc. Ie, the value 64000 would be returned as 64K, and
-        65536 would be 65.5K */
-    inline std::string prettyNumber(const size_t s)
-    {
-      char buf[1000];
-      if (s >= (1000LL*1000LL*1000LL*1000LL)) {
-        osp_snprintf(buf, 1000,"%.2fT",s/(1000.f*1000.f*1000.f*1000.f));
-      } else if (s >= (1000LL*1000LL*1000LL)) {
-        osp_snprintf(buf, 1000, "%.2fG",s/(1000.f*1000.f*1000.f));
-      } else if (s >= (1000LL*1000LL)) {
-        osp_snprintf(buf, 1000, "%.2fM",s/(1000.f*1000.f));
-      } else if (s >= (1000LL)) {
-        osp_snprintf(buf, 1000, "%.2fK",s/(1000.f));
-      } else {
-        osp_snprintf(buf,1000,"%zi",s);
-      }
-      return buf;
-    }
-
-    /*! return a nicely formatted number as in "3.4M" instead of
-        "3400000", etc, using mulitples of 1024 as in kilobytes,
-        etc. Ie, the value 65534 would be 64K, 64000 would be 63.8K */
-    inline std::string prettyBytes(const size_t s)
-    {
-      char buf[1000];
-      if (s >= (1024LL*1024LL*1024LL*1024LL)) {
-        osp_snprintf(buf, 1000,"%.2fT",s/(1024.f*1024.f*1024.f*1024.f));
-      } else if (s >= (1024LL*1024LL*1024LL)) {
-        osp_snprintf(buf, 1000, "%.2fG",s/(1024.f*1024.f*1024.f));
-      } else if (s >= (1024LL*1024LL)) {
-        osp_snprintf(buf, 1000, "%.2fM",s/(1024.f*1024.f));
-      } else if (s >= (1024LL)) {
-        osp_snprintf(buf, 1000, "%.2fK",s/(1024.f));
-      } else {
-        osp_snprintf(buf,1000,"%zi",s);
-      }
-      return buf;
-    }
-
-    inline bool hasSuffix(const std::string &s, const std::string &suffix)
-    {
-      return s.substr(s.size()-suffix.size()) == suffix;
-    }
     
   } 
 } 

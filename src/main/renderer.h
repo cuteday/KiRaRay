@@ -2,13 +2,12 @@
 
 #include "kiraray.h"
 #include "window.h"
+#include "scene.h"
 
 #include "gpu/buffer.h"
 #include "shaders/LaunchParams.h"
 
-
-
-NAMESPACE_KRR_BEGIN
+KRR_NAMESPACE_BEGIN
 
 class Renderer{
 public:
@@ -36,10 +35,15 @@ public:
 
     void render();
 
+    void setScene(Scene::SharedPtr scene) {
+        mpScene = scene;
+    }
+
     CUDABuffer& result();
 
 protected:
 
+// OptiX and CUDA context
 	CUcontext cudaContext;
 	CUstream stream;
 	cudaDeviceProp deviceProps;
@@ -65,6 +69,9 @@ protected:
     CUDABuffer   launchParamsBuffer;
 
     CUDABuffer colorBuffer;
+
+// Intrinsic data
+    Scene::SharedPtr mpScene;
 };
 
 class RenderApp : public WindowApp{
@@ -75,11 +82,13 @@ public:
 
     void resize(const vec2i& size) override {
         WindowApp::resize(size);
-        renderer.resize(size);
+        mRenderer.resize(size);
     }
 
+    Renderer& renderer() { return mRenderer; }
+
     void render() override {
-        renderer.render();
+        mRenderer.render();
     }
 
     void draw_ui() override{
@@ -89,13 +98,13 @@ public:
     }
 
     void draw() override {
-        renderer.result().copy_to_device(fbPointer, fbSize.x * fbSize.y);
+        mRenderer.result().copy_to_device(fbPointer, fbSize.x * fbSize.y);
         WindowApp::draw();
     }
 
 
 private:
-    Renderer renderer;
+    Renderer mRenderer;
 };
 
-NAMESPACE_KRR_END
+KRR_NAMESPACE_END

@@ -7,7 +7,7 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
-NAMESPACE_KRR_BEGIN
+KRR_NAMESPACE_BEGIN
 
 using namespace math;
 
@@ -90,4 +90,4 @@ public:
     bool renderUI = true;
 };
 
-NAMESPACE_KRR_END
+KRR_NAMESPACE_END

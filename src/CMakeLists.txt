@@ -22,6 +22,9 @@ message("optix include: ${OptiX_INCLUDE}")
 SET ( KRR_CORE_SOURCE
 	core/window.cpp
 	core/light.cpp
+	core/scene.cpp
+	# components
+	core/logger.cpp
 	# non core
 	main/renderer.cpp
 )
@@ -32,6 +35,9 @@ SET ( KRR_CORE_HEADERS
 	core/common.h
 	# components
 	core/camera.h
+	core/scene.h
+	core/logger.h
+
 	# maths
 	core/math/math.h
 	core/math/constants.h

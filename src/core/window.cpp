@@ -3,20 +3,20 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-NAMESPACE_KRR_BEGIN
+KRR_NAMESPACE_BEGIN
 
 inline const char* getGLErrorString(GLenum error)
 {
   switch (error)
 	{
-	case GL_NO_ERROR:            return "No error";
-	case GL_INVALID_ENUM:        return "Invalid enum";
-	case GL_INVALID_VALUE:       return "Invalid value";
-	case GL_INVALID_OPERATION:   return "Invalid operation";
-	case GL_STACK_OVERFLOW:      return "Stack overflow";
-	case GL_STACK_UNDERFLOW:     return "Stack underflow";
-	case GL_OUT_OF_MEMORY:       return "Out of memory";
-	default:                     return "Unknown GL error";
+		case GL_NO_ERROR:            return "No error";
+		case GL_INVALID_ENUM:        return "Invalid enum";
+		case GL_INVALID_VALUE:       return "Invalid value";
+		case GL_INVALID_OPERATION:   return "Invalid operation";
+		case GL_STACK_OVERFLOW:      return "Stack overflow";
+		case GL_STACK_UNDERFLOW:     return "Stack underflow";
+		case GL_OUT_OF_MEMORY:       return "Out of memory";
+		default:                     return "Unknown GL error";
 	}
 }
 
@@ -139,12 +139,12 @@ void WindowApp::resize(const vec2i &size)
 	bool forceSlowDisplay = false;
 	if (rc != cudaSuccess || forceSlowDisplay)
 	{
-		std::cout << KRR_TERMINAL_RED
+		std::cout << Log::TERMINAL_RED
 				  << "Warning: Could not do CUDA graphics resource sharing "
 				  << "for the display buffer texture ("
 				  << cudaGetErrorString(cudaGetLastError())
 				  << ")... falling back to slower path"
-				  << KRR_TERMINAL_DEFAULT
+				  << Log::TERMINAL_DEFAULT
 				  << std::endl;
 		resourceSharingSuccessful = false;
 		if (cuDisplayTexture)
@@ -262,4 +262,4 @@ void WindowApp::run()
 	glfwTerminate();
 }
 
-NAMESPACE_KRR_END
+KRR_NAMESPACE_END

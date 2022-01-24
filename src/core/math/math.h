@@ -2,3 +2,4 @@
 
 #include "vec.h"
 
+using namespace krr::math;

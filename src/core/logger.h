@@ -44,69 +44,6 @@ namespace Log {
         Debug,
     };
 
-    inline std::string timeToString(const std::string& fmt, time_t time) {
-        char timeStr[128];
-        if (std::strftime(timeStr, 128, fmt.c_str(), localtime(&time)) == 0) {
-            throw std::runtime_error{ "Could not render local time." };
-        }
-        return timeStr;
-    }
-
-    inline std::string nowToString(const std::string& fmt) {
-        return timeToString(fmt, std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
-    }
-
-    inline string getLogLevelString(Level level) {
-        switch (level)
-        {
-        case Level::Fatal:
-            return "[Fatal]";
-        case Level::Error:
-            return "[Error]";
-        case Level::Warning:
-            return "[Warning]";
-        case Level::Info:
-        case Level::Success:
-            return "[Info]";
-        case Level::Debug:
-            return "[Debug]";
-        default:
-            KRR_SHOULDNT_GO_HERE;
-            return nullptr;
-        }
-    }
-
-    inline string getLevelAnsiColor(Level level) {
-        switch (level) {
-        case Level::Success:
-            return TERMINAL_GREEN;
-        case Level::Error:
-            return TERMINAL_LIGHT_RED;
-        case Level::Fatal:
-            return TERMINAL_RED;
-        default: 
-            return TERMINAL_DEFAULT;
-        }
-    }
-
-    static bool enableAnsiControlSequences() {
-#ifdef _WIN32
-        // Set output mode to handle virtual terminal sequences
-        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-        if (hOut == INVALID_HANDLE_VALUE) {
-            return false;
-        }
-        DWORD dwMode = 0;
-        if (!GetConsoleMode(hOut, &dwMode)) {
-            return false;
-        }
-        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-        if (!SetConsoleMode(hOut, dwMode)) {
-            return false;
-        }
-#endif
-        return true;
-    }
 }
 
 // logger class
@@ -137,7 +74,17 @@ inline void logFatal(const std::string& msg) { Logger::log(Logger::Level::Fatal,
 // util functions
 namespace Log {
 
-    using duration_t = std::chrono::microseconds;
+    inline std::string timeToString(const std::string& fmt, time_t time) {
+        char timeStr[128];
+        if (std::strftime(timeStr, 128, fmt.c_str(), localtime(&time)) == 0) {
+            throw std::runtime_error{ "Could not render local time." };
+        }
+        return timeStr;
+    }
+
+    inline std::string nowToString(const std::string& fmt) {
+        return timeToString(fmt, std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+    }
 
     inline std::string padFromLeft(std::string str, size_t length, const char paddingChar = ' ') {
         if (length > str.size()) {
@@ -177,6 +124,7 @@ namespace Log {
         }
     }
 
+    using duration_t = std::chrono::microseconds;
     inline std::string progressBar(uint64_t current, uint64_t total, duration_t duration, int width) {
         if (total == 0) {
             throw std::invalid_argument{ "Progress: total must not be zero." };
