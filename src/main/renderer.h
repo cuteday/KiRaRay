@@ -37,18 +37,26 @@ public:
 
     void setScene(Scene::SharedPtr scene) {
         mpScene = scene;
+
+        logInfo("#krr: building AS ...");
+        buildAS();
+
+        logInfo("#krr: building SBT ...");
+        buildSBT();
+
+        logSuccess("Scene reset.");
     }
 
     CUDABuffer& result();
 
-protected:
+private:
 
 // OptiX and CUDA context
 	CUcontext cudaContext;
 	CUstream stream;
 	cudaDeviceProp deviceProps;
 
-    OptixDeviceContext optixContext;
+    OptixDeviceContext mOptixContext;
 
     OptixPipeline               pipeline;
     OptixPipelineCompileOptions pipelineCompileOptions = {};
@@ -69,9 +77,13 @@ protected:
     CUDABuffer   launchParamsBuffer;
 
     CUDABuffer colorBuffer;
+    CUDABuffer accelBuffer;
 
-// Intrinsic data
+// Intrinsic scene data and cuda buffers
     Scene::SharedPtr mpScene;
+
+    std::vector<CUDABuffer> indexBuffers;
+    std::vector<CUDABuffer> vertexBuffers;
 };
 
 class RenderApp : public WindowApp{
@@ -81,8 +93,9 @@ public:
 	RenderApp(const char title[], vec2i size) : WindowApp(title, size) {}
 
     void resize(const vec2i& size) override {
-        WindowApp::resize(size);
+        logSuccess("Resizing window size to " + std::to_string(size.x));
         mRenderer.resize(size);
+        WindowApp::resize(size);
     }
 
     Renderer& renderer() { return mRenderer; }
@@ -92,7 +105,7 @@ public:
     }
 
     void draw_ui() override{
-        ImGui::Begin("KiRaRay");
+        ImGui::Begin(KRR_PROJECT_NAME);
         ImGui::Text("Hello, world!");
         ImGui::End();
     }

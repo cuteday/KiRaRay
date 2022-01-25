@@ -59,7 +59,7 @@ private:
     friend void logSuccess(const std::string& msg);
     friend void logWarning(const std::string& msg);
     friend void logError(const std::string& msg, bool terminate);
-    friend void logFatal(const std::string& msg);
+    friend void logFatal(const std::string& msg, bool terminate);
 
     static void log(Level level, const string& msg, bool terminate = false);
 };
@@ -68,8 +68,8 @@ inline void logDebug(const std::string& msg) { Logger::log(Logger::Level::Debug,
 inline void logInfo(const std::string& msg) { Logger::log(Logger::Level::Info, msg); }
 inline void logSuccess(const std::string& msg) { Logger::log(Logger::Level::Success, msg); }
 inline void logWarning(const std::string& msg) { Logger::log(Logger::Level::Warning, msg); }
-inline void logError(const std::string& msg, bool terminate = true) { Logger::log(Logger::Level::Error, msg); }
-inline void logFatal(const std::string& msg) { Logger::log(Logger::Level::Fatal, msg); }
+inline void logError(const std::string& msg, bool terminate = false) { Logger::log(Logger::Level::Error, msg, terminate); }
+inline void logFatal(const std::string& msg, bool terminate = true) { Logger::log(Logger::Level::Fatal, msg, terminate); }
 
 // util functions
 namespace Log {

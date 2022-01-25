@@ -43,6 +43,11 @@ find_library(
 	${CUDA_TOOLKIT_ROOT_DIR}/lib
 )
 
+if (NOT CUDA_INCLUDE_DIRS)
+	message(STATUS "Setting CUDA include directory to: ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+    set(CUDA_INCLUDE_DIRS ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+endif()
+
 # auto detect compute arch, from https://stackoverflow.com/a/69353718
 include(FindCUDA/select_compute_arch)
 CUDA_DETECT_INSTALLED_GPUS(INSTALLED_GPU_CCS_1)
@@ -51,11 +56,6 @@ string(REPLACE " " ";" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
 string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
 set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 message(STATUS "Automatically detected GPU architectures: ${CUDA_ARCH_LIST}")
-
-if (NOT CUDA_INCLUDE_DIRS)
-	message(STATUS "Setting CUDA include directory to: ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
-    set(CUDA_INCLUDE_DIRS ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-endif()
 
 ###############################################################################
 # other dependencies

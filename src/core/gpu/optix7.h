@@ -9,13 +9,13 @@
 
 #define CUDA_CHECK(call)							\
     {									\
-      cudaError_t rc = cuda##call;                                      \
+      cudaError_t rc = call;                                      \
       if (rc != cudaSuccess) {                                          \
-        std::stringstream txt;                                          \
+        std::stringstream ss;                                          \
         cudaError_t err =  rc; /*cudaGetLastError();*/                  \
-        txt << "CUDA Error " << cudaGetErrorName(err)                   \
+        ss << "CUDA Error " << cudaGetErrorName(err)                   \
             << " (" << cudaGetErrorString(err) << ")";                  \
-        throw std::runtime_error(txt.str());                            \
+        throw std::runtime_error(ss.str());                            \
       }                                                                 \
     }
 

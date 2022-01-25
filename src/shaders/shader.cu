@@ -14,6 +14,7 @@ namespace krr {
 	  vec3f& prd = *getPRD<vec3f>();
 	  int prim_id = optixGetPrimitiveIndex();
 	  prd = vec3f(0.5);
+
   }
   
   extern "C" __global__ void KRR_RT_AH(radiance)()
@@ -31,7 +32,8 @@ namespace krr {
     uint3 pixelID = optixGetLaunchIndex();
     const int frameID = optixLaunchParams.frameID;
     const uint32_t fbIndex = pixelID.x + pixelID.y * optixLaunchParams.fbSize.x;
-
+	
+	optixLaunchParams.colorBuffer[fbIndex] = vec4f(0.5f, 0.5f, 0.6f, 1.0f);
 
   }
   

@@ -17,10 +17,10 @@ class Texture {
 
 class Mesh {
 public:
-	std::vector<vec3f> vertex;
-	std::vector<vec3f> normal;
-	std::vector<vec2f> texcoord;
-	std::vector<vec3i> index;
+	std::vector<vec3f> vertices;
+	std::vector<vec3f> normals;
+	std::vector<vec2f> texcoords;
+	std::vector<vec3i> indices;
 
 	Texture* texture;
 	int texture_id;

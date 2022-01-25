@@ -68,7 +68,6 @@ FILE ( GLOB KRR_SOURCE
 # linking and executables
 ###############################################################################
 
-MESSAGE(STATUS "Working directory set to: ${WORKING_DIRECTORY}")
 
 # the argument's name must match the extern variable declared in host c++ code 
 cuda_compile_and_embed(PTX_CODE shaders/shader.cu)

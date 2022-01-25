@@ -16,6 +16,7 @@ using std::string;
 
 typedef uint32_t uint;
 
+#define KRR_PROJECT_NAME "KiRaRay"
 #define KRR_NAMESPACE_BEGIN namespace krr {
 #define KRR_NAMESPACE_END }	
 

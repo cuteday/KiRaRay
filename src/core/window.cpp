@@ -3,6 +3,8 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#include "gpu/optix7.h"
+
 KRR_NAMESPACE_BEGIN
 
 inline const char* getGLErrorString(GLenum error)
@@ -69,7 +71,7 @@ static void glfw_mouseButton_callback(GLFWwindow* window, int button, int action
 
 static void glfw_error_callback(int error, const char *description)
 {
-	fprintf(stderr, "Error: %s\n", description);
+	logError("GLFW Error: %s\n" + string(description));
 }
 
 static void glfw_resize_callback(GLFWwindow* window, int width, int height) {
@@ -116,13 +118,11 @@ void WindowApp::resize(const vec2i &size)
 	glfwMakeContextCurrent(handle);
 	if (fbPointer)
 		cudaFree(fbPointer);
-	cudaMallocManaged(&fbPointer, size.x * size.y * sizeof(uint32_t));
+	cudaMallocManaged(&fbPointer, size.x * size.y * sizeof(vec4f));
 
 	fbSize = size;
 	if (fbTexture == 0)
-	{
 		GL_CHECK(glGenTextures(1, &fbTexture));
-	}
 	else if (cuDisplayTexture)
 	{
 		cudaGraphicsUnregisterResource(cuDisplayTexture);
@@ -130,8 +130,8 @@ void WindowApp::resize(const vec2i &size)
 	}
 
 	GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbTexture));
-	GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA,
-						  GL_UNSIGNED_BYTE, nullptr));
+	GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, size.x, size.y, 0, GL_RGBA,
+						  GL_FLOAT, nullptr));
 
 	// We need to re-register when resizing the texture
 	cudaError_t rc = cudaGraphicsGLRegisterImage(&cuDisplayTexture, fbTexture, GL_TEXTURE_2D, 0);
@@ -139,13 +139,12 @@ void WindowApp::resize(const vec2i &size)
 	bool forceSlowDisplay = false;
 	if (rc != cudaSuccess || forceSlowDisplay)
 	{
-		std::cout << Log::TERMINAL_RED
-				  << "Warning: Could not do CUDA graphics resource sharing "
-				  << "for the display buffer texture ("
-				  << cudaGetErrorString(cudaGetLastError())
-				  << ")... falling back to slower path"
-				  << Log::TERMINAL_DEFAULT
-				  << std::endl;
+		logError("Could not do CUDA graphics resource sharing "
+			"for the display buffer texture (" + 
+			string(cudaGetErrorString(cudaGetLastError())) +
+			")... falling back to slower path"
+			);
+
 		resourceSharingSuccessful = false;
 		if (cuDisplayTexture)
 		{
@@ -163,23 +162,26 @@ void WindowApp::resize(const vec2i &size)
 void WindowApp::draw()
 {
 	glfwMakeContextCurrent(handle);
+
 	if (resourceSharingSuccessful)
 	{
-		GL_CHECK(cudaGraphicsMapResources(1, &cuDisplayTexture));
+		CUDA_CHECK(cudaGraphicsMapResources(1, &cuDisplayTexture));
 
 		cudaArray_t array;
 		// render data are put into fbPointer, which is mapped onto fbTexture
-		GL_CHECK(cudaGraphicsSubResourceGetMappedArray(&array, cuDisplayTexture, 0, 0));
-		{
-			cudaMemcpy2DToArray(array,
+		CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&array, cuDisplayTexture, 0, 0));
+
+		CUDA_CHECK(cudaMemcpy2DToArray(array,
 								0,
 								0,
-								reinterpret_cast<const void *>(fbPointer),
-								fbSize.x * sizeof(uint32_t),
-								fbSize.x * sizeof(uint32_t),
+								reinterpret_cast<const void*>(fbPointer),
+								fbSize.x * sizeof(vec4f),
+								fbSize.x * sizeof(vec4f),
 								fbSize.y,
-								cudaMemcpyDeviceToDevice);
-		}
+								cudaMemcpyDeviceToDevice));
+		
+		//CUDA_CHECK(cudaMemcpyToArray(array, 0, 0, reinterpret_cast<const void*>(fbPointer),
+		//	sizeof(vec4f) * fbSize.x * fbSize.y, cudaMemcpyDeviceToDevice));
 	}
 	else
 	{
@@ -189,7 +191,7 @@ void WindowApp::draw()
 		GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0,
 								 0, 0,
 								 fbSize.x, fbSize.y,
-								 GL_RGBA, GL_UNSIGNED_BYTE, fbPointer));
+								 GL_RGBA, GL_FLOAT, fbPointer));
 	}
 	glDisable(GL_LIGHTING);
 	glColor3f(1, 1, 1);
@@ -228,7 +230,7 @@ void WindowApp::draw()
 
 	if (resourceSharingSuccessful)
 	{
-		GL_CHECK(cudaGraphicsUnmapResources(1, &cuDisplayTexture));
+		CUDA_CHECK(cudaGraphicsUnmapResources(1, &cuDisplayTexture));
 	}
 }
 
@@ -240,19 +242,17 @@ void WindowApp::run()
 
 	while (!glfwWindowShouldClose(handle))
 	{
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
 		render();
 		draw();
 
-		if (renderUI) {
-			ImGui_ImplOpenGL3_NewFrame();
-			ImGui_ImplGlfw_NewFrame();
-			ImGui::NewFrame();
+		if (renderUI) draw_ui();
 
-			draw_ui();
-
-			ImGui::Render();
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		}
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(handle);
 		glfwPollEvents();

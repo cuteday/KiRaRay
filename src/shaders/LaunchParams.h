@@ -9,7 +9,7 @@ namespace krr {
   struct LaunchParams
   {
     int       frameID { 0 };
-    uint32_t *colorBuffer;
+    vec4f *colorBuffer;
     vec2i     fbSize;
 
     Camera camera;

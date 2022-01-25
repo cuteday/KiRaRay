@@ -53,15 +53,15 @@ void Scene::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
 
     for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
         vec3f vertex = aiCast(pAiMesh->mVertices[i]);
-        mesh.vertex.push_back(vertex);
+        mesh.vertices.push_back(vertex);
 
         assert(pAiMesh->HasNormals());
         vec3f normal = aiCast(pAiMesh->mNormals[i]);
-        mesh.normal.push_back(normal);
+        mesh.normals.push_back(normal);
 
         if (pAiMesh->mTextureCoords[0]) {
             vec3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
-            mesh.texcoord.push_back({ texcoord.x, texcoord.y });
+            mesh.texcoords.push_back({ texcoord.x, texcoord.y });
         }
 
     }
@@ -71,7 +71,7 @@ void Scene::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
         assert(face.mNumIndices == 3);
         vec3i indices = { (int)face.mIndices[0], (int)face.mIndices[1], (int)face.mIndices[2] };
         
-        mesh.index.push_back(indices);
+        mesh.indices.push_back(indices);
     }
 
     meshes.push_back(mesh);
