@@ -3,11 +3,11 @@
 # Our initial guess will be within the SDK.
 
 if (WIN32)
-#		set(OptiX_INSTALL_DIR "C:/ProgramData/NVIDIA Corporation/OptiX SDK 5.1.0" CACHE PATH "Path to OptiX installed location.")
 	find_path(searched_OptiX_INSTALL_DIR
 		NAME include/optix.h
 		PATHS
-		"C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.3.0"
+		"C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.4.0"
+    "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.3.0"
 		"C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.2.0"
 		"C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.1.0"
 		"C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.0.0"
@@ -50,10 +50,6 @@ macro(OPTIX_find_api_library name version)
       )
   endif()
 endmacro()
-
-#OPTIX_find_api_library(optix 7.0.0)
-#OPTIX_find_api_library(optixu 7.0.0)
-#OPTIX_find_api_library(optix_prime 7.0.0)
 
 # Include
 find_path(OptiX_INCLUDE
@@ -140,21 +136,3 @@ macro(OptiX_check_same_path libA libB)
     set( _${libA}_rpath "-Wl,-rpath,${_optix_path_to_${libA}}" )
   endif()
 endmacro()
-
-# Since liboptix.1.dylib is built with an install name of @rpath, we need to
-# compile our samples with the rpath set to where optix exists.
-if(APPLE)
-  get_filename_component(_optix_path_to_optix "${optix_LIBRARY}" PATH)
-  if(_optix_path_to_optix)
-    set( _optix_rpath "-Wl,-rpath,${_optix_path_to_optix}" )
-  endif()
-  get_filename_component(_optix_path_to_optixu "${optixu_LIBRARY}" PATH)
-  OptiX_check_same_path(optixu optix)
-  get_filename_component(_optix_path_to_optix_prime "${optix_prime_LIBRARY}" PATH)
-  OptiX_check_same_path(optix_prime optix)
-  OptiX_check_same_path(optix_prime optixu)
-
-  set( optix_rpath ${_optix_rpath} ${_optixu_rpath} ${_optix_prime_rpath} )
-  list(REMOVE_DUPLICATES optix_rpath)
-endif()
-

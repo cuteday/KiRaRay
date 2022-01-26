@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optix_device.h>
+#include "common.h"
 
 #define KRR_RT_RG(name) __raygen__ ## name
 #define KRR_RT_MS(name) __miss__ ## name

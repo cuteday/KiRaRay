@@ -18,6 +18,12 @@ INCLUDE_DIRECTORIES (
 	${OptiX_INCLUDE}
 )
 
+SET (KRR_SHADER_INCLUDE
+	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/core
+	${CMAKE_CURRENT_SOURCE_DIR}/shaders
+)
+
 message("optix include: ${OptiX_INCLUDE}")
 
 SET ( KRR_CORE_SOURCE
@@ -27,7 +33,6 @@ SET ( KRR_CORE_SOURCE
 	# components
 	core/logger.cpp
 	# non core
-	main/renderer.cpp
 )
 
 SET ( KRR_CORE_HEADERS
@@ -38,7 +43,6 @@ SET ( KRR_CORE_HEADERS
 	core/camera.h
 	core/scene.h
 	core/logger.h
-
 	# maths
 	core/math/math.h
 	core/math/constants.h
@@ -50,7 +54,11 @@ SET ( KRR_CORE_HEADERS
 	core/gpu/buffer.h
 	core/gpu/optix7.h
 	# non core
+)
+
+SET (KRR_SOURCE
 	main/renderer.h
+	main/renderer.cpp
 )
 
 SET ( KRR_SHADERS
@@ -68,9 +76,10 @@ FILE ( GLOB KRR_SOURCE
 # linking and executables
 ###############################################################################
 
-
+INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code 
-cuda_compile_and_embed(PTX_CODE shaders/shader.cu)
+CUDA_COMPILE_EMBED(PTX_CODE shaders/shader.cu krr-shader)
+#cuda_compile_and_embed(PTX_CODE shaders/shader.cu)
 
 ADD_LIBRARY ( krr STATIC
 	${KRR_CORE_SOURCE}
@@ -82,9 +91,10 @@ ADD_LIBRARY ( krr STATIC
 
 TARGET_LINK_LIBRARIES(krr PUBLIC ${optix_LIBRARY})
 
-SET(ALL_KRR_LIBS
+SET(KRR_ALL_LIBS
 	krr
 	krr-cuda
+	#krr-shader
 	assimp
 	OpenGL::GL
 	libglew_static
@@ -92,9 +102,8 @@ SET(ALL_KRR_LIBS
 	imgui
 	${OPENGL_gl_LIBRARY}
 	${CUDA_LIBRARIES}
+	${optix_LIBRARY}
 )
 
-#message("OPENGL_gl_LIBRARY = " "${OPENGL_gl_LIBRARY}")
-
 ADD_EXECUTABLE ( kiraray main/kiraray.cpp )
-TARGET_LINK_LIBRARIES (kiraray PUBLIC ${ALL_KRR_LIBS} )
+TARGET_LINK_LIBRARIES (kiraray PUBLIC ${KRR_ALL_LIBS} )

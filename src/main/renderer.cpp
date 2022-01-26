@@ -395,7 +395,8 @@ void Renderer::buildAS()
 	CUDABuffer outputBuffer;
 	outputBuffer.alloc(blasBufferSizes.outputSizeInBytes);
 
-	OptixTraversableHandle asHandle{ 0 };
+	OptixTraversableHandle &asHandle = launchParams.traversable;
+	
 	OPTIX_CHECK(optixAccelBuild(mOptixContext,
 		stream,
 		&accelOptions,

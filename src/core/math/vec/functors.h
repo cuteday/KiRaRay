@@ -55,13 +55,13 @@ namespace krr {
   
 #define _define_float_functor(func)                                     \
     template<typename T> inline __both__ vec_t<T,2> func(const vec_t<T,2> &v) \
-    { return vec_t<T,2>(owl::common::func(v.x),owl::common::func(v.y)); }                         \
+    { return vec_t<T,2>(krr::math::func(v.x),krr::math::func(v.y)); }                         \
                                                                         \
     template<typename T> inline __both__ vec_t<T,3> func(const vec_t<T,3> &v) \
-    { return vec_t<T,3>(owl::common::func(v.x),owl::common::func(v.y),owl::common::func(v.z)); }               \
+    { return vec_t<T,3>(krr::math::func(v.x),krr::math::func(v.y),krr::math::func(v.z)); }               \
                                                                         \
     template<typename T> inline __both__ vec_t<T,4> func(const vec_t<T,4> &v) \
-    { return vec_t<T,4>(owl::common::func(v.x),owl::common::func(v.y),owl::common::func(v.z),owl::common::func(v.w)); } \
+    { return vec_t<T,4>(krr::math::func(v.x),krr::math::func(v.y),krr::math::func(v.z),krr::math::func(v.w)); } \
 
     _define_float_functor(rcp)
     _define_float_functor(sin)
@@ -383,6 +383,6 @@ inline __both__ vec2f sqrt(const vec2f v) { return vec2f(sqrtf(v.x),sqrtf(v.y));
 inline __both__ vec3f sqrt(const vec3f v) { return vec3f(sqrtf(v.x),sqrtf(v.y),sqrtf(v.z)); }
 inline __both__ vec4f sqrt(const vec4f v) { return vec4f(sqrtf(v.x),sqrtf(v.y),sqrtf(v.z),sqrtf(v.w)); }
 
-  } // ::owl::common
+  } // ::krr::math
 } // ::owl
 

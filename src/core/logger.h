@@ -164,11 +164,7 @@ namespace Log {
 
         // Build the progress bar itself. Looks like so:
         // [=================>                         ]
-        int usableWidth = std::max(0, width
-            - 2 // The surrounding [ and ]
-            - 1 // Space between progress bar and label
-            - (int)label.size() // Label itself
-        );
+        int usableWidth = max(0, width - 2 - 1 - (int)label.size() );
 
         int numFilledChars = (int)std::round(usableWidth * fraction);
 

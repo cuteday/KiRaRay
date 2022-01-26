@@ -4,17 +4,16 @@
 #include "camera.h"
 
 namespace krr {
-  using namespace math;
 
-  struct LaunchParams
-  {
-    int       frameID { 0 };
-    vec4f *colorBuffer;
-    vec2i     fbSize;
+	struct LaunchParams
+	{
+		int       frameID{ 0 };
+		vec4f* colorBuffer;
+		vec2i     fbSize;
 
-    Camera camera;
+		Camera camera;
 
-    OptixTraversableHandle traversable;
-  };
+		OptixTraversableHandle traversable;
+	};
 
 }

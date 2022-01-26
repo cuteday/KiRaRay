@@ -118,7 +118,7 @@ void WindowApp::resize(const vec2i &size)
 	glfwMakeContextCurrent(handle);
 	if (fbPointer)
 		cudaFree(fbPointer);
-	cudaMallocManaged(&fbPointer, size.x * size.y * sizeof(vec4f));
+	cudaMallocManaged(&fbPointer, sizeof(vec4f) * size.x * size.y);
 
 	fbSize = size;
 	if (fbTexture == 0)

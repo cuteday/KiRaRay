@@ -336,14 +336,14 @@ namespace krr{
     template<typename T>
     inline __both__ vec_t<T,3> normalize(const vec_t<T,3> &v)
     {
-      return v * owl::common::polymorphic::rsqrt(dot(v,v));
+      return v * krr::math::polymorphic::rsqrt(dot(v,v));
     }
 
     /*! vector cross product */
     template<typename T>
     inline __both__ T length(const vec_t<T,3> &v)
     {
-      return owl::common::polymorphic::sqrt(dot(v,v));
+      return krr::math::polymorphic::sqrt(dot(v,v));
     }
 
     template<typename T>

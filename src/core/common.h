@@ -66,8 +66,6 @@ typedef uint32_t uint;
 #define KRR_NOTIMPLEMENTED throw std::runtime_error(std::string(__PRETTY_FUNCTION__)+" not implemented")
 #define KRR_SHOULDNT_GO_HERE __assume(0)
 
-
-
 #ifdef _MSC_VER
 # define KRR_ALIGN(alignment) __declspec(align(alignment)) 
 #else
@@ -75,7 +73,7 @@ typedef uint32_t uint;
 #endif
 
 namespace krr {
-  namespace common {
+  namespace math {
 
 #ifdef __CUDA_ARCH__
     using ::min;
@@ -108,5 +106,18 @@ namespace krr {
     using ::sin; // this is the double version
     using ::cos; // this is the double version
     
+    namespace polymorphic {
+#ifdef __CUDA_ARCH__
+        inline __both__ float sqrt(const float f) { return ::sqrtf(f); }
+        inline __both__ double sqrt(const double d) { return ::sqrt(d); }
+#else
+        inline __both__ float sqrt(const float f) { return ::sqrtf(f); }
+        inline __both__ double sqrt(const double d) { return ::sqrt(d); }
+#endif
+
+        inline __both__ float rsqrt(const float f) { return 1.f / polymorphic::sqrt(f); }
+        inline __both__ double rsqrt(const double d) { return 1. / polymorphic::sqrt(d); }
+    }
+
   } 
 } 

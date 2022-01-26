@@ -5,6 +5,7 @@ PROJECT (KIRARAY
 	LANGUAGES C CXX CUDA
 )
 SET (CMAKE_EXPORT_COMPILE_COMMANDS ON)
+SET(KRR_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 ###############################################################################
 # Build type and C++ compiler setup
@@ -33,6 +34,8 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_EXTENSIONS OFF)
 set(CUDA_LINK_LIBRARIES_KEYWORD PUBLIC)
 
+set(CUDA_VERBOSE_BUILD ON)
+
 if (MSVC)
 else()
 	set(CUDA_TOOLKIT_ROOT_DIR /opt/cuda/targets/x86_64-linux)
@@ -54,6 +57,9 @@ CUDA_DETECT_INSTALLED_GPUS(INSTALLED_GPU_CCS_1)
 string(STRIP "${INSTALLED_GPU_CCS_1}" INSTALLED_GPU_CCS_2)
 string(REPLACE " " ";" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
 string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
+# resolve the "multiple target" error (ref: https://stackoverflow.com/q/65990215/15115395)
+# though i don't know why (*/ω＼*)
+string(APPEND CUDA_ARCH_LIST "-virtual" )
 set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 message(STATUS "Automatically detected GPU architectures: ${CUDA_ARCH_LIST}")
 
@@ -61,9 +67,6 @@ message(STATUS "Automatically detected GPU architectures: ${CUDA_ARCH_LIST}")
 # other dependencies
 ###############################################################################
 INCLUDE (common/cmake/FindOptiX.cmake)
-INCLUDE (common/cmake/configure_optix.cmake)
 find_package(OpenGL REQUIRED)
-
-# SET(WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 ADD_SUBDIRECTORY (src)
