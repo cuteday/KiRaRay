@@ -48,7 +48,7 @@ namespace krr
 		uint u0, u1;
 		packPointer(&prd, u0, u1);
 		optixTrace(optixLaunchParams.traversable,
-				   camera.pos,
+				   camera.getPosition(),
 				   rayDir,
 				   0.f,
 				   1e10f,

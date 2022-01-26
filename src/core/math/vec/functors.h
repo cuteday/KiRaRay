@@ -383,6 +383,6 @@ inline __both__ vec2f sqrt(const vec2f v) { return vec2f(sqrtf(v.x),sqrtf(v.y));
 inline __both__ vec3f sqrt(const vec3f v) { return vec3f(sqrtf(v.x),sqrtf(v.y),sqrtf(v.z)); }
 inline __both__ vec4f sqrt(const vec4f v) { return vec4f(sqrtf(v.x),sqrtf(v.y),sqrtf(v.z),sqrtf(v.w)); }
 
-  } // ::krr::math
-} // ::owl
+  } 
+} 
 

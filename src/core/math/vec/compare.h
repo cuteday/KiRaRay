@@ -144,5 +144,5 @@ namespace krr {
       return res;
     }
   
-  } // ::owl::common
-} // ::owl
+  }
+} 

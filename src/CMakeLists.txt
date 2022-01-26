@@ -30,6 +30,7 @@ SET ( KRR_CORE_SOURCE
 	core/window.cpp
 	core/light.cpp
 	core/scene.cpp
+	core/camera.cpp
 	# components
 	core/logger.cpp
 	# non core
@@ -48,6 +49,10 @@ SET ( KRR_CORE_HEADERS
 	core/math/math.h
 	core/math/constants.h
 	core/math/vec.h
+	core/math/mat.h
+	core/math/aabb.h
+	core/math/quat.h
+	core/math/transform.h
 	core/math/vec/compare.h
 	core/math/vec/rotate.h
 	core/math/vec/functors.h

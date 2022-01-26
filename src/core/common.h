@@ -32,7 +32,7 @@ typedef uint32_t uint;
 #  define KRR_DLL_IMPORT
 #endif
 
-# define KRR_INTERFACE /* nothing - currently not building any special 'owl.dll' */
+# define KRR_INTERFACE
 
 #if defined(_MSC_VER)
 #  define __PRETTY_FUNCTION__ __FUNCTION__

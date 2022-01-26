@@ -239,5 +239,5 @@ namespace krr {
     template<> inline __both__ int8_t open_range_upper<int8_t>() 
     { return int8_t(SCHAR_MIN); }
 
-  } // ::owl::common
-} // ::owl
+  } 
+} 
