@@ -1,3 +1,6 @@
+# a useful blog (for me) about cmake variables and scopes!
+# https://www.mgaudet.ca/technical/2017/8/31/some-notes-on-cmake-variables-and-scopes
+
 ADD_SUBDIRECTORY(ext)
 ADD_SUBDIRECTORY(cuda)
 
@@ -5,7 +8,8 @@ ADD_SUBDIRECTORY(cuda)
 # include files
 ###############################################################################
 
-message("Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
+MESSAGE ("Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
+MESSAGE ("Build output directory: ${CMAKE_BINARY_DIR}")
 
 INCLUDE_DIRECTORIES ( 
 	core

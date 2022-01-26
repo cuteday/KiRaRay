@@ -42,5 +42,5 @@ out
 .DS_Store
 
 # Assets and resource data
-common/assets
+common/scenes
 imgui.ini
