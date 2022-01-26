@@ -7,81 +7,183 @@
 
 KRR_NAMESPACE_BEGIN
 
-inline const char* getGLErrorString(GLenum error)
-{
-  switch (error)
+namespace api{
+
+	using namespace krr::io;
+
+	inline const char* getGLErrorString(GLenum error)
 	{
-		case GL_NO_ERROR:            return "No error";
-		case GL_INVALID_ENUM:        return "Invalid enum";
-		case GL_INVALID_VALUE:       return "Invalid value";
-		case GL_INVALID_OPERATION:   return "Invalid operation";
-		case GL_STACK_OVERFLOW:      return "Stack overflow";
-		case GL_STACK_UNDERFLOW:     return "Stack underflow";
-		case GL_OUT_OF_MEMORY:       return "Out of memory";
-		default:                     return "Unknown GL error";
+	switch (error)
+		{
+			case GL_NO_ERROR:            return "No error";
+			case GL_INVALID_ENUM:        return "Invalid enum";
+			case GL_INVALID_VALUE:       return "Invalid value";
+			case GL_INVALID_OPERATION:   return "Invalid operation";
+			case GL_STACK_OVERFLOW:      return "Stack overflow";
+			case GL_STACK_UNDERFLOW:     return "Stack underflow";
+			case GL_OUT_OF_MEMORY:       return "Out of memory";
+			default:                     return "Unknown GL error";
+		}
 	}
-}
 
-void initGLFW()
-{
-	static bool initialized = false;
-	if (initialized) return;
-	if (!glfwInit())
-		exit(EXIT_FAILURE);
-	initialized = true;
-}
-
-void initImGui(GLFWwindow* window){
-	static bool initialized = false;
-	if(initialized) return;
-	ImGui::CreateContext();
-	ImGuiIO &io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    ImGui::StyleColorsLight();
-    ImGui_ImplOpenGL3_Init("#version 150"); // Mac compatible: GL 3.2 + GLSL 150
-	ImGui_ImplGlfw_InitForOpenGL(window, true);
-}
-
-// glfw callback interface
-static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-	if (ImGui::GetIO().WantCaptureKeyboard) return;
-	WindowApp* app = static_cast<WindowApp*>(glfwGetWindowUserPointer(window));
-	assert(app);
-	if (action == GLFW_PRESS) {
-		app->key(key, mods);
+	void initGLFW()
+	{
+		static bool initialized = false;
+		if (initialized) return;
+		if (!glfwInit())
+			exit(EXIT_FAILURE);
+		initialized = true;
 	}
-}
 
-static void glfw_mouseMotion_callback(GLFWwindow* window, double x, double y)
-{
-	if (ImGui::GetIO().WantCaptureMouse) return;
-	WindowApp* app = static_cast<WindowApp*>(glfwGetWindowUserPointer(window));
-	assert(app);
-	app->mouseMotion(vec2i((int)x, (int)y));
-}
+	void initImGui(GLFWwindow* window){
+		static bool initialized = false;
+		if(initialized) return;
+		ImGui::CreateContext();
+		ImGuiIO &io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		ImGui::StyleColorsLight();
+		ImGui_ImplOpenGL3_Init("#version 150"); // Mac compatible: GL 3.2 + GLSL 150
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+	}
 
-static void glfw_mouseButton_callback(GLFWwindow* window, int button, int action, int mods)
-{
-	if (ImGui::GetIO().WantCaptureMouse) return;
-	WindowApp* app = static_cast<WindowApp*>(glfwGetWindowUserPointer(window));
-	assert(app);
-	app->mouseButton(button, action, mods);
-}
+	class ApiCallbacks
+    {
+    public:
+        static void windowSizeCallback(GLFWwindow* pGlfwWindow, int width, int height){
+            // We also get here in case the window was minimized, so we need to ignore it
+            if (width * height == 0){
+                return;
+            }
+            WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow != nullptr){
+                pWindow->resize({width, height}); // Window callback is handled in here
+            }
+        }
 
-static void glfw_error_callback(int error, const char *description)
-{
-	logError("GLFW Error: %s\n" + string(description));
-}
+        static void keyboardCallback(GLFWwindow* pGlfwWindow, int key, int scanCode, int action, int modifiers){
+			if (ImGui::GetIO().WantCaptureKeyboard) return;
+            KeyboardEvent event;
+            if (prepareKeyboardEvent(key, action, modifiers, event)){
+                WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
+                if (pWindow != nullptr){
+                    pWindow->onKeyEvent(event);
+                }
+            }
+        }
 
-static void glfw_resize_callback(GLFWwindow* window, int width, int height) {
-	WindowApp* app = static_cast<WindowApp*>(glfwGetWindowUserPointer(window));
-	app->resize({ width, height });
+        static void charInputCallback(GLFWwindow* pGlfwWindow, uint32_t input){
+			if (ImGui::GetIO().WantCaptureKeyboard) return;
+            KeyboardEvent event;
+            event.type = KeyboardEvent::Type::Input;
+            event.codepoint = input;
+
+            WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow != nullptr){
+                pWindow->onKeyEvent(event);
+            }
+        }
+
+        static void mouseMoveCallback(GLFWwindow* pGlfwWindow, double mouseX, double mouseY){
+			if (ImGui::GetIO().WantCaptureMouse) return;
+            WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow != nullptr){
+                // Prepare the mouse data
+                MouseEvent event;
+                event.type = MouseEvent::Type::Move;
+                event.pos = calcMousePos(mouseX, mouseY, pWindow->getMouseScale());
+                event.screenPos = vec2f(mouseX, mouseY);
+                event.wheelDelta = vec2f(0, 0);
+
+                pWindow->onMouseEvent(event);
+            }
+        }
+
+        static void mouseButtonCallback(GLFWwindow* pGlfwWindow, int button, int action, int modifiers){
+			if (ImGui::GetIO().WantCaptureMouse) return;
+            MouseEvent event;
+            // Prepare the mouse data
+            switch (button){
+            case GLFW_MOUSE_BUTTON_LEFT:
+                event.type = (action == GLFW_PRESS) ? MouseEvent::Type::LeftButtonDown : MouseEvent::Type::LeftButtonUp;
+                break;
+            case GLFW_MOUSE_BUTTON_MIDDLE:
+                event.type = (action == GLFW_PRESS) ? MouseEvent::Type::MiddleButtonDown : MouseEvent::Type::MiddleButtonUp;
+                break;
+            case GLFW_MOUSE_BUTTON_RIGHT:
+                event.type = (action == GLFW_PRESS) ? MouseEvent::Type::RightButtonDown : MouseEvent::Type::RightButtonUp;
+                break;
+            default:
+                // Other keys are not supported
+                break;
+            }
+
+            WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow != nullptr){
+                // Modifiers
+                event.mods = getInputModifiers(modifiers);
+                double x, y;
+                glfwGetCursorPos(pGlfwWindow, &x, &y);
+                event.pos = calcMousePos(x, y, pWindow->getMouseScale());
+
+                pWindow->onMouseEvent(event);
+            }
+        }
+
+        static void mouseWheelCallback(GLFWwindow* pGlfwWindow, double scrollX, double scrollY){
+			if (ImGui::GetIO().WantCaptureMouse) return;
+            WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow != nullptr){
+                MouseEvent event;
+                event.type = MouseEvent::Type::Wheel;
+                double x, y;
+                glfwGetCursorPos(pGlfwWindow, &x, &y);
+                event.pos = calcMousePos(x, y, pWindow->getMouseScale());
+                event.wheelDelta = (vec2f(float(scrollX), float(scrollY)));
+
+                pWindow->onMouseEvent(event);
+            }
+        }
+
+        static void errorCallback(int errorCode, const char* pDescription){
+            std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription) + "\n";
+            logError(errorMsg.c_str());
+        }
+
+    private:
+
+        static inline InputModifiers getInputModifiers(int mask){
+            InputModifiers mods;
+            mods.isAltDown = (mask & GLFW_MOD_ALT) != 0;
+            mods.isCtrlDown = (mask & GLFW_MOD_CONTROL) != 0;
+            mods.isShiftDown = (mask & GLFW_MOD_SHIFT) != 0;
+            return mods;
+        }
+
+		// calculates the mouse pos in sreen [0, 1]^2
+        static inline vec2f calcMousePos(double xPos, double yPos, const vec2f& mouseScale){
+            vec2f pos = vec2f(float(xPos), float(yPos));
+            pos *= mouseScale;
+            return pos;
+        }
+
+        static inline bool prepareKeyboardEvent(int key, int action, int modifiers, KeyboardEvent& event){
+            if (action == GLFW_REPEAT || key == GLFW_KEY_UNKNOWN){
+                return false;
+            }
+
+            event.type = (action == GLFW_RELEASE ? KeyboardEvent::Type::KeyReleased : KeyboardEvent::Type::KeyPressed);
+            event.key = glfwToFalcorKey(key);
+            event.mods = getInputModifiers(modifiers);
+            return true;
+        }
+    };
 }
+using namespace krr::api;
 
 WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVsync)
 {
-	glfwSetErrorCallback(glfw_error_callback);
+	//glfwSetErrorCallback(glfw_error_callback);
+	glfwSetErrorCallback(ApiCallbacks::errorCallback);
 
 	initGLFW();
 
@@ -100,10 +202,12 @@ WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVs
 	glfwMakeContextCurrent(handle);
 	glfwSwapInterval((enableVsync) ? 1 : 0);
 
-	glfwSetFramebufferSizeCallback(handle, glfw_resize_callback);
-	glfwSetMouseButtonCallback(handle, glfw_mouseButton_callback);
-	glfwSetKeyCallback(handle, glfw_key_callback);
-	glfwSetCursorPosCallback(handle, glfw_mouseMotion_callback);
+	glfwSetWindowSizeCallback(handle, ApiCallbacks::windowSizeCallback);
+	glfwSetKeyCallback(handle, ApiCallbacks::keyboardCallback);
+	glfwSetMouseButtonCallback(handle, ApiCallbacks::mouseButtonCallback);
+	glfwSetCursorPosCallback(handle, ApiCallbacks::mouseMoveCallback);
+	glfwSetScrollCallback(handle, ApiCallbacks::mouseWheelCallback);
+	glfwSetCharCallback(handle, ApiCallbacks::charInputCallback);
 
 	initImGui(handle);
 }
@@ -249,7 +353,7 @@ void WindowApp::run()
 		render();
 		draw();
 
-		if (renderUI) draw_ui();
+		if (renderUI) drawUI();
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -257,9 +361,6 @@ void WindowApp::run()
 		glfwSwapBuffers(handle);
 		glfwPollEvents();
 	}
-
-	glfwDestroyWindow(handle);
-	glfwTerminate();
 }
 
 KRR_NAMESPACE_END

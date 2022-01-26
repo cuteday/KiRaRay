@@ -43,6 +43,7 @@ SET ( KRR_CORE_HEADERS
 	core/camera.h
 	core/scene.h
 	core/logger.h
+	core/io.h
 	# maths
 	core/math/math.h
 	core/math/constants.h

@@ -4,5 +4,6 @@
 #include <optix.h>
 
 #include "common.h"
+#include "io.h"
 #include "math/math.h"
 #include "logger.h"

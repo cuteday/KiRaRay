@@ -66,17 +66,17 @@ public:
 
     virtual void draw();
 
-    // glfw callbacks
-    virtual void key(int key, int mods) {};
-    virtual void mouseMotion(const vec2i& pos) {};
-    virtual void mouseButton(int button, int action, int mods) {};
+    // user input handler
+    virtual void onMouseEvent(io::MouseEvent& mouseEvent) {};
+    virtual void onKeyEvent(io::KeyboardEvent &keyEvent) {};
+    vec2f getMouseScale() { return vec2f(1) / vec2f(fbSize); }
+
     inline vec2i getMousePos() const {
         double x, y;
         glfwGetCursorPos(handle, &x, &y);
         return { (int)x, (int)y };
     }
-
-    virtual void draw_ui() {};
+    virtual void drawUI() {};
 
   protected:
     vec2i fbSize{0};

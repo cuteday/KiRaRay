@@ -9,6 +9,8 @@ using namespace math;
 
 class Camera {
 public:
+	using SharedPtr = std::shared_ptr<Camera>;
+
 	Camera() {}
 
 	__both__ vec3f getRayDir(vec2i pixel, vec2i frameSize) {
@@ -27,6 +29,16 @@ public:
 
 	float aspectRatio = 1.777777f;
 	
+};
+
+class CameraController{
+public:
+
+	virtual void onMouseEvent(io::MouseEvent& mouseEvent) {}
+    virtual void onKeyEvent(io::KeyboardEvent &keyEvent) {}
+
+private:
+	Camera::SharedPtr mpCamera;
 };
 
 KRR_NAMESPACE_END

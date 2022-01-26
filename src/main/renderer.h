@@ -100,11 +100,14 @@ public:
 
     Renderer& renderer() { return mRenderer; }
 
+    virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {}
+    virtual void onKeyEvent(io::KeyboardEvent &keyEvent) override {}
+
     void render() override {
         mRenderer.render();
     }
 
-    void draw_ui() override{
+    void drawUI() override{
         ImGui::Begin(KRR_PROJECT_NAME);
         ImGui::Text("Hello, world!");
         ImGui::End();
