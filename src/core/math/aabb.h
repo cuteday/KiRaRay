@@ -46,7 +46,7 @@ namespace krr {
     template<typename T>
     inline __both__ std::ostream &operator<<(std::ostream &o, const interval<T> &b)
     {
-#ifndef __CUDA_ARCH__
+#ifndef __NVCC__
       o << "[" << b.lower << ":" << b.upper << "]";
 #endif
       return o;
@@ -171,7 +171,7 @@ namespace krr {
     template<typename T>
     inline __both__ std::ostream &operator<<(std::ostream &o, const aabb_t<T> &b)
     {
-#ifndef __CUDA_ARCH__
+#ifndef __NVCC__
       o << "[" << b.lower << ":" << b.upper << "]";
 #endif
       return o;

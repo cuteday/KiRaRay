@@ -7,7 +7,7 @@ namespace krr
 {
 	namespace math
 	{
-
+		using namespace polymorphic;
 		/// 2D Linear Transform (2x2 Matrix)
 
 		template <typename T>
@@ -268,7 +268,7 @@ namespace krr
 				vec_t diag(a.vx.x, a.vy.y, a.vz.z);
 				if (tr > 1)
 				{
-					scalar_t s = krr::math::polymorphic::sqrt(tr) * 2;
+					scalar_t s = sqrt(tr) * 2;
 					return quat_t<scalar_t>(.25f * s,
 											(a.vz.y - a.vy.z) / s,
 											(a.vx.z - a.vz.x) / s,
@@ -276,7 +276,7 @@ namespace krr
 				}
 				else if (arg_min(diag) == 0)
 				{
-					scalar_t s = krr::math::polymorphic::sqrt(1.f + diag.x - diag.y - diag.z) * 2.f;
+					scalar_t s = sqrt(1.f + diag.x - diag.y - diag.z) * 2.f;
 					return quat_t<scalar_t>((a.vz.y - a.vy.z) / s,
 											.25f * s,
 											(a.vx.y - a.vy.x) / s,
@@ -284,7 +284,7 @@ namespace krr
 				}
 				else if (arg_min(diag) == 1)
 				{
-					scalar_t s = krr::math::polymorphic::sqrt(1.f + diag.y - diag.x - diag.z) * 2.f;
+					scalar_t s = sqrt(1.f + diag.y - diag.x - diag.z) * 2.f;
 					return quat_t<scalar_t>((a.vx.z - a.vz.x) / s,
 											(a.vx.y - a.vy.x) / s,
 											.25f * s,
@@ -292,7 +292,7 @@ namespace krr
 				}
 				else
 				{
-					scalar_t s = krr::math::polymorphic::sqrt(1.f + diag.z - diag.x - diag.y) * 2.f;
+					scalar_t s = sqrt(1.f + diag.z - diag.x - diag.y) * 2.f;
 					return quat_t<scalar_t>((a.vy.x - a.vx.y) / s,
 											(a.vx.z - a.vz.x) / s,
 											(a.vy.z - a.vz.y) / s,
@@ -318,13 +318,9 @@ namespace krr
 		template <typename T>
 		inline __both__ mat3_t<T> frame(const T &N)
 		{
-			// #ifdef __CUDA_ARCH__
 			const T dx0 = cross(T(OneTy(), ZeroTy(), ZeroTy()), N);
 			const T dx1 = cross(T(ZeroTy(), OneTy(), ZeroTy()), N);
-			// #else
-			//       const T dx0 = cross(T(one,zero,zero),N);
-			//       const T dx1 = cross(T(zero,one,zero),N);
-			// #endif
+
 			const T dx = normalize(select(dot(dx0, dx0) > dot(dx1, dx1), dx0, dx1));
 			const T dy = normalize(cross(N, dx));
 			return mat3_t<T>(dx, dy, N);

@@ -129,11 +129,6 @@ namespace krr {
     _define_binary_functor(max)
 #undef _define_binary_functor
 
-
-
-
-  
-
     // -------------------------------------------------------
     // binary operators
     // -------------------------------------------------------

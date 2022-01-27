@@ -1,6 +1,9 @@
 #pragma once
-
+//#include <cuda.h>
+#include <cuda_runtime.h>
 #include <optix_device.h>
+#include <optix_types.h>
+#include "math/math.h"
 
 #define KRR_RT_RG(name) __raygen__ ## name
 #define KRR_RT_MS(name) __miss__ ## name

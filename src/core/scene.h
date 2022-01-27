@@ -36,13 +36,16 @@ class Scene {
 public:
 	using SharedPtr = std::shared_ptr<Scene>;
 
-	Scene() = default;
+	Scene();
 	~Scene() = default;
 
 	// intialization and creation
 	void createFromFile(const string filepath);
 	void processMesh(aiMesh* mesh, aiMatrix4x4 transform);
 	void traverseNode(aiNode* node, aiMatrix4x4 transform);
+
+	// for debugging!
+	void createUnitCube();
 
 	// user input handler
 	bool onMouseEvent(const MouseEvent& mouseEvent);
@@ -57,9 +60,8 @@ public:
 	void setCamera(Camera::SharedPtr camera) { mpCamera = camera; }
 	void setCameraController(CameraController::SharedPtr cameraController) { mpCameraController = cameraController; }
 
-	//std::vector<Mesh*> meshes;
 	std::vector<Mesh> meshes;
-	std::vector<Texture*> textures;
+	std::vector<Texture> textures;
 
 private:
 	Camera::SharedPtr mpCamera;

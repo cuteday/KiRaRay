@@ -1,8 +1,6 @@
 #include <filesystem>
 
 #include "kiraray.h"
-
-#include "common.h"
 #include "renderer.h"
 
 KRR_NAMESPACE_BEGIN
@@ -32,7 +30,7 @@ extern "C" int main(int argc, char* argv[]) {
 
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
 		scene->createFromFile("common/scenes/cbox/CornellBox-Original.obj");
-
+		//scene->createUnitCube();
 		app.getRenderer()->setScene(scene);
 		app.run();
 	} 

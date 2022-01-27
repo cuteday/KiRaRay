@@ -11,8 +11,6 @@ extern "C" char PTX_CODE[];
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord
 {
 	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-	// just a dummy value - later examples will use more interesting
-	// data here
 	void* data;
 };
 
@@ -20,8 +18,6 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) MissRecord
 {
 	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-	// just a dummy value - later examples will use more interesting
-	// data here
 	void* data;
 };
 
@@ -29,13 +25,8 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) MissRecord
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord
 {
 	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-	// just a dummy value - later examples will use more interesting
-	// data here
 	int objectID;
-
-	vec3f* vertices;
-	vec3i* indices;
-	vec3f color;
+	MeshSBTData data;
 };
 
 Renderer::Renderer() {
@@ -315,8 +306,9 @@ void Renderer::buildSBT()
 		HitgroupRecord rec;
 		OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[objectType], &rec));
 		rec.objectID = i;
-		rec.vertices = (vec3f*)vertexBuffers[i].data();
-		rec.indices = (vec3i*)indexBuffers[i].data();
+		rec.data.vertices = (vec3f*)vertexBuffers[i].data();
+		rec.data.indices = (vec3i*)indexBuffers[i].data();
+		rec.data.normals = (vec3f*)normalBuffers[i].data();
 		hitgroupRecords.push_back(rec);
 	}
 	hitgroupRecordsBuffer.alloc_and_copy_from_host(hitgroupRecords);
@@ -330,9 +322,9 @@ void Renderer::buildAS()
 	std::vector<Mesh>& meshes = mpScene->meshes;
 
 	assert(indexBuffers.size() == 0);
-	assert(vertexBuffers.size() == 0);
 	indexBuffers.resize(meshes.size());
 	vertexBuffers.resize(meshes.size());
+	normalBuffers.resize(meshes.size());
 
 	std::vector<OptixBuildInput> triangleInputs(meshes.size());
 	std::vector<uint> triangleInputFlags(meshes.size());
@@ -344,6 +336,7 @@ void Renderer::buildAS()
 
 		indexBuffers[i].alloc_and_copy_from_host(mesh.indices);
 		vertexBuffers[i].alloc_and_copy_from_host(mesh.vertices);
+		normalBuffers[i].alloc_and_copy_from_host(mesh.normals);
 
 		indexBufferPtr[i] = indexBuffers[i].data();
 		vertexBufferPtr[i] = vertexBuffers[i].data();
@@ -359,7 +352,7 @@ void Renderer::buildAS()
 		triangleInputs[i].triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
 		triangleInputs[i].triangleArray.indexStrideInBytes = sizeof(vec3i);
 		triangleInputs[i].triangleArray.numIndexTriplets = mesh.indices.size();
-		triangleInputs[i].triangleArray.indexBuffer = indexBufferPtr[i];
+		triangleInputs[i].triangleArray.indexBuffer = indexBuffers[i].data();
 
 		triangleInputFlags[i] = 0;
 
@@ -442,7 +435,10 @@ bool Renderer::onMouseEvent(const MouseEvent& mouseEvent)
 }
 
 void Renderer::renderUI() {
-	mpScene->renderUI();
+	ui::Text("Hello from renderer!");
+	if (mpScene && ui::CollapsingHeader("Scene")) {
+		mpScene->renderUI();
+	}
 }
 
 /*! render one frame */
@@ -450,10 +446,13 @@ void Renderer::render()
 {
 	if (launchParams.fbSize.x * launchParams.fbSize.y == 0) return;
 
-	CUDA_SYNC_CHECK();
+	// maybe this should be put into beginFrame() or sth...
+	mpScene->update();
+	mFrameCount++;
 
 	launchParamsBuffer.copy_from_host(&launchParams, 1);
 	launchParams.frameID++;
+	launchParams.camera = *mpScene->getCamera();
 
 	OPTIX_CHECK(optixLaunch(/*! pipeline we're launching launch: */
 		pipeline, stream,

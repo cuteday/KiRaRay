@@ -12,6 +12,7 @@
 
 KRR_NAMESPACE_BEGIN
 
+namespace ui = ImGui;
 using namespace math;
 
 #ifndef KRR_GL_FUNCS

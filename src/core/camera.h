@@ -22,7 +22,7 @@ public:
 
 	//void beginFrame();
 	void update();
-	void renderUI() {}
+	void renderUI();
 
 	__both__ float getAspectRatio() { return mData.aspectRatio; }
 	__both__ vec3f getPosition() { return mData.pos; }

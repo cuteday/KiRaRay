@@ -5,9 +5,15 @@
 
 namespace krr {
 
+	struct MeshSBTData {
+		vec3f* vertices;
+		vec3i* indices;
+		vec3f* normals;
+	};
+
 	struct LaunchParams
 	{
-		int       frameID{ 0 };
+		uint       frameID{ 0 };
 		vec4f* colorBuffer;
 		vec2i     fbSize;
 

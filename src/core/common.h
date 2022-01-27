@@ -48,7 +48,7 @@ typedef uint32_t uint;
 #endif
 #endif
 
-#if defined(__CUDA_ARCH__)
+#if defined(__NVCC__)
 # define __krr_device   __device__
 # define __krr_host     __host__
 #else
@@ -76,23 +76,15 @@ typedef uint32_t uint;
 namespace krr {
   namespace math {
 
-#ifdef __CUDA_ARCH__
-    using ::min;
-    using ::max;
-    // inline __both__ float abs(float f)      { return fabsf(f); }
-    // inline __both__ double abs(double f)    { return fabs(f); }
-    using std::abs;
-    // inline __both__ float sin(float f) { return ::sinf(f); }
-    // inline __both__ double sin(double f) { return ::sin(f); }
-    // inline __both__ float cos(float f) { return ::cosf(f); }
-    // inline __both__ double cos(double f) { return ::cos(f); }
-
-    using ::saturate;
+#ifdef __NVCC__
+     using ::min;
+     using ::max;
+     using std::abs;
+     using ::saturate;
 #else
     using std::min;
     using std::max;
     using std::abs;
-    // inline __both__ double sin(double f) { return ::sin(f); }
     inline __both__ float saturate(const float &f) { return min(1.f,max(0.f,f)); }
 #endif
 
@@ -104,20 +96,19 @@ namespace krr {
     inline __both__ int64_t divRoundUp(int64_t a, int64_t b) { return (a+b-1)/b; }
     inline __both__ uint64_t divRoundUp(uint64_t a, uint64_t b) { return (a+b-1)/b; }
   
-    using ::sin; // this is the double version
-    using ::cos; // this is the double version
+     using ::sin; // this is the double version
+     using ::cos; // this is the double version
     
     namespace polymorphic {
-#ifdef __CUDA_ARCH__
+
+#ifndef __NVCC__
         inline __both__ float sqrt(const float f) { return ::sqrtf(f); }
         inline __both__ double sqrt(const double d) { return ::sqrt(d); }
-#else
-        inline __both__ float sqrt(const float f) { return ::sqrtf(f); }
-        inline __both__ double sqrt(const double d) { return ::sqrt(d); }
-#endif
 
         inline __both__ float rsqrt(const float f) { return 1.f / polymorphic::sqrt(f); }
         inline __both__ double rsqrt(const double d) { return 1. / polymorphic::sqrt(d); }
+#endif
+
     }
 
   } 

@@ -7,6 +7,7 @@ namespace krr
 	namespace math
 	{
 		using namespace polymorphic;
+		//using polymorphic::rsqrt;
 
 		// Quaternion Struct
 		template <typename T>
@@ -43,7 +44,7 @@ namespace krr
 
 			/// Constants
 
-#ifdef __CUDA_ARCH__
+#ifdef __NVCC__
 			__both__ quat_t(const ZeroTy &) : r(zero), i(zero), j(zero), k(zero)
 			{
 			}

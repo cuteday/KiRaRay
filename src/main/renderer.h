@@ -88,9 +88,11 @@ private:
 
 // Intrinsic scene data and cuda buffers
     Scene::SharedPtr mpScene;
+    uint mFrameCount = 0;
 
     std::vector<CUDABuffer> indexBuffers;
     std::vector<CUDABuffer> vertexBuffers;
+    std::vector<CUDABuffer> normalBuffers;
 };
 
 class RenderApp : public WindowApp{
@@ -102,7 +104,7 @@ public:
     }
 
     void resize(const vec2i& size) override {
-        logSuccess("Resizing window size to " + std::to_string(size.x));
+        //logSuccess("Resizing window size to " + std::to_string(size.x));
         mpRenderer->resize(size);
         WindowApp::resize(size);
     }
@@ -122,10 +124,10 @@ public:
     }
 
     void renderUI() override{
-        ImGui::Begin(KRR_PROJECT_NAME);
-        ImGui::Text("Hello, world!");
+        ui::Begin(KRR_PROJECT_NAME);
+        ui::Text("Hello, world!");
         mpRenderer->renderUI();
-        ImGui::End();
+        ui::End();
     }
 
     void draw() override {
