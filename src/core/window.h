@@ -1,10 +1,11 @@
 #pragma once
 
+#include "imgui.h"
+#include "kiraray.h"
+#include "io.h"
+
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
-#include "imgui.h"
-
-#include "kiraray.h"
 
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
@@ -76,7 +77,7 @@ public:
         glfwGetCursorPos(handle, &x, &y);
         return { (int)x, (int)y };
     }
-    virtual void drawUI() {};
+    virtual void renderUI() {};
 
   protected:
     vec2i fbSize{0};
@@ -91,7 +92,7 @@ public:
     vec2i lastMousePos = {-1, -1};
 
     bool resourceSharingSuccessful = false;
-    bool renderUI = true;
+    //bool renderUI = true;
 };
 
 KRR_NAMESPACE_END

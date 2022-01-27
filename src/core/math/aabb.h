@@ -79,46 +79,46 @@ namespace krr {
 
   
     template<typename T>
-    struct box_t {
+    struct aabb_t {
       typedef T vec_t;
       typedef typename T::scalar_t scalar_t;
       enum { dims = T::dims };
 
-      inline __both__ box_t()
+      inline __both__ aabb_t()
         : lower(krr::math::empty_bounds_lower<typename T::scalar_t>()),
           upper(krr::math::empty_bounds_upper<typename T::scalar_t>())
       {}
 
       // /*! construct a new, origin-oriented box of given size */
-      // explicit inline __both__ box_t(const vec_t &box_size)
+      // explicit inline __both__ aabb_t(const vec_t &box_size)
       //   : lower(vec_t(0)),
       //     upper(box_size)
       // {}
       /*! construct a new box around a single point */
-      explicit inline __both__ box_t(const vec_t &v)
+      explicit inline __both__ aabb_t(const vec_t &v)
         : lower(v),
           upper(v)
       {}
 
       /*! construct a new, origin-oriented box of given size */
-      inline __both__ box_t(const vec_t &lo, const vec_t &hi)
+      inline __both__ aabb_t(const vec_t &lo, const vec_t &hi)
         : lower(lo),
           upper(hi)
       {}
 
       /*! returns new box including both ourselves _and_ the given point */
-      inline __both__ box_t including(const vec_t &other) const
-      { return box_t(min(lower,other),max(upper,other)); }
+      inline __both__ aabb_t including(const vec_t &other) const
+      { return aabb_t(min(lower,other),max(upper,other)); }
       /*! returns new box including both ourselves _and_ the given point */
-      inline __both__ box_t including(const box_t &other) const
-      { return box_t(min(lower,other.lower),max(upper,other.upper)); }
+      inline __both__ aabb_t including(const aabb_t &other) const
+      { return aabb_t(min(lower,other.lower),max(upper,other.upper)); }
 
     
       /*! returns new box including both ourselves _and_ the given point */
-      inline __both__ box_t &extend(const vec_t &other) 
+      inline __both__ aabb_t &extend(const vec_t &other) 
       { lower = min(lower,other); upper = max(upper,other); return *this; }
       /*! returns new box including both ourselves _and_ the given point */
-      inline __both__ box_t &extend(const box_t &other) 
+      inline __both__ aabb_t &extend(const aabb_t &other) 
       { lower = min(lower,other.lower); upper = max(upper,other.upper); return *this; }
     
     
@@ -131,7 +131,7 @@ namespace krr {
       inline __both__ bool contains(const vec_t &point) const
       { return !(any_less_than(point,lower) || any_greater_than(point,upper)); }
 
-      inline __both__ bool overlaps(const box_t &other) const
+      inline __both__ bool overlaps(const aabb_t &other) const
       { return !(any_less_than(other.upper,lower) || any_greater_than(other.lower,upper)); }
 
       inline __both__ vec_t center() const { return (lower+upper)/(typename vec_t::scalar_t)2; }
@@ -149,11 +149,11 @@ namespace krr {
     // default functions
 
     template<typename T>
-    inline __both__ typename long_type_of<T>::type area(const box_t<vec_t<T,2>> &b)
+    inline __both__ typename long_type_of<T>::type area(const aabb_t<vec_t<T,2>> &b)
     { return area(b.upper - b.lower); }
 
     template<typename T>
-    inline __both__ typename long_type_of<T>::type area(const box_t<vec_t<T,3>> &b)
+    inline __both__ typename long_type_of<T>::type area(const aabb_t<vec_t<T,3>> &b)
     {
       const vec_t<T,3> diag = b.upper - b.lower;
       return 2.f*(area(vec_t<T,2>(diag.x,diag.y))+
@@ -162,14 +162,14 @@ namespace krr {
     }
 
     template<typename T>
-    inline __both__ typename long_type_of<T>::type volume(const box_t<vec_t<T,3>> &b)
+    inline __both__ typename long_type_of<T>::type volume(const aabb_t<vec_t<T,3>> &b)
     {
       const vec_t<T,3> diag = b.upper - b.lower;
       return diag.x*diag.y*diag.z;
     }
 
     template<typename T>
-    inline __both__ std::ostream &operator<<(std::ostream &o, const box_t<T> &b)
+    inline __both__ std::ostream &operator<<(std::ostream &o, const aabb_t<T> &b)
     {
 #ifndef __CUDA_ARCH__
       o << "[" << b.lower << ":" << b.upper << "]";
@@ -178,37 +178,37 @@ namespace krr {
     }
 
     template<typename T>
-    inline __both__ box_t<T> intersection(const box_t<T> &a, const box_t<T> &b)
-    { return box_t<T>(max(a.lower,b.lower),min(a.upper,b.upper)); }
+    inline __both__ aabb_t<T> intersection(const aabb_t<T> &a, const aabb_t<T> &b)
+    { return aabb_t<T>(max(a.lower,b.lower),min(a.upper,b.upper)); }
   
     template<typename T>
-    inline __both__ bool operator==(const box_t<T> &a, const box_t<T> &b)
+    inline __both__ bool operator==(const aabb_t<T> &a, const aabb_t<T> &b)
     { return a.lower == b.lower && a.upper == b.upper; }
   
     template<typename T>
-    inline __both__ bool operator!=(const box_t<T> &a, const box_t<T> &b)
+    inline __both__ bool operator!=(const aabb_t<T> &a, const aabb_t<T> &b)
     { return !(a == b); }
 
   
-#define _define_box_types(T,t)                  \
-    typedef box_t<vec_t<T,2>> box2##t;          \
-    typedef box_t<vec_t<T,3>> box3##t;          \
-    typedef box_t<vec_t<T,4>> box4##t;          \
-    typedef box_t<vec3a_t<T>> box3##t##a;       \
+#define _define_aabb_types(T,t)                   \
+    typedef aabb_t<vec_t<T,2>> aabb2##t;          \
+    typedef aabb_t<vec_t<T,3>> aabb3##t;          \
+    typedef aabb_t<vec_t<T,4>> aabb4##t;          \
+    typedef aabb_t<vec3a_t<T>> aabb3##t##a;       \
   
-    _define_box_types(bool ,b);
-    _define_box_types(int8_t ,c);
-    _define_box_types(int16_t ,s);
-    _define_box_types(int32_t ,i);
-    _define_box_types(int64_t ,l);
-    _define_box_types(uint8_t ,uc);
-    _define_box_types(uint16_t,us);
-    _define_box_types(uint32_t,ui);
-    _define_box_types(uint64_t,ul);
-    _define_box_types(float,f);
-    _define_box_types(double,d);
+    _define_aabb_types(bool ,b);
+    _define_aabb_types(int8_t ,c);
+    _define_aabb_types(int16_t ,s);
+    _define_aabb_types(int32_t ,i);
+    _define_aabb_types(int64_t ,l);
+    _define_aabb_types(uint8_t ,uc);
+    _define_aabb_types(uint16_t,us);
+    _define_aabb_types(uint32_t,ui);
+    _define_aabb_types(uint64_t,ul);
+    _define_aabb_types(float,f);
+    _define_aabb_types(double,d);
   
-#undef _define_box_types
+#undef _define_aabb_types
 
   }
 }

@@ -1,7 +1,7 @@
-#include "scene.h"
-
 #include "assimp/DefaultLogger.hpp"
 #include "assimp/postprocess.h"
+
+#include "scene.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -37,14 +37,19 @@ void Scene::createFromFile(const string filepath)
         //| aiProcess_FlipWindingOrder
         ;
 
-    mScene = (aiScene*)mImporter.ReadFile(filepath, postProcessSteps);
-    if (!mScene) throw std::runtime_error("Assimp::load model failed");
+    Assimp::Importer importer;
+    mScene = (aiScene*)importer.ReadFile(filepath, postProcessSteps);
+    if (!mScene) logFatal("Assimp::load model failed");
 
-    traverse(mScene->mRootNode, aiMatrix4x4());
+    traverseNode(mScene->mRootNode, aiMatrix4x4());
 
     logInfo("Total imported meshes: " + std::to_string(meshes.size()));
 
     Assimp::DefaultLogger::kill();
+
+    // other components
+    mpCamera = Camera::SharedPtr(new Camera());
+    mpCameraController = OrbitCameraController::SharedPtr(new OrbitCameraController(mpCamera));
 }
 
 void Scene::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
@@ -78,7 +83,7 @@ void Scene::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
 }
 
 
-void Scene::traverse(aiNode* node, aiMatrix4x4 transform)
+void Scene::traverseNode(aiNode* node, aiMatrix4x4 transform)
 {
     transform = transform * node->mTransformation;
 
@@ -88,8 +93,29 @@ void Scene::traverse(aiNode* node, aiMatrix4x4 transform)
     }
 
     for (int i = 0; i < node->mNumChildren; i++) {
-        traverse(node->mChildren[i], transform);
+        traverseNode(node->mChildren[i], transform);
     }
 }
+
+void Scene::update()
+{
+    mpCameraController->update();   // camera.update() is called within.
+}
+
+void Scene::renderUI() {
+    
+    mpCamera->renderUI();
+}
+
+void Scene::onMouseEvent(const MouseEvent& mouseEvent)
+{
+    mpCameraController->onMouseEvent(mouseEvent);
+}
+
+void Scene::onKeyEvent(const KeyboardEvent& keyEvent)
+{
+    mpCameraController->onKeyEvent(keyEvent);
+}
+
 
 KRR_NAMESPACE_END

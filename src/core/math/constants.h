@@ -1,7 +1,6 @@
 #pragma once
 
 #include <limits>
-#include <limits.h>
 #ifdef __CUDACC__
 #include <math_constants.h>
 #endif
@@ -9,6 +8,12 @@
 #ifndef M_PI
 #define M_PI 3.141593f
 #endif
+
+#ifdef min
+#undef max
+#undef min
+#endif
+
 
 namespace krr {
   namespace math {

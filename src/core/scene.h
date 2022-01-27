@@ -1,11 +1,14 @@
 #pragma once
-
-#include "kiraray.h"
-#include "assimp/Importer.hpp"
 #include "assimp/scene.h"
+#include "assimp/Importer.hpp"
+
+#include "common.h"
+#include "camera.h"
+#include "kiraray.h"
 
 KRR_NAMESPACE_BEGIN
 
+using namespace io;
 
 class Texture {
 	Texture() = default;
@@ -26,6 +29,9 @@ public:
 	int texture_id;
 };
 
+/* The scene class is in poccess of components like camera, cameracontroller, etc.
+ * The update(), eventHandler(), renderUI(), of them is called within this class;
+ */
 class Scene {
 public:
 	using SharedPtr = std::shared_ptr<Scene>;
@@ -33,17 +39,32 @@ public:
 	Scene() = default;
 	~Scene() = default;
 
+	// intialization and creation
 	void createFromFile(const string filepath);
 	void processMesh(aiMesh* mesh, aiMatrix4x4 transform);
-	void traverse(aiNode* node, aiMatrix4x4 transform);
+	void traverseNode(aiNode* node, aiMatrix4x4 transform);
+
+	// user input handler
+	void onMouseEvent(const MouseEvent& mouseEvent);
+	void onKeyEvent(const KeyboardEvent& keyEvent);
+
+	void update();
+	void renderUI();
+
+	Camera::SharedPtr getCamera() { return mpCamera; }
+	CameraController::SharedPtr getCameraController() { return mpCameraController; }
+
+	void setCamera(Camera::SharedPtr camera) { mpCamera = camera; }
+	void setCameraController(CameraController::SharedPtr cameraController) { mpCameraController = cameraController; }
 
 	//std::vector<Mesh*> meshes;
 	std::vector<Mesh> meshes;
 	std::vector<Texture*> textures;
 
-//private:
-	
-	Assimp::Importer mImporter;
+private:
+	Camera::SharedPtr mpCamera;
+	CameraController::SharedPtr mpCameraController;
+
 	aiScene* mScene;
 };
 

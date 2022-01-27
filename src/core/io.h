@@ -305,6 +305,11 @@ namespace krr{
             }
         }
 
+		class UserInputHandler {
+		public:
+			bool onKeyEvent(const KeyboardEvent& keyEvent) {}
+			bool onMouseEvent(const MouseEvent& mouseEvent) {}
+		};
 	}
 
 }

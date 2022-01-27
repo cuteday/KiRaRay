@@ -6,6 +6,8 @@ namespace krr
 {
 	namespace math
 	{
+		using namespace polymorphic;
+
 		// Quaternion Struct
 		template <typename T>
 		struct quat_t
@@ -236,6 +238,7 @@ namespace krr
 		}
 
 		/*! default template instantiations */
+		typedef quat_t<float> quat;
 		typedef quat_t<float> quat3f;
 		typedef quat_t<double> quat3d;
 

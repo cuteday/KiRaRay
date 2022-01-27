@@ -3,7 +3,7 @@
 #include <iostream>
 #include <optix.h>
 
+//#include "io.h"
 #include "common.h"
-#include "io.h"
-#include "math/math.h"
 #include "logger.h"
+#include "math/math.h"

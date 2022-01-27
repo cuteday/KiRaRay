@@ -427,6 +427,20 @@ void Renderer::buildAS()
 	// clean up...
 }
 
+void Renderer::onKeyEvent(const KeyboardEvent& keyEvent)
+{
+	if (mpScene) mpScene->onKeyEvent(keyEvent);
+}
+
+void Renderer::onMouseEvent(const MouseEvent& mouseEvent)
+{
+	if (mpScene) mpScene->onMouseEvent(mouseEvent);
+}
+
+void Renderer::renderUI() {
+	mpScene->renderUI();
+}
+
 /*! render one frame */
 void Renderer::render()
 {

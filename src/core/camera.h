@@ -1,11 +1,11 @@
 #pragma once
 
-#include "common.h" 
+#include "kiraray.h"
 #include "io.h"
-#include "math/math.h"
 
 KRR_NAMESPACE_BEGIN
 
+using namespace io;
 using namespace math;
 
 class Camera {
@@ -20,14 +20,21 @@ public:
 		return	normalize(ndc.x * mData.u + ndc.y * mData.v + mData.w);
 	}	
 
-	__both__ vec3f getAspectRatio() { return mData.aspectRatio; }
+	//void beginFrame();
+	void update();
+	void renderUI() {}
+
+	__both__ float getAspectRatio() { return mData.aspectRatio; }
 	__both__ vec3f getPosition() { return mData.pos; }
 	__both__ vec3f getTarget() { return mData.target; }
 	__both__ vec3f getForward() { return normalize(mData.target - mData.pos); }
 	__both__ vec3f getUp() { return normalize(mData.up); }
-	__both__ vec3f getRight() { return cross(getForward(), getUp()); }
+	__both__ vec3f getRight() { return normalize(mData.u); }
+	__both__ vec2f getFrameSize() { return mData.frameSize; }
+	__both__ float getFocalLength() { return mData.focalLength; }
 
 	__both__ void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; }
+	__both__ void setFrameSize(vec2f size) { mData.frameSize = size; }
 	__both__ void setPosition(vec3f& pos) { mData.pos = pos; }
 	__both__ void setTarget(vec3f& target) { mData.target = target; }
 	__both__ void setUp(vec3f& up) { mData.up = up; }
@@ -35,6 +42,10 @@ public:
 protected:
 
 	struct{
+		vec2f frameSize = { 42.666667f, 24.0f };	// sensor size in mm [width, height]
+		float focalLength = 5;			// the distance from lens (pin hole) to sensor, in mm
+		float aspectRatio = 1.777777f;	// width divides height
+
 		vec3f pos = { 0, 0, 0 };
 		vec3f target = { 0, 0, -1 };
 		vec3f up = { 0, 1, 0 };
@@ -43,9 +54,11 @@ protected:
 		vec3f v = { 0, 1, 0 };		// camera up		[dependent to aspect ratio]
 		vec3f w = { 0, 0, -1 };		// camera forward
 
-		float aspectRatio = 1.777777f;
+		vec2f jitter = {0, 0};
+
 	} mData;
 
+	bool mPreserveHeight = true;	// preserve sensor height on aspect ratio changes.
 };
 
 class CameraController{
@@ -53,8 +66,8 @@ public:
 	using SharedPtr = std::shared_ptr<CameraController>;
 
 	virtual void update() = 0;
-	virtual void onMouseEvent(io::MouseEvent& mouseEvent) = 0;
-	virtual void onKeyEvent(io::KeyboardEvent& keyEvent) = 0;
+	virtual void onMouseEvent(const MouseEvent& mouseEvent) = 0;
+	virtual void onKeyEvent(const KeyboardEvent& keyEvent) = 0;
 
 protected:
 	CameraController(const Camera::SharedPtr& pCamera) : mpCamera(pCamera) {}
@@ -73,8 +86,8 @@ public:
 	}
 	
 	virtual void update() override;
-	virtual void onMouseEvent(io::MouseEvent& mouseEvent) override;
-	virtual void onKeyEvent(io::KeyboardEvent& keyEvent) override;
+	virtual void onMouseEvent(const MouseEvent& mouseEvent) override;
+	virtual void onKeyEvent(const KeyboardEvent& keyEvent) override;
 
 private:
 	struct {
@@ -82,8 +95,17 @@ private:
 		vec3f up = { 0, 1, 0 };
 		float radius = 5;
 
-		float dampling = 1;
+		float pitch = 0;
+		float yaw = 0;
+
 	}mData;
+
+	// input states
+	vec2f mLastMousePos;
+	float mDampling = 1;
+	bool mOrbiting = false;
+	float mOrbitSpeed = 1;
+	float mPanSpeed = 1;
 };
 
 KRR_NAMESPACE_END

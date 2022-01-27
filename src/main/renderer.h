@@ -3,6 +3,7 @@
 #include "kiraray.h"
 #include "window.h"
 #include "scene.h"
+#include "camera.h"
 
 #include "gpu/buffer.h"
 #include "shaders/LaunchParams.h"
@@ -11,6 +12,8 @@ KRR_NAMESPACE_BEGIN
 
 class Renderer{
 public:
+    using SharedPtr = std::shared_ptr<Renderer>;
+
     Renderer();
 
     void initOptix();
@@ -31,9 +34,13 @@ public:
 
     void buildAS();
 
+    void onKeyEvent(const KeyboardEvent& keyEvent);
+    void onMouseEvent(const MouseEvent& mouseEvent);
     void resize(const vec2i &size);
-
     void render();
+    void renderUI();
+
+    Scene::SharedPtr getScene() { return mpScene; }
 
     void setScene(Scene::SharedPtr scene) {
         mpScene = scene;
@@ -90,37 +97,45 @@ class RenderApp : public WindowApp{
 
 public:
 
-	RenderApp(const char title[], vec2i size) : WindowApp(title, size) {}
+	RenderApp(const char title[], vec2i size) : WindowApp(title, size) {
+        mpRenderer = Renderer::SharedPtr(new Renderer());
+    }
 
     void resize(const vec2i& size) override {
         logSuccess("Resizing window size to " + std::to_string(size.x));
-        mRenderer.resize(size);
+        mpRenderer->resize(size);
         WindowApp::resize(size);
     }
 
-    Renderer& renderer() { return mRenderer; }
+    Renderer::SharedPtr getRenderer() { return mpRenderer; }
 
-    virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {}
-    virtual void onKeyEvent(io::KeyboardEvent &keyEvent) override {}
-
-    void render() override {
-        mRenderer.render();
+    virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {
+        mpRenderer->onMouseEvent(mouseEvent);
+    }
+    
+    virtual void onKeyEvent(io::KeyboardEvent &keyEvent) override {
+        mpRenderer->onKeyEvent(keyEvent);
     }
 
-    void drawUI() override{
+    void render() override {
+        mpRenderer->render();
+    }
+
+    void renderUI() override{
         ImGui::Begin(KRR_PROJECT_NAME);
         ImGui::Text("Hello, world!");
+        mpRenderer->renderUI();
         ImGui::End();
     }
 
     void draw() override {
-        mRenderer.result().copy_to_device(fbPointer, fbSize.x * fbSize.y);
+        mpRenderer->result().copy_to_device(fbPointer, fbSize.x * fbSize.y);
         WindowApp::draw();
     }
 
 
 private:
-    Renderer mRenderer;
+    Renderer::SharedPtr mpRenderer;
 };
 
 KRR_NAMESPACE_END

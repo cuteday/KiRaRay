@@ -33,7 +33,7 @@ extern "C" int main(int argc, char* argv[]) {
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
 		scene->createFromFile("common/scenes/cbox/CornellBox-Original.obj");
 
-		app.renderer().setScene(scene);
+		app.getRenderer()->setScene(scene);
 		app.run();
 	} 
 	catch(std::exception e) {

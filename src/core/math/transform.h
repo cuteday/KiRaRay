@@ -15,8 +15,6 @@ namespace krr
 		template <typename L>
 		struct transform_t
 		{
-			// using vec_t L::vec_t;
-			// using scalar_t L::vec_t::scalar_t;
 
 			L l;	 /*< linear part of affine space */
 			vec_t p; /*< affine part of affine space */
@@ -160,10 +158,10 @@ namespace krr
 		#undef vec_t
 		#undef scalar_t
 
-		    inline __both__ box3f xfmBounds(const affine3f &xfm,
-		                                    const box3f &box)
+		    inline __both__ aabb3f xfmBounds(const affine3f &xfm,
+		                                    const aabb3f &box)
 		    {
-		      box3f dst;
+		      aabb3f dst;
 		      const vec3f lo = box.lower;
 		      const vec3f hi = box.upper;
 		      dst.extend(xfmPoint(xfm,vec3f(lo.x,lo.y,lo.z)));

@@ -10,6 +10,7 @@ KRR_NAMESPACE_BEGIN
 namespace api{
 
 	using namespace krr::io;
+    inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey);
 
 	inline const char* getGLErrorString(GLenum error)
 	{
@@ -353,7 +354,7 @@ void WindowApp::run()
 		render();
 		draw();
 
-		if (renderUI) drawUI();
+		renderUI();
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -361,6 +362,140 @@ void WindowApp::run()
 		glfwSwapBuffers(handle);
 		glfwPollEvents();
 	}
+}
+
+namespace api {
+    inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey)
+    {
+        static_assert(GLFW_KEY_ESCAPE == 256, "GLFW_KEY_ESCAPE is expected to be 256");
+        if (glfwKey < GLFW_KEY_ESCAPE)
+        {
+            // Printable keys are expected to have the same value
+            return (KeyboardEvent::Key)glfwKey;
+        }
+
+        switch (glfwKey)
+        {
+        case GLFW_KEY_ESCAPE:
+            return KeyboardEvent::Key::Escape;
+        case GLFW_KEY_ENTER:
+            return KeyboardEvent::Key::Enter;
+        case GLFW_KEY_TAB:
+            return KeyboardEvent::Key::Tab;
+        case GLFW_KEY_BACKSPACE:
+            return KeyboardEvent::Key::Backspace;
+        case GLFW_KEY_INSERT:
+            return KeyboardEvent::Key::Insert;
+        case GLFW_KEY_DELETE:
+            return KeyboardEvent::Key::Del;
+        case GLFW_KEY_RIGHT:
+            return KeyboardEvent::Key::Right;
+        case GLFW_KEY_LEFT:
+            return KeyboardEvent::Key::Left;
+        case GLFW_KEY_DOWN:
+            return KeyboardEvent::Key::Down;
+        case GLFW_KEY_UP:
+            return KeyboardEvent::Key::Up;
+        case GLFW_KEY_PAGE_UP:
+            return KeyboardEvent::Key::PageUp;
+        case GLFW_KEY_PAGE_DOWN:
+            return KeyboardEvent::Key::PageDown;
+        case GLFW_KEY_HOME:
+            return KeyboardEvent::Key::Home;
+        case GLFW_KEY_END:
+            return KeyboardEvent::Key::End;
+        case GLFW_KEY_CAPS_LOCK:
+            return KeyboardEvent::Key::CapsLock;
+        case GLFW_KEY_SCROLL_LOCK:
+            return KeyboardEvent::Key::ScrollLock;
+        case GLFW_KEY_NUM_LOCK:
+            return KeyboardEvent::Key::NumLock;
+        case GLFW_KEY_PRINT_SCREEN:
+            return KeyboardEvent::Key::PrintScreen;
+        case GLFW_KEY_PAUSE:
+            return KeyboardEvent::Key::Pause;
+        case GLFW_KEY_F1:
+            return KeyboardEvent::Key::F1;
+        case GLFW_KEY_F2:
+            return KeyboardEvent::Key::F2;
+        case GLFW_KEY_F3:
+            return KeyboardEvent::Key::F3;
+        case GLFW_KEY_F4:
+            return KeyboardEvent::Key::F4;
+        case GLFW_KEY_F5:
+            return KeyboardEvent::Key::F5;
+        case GLFW_KEY_F6:
+            return KeyboardEvent::Key::F6;
+        case GLFW_KEY_F7:
+            return KeyboardEvent::Key::F7;
+        case GLFW_KEY_F8:
+            return KeyboardEvent::Key::F8;
+        case GLFW_KEY_F9:
+            return KeyboardEvent::Key::F9;
+        case GLFW_KEY_F10:
+            return KeyboardEvent::Key::F10;
+        case GLFW_KEY_F11:
+            return KeyboardEvent::Key::F11;
+        case GLFW_KEY_F12:
+            return KeyboardEvent::Key::F12;
+        case GLFW_KEY_KP_0:
+            return KeyboardEvent::Key::Keypad0;
+        case GLFW_KEY_KP_1:
+            return KeyboardEvent::Key::Keypad1;
+        case GLFW_KEY_KP_2:
+            return KeyboardEvent::Key::Keypad2;
+        case GLFW_KEY_KP_3:
+            return KeyboardEvent::Key::Keypad3;
+        case GLFW_KEY_KP_4:
+            return KeyboardEvent::Key::Keypad4;
+        case GLFW_KEY_KP_5:
+            return KeyboardEvent::Key::Keypad5;
+        case GLFW_KEY_KP_6:
+            return KeyboardEvent::Key::Keypad6;
+        case GLFW_KEY_KP_7:
+            return KeyboardEvent::Key::Keypad7;
+        case GLFW_KEY_KP_8:
+            return KeyboardEvent::Key::Keypad8;
+        case GLFW_KEY_KP_9:
+            return KeyboardEvent::Key::Keypad9;
+        case GLFW_KEY_KP_DECIMAL:
+            return KeyboardEvent::Key::KeypadDel;
+        case GLFW_KEY_KP_DIVIDE:
+            return KeyboardEvent::Key::KeypadDivide;
+        case GLFW_KEY_KP_MULTIPLY:
+            return KeyboardEvent::Key::KeypadMultiply;
+        case GLFW_KEY_KP_SUBTRACT:
+            return KeyboardEvent::Key::KeypadSubtract;
+        case GLFW_KEY_KP_ADD:
+            return KeyboardEvent::Key::KeypadAdd;
+        case GLFW_KEY_KP_ENTER:
+            return KeyboardEvent::Key::KeypadEnter;
+        case GLFW_KEY_KP_EQUAL:
+            return KeyboardEvent::Key::KeypadEqual;
+        case GLFW_KEY_LEFT_SHIFT:
+            return KeyboardEvent::Key::LeftShift;
+        case GLFW_KEY_LEFT_CONTROL:
+            return KeyboardEvent::Key::LeftControl;
+        case GLFW_KEY_LEFT_ALT:
+            return KeyboardEvent::Key::LeftAlt;
+        case GLFW_KEY_LEFT_SUPER:
+            return KeyboardEvent::Key::LeftSuper;
+        case GLFW_KEY_RIGHT_SHIFT:
+            return KeyboardEvent::Key::RightShift;
+        case GLFW_KEY_RIGHT_CONTROL:
+            return KeyboardEvent::Key::RightControl;
+        case GLFW_KEY_RIGHT_ALT:
+            return KeyboardEvent::Key::RightAlt;
+        case GLFW_KEY_RIGHT_SUPER:
+            return KeyboardEvent::Key::RightSuper;
+        case GLFW_KEY_MENU:
+            return KeyboardEvent::Key::Menu;
+        default:
+            KRR_SHOULDNT_GO_HERE;
+            return (KeyboardEvent::Key)0;
+        }
+    }
+
 }
 
 KRR_NAMESPACE_END
