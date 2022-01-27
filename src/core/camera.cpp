@@ -30,7 +30,7 @@ void OrbitCameraController::update()
 	mpCamera->update();
 }
 
-void OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent)
+bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent)
 {
 
 	switch (mouseEvent.type) {
@@ -52,11 +52,12 @@ void OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent)
 		}
 		mLastMousePos = curMousePos;
 	}
+	return false;
 }
 
-void OrbitCameraController::onKeyEvent(const KeyboardEvent& keyEvent)
+bool OrbitCameraController::onKeyEvent(const KeyboardEvent& keyEvent)
 {
-	return;
+	return false;
 }
 
 KRR_NAMESPACE_END

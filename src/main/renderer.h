@@ -34,8 +34,8 @@ public:
 
     void buildAS();
 
-    void onKeyEvent(const KeyboardEvent& keyEvent);
-    void onMouseEvent(const MouseEvent& mouseEvent);
+    bool onKeyEvent(const KeyboardEvent& keyEvent);
+    bool onMouseEvent(const MouseEvent& mouseEvent);
     void resize(const vec2i &size);
     void render();
     void renderUI();
@@ -110,11 +110,11 @@ public:
     Renderer::SharedPtr getRenderer() { return mpRenderer; }
 
     virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {
-        mpRenderer->onMouseEvent(mouseEvent);
+        if(mpRenderer && mpRenderer->onMouseEvent(mouseEvent)) return;
     }
     
     virtual void onKeyEvent(io::KeyboardEvent &keyEvent) override {
-        mpRenderer->onKeyEvent(keyEvent);
+        if (mpRenderer && mpRenderer->onKeyEvent(keyEvent))return;
     }
 
     void render() override {

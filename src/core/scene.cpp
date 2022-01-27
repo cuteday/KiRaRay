@@ -107,14 +107,18 @@ void Scene::renderUI() {
     mpCamera->renderUI();
 }
 
-void Scene::onMouseEvent(const MouseEvent& mouseEvent)
+bool Scene::onMouseEvent(const MouseEvent& mouseEvent)
 {
-    mpCameraController->onMouseEvent(mouseEvent);
+    if(mpCameraController && mpCameraController->onMouseEvent(mouseEvent))
+        return true;
+    return false;
 }
 
-void Scene::onKeyEvent(const KeyboardEvent& keyEvent)
+bool Scene::onKeyEvent(const KeyboardEvent& keyEvent)
 {
-    mpCameraController->onKeyEvent(keyEvent);
+    if(mpCameraController && mpCameraController->onKeyEvent(keyEvent))
+        return true;
+    return false;
 }
 
 

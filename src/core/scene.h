@@ -45,8 +45,8 @@ public:
 	void traverseNode(aiNode* node, aiMatrix4x4 transform);
 
 	// user input handler
-	void onMouseEvent(const MouseEvent& mouseEvent);
-	void onKeyEvent(const KeyboardEvent& keyEvent);
+	bool onMouseEvent(const MouseEvent& mouseEvent);
+	bool onKeyEvent(const KeyboardEvent& keyEvent);
 
 	void update();
 	void renderUI();

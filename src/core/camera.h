@@ -66,8 +66,8 @@ public:
 	using SharedPtr = std::shared_ptr<CameraController>;
 
 	virtual void update() = 0;
-	virtual void onMouseEvent(const MouseEvent& mouseEvent) = 0;
-	virtual void onKeyEvent(const KeyboardEvent& keyEvent) = 0;
+	virtual bool onMouseEvent(const MouseEvent& mouseEvent) = 0;
+	virtual bool onKeyEvent(const KeyboardEvent& keyEvent) = 0;
 
 protected:
 	CameraController(const Camera::SharedPtr& pCamera) : mpCamera(pCamera) {}
@@ -86,8 +86,8 @@ public:
 	}
 	
 	virtual void update() override;
-	virtual void onMouseEvent(const MouseEvent& mouseEvent) override;
-	virtual void onKeyEvent(const KeyboardEvent& keyEvent) override;
+	virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
+	virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
 private:
 	struct {
