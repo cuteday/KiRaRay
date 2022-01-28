@@ -7,7 +7,6 @@ namespace krr
 {
 	namespace math
 	{
-		using namespace polymorphic;
 		/// 2D Linear Transform (2x2 Matrix)
 
 		template <typename T>

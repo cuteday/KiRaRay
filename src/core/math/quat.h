@@ -6,7 +6,7 @@ namespace krr
 {
 	namespace math
 	{
-		using namespace polymorphic;
+		//using namespace polymorphic;
 		//using polymorphic::rsqrt;
 
 		// Quaternion Struct
@@ -83,11 +83,11 @@ namespace krr
 		template <typename T>
 		__both__ quat_t<T> conj(const quat_t<T> &a) { return quat_t<T>(a.r, -a.i, -a.j, -a.k); }
 		template <typename T>
-		__both__ T abs(const quat_t<T> &a) { return sqrt(a.r * a.r + a.i * a.i + a.j * a.j + a.k * a.k); }
+		__both__ T abs(const quat_t<T> &a) { return polymorphic::sqrt(a.r * a.r + a.i * a.i + a.j * a.j + a.k * a.k); }
 		template <typename T>
 		__both__ quat_t<T> rcp(const quat_t<T> &a) { return conj(a) * rcp(a.r * a.r + a.i * a.i + a.j * a.j + a.k * a.k); }
 		template <typename T>
-		__both__ quat_t<T> normalize(const quat_t<T> &a) { return a * rsqrt(a.r * a.r + a.i * a.i + a.j * a.j + a.k * a.k); }
+		__both__ quat_t<T> normalize(const quat_t<T> &a) { return a * polymorphic::rsqrt(a.r * a.r + a.i * a.i + a.j * a.j + a.k * a.k); }
 
 		// Binary Operators
 

@@ -29,7 +29,8 @@ extern "C" int main(int argc, char* argv[]) {
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 });
 
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
-		scene->createFromFile("common/scenes/cbox/CornellBox-Original.obj");
+		//scene->createFromFile("common/scenes/cbox/CornellBox-Original.obj");
+		scene->createFromFile("common/scenes/breakfast_room/breakfast_room.obj");
 		//scene->createUnitCube();
 		app.getRenderer()->setScene(scene);
 		app.run();

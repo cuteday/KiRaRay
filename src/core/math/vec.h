@@ -10,6 +10,8 @@ namespace krr
 {
 	namespace math
 	{
+		//using polymorphic::sqrt;
+		//using polymorphic::rsqrt;
 
 		template <typename T>
 		struct long_type_of
@@ -455,14 +457,14 @@ namespace krr
 		template <typename T>
 		inline __both__ vec_t<T, 3> normalize(const vec_t<T, 3> &v)
 		{
-			return v * rsqrt(dot(v, v));
+			return v * polymorphic::rsqrt(dot(v, v));
 		}
 
 		/*! vector cross product */
 		template <typename T>
 		inline __both__ T length(const vec_t<T, 3> &v)
 		{
-			return sqrt(dot(v, v));
+			return polymorphic::sqrt(dot(v, v));
 		}
 
 		template <typename T>

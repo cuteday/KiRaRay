@@ -2,6 +2,7 @@
 #include <optix_types.h>
 
 #include "renderer.h"
+//#include "shaders/shared.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -25,7 +26,6 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) MissRecord
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord
 {
 	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-	int objectID;
 	MeshSBTData data;
 };
 
@@ -152,7 +152,7 @@ void Renderer::createRaygenPrograms()
 	OptixProgramGroupDesc pgDesc = {};
 	pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
 	pgDesc.raygen.module = module;
-	pgDesc.raygen.entryFunctionName = "__raygen__renderFrame";
+	pgDesc.raygen.entryFunctionName = "__raygen__PathTracer";
 
 	// OptixProgramGroup raypg;
 	char log[2048];
@@ -177,7 +177,7 @@ void Renderer::createMissPrograms()
 	OptixProgramGroupDesc pgDesc = {};
 	pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
 	pgDesc.miss.module = module;
-	pgDesc.miss.entryFunctionName = "__miss__radiance";
+	pgDesc.miss.entryFunctionName = "__miss__PathTracer";
 
 	// OptixProgramGroup raypg;
 	char log[2048];
@@ -202,9 +202,9 @@ void Renderer::createHitgroupPrograms()
 	OptixProgramGroupDesc pgDesc = {};
 	pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
 	pgDesc.hitgroup.moduleCH = module;
-	pgDesc.hitgroup.entryFunctionNameCH = "__closesthit__radiance";
+	pgDesc.hitgroup.entryFunctionNameCH = "__closesthit__PathTracer";
 	pgDesc.hitgroup.moduleAH = module;
-	pgDesc.hitgroup.entryFunctionNameAH = "__anyhit__radiance";
+	pgDesc.hitgroup.entryFunctionNameAH = "__anyhit__PathTracer";
 
 	char log[2048];
 	size_t sizeof_log = sizeof(log);
@@ -305,7 +305,6 @@ void Renderer::buildSBT()
 		int objectType = 0;
 		HitgroupRecord rec;
 		OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[objectType], &rec));
-		rec.objectID = i;
 		rec.data.vertices = (vec3f*)vertexBuffers[i].data();
 		rec.data.indices = (vec3i*)indexBuffers[i].data();
 		rec.data.normals = (vec3f*)normalBuffers[i].data();
@@ -314,7 +313,7 @@ void Renderer::buildSBT()
 	hitgroupRecordsBuffer.alloc_and_copy_from_host(hitgroupRecords);
 	sbt.hitgroupRecordBase = hitgroupRecordsBuffer.data();
 	sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
-	sbt.hitgroupRecordCount = (int)hitgroupRecords.size();
+	sbt.hitgroupRecordCount = hitgroupRecords.size();
 }
 
 void Renderer::buildAS()
@@ -333,6 +332,10 @@ void Renderer::buildAS()
 
 	for (uint i = 0; i < meshes.size(); i++) {
 		Mesh& mesh = meshes[i];
+
+		//logDebug("Mesh #" + to_string(i) + " indices: " + to_string(meshes[i].indices.size()));
+		//logDebug("Mesh #" + to_string(i) + " vertices: " + to_string(meshes[i].vertices.size()));
+		//logDebug("Mesh #" + to_string(i) + " normals: " + to_string(meshes[i].normals.size()));
 
 		indexBuffers[i].alloc_and_copy_from_host(mesh.indices);
 		vertexBuffers[i].alloc_and_copy_from_host(mesh.vertices);

@@ -36,13 +36,13 @@ namespace api{
 		initialized = true;
 	}
 
-	void initImGui(GLFWwindow* window){
+	void initUI(GLFWwindow* window){
 		static bool initialized = false;
 		if(initialized) return;
-		ImGui::CreateContext();
-		ImGuiIO &io = ImGui::GetIO();
+		ui::CreateContext();
+		ImGuiIO &io = ui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-		ImGui::StyleColorsLight();
+		ui::StyleColorsLight();
 		ImGui_ImplOpenGL3_Init("#version 150"); // Mac compatible: GL 3.2 + GLSL 150
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 	}
@@ -210,7 +210,7 @@ WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVs
 	glfwSetScrollCallback(handle, ApiCallbacks::mouseWheelCallback);
 	glfwSetCharCallback(handle, ApiCallbacks::charInputCallback);
 
-	initImGui(handle);
+    initUI(handle);
 }
 
 WindowApp::~WindowApp(){
@@ -247,7 +247,7 @@ void WindowApp::resize(const vec2i &size)
 		logError("Could not do CUDA graphics resource sharing "
 			"for the display buffer texture (" + 
 			string(cudaGetErrorString(cudaGetLastError())) +
-			")... falling back to slower path"
+			")... falling back to a slower path"
 			);
 
 		resourceSharingSuccessful = false;

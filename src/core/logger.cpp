@@ -6,7 +6,7 @@ using namespace Log;
 
 namespace {
 
-    static Level sVerbosity = Level::Info;
+    static Level sVerbosity = Level::Debug;
     static bool sLogTime = true;
     static bool sLogToConsole = true;
     static bool sAnsiControlSequence = false;

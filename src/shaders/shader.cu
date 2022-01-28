@@ -3,7 +3,7 @@
 //#include <optix_stubs.h>
 //#include <optix_host.h>
 //#include <optix_function_table.h>
-//#include <optix_function_table_definition.h>
+
 
 #include "LaunchParams.h"
 #include "shared.h"
@@ -12,6 +12,8 @@ using namespace krr;
 
 namespace krr
 {
+	using namespace shader;
+	using namespace math;
 
 	// upload updated parameters each rt launch
 	extern "C" __constant__ LaunchParams optixLaunchParams;
@@ -22,24 +24,30 @@ namespace krr
 		RAY_TYPE_COUNT
 	};
 
-	extern "C" __global__ void KRR_RT_CH(radiance)()
+	extern "C" __global__ void KRR_RT_CH(PathTracer)()
 	{
 		vec3f &prd = *getPRD<vec3f>();
 		int prim_id = optixGetPrimitiveIndex();
-		
-		prd = vec3f(0.5);
+		MeshSBTData &mesh = *(MeshSBTData *)optixGetSbtDataPointer();
+
+		vec3i triangle = mesh.indices[prim_id];
+		vec3f normal = normalize(mesh.normals[triangle.x] + mesh.normals[triangle.y] + mesh.normals[triangle.z]);
+		vec3f view = optixGetWorldRayDirection();
+		float shading = clamp(fabs(dot(normal, -view)), 0.f, 1.f);
+
+		prd = vec3f(shading);// *shading;
 	}
 
-	extern "C" __global__ void KRR_RT_AH(radiance)()
+	extern "C" __global__ void KRR_RT_AH(PathTracer)()
 	{
 	}
 
-	extern "C" __global__ void KRR_RT_MS(radiance)()
+	extern "C" __global__ void KRR_RT_MS(PathTracer)()
 	{
 		*getPRD<vec3f>() = vec3f(0.9f);
 	}
 
-	extern "C" __global__ void KRR_RT_RG(renderFrame)()
+	extern "C" __global__ void KRR_RT_RG(PathTracer)()
 	{
 		vec3i pixelID = optixGetLaunchIndex();
 		vec2i pixel = {pixelID.x, pixelID.y};
@@ -72,7 +80,7 @@ namespace krr
 		 		   u0, u1);		// per ray data pointer (32bits each)
 
 		vec3f color = vec3f(1);
-		color = prd;
+		color *= prd;
 		//color = (float)pixel.x / optixLaunchParams.fbSize.x * pixel.y / optixLaunchParams.fbSize.y * vec3f(1.0);
 		optixLaunchParams.colorBuffer[fbIndex] = vec4f(vec3f(color), 1.0f);
 	}

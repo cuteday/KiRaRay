@@ -1,7 +1,7 @@
 CMAKE_MINIMUM_REQUIRED ( VERSION 3.17 )
 
 PROJECT (KIRARAY
-	DESCRIPTION "A codebase for rendering odds&ends."
+	DESCRIPTION "A simple implememtation of an optix renderer."
 	LANGUAGES C CXX CUDA
 )
 SET (CMAKE_EXPORT_COMPILE_COMMANDS ON)

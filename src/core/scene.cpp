@@ -51,7 +51,7 @@ void Scene::createFromFile(const string filepath)
 
     traverseNode(mScene->mRootNode, aiMatrix4x4());
 
-    logInfo("Total imported meshes: " + std::to_string(meshes.size()));
+    logDebug("Total imported meshes: " + std::to_string(meshes.size()));
 
     Assimp::DefaultLogger::kill();
 }

@@ -16,7 +16,7 @@ public:
 
 	__both__ vec3f getRayDir(vec2i pixel, vec2i frameSize) {
 
-		vec2f ndc = vec2f(2, -2) * (vec2f(pixel) + vec2f (0.5)) / vec2f(frameSize) + vec2f(-1, 1);
+		vec2f ndc = vec2f(2, 2) * (vec2f(pixel) + vec2f (0.5)) / vec2f(frameSize) + vec2f(-1, -1);
 		return	normalize(ndc.x * mData.u + ndc.y * mData.v + mData.w);
 	}	
 
@@ -43,7 +43,7 @@ protected:
 
 	struct{
 		vec2f frameSize = { 42.666667f, 24.0f };	// sensor size in mm [width, height]
-		float focalLength = 5;			// the distance from lens (pin hole) to sensor, in mm
+		float focalLength = 15;			// the distance from lens (pin hole) to sensor, in mm
 		float aspectRatio = 1.777777f;	// width divides height
 
 		vec3f pos = { 0, 0, 0 };

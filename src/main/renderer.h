@@ -126,6 +126,7 @@ public:
     void renderUI() override{
         ui::Begin(KRR_PROJECT_NAME);
         ui::Text("Hello, world!");
+        ui::Text("Window size: %d %d", fbSize.x, fbSize.y);
         mpRenderer->renderUI();
         ui::End();
     }

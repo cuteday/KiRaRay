@@ -13,9 +13,11 @@
 #include <vector>
 
 using std::string;
+using std::to_string;
 
 typedef uint32_t uint;
 
+#define KRR_NAME_STRING(s) #s
 #define KRR_PROJECT_NAME "KiRaRay"
 #define KRR_NAMESPACE_BEGIN namespace krr {
 #define KRR_NAMESPACE_END }
@@ -101,14 +103,11 @@ namespace krr {
     
     namespace polymorphic {
 
-#ifndef __NVCC__
-        inline __both__ float sqrt(const float f) { return ::sqrtf(f); }
-        inline __both__ double sqrt(const double d) { return ::sqrt(d); }
+        inline __both__ float sqrt(const float f) { return sqrtf(f); }
+        inline __both__ double sqrt(const double d) { return sqrt(d); }
 
-        inline __both__ float rsqrt(const float f) { return 1.f / polymorphic::sqrt(f); }
-        inline __both__ double rsqrt(const double d) { return 1. / polymorphic::sqrt(d); }
-#endif
-
+        inline __both__ float rsqrt(const float f) { return 1.f / ::sqrt(f); }
+        inline __both__ double rsqrt(const double d) { return 1. / ::sqrt(d); }
     }
 
   } 
