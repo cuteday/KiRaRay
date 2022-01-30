@@ -9,4 +9,8 @@
 #include "math/mat.h"
 #include "math/transform.h"
 
-using namespace krr::math;
+KRR_NAMESPACE_BEGIN
+
+
+
+KRR_NAMESPACE_END

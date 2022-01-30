@@ -396,6 +396,7 @@ namespace krr
 		// default functions
 		// =======================================================
 
+
 		template <typename T>
 		inline __both__ typename long_type_of<T>::type area(const vec_t<T, 2> &v)
 		{
@@ -496,11 +497,30 @@ namespace krr
 		// default instantiations
 		// =======================================================
 
-#define _define_vec_types(T, t)  \
-	using vec2##t = vec_t<T, 2>; \
-	using vec3##t = vec_t<T, 3>; \
-	using vec4##t = vec_t<T, 4>; \
-	using vec3##t##a = vec3a_t<T>;
+
+
+		//inline __both__ vec_t<bool, 3> ge(const vec3f &a, const vec3f &b)
+		//{
+		//	return {a.x >= b.x, a.y >= b.y, a.z >= b.z};
+		//}
+
+		//inline __both__ vec_t<bool, 3> lt(const vec3f &a, const vec3f &b)
+		//{
+		//	return {a.x < b.x, a.y < b.y, a.z < b.z};
+		//}
+
+		inline __both__ bool any(vec_t<bool, 3> v)
+		{
+			return v.x | v.y | v.z;
+		}
+
+	}
+
+	#define _define_vec_types(T, t)  \
+		using vec2##t = math::vec_t<T, 2>; \
+		using vec3##t = math::vec_t<T, 3>; \
+		using vec4##t = math::vec_t<T, 4>; \
+		using vec3##t##a = math::vec3a_t<T>;
 
 		_define_vec_types(bool, b);
 		_define_vec_types(int8_t, c);
@@ -514,24 +534,7 @@ namespace krr
 		_define_vec_types(float, f);
 		_define_vec_types(double, d);
 
-#undef _define_vec_types
-
-		inline __both__ vec_t<bool, 3> ge(const vec3f &a, const vec3f &b)
-		{
-			return {a.x >= b.x, a.y >= b.y, a.z >= b.z};
-		}
-
-		inline __both__ vec_t<bool, 3> lt(const vec3f &a, const vec3f &b)
-		{
-			return {a.x < b.x, a.y < b.y, a.z < b.z};
-		}
-
-		inline __both__ bool any(vec_t<bool, 3> v)
-		{
-			return v.x | v.y | v.z;
-		}
-
-	}
+	#undef _define_vec_types
 }
 
 // // comparison operators

@@ -38,13 +38,13 @@ namespace krr
 	KRR_DEVICE_FUNCTION void handleHit(const ShadingData sd, PathData& path) {
 		vec2f r2v = path.sampler.get2D();
 		vec3f rayDir = cosineSampleHemisphere(r2v);
-		float bsdfPdf = rayDir.z;
+		float bsdfPdf = rayDir.z / M_PI;
 		vec3f rayWorldDir = sd.fromLocal(rayDir);
 		Ray ray = { sd.pos, rayWorldDir };
 		
 		path.ray = ray;
 		path.pdf = bsdfPdf;
-		path.throughput *= 1 / bsdfPdf;
+		path.throughput *= 0.5 / bsdfPdf;
 		
 		// TODO: direct lighting sampling here
 	}
@@ -153,6 +153,10 @@ namespace krr
 			}
 		}
 		
+		//if (!(path.L < optixLaunchParams.clampThreshold))
+		//	path.L = optixLaunchParams.clampThreshold;
+		// clamp before accumulate?
+		//path.L = clamp(path.L, vec3f(0), optixLaunchParams.clampThreshold);
 		optixLaunchParams.colorBuffer[fbIndex] = vec4f(path.L, 1.0f);
 	}
 }

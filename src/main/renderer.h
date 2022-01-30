@@ -7,6 +7,7 @@
 
 #include "gpu/buffer.h"
 #include "shaders/LaunchParams.h"
+#include "shaders/postprocess.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -83,6 +84,8 @@ private:
     std::vector<CUDABuffer> indexBuffers;
     std::vector<CUDABuffer> vertexBuffers;
     std::vector<CUDABuffer> normalBuffers;
+// render passes
+    AccumulatePass::SharedPtr mpAccumulatePass;
 };
 
 class RenderApp : public WindowApp{
@@ -111,6 +114,7 @@ public:
 
     void render() override {
         mpRenderer->render();
+        //mpAccumulatePass->render(mpRenderer->result());
     }
 
     void renderUI() override{
@@ -122,6 +126,7 @@ public:
     }
 
     void draw() override {
+        //mpAccumulatePass->result().copy_to_device(fbPointer, fbSize.x * fbSize.y);
         mpRenderer->result().copy_to_device(fbPointer, fbSize.x * fbSize.y);
         WindowApp::draw();
     }
@@ -129,6 +134,7 @@ public:
 
 private:
     Renderer::SharedPtr mpRenderer;
+
 };
 
 KRR_NAMESPACE_END

@@ -15,6 +15,9 @@ void Camera::update()
 	mData.w = mData.focalLength * normalize(mData.target - mData.pos);
 	mData.u = normalize(cross(mData.w, mData.up)) * mData.frameSize.x * 0.5f;
 	mData.v = normalize(cross(mData.u, mData.w)) * mData.frameSize.y * 0.5f;
+
+	// update jitter value
+	mData.jitter = mpJitterSampler->get2D() - vec2f(1);
 }
 
 void Camera::renderUI()
@@ -29,7 +32,7 @@ void Camera::renderUI()
 }
 
 void OrbitCameraController::update()
-{
+{	
 	//quat yawRotate = quat::rotate(vec3f(0, 1, 0), mData.yaw);
 	//quat pitchRotate = quat::rotate(vec3f(1, 0, 0), mData.pitch);
 	//quat rotate = normalize(yawRotate * pitchRotate);

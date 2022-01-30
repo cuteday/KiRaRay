@@ -13,6 +13,7 @@ namespace krr {
 		vec2i     fbSize;
 
 		uint maxDepth;
+		vec3f clampThreshold = 5;
 
 		Camera camera;
 		EnvLight envLight;

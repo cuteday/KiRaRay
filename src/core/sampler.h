@@ -9,13 +9,15 @@
 
 KRR_NAMESPACE_BEGIN
 
+using namespace math;
+
 class Sampler {
 public:
 	using SharedPtr = std::shared_ptr<Sampler>;
 
 	__both__ Sampler() {}
 
-	__both__  virtual void setPixelSample(vec2i samplePixel, uint sampleIndex)
+	__both__ virtual void setPixelSample(vec2i samplePixel, uint sampleIndex)
 		{ mSamplePixel = samplePixel; }
 
 	__both__ virtual float get1D() = 0;
@@ -36,7 +38,11 @@ class UniformSampler : Sampler {
 
 class LCGSampler {
 public:
+	using SharedPtr = std::shared_ptr<LCGSampler>;
+
 	__both__ LCGSampler(){}
+
+	__both__ void setSeed(uint seed) { mState = seed; }
 
 	__both__ void setPixel(vec2i samplePixel, uint sampleIndex)  {
 

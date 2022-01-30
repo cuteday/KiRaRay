@@ -270,6 +270,9 @@ void WindowApp::draw()
 
 	if (resourceSharingSuccessful)
 	{
+        // there are two ways of transfering device data to an opengl texture.
+        // via cudaMemcpyToArray, or glTexSubImage2D. 
+        // the CUDA api is faster, while needs to register the texture to device beforehand.
 		CUDA_CHECK(cudaGraphicsMapResources(1, &cuDisplayTexture));
 
 		cudaArray_t array;

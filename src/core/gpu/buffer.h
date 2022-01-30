@@ -73,14 +73,14 @@ namespace krr {
 		void alloc_and_copy_from_host(const T* t, size_t count)
 		{
 			alloc(count * sizeof(T));
-			copy_from_host((const T*)vt.data(), vt.size());
+			copy_from_host((const T*)t, count);
 		}
 
 		template<typename T>
 		void alloc_and_copy_from_device(const T* t, size_t count)
 		{
 			alloc(count * sizeof(T));
-			copy_from_device((const T*)vt.data(), vt.size());
+			copy_from_device((const T*)t, count);
 		}
 
 		template<typename T>

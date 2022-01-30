@@ -30,6 +30,11 @@ namespace math{
 			return x % n;
 		}
 
+		template<typename T>
+		__both__ inline T lerp(T x, T y, float weight) {
+			return (1.f - weight) * x + weight * y;
+		}
+
 		/*******************************************************
 		* bit tricks
 		********************************************************/

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "kiraray.h"
+#include "sampler.h"
 #include "io.h"
 
 KRR_NAMESPACE_BEGIN
@@ -12,11 +13,15 @@ class Camera {
 public:
 	using SharedPtr = std::shared_ptr<Camera>;
 
-	Camera() {}
+	Camera():
+		mpJitterSampler(new LCGSampler())
+	{
+		mpJitterSampler->setSeed(727272);
+	}
 
 	__both__ vec3f getRayDir(vec2i pixel, vec2i frameSize) {
-
-		vec2f ndc = vec2f(2, 2) * (vec2f(pixel) + vec2f (0.5)) / vec2f(frameSize) + vec2f(-1, -1);
+		vec2f p = vec2f(pixel) + vec2f(0.5) + mData.jitter;
+		vec2f ndc = vec2f(2, 2) * (p) / vec2f(frameSize) + vec2f(-1, -1) ;
 		return	normalize(ndc.x * mData.u + ndc.y * mData.v + mData.w);
 	}	
 
@@ -54,11 +59,12 @@ protected:
 		vec3f v = { 0, 1, 0 };		// camera up		[dependent to aspect ratio]
 		vec3f w = { 0, 0, -1 };		// camera forward
 
-		vec2f jitter = {0, 0};
+		vec2f jitter = {0, 0};		// within [-0.5, 0.5]^2
 
 	} mData;
 
 	bool mPreserveHeight = true;	// preserve sensor height on aspect ratio changes.
+	LCGSampler::SharedPtr mpJitterSampler;
 };
 
 class CameraController{

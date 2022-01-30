@@ -29,7 +29,9 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord
 	MeshData data;
 };
 
-Renderer::Renderer() {
+Renderer::Renderer(): 
+	mpAccumulatePass(new AccumulatePass())
+{
 	initOptix();
 
 	logInfo("#krr: creating optix context ...");
@@ -442,6 +444,9 @@ void Renderer::renderUI() {
 	if (mpScene && ui::CollapsingHeader("Scene")) {
 		mpScene->renderUI();
 	}
+	if (mpAccumulatePass && ui::CollapsingHeader("Accumulate Pass")) {
+		mpAccumulatePass->renderUI();
+	}
 }
 
 /*! render one frame */
@@ -471,10 +476,9 @@ void Renderer::render()
 		launchParams.fbSize.y,
 		1
 	));
-	// sync - make sure the frame is rendered before we download and
-	// display (obviously, for a high-performance application you
-	// want to use streams and double-buffering, but for this simple
-	// example, this will have to do)
+
+	// other render passes
+	mpAccumulatePass->render(colorBuffer, stream);
 
 	CUDA_SYNC_CHECK();
 }
@@ -492,12 +496,16 @@ void Renderer::resize(const vec2i& size)
 	// launch:
 	launchParams.fbSize = size;
 	launchParams.colorBuffer = (vec4f*)colorBuffer.data();
+
+	// update render pass sizes
+	mpAccumulatePass->resize(size);
 }
 
 /*! download the rendered color buffer */
 CUDABuffer& Renderer::result()
 {
-	return colorBuffer;
+	return mpAccumulatePass->result();
+	//return colorBuffer;
 }
 
 KRR_NAMESPACE_END
