@@ -19,6 +19,7 @@ namespace {
 
 Scene::Scene() {
     // other components
+    mpEnvLight = EnvLight::SharedPtr(new EnvLight());
     mpCamera = Camera::SharedPtr(new Camera());
     mpCameraController = OrbitCameraController::SharedPtr(new OrbitCameraController(mpCamera));
 }

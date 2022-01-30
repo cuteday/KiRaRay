@@ -9,8 +9,7 @@
 
 namespace krr {
 
-	/*! simple wrapper for creating, and managing a device-side CUDA
-		buffer */
+	/*! simple wrapper for creating, and managing a device-side CUDA buffer */
 	class CUDABuffer {
 	public:
 		CUDABuffer() = default;
@@ -19,6 +18,12 @@ namespace krr {
 		inline CUdeviceptr data() const
 		{
 			return (CUdeviceptr)d_ptr;
+		}
+
+		template <typename T>
+		inline T* data() const 
+		{
+			return (T *)d_ptr;
 		}
 
 		inline size_t size() const

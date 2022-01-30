@@ -26,7 +26,7 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) MissRecord
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord
 {
 	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-	MeshSBTData data;
+	MeshData data;
 };
 
 Renderer::Renderer() {
@@ -453,9 +453,12 @@ void Renderer::render()
 	mpScene->update();
 	mFrameCount++;
 
+	// setting up launch parameters! (similar to constant buffer in HLSL...)
+	launchParams.maxDepth = mMaxDepth;
+	launchParams.camera = *mpScene->getCamera();
+	launchParams.envLight = *mpScene->getEnvLight();
 	launchParamsBuffer.copy_from_host(&launchParams, 1);
 	launchParams.frameID++;
-	launchParams.camera = *mpScene->getCamera();
 
 	OPTIX_CHECK(optixLaunch(/*! pipeline we're launching launch: */
 		pipeline, stream,

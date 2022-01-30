@@ -7,7 +7,6 @@ namespace krr
 {
 	namespace math
 	{
-
 		#define vec_t typename L::vec_t
 		#define scalar_t vec_t::scalar_t	// becareful of that recursive definition! 
 

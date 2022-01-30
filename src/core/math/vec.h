@@ -10,9 +10,6 @@ namespace krr
 {
 	namespace math
 	{
-		//using polymorphic::sqrt;
-		//using polymorphic::rsqrt;
-
 		template <typename T>
 		struct long_type_of
 		{

@@ -7,8 +7,6 @@ namespace krr
 {
 	namespace math
 	{
-		/// 2D Linear Transform (2x2 Matrix)
-
 		template <typename T>
 		struct mat2_t
 		{

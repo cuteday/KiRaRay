@@ -2,14 +2,9 @@
 
 #include "math/math.h"
 #include "camera.h"
+#include "envmap.h"
 
 namespace krr {
-
-	struct MeshSBTData {
-		vec3f* vertices;
-		vec3i* indices;
-		vec3f* normals;
-	};
 
 	struct LaunchParams
 	{
@@ -17,7 +12,10 @@ namespace krr {
 		vec4f* colorBuffer;
 		vec2i     fbSize;
 
+		uint maxDepth;
+
 		Camera camera;
+		EnvLight envLight;
 
 		OptixTraversableHandle traversable;
 	};

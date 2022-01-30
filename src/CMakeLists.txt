@@ -31,24 +31,27 @@ SET (KRR_SHADER_INCLUDE
 message("optix include: ${OptiX_INCLUDE}")
 
 SET ( KRR_CORE_SOURCE
-	core/window.cpp
-	core/light.cpp
 	core/scene.cpp
 	core/camera.cpp
+	core/light.cpp
 	# components
+	core/window.cpp
 	core/logger.cpp
 	# non core
 )
 
 SET ( KRR_CORE_HEADERS
 	core/kiraray.h
-	core/window.h
 	core/common.h
 	# components
-	core/camera.h
-	core/scene.h
 	core/logger.h
 	core/io.h
+	core/window.h
+	# rendering
+	core/camera.h
+	core/scene.h
+	core/material.h
+	core/sampler.h
 	# maths
 	core/math/math.h
 	core/math/constants.h
@@ -56,6 +59,7 @@ SET ( KRR_CORE_HEADERS
 	core/math/mat.h
 	core/math/aabb.h
 	core/math/quat.h
+	core/math/utils.h
 	core/math/transform.h
 	core/math/vec/compare.h
 	core/math/vec/rotate.h
@@ -67,7 +71,7 @@ SET ( KRR_CORE_HEADERS
 )
 
 SET (KRR_SOURCE
-	main/renderer.h
+	main/renderer.cu
 	main/renderer.cpp
 )
 
@@ -75,6 +79,9 @@ SET ( KRR_SHADERS
 	shaders/LaunchParams.h
 	shaders/shader.cu
 	shaders/shared.h
+	shaders/path.h
+	shaders/postprocess.h
+	shaders/postprocess.cu
 )
 
 FILE ( GLOB KRR_SOURCE

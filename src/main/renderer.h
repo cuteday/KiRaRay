@@ -17,21 +17,13 @@ public:
     Renderer();
 
     void initOptix();
-
 	void createContext();
-
 	void createModule();
-
 	void createRaygenPrograms();
-
 	void createMissPrograms();
-
 	void createHitgroupPrograms();
-
 	void createPipeline();
-
     void buildSBT();
-
     void buildAS();
 
     bool onKeyEvent(const KeyboardEvent& keyEvent);
@@ -44,14 +36,11 @@ public:
 
     void setScene(Scene::SharedPtr scene) {
         mpScene = scene;
-
         logInfo("#krr: building AS ...");
         buildAS();
-
         logInfo("#krr: building SBT ...");
         buildSBT();
-
-        logSuccess("Scene reset.");
+        logSuccess("Scene set...");
     }
 
     CUDABuffer& result();
@@ -89,6 +78,7 @@ private:
 // Intrinsic scene data and cuda buffers
     Scene::SharedPtr mpScene;
     uint mFrameCount = 0;
+    uint mMaxDepth = 6;
 
     std::vector<CUDABuffer> indexBuffers;
     std::vector<CUDABuffer> vertexBuffers;

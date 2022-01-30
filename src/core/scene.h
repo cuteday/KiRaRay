@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "camera.h"
+#include "envmap.h"
 #include "kiraray.h"
 
 KRR_NAMESPACE_BEGIN
@@ -20,14 +21,22 @@ class Texture {
 
 class Mesh {
 public:
+	struct MeshData{
+		vec3f* vertices;
+		vec3i* indices;
+		vec3f* normals;
+	};
+
 	std::vector<vec3f> vertices;
 	std::vector<vec3f> normals;
 	std::vector<vec2f> texcoords;
 	std::vector<vec3i> indices;
 
+	MeshData *mDeviceMemory;
 	Texture* texture;
 	int texture_id;
 };
+using MeshData = Mesh::MeshData;
 
 /* The scene class is in poccess of components like camera, cameracontroller, etc.
  * The update(), eventHandler(), renderUI(), of them is called within this class;
@@ -56,14 +65,18 @@ public:
 
 	Camera::SharedPtr getCamera() { return mpCamera; }
 	CameraController::SharedPtr getCameraController() { return mpCameraController; }
+	EnvLight::SharedPtr getEnvLight() { return mpEnvLight; }
 
 	void setCamera(Camera::SharedPtr camera) { mpCamera = camera; }
 	void setCameraController(CameraController::SharedPtr cameraController) { mpCameraController = cameraController; }
+	void setEnvLight(EnvLight::SharedPtr envLight) { mpEnvLight = envLight; }
 
 	std::vector<Mesh> meshes;
 	std::vector<Texture> textures;
 
 private:
+	EnvLight::SharedPtr mpEnvLight;
+
 	Camera::SharedPtr mpCamera;
 	CameraController::SharedPtr mpCameraController;
 

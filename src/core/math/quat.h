@@ -6,9 +6,6 @@ namespace krr
 {
 	namespace math
 	{
-		//using namespace polymorphic;
-		//using polymorphic::rsqrt;
-
 		// Quaternion Struct
 		template <typename T>
 		struct quat_t

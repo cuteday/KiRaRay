@@ -34,7 +34,7 @@ typedef uint32_t uint;
 #  define KRR_DLL_IMPORT
 #endif
 
-# define KRR_INTERFACE
+#define KRR_INTERFACE
 
 #if defined(_MSC_VER)
 #  define __PRETTY_FUNCTION__ __FUNCTION__
@@ -53,12 +53,15 @@ typedef uint32_t uint;
 #if defined(__NVCC__)
 # define __krr_device   __device__
 # define __krr_host     __host__
+# define __krr_forceinline __forceinline__
 #else
-# define __krr_device   /* ignore */
-# define __krr_host     /* ignore */
+# define __krr_device       /* ignore */
+# define __krr_host         /* ignore */
+# define __krr_forceinline  /* ignore */
 #endif
 
 # define __both__   __krr_host __krr_device
+# define KRR_DEVICE_FUNCTION __krr_device __krr_forceinline
 
 #ifdef __GNUC__
 #define MAYBE_UNUSED __attribute__((unused))

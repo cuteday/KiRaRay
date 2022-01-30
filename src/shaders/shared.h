@@ -16,12 +16,11 @@
 #define KRR_RT_DC(name) __direct_callable__ ## name
 #define KRR_RT_CC(name) __continuation_callable__ ## name
 
-namespace krr {
-
+namespace krr{
 	namespace shader {
 
 		// the following routines are used to encode 64-bit payload pointers
-		static __forceinline__ __device__
+		static KRR_DEVICE_FUNCTION
 			void* unpackPointer(uint32_t i0, uint32_t i1)
 		{
 			const uint64_t uptr = static_cast<uint64_t>(i0) << 32 | i1;
@@ -29,7 +28,7 @@ namespace krr {
 			return ptr;
 		}
 
-		static __forceinline__ __device__
+		static KRR_DEVICE_FUNCTION
 			void  packPointer(void* ptr, uint32_t& i0, uint32_t& i1)
 		{
 			const uint64_t uptr = reinterpret_cast<uint64_t>(ptr);
@@ -38,7 +37,7 @@ namespace krr {
 		}
 
 		template<typename T>
-		static __forceinline__ __device__ T* getPRD()
+		static KRR_DEVICE_FUNCTION T* getPRD()
 		{
 			const uint32_t u0 = optixGetPayload_0();
 			const uint32_t u1 = optixGetPayload_1();

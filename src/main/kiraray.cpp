@@ -13,7 +13,7 @@ namespace {
 			current_directory = current_directory.parent_path();
 		}
 		if (current_directory.filename().string().find(KRR_PROJECT_NAME) == string::npos)
-			logFatal("Kiraray::Can't locate root working directory, "
+			logFatal("Kiraray::Can not locate root working directory, "
 				"make sure you are with in the project folder.");
 		std::filesystem::current_path(current_directory);
 		logInfo("Main Working directory: " + std::filesystem::current_path().string());
