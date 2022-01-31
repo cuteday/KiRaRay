@@ -44,7 +44,7 @@ namespace krr
 		
 		path.ray = ray;
 		path.pdf = bsdfPdf;
-		path.throughput *= 0.5 / bsdfPdf;
+		path.throughput *= sd.diffuse / bsdfPdf;
 		
 		// TODO: direct lighting sampling here
 	}
@@ -89,7 +89,7 @@ namespace krr
 
 		float shading = 0.2 + 0.8 * dot(sd.N, sd.wi);
 		//sd.emission = vec3f(shading);// *shading;
-		sd.diffuse = vec3f(1);
+		sd.diffuse = vec3f(0.8 / M_PI) ;
 		
 		sd.miss = false;
 	}
@@ -133,10 +133,6 @@ namespace krr
 		path.throughput = 1;
 		path.ray = { rayOrigin, rayDir };
 
-		//if (pixel == vec2i(666, 666) && optixLaunchParams.frameID % 10 == 0)
-		//	printf("Testing rng: %f\n", path.sampler.get1D());
-		//	printf("Tracing ray at 666, 666: from %f, %f, %f to %f, %f, %f\n", 
-		//		rayOrigin.x, rayOrigin.y, rayOrigin.z, rayDir.x, rayDir.y, rayDir.z);
 
 		for (uint depth = 0; depth < optixLaunchParams.maxDepth; depth++) {
 			ShadingData sd = {};
@@ -152,9 +148,14 @@ namespace krr
 				handleHit(sd, path);
 			}
 		}
-		
-		//if (!(path.L < optixLaunchParams.clampThreshold))
-		//	path.L = optixLaunchParams.clampThreshold;
+		//if (pixel == optixLaunchParams.debugPixel)
+		//	printf("Pixel contrib: %f, %f, %f\n", path.L.x, path.L.y, path.L.z);
+		//	printf("Testing rng: %f\n", path.sampler.get1D());
+		//	printf("Tracing ray at 666, 666: from %f, %f, %f to %f, %f, %f\n", 
+		//		rayOrigin.x, rayOrigin.y, rayOrigin.z, rayDir.x, rayDir.y, rayDir.z);
+
+		if (!(path.L < optixLaunchParams.clampThreshold))
+			path.L = optixLaunchParams.clampThreshold;
 		// clamp before accumulate?
 		//path.L = clamp(path.L, vec3f(0), optixLaunchParams.clampThreshold);
 		optixLaunchParams.colorBuffer[fbIndex] = vec4f(path.L, 1.0f);

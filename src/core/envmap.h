@@ -26,7 +26,7 @@ public:
 
 private:
 	vec3f color = { 1,1,1 };
-	float intensity = 0.02;
+	float intensity = 0.3;
 	float rotation = 0;
 };
 

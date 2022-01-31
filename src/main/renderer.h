@@ -86,6 +86,7 @@ private:
     std::vector<CUDABuffer> normalBuffers;
 // render passes
     AccumulatePass::SharedPtr mpAccumulatePass;
+    ToneMappingPass::SharedPtr mpToneMappingPass;
 };
 
 class RenderApp : public WindowApp{

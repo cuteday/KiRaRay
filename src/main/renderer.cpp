@@ -30,7 +30,8 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord
 };
 
 Renderer::Renderer(): 
-	mpAccumulatePass(new AccumulatePass())
+	mpAccumulatePass(new AccumulatePass()),
+	mpToneMappingPass(new ToneMappingPass())
 {
 	initOptix();
 
@@ -447,6 +448,9 @@ void Renderer::renderUI() {
 	if (mpAccumulatePass && ui::CollapsingHeader("Accumulate Pass")) {
 		mpAccumulatePass->renderUI();
 	}
+	if (mpToneMappingPass && ui::CollapsingHeader("Tone mapping Pass")) {
+		mpToneMappingPass->renderUI();
+	}
 }
 
 /*! render one frame */
@@ -479,6 +483,7 @@ void Renderer::render()
 
 	// other render passes
 	mpAccumulatePass->render(colorBuffer, stream);
+	mpToneMappingPass->render(colorBuffer, stream);
 
 	CUDA_SYNC_CHECK();
 }
@@ -499,13 +504,14 @@ void Renderer::resize(const vec2i& size)
 
 	// update render pass sizes
 	mpAccumulatePass->resize(size);
+	mpToneMappingPass->resize(size);
 }
 
 /*! download the rendered color buffer */
 CUDABuffer& Renderer::result()
 {
-	return mpAccumulatePass->result();
-	//return colorBuffer;
+	//return mpAccumulatePass->result();
+	return colorBuffer;
 }
 
 KRR_NAMESPACE_END

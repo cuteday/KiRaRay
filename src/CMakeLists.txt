@@ -48,6 +48,7 @@ SET ( KRR_CORE_HEADERS
 	core/io.h
 	core/window.h
 	# rendering
+	core/renderpass.h
 	core/camera.h
 	core/scene.h
 	core/material.h

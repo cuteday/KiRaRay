@@ -8,6 +8,14 @@ KRR_NAMESPACE_BEGIN
 namespace math{
 	namespace utils{
 		/*******************************************************
+		* colors
+		********************************************************/
+		__both__ inline float luminance(vec3f color)
+		{
+			return dot(color, vec3f(0.299, 0.587, 0.114));
+		}
+
+		/*******************************************************
 		* numbers
 		********************************************************/
 		template<typename T>
