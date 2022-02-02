@@ -31,8 +31,16 @@ INCLUDE_DIRECTORIES(assimp/include)
 SET(ASSIMP_INCLUDE_DIRS 
 	${CMAKE_CURRENT_SOURCE_DIR}/assimp/include 
 	${CMAKE_BINARY_DIR}/src/ext/assimp/include	
-	PARENT_SCOPE
-)
+	PARENT_SCOPE)
+
+# for tinyexr, currently used the zlib contained in assimp, according to https://github.com/syoyo/tinyexr
+# could switch to miniz if anything happens.
+SET(IMAGEIO_INCLUDE_DIRS 
+	${CMAKE_CURRENT_SOURCE_DIR}/image 
+	${CMAKE_CURRENT_SOURCE_DIR}/assimp/contrib/zlib
+	${CMAKE_BINARY_DIR}/src/ext/assimp/contrib/zlib
+	PARENT_SCOPE)
+INCLUDE_DIRECTORIES(${IMAGEIO_INCLUDE_DIRS})
 
 # Enoki (Currently disabled)
 # ADD_SUBDIRECTORY(enoki)

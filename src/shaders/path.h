@@ -4,6 +4,25 @@
 #include "sampler.h"
 
 namespace krr{
+
+	struct LaunchParamsPT
+	{
+		uint       frameID{ 0 };
+		vec4f* colorBuffer;
+		vec2i     fbSize;
+
+		uint maxDepth = 20;
+		float probRR = 0.15;
+		vec3f clampThreshold = 100;
+
+		vec2i debugPixel = { 666, 666 };
+
+		Camera camera;
+		EnvLight envLight;
+
+		OptixTraversableHandle traversable;
+	};
+
 	namespace shader{
 		
 		struct Ray {
@@ -43,7 +62,7 @@ namespace krr{
 			vec3f diffuse;			// diffuse reflectance
 			vec3f emission;			// for emissive material
 
-			bool miss;				// not valid if missing, or ?
+			bool miss = false;				// not valid if missing, or ?
 			bool frontFacing;		// 
 			uint flags;				// my
 

@@ -6,7 +6,7 @@
 #include "camera.h"
 
 #include "gpu/buffer.h"
-#include "shaders/LaunchParams.h"
+#include "shaders/path.h"
 #include "shaders/postprocess.h"
 
 KRR_NAMESPACE_BEGIN
@@ -70,7 +70,7 @@ private:
     CUDABuffer hitgroupRecordsBuffer;
     OptixShaderBindingTable sbt = {};
 
-    LaunchParams launchParams;
+    LaunchParamsPT launchParams;
     CUDABuffer   launchParamsBuffer;
 
     CUDABuffer colorBuffer;
@@ -78,8 +78,6 @@ private:
 
 // Intrinsic scene data and cuda buffers
     Scene::SharedPtr mpScene;
-    uint mFrameCount = 0;
-    uint mMaxDepth = 6;
 
     std::vector<CUDABuffer> indexBuffers;
     std::vector<CUDABuffer> vertexBuffers;

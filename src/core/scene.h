@@ -5,19 +5,13 @@
 #include "common.h"
 #include "camera.h"
 #include "envmap.h"
+#include "texture.h"
 #include "kiraray.h"
 
 KRR_NAMESPACE_BEGIN
 
+class AssimpImporter;
 using namespace io;
-
-class Texture {
-	Texture() = default;
-	Texture(uint32_t* data) :pixels(data) {}
-
-	uint32_t* pixels = nullptr;
-	vec2i resolution = { 0, 0 };
-};
 
 class Mesh {
 public:
@@ -25,6 +19,7 @@ public:
 		vec3f* vertices;
 		vec3i* indices;
 		vec3f* normals;
+		vec3f* texcoords;
 	};
 
 	std::vector<vec3f> vertices;
@@ -33,8 +28,8 @@ public:
 	std::vector<vec3i> indices;
 
 	MeshData *mDeviceMemory;
-	Texture* texture;
-	int texture_id;
+	Material *texture;
+	int textureId;
 };
 using MeshData = Mesh::MeshData;
 
@@ -47,11 +42,6 @@ public:
 
 	Scene();
 	~Scene() = default;
-
-	// intialization and creation
-	void createFromFile(const string filepath);
-	void processMesh(aiMesh* mesh, aiMatrix4x4 transform);
-	void traverseNode(aiNode* node, aiMatrix4x4 transform);
 
 	// for debugging!
 	void createUnitCube();
@@ -75,6 +65,8 @@ public:
 	std::vector<Texture> textures;
 
 private:
+	friend class AssimpImporter;
+
 	EnvLight::SharedPtr mpEnvLight;
 
 	Camera::SharedPtr mpCamera;

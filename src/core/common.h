@@ -11,11 +11,13 @@
 #include <algorithm>
 #include <sstream>
 #include <vector>
+#include <map>
 
 using std::string;
 using std::to_string;
 
 typedef uint32_t uint;
+typedef unsigned char uchar;
 
 #define KRR_NAME_STRING(s) #s
 #define KRR_PROJECT_NAME "KiRaRay"

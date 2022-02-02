@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "window.h"
 #include "math/math.h"
 
 KRR_NAMESPACE_BEGIN
@@ -15,19 +16,22 @@ class EnvLight{
 public:
 	using SharedPtr = std::shared_ptr<EnvLight>;
 
-	virtual void setRotation(float angle) { rotation = angle; }
+	__both__ void setRotation(float angle) { mRotation = angle; }
+
+	void renderUI() {
+		ui::SliderFloat("Intensity", &mIntensity, 0.f, 10.f, "%.2f");
+	}
 
 	__both__ void sample(LightSample& ls) {}
 	__both__ void eval(LightSample& ls) {
-		ls.pdf = 0.25 / M_PI;
-		ls.Li = color * intensity;
+		ls.pdf = 0.25 * M_1_PI;
+		ls.Li = mTint * mIntensity;
 	}
 
-
 private:
-	vec3f color = { 1,1,1 };
-	float intensity = 0.3;
-	float rotation = 0;
+	vec3f mTint = { 1,1,1 };
+	float mIntensity = 1.0;
+	float mRotation = 0;
 };
 
 KRR_NAMESPACE_END

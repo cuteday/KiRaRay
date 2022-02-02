@@ -81,6 +81,27 @@ namespace math{
 			return v;
 		}
 
+		__both__ inline vec2f worldToLatLong(const vec3f& dir) {
+			vec3f p = normalize(dir);
+			vec2f uv;
+			uv.x = atan2(p.x, -p.z) / M_2PI + 0.5f;
+			uv.y = acos(p.y) * M_1_PI;
+			return uv;
+		}
+
+		__both__ inline vec2f cartesianToSpherical(const vec3f& v) {
+			vec3f nv = normalize(v);
+			vec2f sph;
+			sph.x = acos(nv.z);
+			sph.y = atan2(-nv.y, -nv.x) + M_PI;
+			return sph;
+		}
+
+		__both__ inline vec2f cartesianToSphericalNormalized(const vec3f& v) {
+			vec2f sph = cartesianToSpherical(v);
+			return { sph.x / M_PI, sph.y / M_2PI };
+		}
+
 		/*******************************************************
 		* sampling distributions
 		********************************************************/

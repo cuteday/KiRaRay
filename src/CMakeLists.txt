@@ -18,6 +18,7 @@ INCLUDE_DIRECTORIES (
 	${GLEW_INCLUDE_DIRS}
 	${GLFW_INCLUDE_DIRS}
 	${IMGUI_INCLUDE_DIRS}
+	${IMAGEIO_INCLUDE_DIRS}
 	${CUDA_INCLUDE_DIRS}
 	${OptiX_INCLUDE}
 )
@@ -38,6 +39,7 @@ SET ( KRR_CORE_SOURCE
 	core/window.cpp
 	core/logger.cpp
 	# non core
+	core/texture.cpp
 )
 
 SET ( KRR_CORE_HEADERS
@@ -52,6 +54,7 @@ SET ( KRR_CORE_HEADERS
 	core/camera.h
 	core/scene.h
 	core/material.h
+	core/texture.h
 	core/sampler.h
 	# maths
 	core/math/math.h
@@ -69,15 +72,16 @@ SET ( KRR_CORE_HEADERS
 	core/gpu/buffer.h
 	core/gpu/optix7.h
 	# non core
+	main/renderer.h
+	scene/importer.h
 )
 
 SET (KRR_SOURCE
-	main/renderer.cu
 	main/renderer.cpp
+	scene/importer.cpp
 )
 
 SET ( KRR_SHADERS
-	shaders/LaunchParams.h
 	shaders/shader.cu
 	shaders/shared.h
 	shaders/path.h
@@ -85,7 +89,7 @@ SET ( KRR_SHADERS
 	shaders/postprocess.cu
 )
 
-FILE ( GLOB KRR_SOURCE
+FILE ( GLOB KRR_SOURCE_ALL
 	#ext/*
 	main/*
 )
@@ -103,6 +107,7 @@ ADD_LIBRARY ( krr STATIC
 	${KRR_CORE_SOURCE}
 	${KRR_CORE_HEADERS}
 	${KRR_SOURCE}
+	${KRR_SOURCE_ALL}
 	${KRR_SHADERS}
 	${PTX_CODE}
 )
@@ -112,12 +117,12 @@ TARGET_LINK_LIBRARIES(krr PUBLIC ${optix_LIBRARY})
 SET(KRR_ALL_LIBS
 	krr
 	krr-cuda
-	#krr-shader
 	assimp
 	OpenGL::GL
 	libglew_static
 	glfw
 	imgui
+	zlibstatic
 	${OPENGL_gl_LIBRARY}
 	${CUDA_LIBRARIES}
 	${optix_LIBRARY}

@@ -108,7 +108,6 @@ void Renderer::createContext()
 }
 
 
-
 /*! creates the module that contains all the programs we are going
 	to use. in this simple example, we use a single module from a
 	single .cu file, using a single embedded ptx string */
@@ -124,7 +123,7 @@ void Renderer::createModule()
 	pipelineCompileOptions.numPayloadValues = 2;
 	pipelineCompileOptions.numAttributeValues = 2;
 	pipelineCompileOptions.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
-	pipelineCompileOptions.pipelineLaunchParamsVariableName = "optixLaunchParams";
+	pipelineCompileOptions.pipelineLaunchParamsVariableName = "launchParams";
 
 	pipelineLinkOptions.maxTraceDepth = 2;
 
@@ -142,7 +141,6 @@ void Renderer::createModule()
 	));
 	if (sizeof_log > 1) PRINT(log);
 }
-
 
 
 /*! does all setup for the raygen program(s) we are going to use */
@@ -299,9 +297,6 @@ void Renderer::buildSBT()
 	// build hitgroup records
 	// ------------------------------------------------------------------
 
-	// we don't actually have any objects in this example, but let's
-	// create a dummy one so the SBT doesn't have any null pointers
-	// (which the sanity checks in compilation would complain about)
 	uint numMeshes = mpScene->meshes.size();
 	std::vector<HitgroupRecord> hitgroupRecords;
 	for (uint i = 0; i < numMeshes; i++) {
@@ -445,6 +440,10 @@ void Renderer::renderUI() {
 	if (mpScene && ui::CollapsingHeader("Scene")) {
 		mpScene->renderUI();
 	}
+	if (ui::CollapsingHeader("Path tracer")) {
+		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
+		ui::SliderInt("Max recursion depth", (int*)&launchParams.maxDepth, 1, 100, "%d");
+	}
 	if (mpAccumulatePass && ui::CollapsingHeader("Accumulate Pass")) {
 		mpAccumulatePass->renderUI();
 	}
@@ -460,14 +459,12 @@ void Renderer::render()
 
 	// maybe this should be put into beginFrame() or sth...
 	mpScene->update();
-	mFrameCount++;
 
 	// setting up launch parameters! (similar to constant buffer in HLSL...)
-	launchParams.maxDepth = mMaxDepth;
 	launchParams.camera = *mpScene->getCamera();
 	launchParams.envLight = *mpScene->getEnvLight();
-	launchParamsBuffer.copy_from_host(&launchParams, 1);
 	launchParams.frameID++;
+	launchParamsBuffer.copy_from_host(&launchParams, 1);
 
 	OPTIX_CHECK(optixLaunch(/*! pipeline we're launching launch: */
 		pipeline, stream,
@@ -510,7 +507,6 @@ void Renderer::resize(const vec2i& size)
 /*! download the rendered color buffer */
 CUDABuffer& Renderer::result()
 {
-	//return mpAccumulatePass->result();
 	return colorBuffer;
 }
 

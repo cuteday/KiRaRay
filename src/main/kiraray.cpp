@@ -2,6 +2,7 @@
 
 #include "kiraray.h"
 #include "renderer.h"
+#include "scene/importer.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -24,14 +25,15 @@ extern "C" int main(int argc, char* argv[]) {
 
 	locateWorkingDirectory();
 	logSuccess("Kiraray::Main Hello, world!");
+	//const string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
+	const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
 
 	try {
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 });
 
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
-		//scene->createFromFile("common/scenes/cbox/CornellBox-Original.obj");
-		scene->createFromFile("common/scenes/breakfast_room/breakfast_room.obj");
-		//scene->createUnitCube();
+		AssimpImporter importer;
+		importer.import(sceneFile, scene);
 		app.getRenderer()->setScene(scene);
 		app.run();
 	} 

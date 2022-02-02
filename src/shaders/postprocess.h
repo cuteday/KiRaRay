@@ -9,7 +9,6 @@
 
 KRR_NAMESPACE_BEGIN
 
-
 class AccumulatePass: public RenderPass {
 public:
 	using SharedPtr = std::shared_ptr<AccumulatePass>;
