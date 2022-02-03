@@ -5,31 +5,35 @@
 #include "common.h"
 #include "camera.h"
 #include "envmap.h"
-#include "texture.h"
+//#include "texture.h"
 #include "kiraray.h"
 
 KRR_NAMESPACE_BEGIN
 
-class AssimpImporter;
+//class AssimpImporter;
 using namespace io;
 
 class Mesh {
 public:
 	struct MeshData{
-		vec3f* vertices;
-		vec3i* indices;
-		vec3f* normals;
-		vec3f* texcoords;
+		vec3f* vertices = nullptr;
+		vec3i* indices = nullptr;
+		vec3f* normals = nullptr;
+		vec3f* texcoords = nullptr;
+		vec3f* tangents = nullptr;
+		vec3f* bitangents = nullptr;
+	//	Material* material = nullptr;
 	};
 
 	std::vector<vec3f> vertices;
 	std::vector<vec3f> normals;
 	std::vector<vec2f> texcoords;
 	std::vector<vec3i> indices;
+	std::vector<vec3f> tangents;
+	std::vector<vec3f> bitangents;
 
-	MeshData *mDeviceMemory;
-	Material *texture;
-	int textureId;
+	//Material mMaterial;
+	MeshData mDeviceMemory;
 };
 using MeshData = Mesh::MeshData;
 
@@ -42,9 +46,6 @@ public:
 
 	Scene();
 	~Scene() = default;
-
-	// for debugging!
-	void createUnitCube();
 
 	// user input handler
 	bool onMouseEvent(const MouseEvent& mouseEvent);
@@ -62,10 +63,10 @@ public:
 	void setEnvLight(EnvLight::SharedPtr envLight) { mpEnvLight = envLight; }
 
 	std::vector<Mesh> meshes;
-	std::vector<Texture> textures;
+//	std::vector<Material> materials;
 
 private:
-	friend class AssimpImporter;
+	//friend class AssimpImporter;
 
 	EnvLight::SharedPtr mpEnvLight;
 

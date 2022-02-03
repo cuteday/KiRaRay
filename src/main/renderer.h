@@ -26,6 +26,7 @@ public:
 	void createPipeline();
     void buildSBT();
     void buildAS();
+    void toDevice();
 
     bool onKeyEvent(const KeyboardEvent& keyEvent);
     bool onMouseEvent(const MouseEvent& mouseEvent);
@@ -37,6 +38,8 @@ public:
 
     void setScene(Scene::SharedPtr scene) {
         mpScene = scene;
+        logInfo("#krr: transfering host scene data to device ...");
+        toDevice();
         logInfo("#krr: building AS ...");
         buildAS();
         logInfo("#krr: building SBT ...");
@@ -82,6 +85,7 @@ private:
     std::vector<CUDABuffer> indexBuffers;
     std::vector<CUDABuffer> vertexBuffers;
     std::vector<CUDABuffer> normalBuffers;
+    CUDABuffer materialBuffer;
 // render passes
     AccumulatePass::SharedPtr mpAccumulatePass;
     ToneMappingPass::SharedPtr mpToneMappingPass;

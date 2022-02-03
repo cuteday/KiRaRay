@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <sstream>
 #include <vector>
-#include <map>
 
 using std::string;
 using std::to_string;

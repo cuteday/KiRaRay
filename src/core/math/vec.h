@@ -275,7 +275,7 @@ namespace krr
 				};
 				struct
 				{
-					T r, s, t;
+					T r, g, b;
 				};
 				struct
 				{
@@ -383,7 +383,19 @@ namespace krr
 				return vec_t<T, 4>(lambda(v.x), lambda(v.y), lambda(v.z), lambda(v.w));
 			}
 
-			T x, y, z, w;
+
+			union
+			{
+				struct
+				{
+					T x, y, z, w;
+				};
+				struct
+				{
+					T r, g, b, a;
+				};
+			};
+			//T x, y, z, w;
 		};
 
 		template <typename T>

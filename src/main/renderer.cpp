@@ -1,3 +1,4 @@
+#include "renderer.h"
 #include <optix_function_table_definition.h>
 #include <optix_types.h>
 
@@ -113,9 +114,9 @@ void Renderer::createContext()
 	single .cu file, using a single embedded ptx string */
 void Renderer::createModule()
 {
-	moduleCompileOptions.maxRegisterCount = 50;
+	moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 	moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
-	moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
+	moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_DEFAULT;
 
 	pipelineCompileOptions = {};
 	pipelineCompileOptions.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
@@ -125,7 +126,7 @@ void Renderer::createModule()
 	pipelineCompileOptions.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
 	pipelineCompileOptions.pipelineLaunchParamsVariableName = "launchParams";
 
-	pipelineLinkOptions.maxTraceDepth = 2;
+	pipelineLinkOptions.maxTraceDepth = 5;
 
 	const std::string ptxCode = PTX_CODE;
 
@@ -303,9 +304,7 @@ void Renderer::buildSBT()
 		int objectType = 0;
 		HitgroupRecord rec;
 		OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[objectType], &rec));
-		rec.data.vertices = (vec3f*)vertexBuffers[i].data();
-		rec.data.indices = (vec3i*)indexBuffers[i].data();
-		rec.data.normals = (vec3f*)normalBuffers[i].data();
+		rec.data = mpScene->meshes[i].mDeviceMemory;
 		hitgroupRecords.push_back(rec);
 	}
 	hitgroupRecordsBuffer.alloc_and_copy_from_host(hitgroupRecords);
@@ -318,11 +317,6 @@ void Renderer::buildAS()
 {
 	std::vector<Mesh>& meshes = mpScene->meshes;
 
-	assert(indexBuffers.size() == 0);
-	indexBuffers.resize(meshes.size());
-	vertexBuffers.resize(meshes.size());
-	normalBuffers.resize(meshes.size());
-
 	std::vector<OptixBuildInput> triangleInputs(meshes.size());
 	std::vector<uint> triangleInputFlags(meshes.size());
 	std::vector<CUdeviceptr> vertexBufferPtr(meshes.size());
@@ -334,10 +328,6 @@ void Renderer::buildAS()
 		//logDebug("Mesh #" + to_string(i) + " indices: " + to_string(meshes[i].indices.size()));
 		//logDebug("Mesh #" + to_string(i) + " vertices: " + to_string(meshes[i].vertices.size()));
 		//logDebug("Mesh #" + to_string(i) + " normals: " + to_string(meshes[i].normals.size()));
-
-		indexBuffers[i].alloc_and_copy_from_host(mesh.indices);
-		vertexBuffers[i].alloc_and_copy_from_host(mesh.vertices);
-		normalBuffers[i].alloc_and_copy_from_host(mesh.normals);
 
 		indexBufferPtr[i] = indexBuffers[i].data();
 		vertexBufferPtr[i] = vertexBuffers[i].data();
@@ -419,6 +409,28 @@ void Renderer::buildAS()
 	CUDA_SYNC_CHECK();
 
 	// clean up...
+}
+
+void Renderer::toDevice()
+{
+	std::vector<Mesh>& meshes = mpScene->meshes;
+
+	assert(indexBuffers.size() == 0);
+	indexBuffers.resize(meshes.size());
+	vertexBuffers.resize(meshes.size());
+	normalBuffers.resize(meshes.size());
+
+	for (uint i = 0; i < meshes.size();i++) {
+		Mesh& mesh = meshes[i];
+
+		indexBuffers[i].alloc_and_copy_from_host(mesh.indices);
+		vertexBuffers[i].alloc_and_copy_from_host(mesh.vertices);
+		normalBuffers[i].alloc_and_copy_from_host(mesh.normals);
+
+		mesh.mDeviceMemory.indices = indexBuffers[i].data<vec3i>();
+		mesh.mDeviceMemory.vertices = vertexBuffers[i].data<vec3f>();
+		mesh.mDeviceMemory.normals = normalBuffers[i].data<vec3f>();
+	}
 }
 
 bool Renderer::onKeyEvent(const KeyboardEvent& keyEvent)

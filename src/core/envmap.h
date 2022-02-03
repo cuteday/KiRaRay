@@ -1,7 +1,6 @@
 #pragma once
 
 #include "common.h"
-#include "window.h"
 #include "math/math.h"
 
 KRR_NAMESPACE_BEGIN
@@ -18,9 +17,7 @@ public:
 
 	__both__ void setRotation(float angle) { mRotation = angle; }
 
-	void renderUI() {
-		ui::SliderFloat("Intensity", &mIntensity, 0.f, 10.f, "%.2f");
-	}
+	void renderUI() {};
 
 	__both__ void sample(LightSample& ls) {}
 	__both__ void eval(LightSample& ls) {

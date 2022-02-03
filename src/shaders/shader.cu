@@ -41,7 +41,7 @@ namespace krr
 		vec3f wi = sd.fromLocal(wiLocal);
 		// [NOTE] the generated scattering ray must slightly offseted above the surface
 		// to avoid self-intersection with the original surface
-		// very, very, very important! q(¨R¨Œ¨Qq)
+		// very, very, very important!
 		Ray ray = { sd.pos + sd.N * 1e-4f, wi };
 		
 		path.ray = ray;
