@@ -8,7 +8,7 @@
 #include <string>
 
 #ifdef _WIN32   // for ansi control sequences
-//#   define NOMINMAX
+#   define NOMINMAX 
 #   include <Windows.h>
 #   undef NOMINMAX
 #else
@@ -164,7 +164,7 @@ namespace Log {
 
         // Build the progress bar itself. Looks like so:
         // [=================>                         ]
-        int usableWidth = max(0, width - 2 - 1 - (int)label.size() );
+        int usableWidth = std::max(0, width - 2 - 1 - (int)label.size() );
 
         int numFilledChars = (int)std::round(usableWidth * fraction);
 

@@ -13,7 +13,7 @@ namespace krr{
 
 		uint maxDepth = 20;
 		float probRR = 0.15;
-		vec3f clampThreshold = 100;
+		vec3f clampThreshold = 500;
 
 		vec2i debugPixel = { 666, 666 };
 

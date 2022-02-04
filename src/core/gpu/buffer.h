@@ -2,9 +2,6 @@
 #include <vector>
 #include <assert.h>
 
-#include <thrust/host_vector.h>
-#include <thrust/device_vector.h>
-
 #include "optix7.h"
 #include "common.h"
 
@@ -44,6 +41,7 @@ public:
 	void alloc(size_t size)
 	{
 		assert(d_ptr == nullptr);
+		if (size == 0) return;
 		this->sizeInBytes = size;
 		CUDA_CHECK(cudaMalloc((void**)&d_ptr, sizeInBytes));
 	}
@@ -59,6 +57,7 @@ public:
 	template<typename T>
 	void alloc_and_copy_from_host(const std::vector<T>& vt)
 	{
+		if (vt.size() == 0) return;
 		alloc(vt.size() * sizeof(T));
 		copy_from_host((const T*)vt.data(), vt.size());
 	}
@@ -66,6 +65,7 @@ public:
 	template<typename T>
 	void alloc_and_copy_from_device(const std::vector<T>& vt)
 	{
+		if (vt.size() == 0) return;
 		alloc(vt.size() * sizeof(T));
 		copy_from_device((const T*)vt.data(), vt.size());
 	}
@@ -73,6 +73,7 @@ public:
 	template<typename T>
 	void alloc_and_copy_from_host(const T* t, size_t count)
 	{
+		if (count == 0) return;
 		alloc(count * sizeof(T));
 		copy_from_host((const T*)t, count);
 	}
@@ -80,6 +81,7 @@ public:
 	template<typename T>
 	void alloc_and_copy_from_device(const T* t, size_t count)
 	{
+		if (count == 0) return;
 		alloc(count * sizeof(T));
 		copy_from_device((const T*)t, count);
 	}
@@ -120,9 +122,17 @@ public:
 			count * sizeof(T), cudaMemcpyDeviceToDevice));
 	}
 
-private:
+protected:
 	size_t sizeInBytes{ 0 };
 	void* d_ptr{ nullptr };
+};
+
+template <typename T>
+class TypedBuffer :CUDABuffer{
+
+	__both__ inline T* data() { return (T*)d_ptr; }
+
+	__both__ inline T& operator [] (uint index) { return ((T*)d_ptr)[index]; }
 };
 
 KRR_NAMESPACE_END

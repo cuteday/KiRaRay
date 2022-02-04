@@ -304,7 +304,7 @@ void Renderer::buildSBT()
 		int objectType = 0;
 		HitgroupRecord rec;
 		OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[objectType], &rec));
-		rec.data = mpScene->meshes[i].mDeviceMemory;
+		rec.data = mpScene->meshes[i].mMeshData;
 		hitgroupRecords.push_back(rec);
 	}
 	hitgroupRecordsBuffer.alloc_and_copy_from_host(hitgroupRecords);
@@ -329,8 +329,8 @@ void Renderer::buildAS()
 		//logDebug("Mesh #" + to_string(i) + " vertices: " + to_string(meshes[i].vertices.size()));
 		//logDebug("Mesh #" + to_string(i) + " normals: " + to_string(meshes[i].normals.size()));
 
-		indexBufferPtr[i] = indexBuffers[i].data();
-		vertexBufferPtr[i] = vertexBuffers[i].data();
+		indexBufferPtr[i] = mesh.mDeviceMemory.indices.data();
+		vertexBufferPtr[i] = mesh.mDeviceMemory.vertices.data();
 
 		triangleInputs[i] = {};
 		triangleInputs[i].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
@@ -343,7 +343,7 @@ void Renderer::buildAS()
 		triangleInputs[i].triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
 		triangleInputs[i].triangleArray.indexStrideInBytes = sizeof(vec3i);
 		triangleInputs[i].triangleArray.numIndexTriplets = mesh.indices.size();
-		triangleInputs[i].triangleArray.indexBuffer = indexBuffers[i].data();
+		triangleInputs[i].triangleArray.indexBuffer = indexBufferPtr[i];
 
 		triangleInputFlags[i] = 0;
 
@@ -414,22 +414,9 @@ void Renderer::buildAS()
 void Renderer::toDevice()
 {
 	std::vector<Mesh>& meshes = mpScene->meshes;
-
-	assert(indexBuffers.size() == 0);
-	indexBuffers.resize(meshes.size());
-	vertexBuffers.resize(meshes.size());
-	normalBuffers.resize(meshes.size());
-
 	for (uint i = 0; i < meshes.size();i++) {
 		Mesh& mesh = meshes[i];
-
-		indexBuffers[i].alloc_and_copy_from_host(mesh.indices);
-		vertexBuffers[i].alloc_and_copy_from_host(mesh.vertices);
-		normalBuffers[i].alloc_and_copy_from_host(mesh.normals);
-
-		mesh.mDeviceMemory.indices = indexBuffers[i].data<vec3i>();
-		mesh.mDeviceMemory.vertices = vertexBuffers[i].data<vec3f>();
-		mesh.mDeviceMemory.normals = normalBuffers[i].data<vec3f>();
+		mesh.toDevice();
 	}
 }
 

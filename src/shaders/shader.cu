@@ -33,7 +33,6 @@ namespace krr
 			std::forward<Args>(payload)...);
 	}
 
-
 	KRR_DEVICE_FUNCTION void handleHit(const ShadingData sd, PathData& path) {
 		vec2f r2v = path.sampler.get2D();
 		vec3f wiLocal = cosineSampleHemisphere(r2v);
@@ -59,12 +58,12 @@ namespace krr
 	{
 		vec2f barycentric = optixGetTriangleBarycentrics();
 		uint primId = optixGetPrimitiveIndex();
-		MeshData& mesh = *(MeshData*)optixGetSbtDataPointer();	
+		MeshData& mesh = *(MeshData*)optixGetSbtDataPointer();
 
 		ShadingData& sd = *getPRD<ShadingData>();
 		sd.wi = -normalize(vec3f(optixGetWorldRayDirection()));
 		unsigned int hitKind = optixGetHitKind();
-		vec3f bc = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y};
+		vec3f bc = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y };
 		vec3i triangle = mesh.indices[primId];
 
 		// prepare shading data
@@ -75,8 +74,8 @@ namespace krr
 		sd.geoN = normalize(cross(mesh.vertices[triangle.y] - mesh.vertices[triangle.x],
 			mesh.vertices[triangle.z] - mesh.vertices[triangle.x]));
 
-		sd.N= normalize(
-			bc.x * mesh.normals[triangle.x] + 
+		sd.N = normalize(
+			bc.x * mesh.normals[triangle.x] +
 			bc.y * mesh.normals[triangle.y] +
 			bc.z * mesh.normals[triangle.z]);
 		// to do: seems some problem exists with optixIsFrontFaceHit()
@@ -85,13 +84,46 @@ namespace krr
 		if (!sd.frontFacing) {
 			sd.N = -sd.N;
 		}
-		// generate a fake tbn frame for now...
-		sd.T = getPerpendicular(sd.N);
-		sd.B = normalize(cross(sd.N, sd.T));
+
+		if (mesh.tangents != nullptr && mesh.bitangents != nullptr){
+			sd.T = normalize(
+				bc.x * mesh.tangents[triangle.x] +
+				bc.y * mesh.tangents[triangle.y] +
+				bc.z * mesh.tangents[triangle.z]);
+			sd.B = normalize(
+				bc.x * mesh.bitangents[triangle.x] +
+				bc.y * mesh.bitangents[triangle.y] +
+				bc.z * mesh.bitangents[triangle.z]);
+		}
+		else {
+			// generate a fake tbn frame for now...
+			sd.T = getPerpendicular(sd.N);
+			sd.B = normalize(cross(sd.N, sd.T));
+		}
+
+		if (mesh.material) {
+			Texture& diffuseTexture = mesh.material->mTextures[0];
+			cudaTextureObject_t cudaTexture = 0;
+			
+			if (mesh.texcoords && diffuseTexture.isValid()) {
+				cudaTexture = diffuseTexture.getCudaTexture();
+				sd.uv = (
+					bc.x * mesh.texcoords[triangle.x] +
+					bc.y * mesh.texcoords[triangle.y] +
+					bc.z * mesh.texcoords[triangle.z]);
+				vec4f diffuse = tex2D<float4>(cudaTexture, sd.uv.x, sd.uv.y);
+				sd.diffuse = (vec3f)diffuse;
+				//sd.diffuse = vec3f(0.7, 0, 0);
+			}
+			else
+				sd.diffuse = vec3f(mesh.material->mMaterialParams.diffuse);
+		}
+		else {
+			sd.diffuse = vec3f(1);
+		}
 
 		//sd.emission = 0.2 + 0.8 * dot(sd.N, sd.wi);
 		sd.emission = vec3f(0);
-		sd.diffuse = vec3f(0.8) ;
 		sd.miss = false;
 	}
 
@@ -153,7 +185,6 @@ namespace krr
 			if (u < launchParams.probRR) break;
 			path.throughput /= 1 - launchParams.probRR;
 		}
-		//if (pixel == launchParams.debugPixel)
 		//	printf("Pixel contrib: %f, %f, %f\n", path.L.x, path.L.y, path.L.z);
 		//	printf("Testing rng: %f, %f\n", path.sampler.get2D().x, path.sampler.get2D().y);
 		//	printf("Tracing ray at 666, 666: from %f, %f, %f to %f, %f, %f\n", 
@@ -162,7 +193,7 @@ namespace krr
 		if (!(path.L < launchParams.clampThreshold))
 			path.L = launchParams.clampThreshold;
 		// clamp before accumulate?
-		//path.L = clamp(path.L, vec3f(0), launchParams.clampThreshold);
+		path.L = clamp(path.L, vec3f(0), launchParams.clampThreshold);
 		launchParams.colorBuffer[fbIndex] = vec4f(path.L, 1.0f);
 	}
 }

@@ -82,9 +82,6 @@ private:
 // Intrinsic scene data and cuda buffers
     Scene::SharedPtr mpScene;
 
-    std::vector<CUDABuffer> indexBuffers;
-    std::vector<CUDABuffer> vertexBuffers;
-    std::vector<CUDABuffer> normalBuffers;
     CUDABuffer materialBuffer;
 // render passes
     AccumulatePass::SharedPtr mpAccumulatePass;

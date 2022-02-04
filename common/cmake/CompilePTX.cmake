@@ -35,7 +35,8 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name)
 		target_compile_options ("${lib_name}" PRIVATE
 								-Xcudafe=--display_error_number -Xcudafe=--diag_suppress=20044)
 	endif ()
-
+	
+	target_compile_options("${lib_name}" PRIVATE ${CUDA_NVCC_FLAGS})
 	# CUDA integration in Visual Studio seems broken as even if "Use
 	# Host Preprocessor Definitions" is checked, the host preprocessor
 	# definitions are still not used when compiling device code.
@@ -43,14 +44,13 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name)
 	# avoid CMake identifying those as macros and using the proper (but
 	# broken) way of specifying them.
 	if (${CMAKE_GENERATOR} MATCHES "^Visual Studio")
-
 		if (CMAKE_BUILD_TYPE MATCHES Debug)
-			set (cuda_definitions "--define-macro=KRR_DEBUG_BUILD")
+			set (CUDA_DEFINITIONS "--define-macro=KRR_DEBUG_BUILD")
 		endif ()
 		foreach (arg ${KRR_DEFINITIONS})
-			list (APPEND cuda_definitions "--define-macro=${arg}")
+			list (APPEND CUDA_DEFINITIONS "--define-macro=${arg}")
 		endforeach ()
-		target_compile_options ("${lib_name}" PRIVATE ${cuda_definitions})
+		target_compile_options ("${lib_name}" PRIVATE ${CUDA_DEFINITIONS})
 	else ()
 	target_compile_definitions ("${lib_name}" PRIVATE ${KRR_DEFINITIONS})
 	endif ()

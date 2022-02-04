@@ -57,11 +57,20 @@ CUDA_DETECT_INSTALLED_GPUS(INSTALLED_GPU_CCS_1)
 string(STRIP "${INSTALLED_GPU_CCS_1}" INSTALLED_GPU_CCS_2)
 string(REPLACE " " ";" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
 string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
-# resolve the "multiple target" error (ref: https://stackoverflow.com/q/65990215/15115395)
+# resolve the "multiple target" compiling error (ref: https://stackoverflow.com/q/65990215/15115395)
 # though i don't know why (*/ω＼*)
 string(APPEND CUDA_ARCH_LIST "-virtual" )
 set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 message(STATUS "Automatically detected GPU architectures: ${CUDA_ARCH_LIST}")
+
+if (MSVC)
+else()
+	list(APPEND CUDA_NVCC_FLAGS "-Xcompiler=-mf16c")
+	list(APPEND CUDA_NVCC_FLAGS "-Xcompiler=-Wno-float-conversion")
+	list(APPEND CUDA_NVCC_FLAGS "-Xcompiler=-fno-strict-aliasing")
+endif()
+list(APPEND CUDA_NVCC_FLAGS "--extended-lambda")
+list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
 
 ###############################################################################
 # other dependencies

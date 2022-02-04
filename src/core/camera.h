@@ -48,7 +48,7 @@ protected:
 
 	struct{
 		vec2f frameSize = { 42.666667f, 24.0f };	// sensor size in mm [width, height]
-		float focalLength = 15;			// the distance from lens (pin hole) to sensor, in mm
+		float focalLength = 20;			// the distance from lens (pin hole) to sensor, in mm
 		float aspectRatio = 1.777777f;	// width divides height
 
 		vec3f pos = { 0, 0, 0 };

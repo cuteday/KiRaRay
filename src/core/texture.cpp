@@ -1,5 +1,3 @@
-#include "texture.h"
-
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_MSC_SECURE_CRT
@@ -9,6 +7,10 @@
 #include "stb_image.h"
 #include "stb_image_write.h"
 #include "tinyexr.h"
+
+#include "texture.h"
+#include "logger.h"
+#include "gpu/optix7.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -24,10 +26,11 @@ bool Image::loadImage(const string& filepath, bool srgb)
 		return false;
 	}
 	mSize = size;
-	mChannels = channels;
-	//mData = std::vector<uchar>(data, data + size.x * size.y * channels);
-	//free(data);
-	mData = data;
+	mChannels = 4;
+	mData = std::vector<uchar>(data, data + size.x * size.y * mChannels);
+	free(data);
+	//mData = data;
+	logDebug("Loaded image " + to_string(size.x) + "*" + to_string(size.y) + " with channels " + to_string(channels));
 	//sImageCache[filepath] = image;
 	return true;
 }
@@ -42,6 +45,7 @@ Image::SharedPtr Image::createFromFile(const string& filepath, bool srgb)
 Texture::SharedPtr Texture::createFromFile(const string& filepath, bool srgb)
 {
 	Texture::SharedPtr pTexture = Texture::SharedPtr(new Texture());
+	logDebug("Attempting to load texture from " + filepath);
 	pTexture->loadImage(filepath);
 	return pTexture;
 }
@@ -55,19 +59,18 @@ void Texture::toDevice() {
 	if (numComponents != 4)
 		logError("Incorrect texture image channels (not 4)");
 	// we have no padding so pitch == width
-	uint pitch = size.x * numComponents * sizeof(uint8_t);
+	uint pitch = size.x * numComponents * sizeof(uchar);
 	cudaChannelFormatDesc channelDesc = {};
 	channelDesc = cudaCreateChannelDesc<uchar4>();
 
-	cudaArray_t& pixelArray = mCudaArray;
 	// create internal cuda array for texture object
-	CUDA_CHECK(cudaMallocArray(&pixelArray, &channelDesc, size.x, size.y));
+	CUDA_CHECK(cudaMallocArray(&mCudaArray, &channelDesc, size.x, size.y));
 	// transfer data to cuda array
-	CUDA_CHECK(cudaMemcpy2DToArray(pixelArray, 0, 0, mImage.data(), pitch, pitch, size.y, cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy2DToArray(mCudaArray, 0, 0, mImage.data(), pitch, pitch, size.y, cudaMemcpyHostToDevice));
 
 	cudaResourceDesc resDesc = {};
 	resDesc.resType = cudaResourceTypeArray;
-	resDesc.res.array.array = pixelArray;
+	resDesc.res.array.array = mCudaArray;
 
 	cudaTextureDesc texDesc = {};
 	texDesc.addressMode[0] = cudaAddressModeWrap;
@@ -79,17 +82,24 @@ void Texture::toDevice() {
 	texDesc.maxMipmapLevelClamp = 99;
 	texDesc.minMipmapLevelClamp = 0;
 	texDesc.mipmapFilterMode = cudaFilterModePoint;
-	texDesc.borderColor[0] = 1.0f;
+	*(vec4f*)texDesc.borderColor = vec4f(1.0f);
 	texDesc.sRGB = 0;
 
-	CUDA_CHECK(cudaCreateTextureObject(&mCudaTexture, &resDesc, &texDesc, nullptr));
+	cudaTextureObject_t cudaTexture;
+	CUDA_CHECK(cudaCreateTextureObject(&cudaTexture, &resDesc, &texDesc, nullptr));
+
+	mCudaTexture = cudaTexture;
+}
+
+void Material::setTexture(TextureType type, Texture& texture) {
+	logInfo("Setting slot " + to_string((uint)type) + " of material " + mName);
+	mTextures[(uint)type] = texture;
 }
 
 void Material::toDevice() {
 	for (uint i = 0; i < (uint)TextureType::Count; i++) {
-		mTextures->toDevice();
+		mTextures[i].toDevice();
 	}
 }
 
 KRR_NAMESPACE_END
-

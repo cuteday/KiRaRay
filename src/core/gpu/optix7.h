@@ -1,6 +1,5 @@
 #pragma once
 
-// optix 7
 #include <cuda_runtime.h>
 #include <optix.h>
 #include <optix_stubs.h>
@@ -17,11 +16,6 @@
             << " (" << cudaGetErrorString(err) << ")";                  \
         throw std::runtime_error(ss.str());                            \
       }                                                                 \
-    }
-
-#define CUDA_CHECK_NOEXCEPT(call)                                        \
-    {									\
-      cuda##call;                                                       \
     }
 
 #define OPTIX_CHECK( call )                                             \

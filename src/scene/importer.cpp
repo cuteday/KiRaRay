@@ -64,7 +64,6 @@ namespace assimp {
 				logWarning("Texture has empty file name, ignoring.");
 				continue;
 			}
-
 			// Load the texture
 			std::filesystem::path filepath(folder);
 			filepath /= path;
@@ -84,7 +83,7 @@ namespace assimp {
 			logWarning("Material with no name found -> renaming to 'unnamed'");
 			nameStr = "unnamed";
 		}
-		Material::SharedPtr pMaterial = Material::SharedPtr(new Material());
+		Material::SharedPtr pMaterial = Material::SharedPtr(new Material(nameStr));
 
 		// Load textures. Note that loading is affected by the current shading model.
 		loadTextures(pAiMaterial, modelFolder, pMaterial);
@@ -159,17 +158,15 @@ void MaterialLoader::loadTexture(const Material::SharedPtr& pMaterial, TextureTy
 {
 	assert(pMaterial);
 	bool srgb = mUseSrgb;
-	std::string fullPath;
 	if (!fs::exists(filename)) {
 		logWarning("Can't find texture image file '" + filename + "'");
 		return;
 	}
-	TextureKey textureKey{ fullPath, srgb };
-	if (mTextureCache.count(textureKey)) {
-		mTextureCache[textureKey] = Texture::createFromFile(fullPath, srgb);
+	TextureKey textureKey{ filename, srgb };
+	if (!mTextureCache.count(textureKey)) {
+		mTextureCache[textureKey] = *Texture::createFromFile(filename, srgb);
 	}
-
-	pMaterial->setTexture(type, *mTextureCache[textureKey]);
+	pMaterial->setTexture(type, mTextureCache[textureKey]);
 }
 
 using namespace krr::assimp;
@@ -200,9 +197,11 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
     mpAiScene = (aiScene*)importer.ReadFile(filepath, postProcessSteps);
     if (!mpAiScene) logFatal("Assimp::load model failed");
 
+	logDebug("Start loading materials");
     string modelFolder = std::filesystem::path(filepath).parent_path().string();
     loadMaterials(modelFolder);
 
+	logDebug("Start traversing scene nodes");
     traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
 
     logDebug("Total imported meshes: " + std::to_string(mpScene->meshes.size()));
@@ -224,11 +223,18 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
         vec3f normal = aiCast(pAiMesh->mNormals[i]);
         mesh.normals.push_back(normal);
 
-        if (pAiMesh->mTextureCoords[0]) {
-            vec3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
+        if (pAiMesh->HasTextureCoords(0)) {
+		//if (pAiMesh->mTextureCoords[0]) {
+			vec3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
             mesh.texcoords.push_back({ texcoord.x, texcoord.y });
         }
 
+		if (pAiMesh->HasTangentsAndBitangents()) {
+			vec3f tangent = aiCast(pAiMesh->mTangents[i]);
+			vec3f bitangent = aiCast(pAiMesh->mBitangents[i]);
+			mesh.tangents.push_back(tangent);
+			mesh.bitangents.push_back(bitangent);
+		}
     }
 
     for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
@@ -239,7 +245,8 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
         mesh.indices.push_back(indices);
     }
 
-	//mesh.mMaterial = mpScene->materials[pAiMesh->mMaterialIndex];
+	if (pAiMesh->mMaterialIndex >= 0 && pAiMesh->mMaterialIndex < mpScene->materials.size())
+		mesh.mMaterial = mpScene->materials[pAiMesh->mMaterialIndex];
     mpScene->meshes.push_back(mesh);
 }
 
@@ -268,7 +275,7 @@ void AssimpImporter::loadMaterials(const string &modelFolder)
         }
 		// we transfer alll material data to gpu memory here.
 		pMaterial->toDevice();
-        //mpScene->materials.push_back(*pMaterial);
+        mpScene->materials.push_back(*pMaterial);
     }
 }
 

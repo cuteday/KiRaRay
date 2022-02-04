@@ -5,12 +5,13 @@
 #include "common.h"
 #include "camera.h"
 #include "envmap.h"
-//#include "texture.h"
+#include "texture.h"
 #include "kiraray.h"
+#include "gpu/buffer.h"
 
 KRR_NAMESPACE_BEGIN
 
-//class AssimpImporter;
+class AssimpImporter;
 using namespace io;
 
 class Mesh {
@@ -19,11 +20,39 @@ public:
 		vec3f* vertices = nullptr;
 		vec3i* indices = nullptr;
 		vec3f* normals = nullptr;
-		vec3f* texcoords = nullptr;
+		vec2f* texcoords = nullptr;
 		vec3f* tangents = nullptr;
 		vec3f* bitangents = nullptr;
-	//	Material* material = nullptr;
+		Material* material = nullptr;
 	};
+
+	struct DeviceMemory {
+		CUDABuffer vertices;
+		CUDABuffer normals;
+		CUDABuffer texcoords;
+		CUDABuffer indices;
+		CUDABuffer tangents;
+		CUDABuffer bitangents;
+		CUDABuffer material;
+	};
+
+	void toDevice() {
+		mDeviceMemory.vertices.alloc_and_copy_from_host(vertices);
+		mDeviceMemory.normals.alloc_and_copy_from_host(normals);
+		mDeviceMemory.texcoords.alloc_and_copy_from_host(texcoords);
+		mDeviceMemory.indices.alloc_and_copy_from_host(indices);
+		mDeviceMemory.tangents.alloc_and_copy_from_host(tangents);
+		mDeviceMemory.bitangents.alloc_and_copy_from_host(bitangents);
+		mDeviceMemory.material.alloc_and_copy_from_host(&mMaterial, 1);
+
+		mMeshData.vertices = (vec3f*)mDeviceMemory.vertices.data();
+		mMeshData.normals = (vec3f*)mDeviceMemory.normals.data();
+		mMeshData.indices = (vec3i*)mDeviceMemory.indices.data();
+		mMeshData.texcoords = (vec2f*)mDeviceMemory.texcoords.data();
+		mMeshData.tangents = (vec3f*)mDeviceMemory.tangents.data();
+		mMeshData.bitangents = (vec3f*)mDeviceMemory.bitangents.data();
+		mMeshData.material = (Material*)mDeviceMemory.material.data();
+	}
 
 	std::vector<vec3f> vertices;
 	std::vector<vec3f> normals;
@@ -32,8 +61,9 @@ public:
 	std::vector<vec3f> tangents;
 	std::vector<vec3f> bitangents;
 
-	//Material mMaterial;
-	MeshData mDeviceMemory;
+	Material mMaterial;
+	MeshData mMeshData;
+	DeviceMemory mDeviceMemory;
 };
 using MeshData = Mesh::MeshData;
 
@@ -63,10 +93,10 @@ public:
 	void setEnvLight(EnvLight::SharedPtr envLight) { mpEnvLight = envLight; }
 
 	std::vector<Mesh> meshes;
-//	std::vector<Material> materials;
+	std::vector<Material> materials;
 
 private:
-	//friend class AssimpImporter;
+	friend class AssimpImporter;
 
 	EnvLight::SharedPtr mpEnvLight;
 

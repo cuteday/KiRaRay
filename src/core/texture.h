@@ -2,16 +2,13 @@
 // a gpu buffer should be a member of texture class, a texture cache may also needed
 
 #pragma once
-
-#include <future>
+#include <cuda_runtime.h>
 
 #include "common.h"
-#include "logger.h"
-#include "gpu/buffer.h"
 #include "math/math.h"
 
 KRR_NAMESPACE_BEGIN
-
+ 
 class Image {
 public:
 	KRR_CLASS_DEFINE(Image);
@@ -29,42 +26,41 @@ public:
 		Float32
 	};
 	
-	Image() = default;
-	~Image() { free(mData); }
+	Image() {};
 
 	bool loadImage(const string& filepath, bool srgb = false);
 	bool saveImage(const string& filepath) { return false; }
 
 	static Image::SharedPtr createFromFile(const string& filepath, bool srgb = false);
-	__both__ bool isValid() const { return mSize.x * mSize.y != 0; }
+	__both__ bool isValid() const { return mSize.x * mSize.y; }
 	__both__ vec2i getSize() const { return mSize; }
 	__both__ int getChannels() const { return mChannels; }
-	__both__ uchar* data() const { return mData; }
+	uchar* data() { return mData.data(); }
 
+	bool mSrgb = false;
 private:
 	vec2i mSize = {0, 0};
 	int mChannels = 0;
-	//std::vector<uchar> mData;
-	uchar* mData = nullptr;
+	std::vector<uchar> mData;
+	//uchar* mData = nullptr;
 };
 
 class Texture {
 public:
 	KRR_CLASS_DEFINE(Texture);
-	Texture() = default;
-	~Texture() {}
+	Texture() {};
 
 	void loadImage(const string& filepath, bool srgb = false) {
 		mImage.loadImage(filepath);
 	}
 	__both__ bool isValid() { return mImage.isValid() && mCudaTexture; }
+	__both__ cudaTextureObject_t getCudaTexture() { return mCudaTexture; }
 	void toDevice();
 
 	static Texture::SharedPtr createFromFile(const string& filepath, bool srgb = false);
 
-private:
+//private:
 	Image mImage;
-	CUDABuffer mDeviceMemory;
 	cudaTextureObject_t mCudaTexture = 0;
 	cudaArray_t mCudaArray = 0;
 };
@@ -80,17 +76,6 @@ public:
 		Count
 	};
 
-	KRR_CLASS_DEFINE(Material);
-	Material() = default;
-	Material(const string& name) { mName = name; }
-	~Material() {}
-
-	void setTexture(TextureType type, Texture& texture) 
-	{ 
-		//mTextures[(uint)type] = texture; 
-	}
-	void toDevice();
-
 	struct MaterialParams {
 		vec4f diffuse = vec4f(1);
 		vec4f specular = vec4f(0);
@@ -98,11 +83,26 @@ public:
 		float emissiveFactor = 1.f;
 		float IoR = 1.5f;
 		vec3f transmission = vec3f(1);
-	} mMaterialParams;
+	};
 
-private:
+	KRR_CLASS_DEFINE(Material);
+	Material() {};
+	Material(const string& name) { mName = name; }
+
+	void setTexture(TextureType type, Texture& texture);
+
+	__both__ cudaTextureObject_t getCudaTexture(TextureType type) {
+		return mTextures[(uint)type].getCudaTexture();
+	}
+
+	void toDevice();
+
+//private:
+	MaterialParams mMaterialParams;
+	Texture mTextures[5];
 	bool mDoubleSided = false;
-	Texture mTextures[(uint)TextureType::Count];
+	//cudaTextureObject_t mDiffuseTexture;
+	//cudaTextureObject_t mCudaTextures[5] = {};
 	string mName;
 };
 
