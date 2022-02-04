@@ -3,7 +3,7 @@
 *KiRaRay* is an ray-tracing renderer using optix. The purpose of this project is to let me (a beginner) learn c++ and optix in a more interesting way. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer. Currently it has very limited features and many bugs.
 
 <p align=center>
-<img src=common/demo/kirara.png width="650">
+<img src=common/demo/kirara.jpg width="650">
 
 ### Features
 
@@ -57,7 +57,7 @@ But actually i'm like \***sleeps all the time**\*:
 <summary>hoshino meme</summary>
 
 <p align=center>
-<img src=https://cutesail.com/wp-content/uploads/2022/02/hoshino-meme.png width="350">
+<img src=https://cutesail.com/wp-content/uploads/2022/02/hoshino-meme.png width="320">
 
 
 </details>
