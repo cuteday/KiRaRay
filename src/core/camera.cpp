@@ -61,14 +61,18 @@ bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent)
 		return true;
 	case io::MouseEvent::Type::Move:
 		vec2f curMousePos = mouseEvent.pos;
-		if(mOrbiting){
-			vec2f deltaPos = curMousePos - mLastMousePos;
+		vec2f deltaPos = curMousePos - mLastMousePos;
+		if (mPanning && mOrbiting) {
+			mData.target -= mpCamera->getRight() * mPanSpeed * deltaPos.x;
+			mData.target += mpCamera->getUp() * mPanSpeed * deltaPos.y;
+		}
+		else if(mOrbiting){	
 			mData.yaw -= deltaPos.x * mOrbitSpeed;
 			mData.pitch -= deltaPos.y * mOrbitSpeed;
 			mData.yaw = fmod(mData.yaw, 2 * M_PI);
-			mData.pitch = clamp(mData.pitch, -M_PI / 2, M_PI / 2);
-
+			mData.pitch = clamp(mData.pitch, -M_PI / 2, M_PI / 2);	
 		}
+
 		mLastMousePos = curMousePos;
 	}
 	return false;
@@ -76,6 +80,13 @@ bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent)
 
 bool OrbitCameraController::onKeyEvent(const KeyboardEvent& keyEvent)
 {
+	if (keyEvent.key == KeyboardEvent::Key::LeftShift) {
+		if (keyEvent.type == KeyboardEvent::Type::KeyPressed)
+			mPanning = true;
+		else if (keyEvent.type == KeyboardEvent::Type::KeyReleased)
+			mPanning = false;
+		return true;
+	}
 	return false;
 }
 

@@ -33,7 +33,7 @@ public:
 	__both__ vec3f getPosition() { return mData.pos; }
 	__both__ vec3f getTarget() { return mData.target; }
 	__both__ vec3f getForward() { return normalize(mData.target - mData.pos); }
-	__both__ vec3f getUp() { return normalize(mData.up); }
+	__both__ vec3f getUp() { return normalize(mData.v); }
 	__both__ vec3f getRight() { return normalize(mData.u); }
 	__both__ vec2f getFrameSize() { return mData.frameSize; }
 	__both__ float getFocalLength() { return mData.focalLength; }
@@ -111,6 +111,7 @@ private:
 	float mDampling = 1;
 	bool mOrbiting = false;
 	float mOrbitSpeed = 1;
+	bool mPanning = false;
 	float mPanSpeed = 1;
 };
 
