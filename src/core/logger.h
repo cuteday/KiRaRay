@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include "common.h"
 
 #ifdef _WIN32   // for ansi control sequences
 #   define NOMINMAX 
@@ -15,8 +16,6 @@
 #   include <sys/ioctl.h>
 #   include <unistd.h>
 #endif
-
-#include "common.h"
 
 KRR_NAMESPACE_BEGIN
 

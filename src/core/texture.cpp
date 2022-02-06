@@ -92,7 +92,7 @@ void Texture::toDevice() {
 }
 
 void Material::setTexture(TextureType type, Texture& texture) {
-	logInfo("Setting slot " + to_string((uint)type) + " of material " + mName);
+	logDebug("Setting slot " + to_string((uint)type) + " of material " + mName);
 	mTextures[(uint)type] = texture;
 }
 

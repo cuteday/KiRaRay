@@ -15,23 +15,19 @@ namespace fs = std::filesystem;
 
 namespace assimp {
 
+	using ImportMode = AssimpImporter::ImportMode;
+
 	MaterialLoader sMaterialLoader;
 
-    vec3f aiCast(const aiColor3D& ai) { return vec3f(ai.r, ai.g, ai.b); }
-    vec3f aiCast(const aiVector3D& val) { return vec3f(val.x, val.y, val.z); }
-    quat aiCast(const aiQuaternion& q) { return quat(q.w, q.x, q.y, q.z); }
+	vec3f aiCast(const aiColor3D& ai) { return vec3f(ai.r, ai.g, ai.b); }
+	vec3f aiCast(const aiVector3D& val) { return vec3f(val.x, val.y, val.z); }
+	quat aiCast(const aiQuaternion& q) { return quat(q.w, q.x, q.y, q.z); }
 
 	struct TextureMapping
 	{
 		aiTextureType aiType;
 		unsigned int aiIndex;
 		Material::TextureType targetType;
-	};
-
-	enum class ImportMode {
-		Default,
-		OBJ,
-		GLTF2,
 	};
 
 	static const std::vector<TextureMapping> sTextureMapping = {
@@ -72,7 +68,7 @@ namespace assimp {
 		}
 	}
 
-    Material::SharedPtr createMaterial(const aiMaterial* pAiMaterial, const string &modelFolder, ImportMode importMode = ImportMode::Default) {
+	Material::SharedPtr createMaterial(const aiMaterial* pAiMaterial, const string &modelFolder, ImportMode importMode = ImportMode::Default) {
 		aiString name;
 		pAiMaterial->Get(AI_MATKEY_NAME, name);
 
@@ -151,7 +147,7 @@ namespace assimp {
 		//}
 
 		return pMaterial;
-    }
+	}
 }
 
 void MaterialLoader::loadTexture(const Material::SharedPtr& pMaterial, TextureType type, const std::string& filename)
@@ -171,63 +167,79 @@ void MaterialLoader::loadTexture(const Material::SharedPtr& pMaterial, TextureTy
 
 using namespace krr::assimp;
 bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScene) {
-    Assimp::DefaultLogger::create("", Assimp::Logger::NORMAL, aiDefaultLogStream_STDOUT);
-    Assimp::DefaultLogger::get()->info("KRR::Assimp::DefaultLogger initialized!");
+	Assimp::DefaultLogger::create("", Assimp::Logger::NORMAL, aiDefaultLogStream_STDOUT);
+	Assimp::DefaultLogger::get()->info("KRR::Assimp::DefaultLogger initialized!");
 
-    unsigned int postProcessSteps = 0
-        | aiProcess_CalcTangentSpace
-        //| aiProcess_JoinIdenticalVertices
-        //| aiProcess_MakeLeftHanded
-        | aiProcess_Triangulate
-        //| aiProcess_RemoveComponent
-        //| aiProcess_GenNormals
-        | aiProcess_GenSmoothNormals
-        | aiProcess_RemoveRedundantMaterials
-        //| aiProcess_FixInfacingNormals
-        | aiProcess_SortByPType
-        | aiProcess_GenUVCoords
-        | aiProcess_TransformUVCoords
-        //| aiProcess_FlipUVs
-        //| aiProcess_FlipWindingOrder
-        ;
+	unsigned int postProcessSteps = 0
+		| aiProcess_CalcTangentSpace
+		//| aiProcess_OptimizeMeshes
+		| aiProcess_JoinIdenticalVertices
+		| aiProcess_FindInvalidData
+		//| aiProcess_MakeLeftHanded
+		| aiProcess_Triangulate
+		//| aiProcess_RemoveComponent
+		//| aiProcess_GenNormals
+		| aiProcess_GenSmoothNormals
+		//| aiProcess_RemoveRedundantMaterials
+		//| aiProcess_FixInfacingNormals
+		| aiProcess_SortByPType
+		| aiProcess_GenUVCoords
+		//| aiProcess_TransformUVCoords
+		| aiProcess_FlipUVs
+		//| aiProcess_FlipWindingOrder
+		;
+	int removeFlags = aiComponent_COLORS;
+	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS; uvLayer++) 
+		removeFlags |= aiComponent_TEXCOORDSn(uvLayer);
 
-    Assimp::Importer importer;
-    mFilepath = filepath;
-    mpScene = pScene;
-    mpAiScene = (aiScene*)importer.ReadFile(filepath, postProcessSteps);
-    if (!mpAiScene) logFatal("Assimp::load model failed");
+	mFilepath = filepath;
+	mpScene = pScene;
+
+	Assimp::Importer importer;
+	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
+	importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, 60);
+
+	mpAiScene = (aiScene*)importer.ReadFile(filepath, postProcessSteps);
+	if (!mpAiScene) logFatal("Assimp::load model failed");
 
 	logDebug("Start loading materials");
-    string modelFolder = std::filesystem::path(filepath).parent_path().string();
-    loadMaterials(modelFolder);
+
+	string modelFolder = std::filesystem::path(filepath).parent_path().string();
+	string modelSuffix = std::filesystem::path(filepath).extension().string();
+	if (modelSuffix == ".obj")
+		mImportMode = ImportMode::OBJ;
+
+	loadMaterials(modelFolder);
 
 	logDebug("Start traversing scene nodes");
-    traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
+	traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
 
-    logDebug("Total imported meshes: " + std::to_string(mpScene->meshes.size()));
+	logDebug("Total imported meshes: " + std::to_string(mpScene->meshes.size()));
 
-    Assimp::DefaultLogger::kill();
-    
-    return true;
+	Assimp::DefaultLogger::kill();
+	
+	mpScene->toDevice();
+
+	return true;
 }
 
 void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
 {
-    Mesh mesh;
+	Mesh mesh;
 
-    for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
-        vec3f vertex = aiCast(pAiMesh->mVertices[i]);
-        mesh.vertices.push_back(vertex);
+	for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
+		vec3f vertex = aiCast(pAiMesh->mVertices[i]);
+		mesh.vertices.push_back(vertex);
 
-        assert(pAiMesh->HasNormals());
-        vec3f normal = aiCast(pAiMesh->mNormals[i]);
-        mesh.normals.push_back(normal);
+		assert(pAiMesh->HasNormals());
+		vec3f normal = aiCast(pAiMesh->mNormals[i]);
+		mesh.normals.push_back(normal);
 
-        if (pAiMesh->HasTextureCoords(0)) {
+		if (pAiMesh->HasTextureCoords(0)) {
 		//if (pAiMesh->mTextureCoords[0]) {
 			vec3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
-            mesh.texcoords.push_back({ texcoord.x, texcoord.y });
-        }
+			mesh.texcoords.push_back({ texcoord.x, texcoord.y });
+		}
 
 		if (pAiMesh->HasTangentsAndBitangents()) {
 			vec3f tangent = aiCast(pAiMesh->mTangents[i]);
@@ -235,48 +247,48 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
 			mesh.tangents.push_back(tangent);
 			mesh.bitangents.push_back(bitangent);
 		}
-    }
+	}
 
-    for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
-        aiFace face = pAiMesh->mFaces[i];
-        assert(face.mNumIndices == 3);
-        vec3i indices = { (int)face.mIndices[0], (int)face.mIndices[1], (int)face.mIndices[2] };
+	for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
+		aiFace face = pAiMesh->mFaces[i];
+		assert(face.mNumIndices == 3);
+		vec3i indices = { (int)face.mIndices[0], (int)face.mIndices[1], (int)face.mIndices[2] };
 
-        mesh.indices.push_back(indices);
-    }
+		mesh.indices.push_back(indices);
+	}
 
 	if (pAiMesh->mMaterialIndex >= 0 && pAiMesh->mMaterialIndex < mpScene->materials.size())
 		mesh.mMaterial = mpScene->materials[pAiMesh->mMaterialIndex];
-    mpScene->meshes.push_back(mesh);
+	mpScene->meshes.push_back(mesh);
 }
 
 void AssimpImporter::traverseNode(aiNode* node, aiMatrix4x4 transform)
 {
-    transform = transform * node->mTransformation;
+	transform = transform * node->mTransformation;
 
-    for (int i = 0; i < node->mNumMeshes; i++) {
-        aiMesh* mesh = mpAiScene->mMeshes[node->mMeshes[i]];
-        processMesh(mesh, transform);
-    }
+	for (int i = 0; i < node->mNumMeshes; i++) {
+		aiMesh* mesh = mpAiScene->mMeshes[node->mMeshes[i]];
+		processMesh(mesh, transform);
+	}
 
-    for (int i = 0; i < node->mNumChildren; i++) {
-        traverseNode(node->mChildren[i], transform);
-    }
+	for (int i = 0; i < node->mNumChildren; i++) {
+		traverseNode(node->mChildren[i], transform);
+	}
 }
 
 void AssimpImporter::loadMaterials(const string &modelFolder)
 {
-    for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
-        const aiMaterial* aiMaterial = mpAiScene->mMaterials[i];
-        Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder);
-        if (pMaterial == nullptr) {
-            logError("Failed to create material...");
-            return;
-        }
+	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
+		const aiMaterial* aiMaterial = mpAiScene->mMaterials[i];
+		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);
+		if (pMaterial == nullptr) {
+			logError("Failed to create material...");
+			return;
+		}
 		// we transfer alll material data to gpu memory here.
 		pMaterial->toDevice();
-        mpScene->materials.push_back(*pMaterial);
-    }
+		mpScene->materials.push_back(*pMaterial);
+	}
 }
 
 KRR_NAMESPACE_END

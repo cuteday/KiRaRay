@@ -8,37 +8,53 @@
 KRR_NAMESPACE_BEGIN
 
 Scene::Scene() {
-    // other components
-    mpEnvLight = EnvLight::SharedPtr(new EnvLight());
-    mpCamera = Camera::SharedPtr(new Camera());
-    mpCameraController = OrbitCameraController::SharedPtr(new OrbitCameraController(mpCamera));
+	// other components
+	mpEnvLight = EnvLight::SharedPtr(new EnvLight());
+	mpCamera = Camera::SharedPtr(new Camera());
+	mpCameraController = OrbitCameraController::SharedPtr(new OrbitCameraController(mpCamera));
 }
 
-void Scene::update()
+bool Scene::update()
 {
-    mpCameraController->update();   // camera.update() is called within.
+	bool hasChanges = false;
+	hasChanges |= mpCameraController->update();   
+	hasChanges |= mpCamera->update();
+	hasChanges |= mpEnvLight->update();
+	return mHasChanges = hasChanges;
 }
 
 void Scene::renderUI() {
-    
-    ui::Text("Hello from scene!");
-    if (mpCamera && ui::CollapsingHeader("Camera")) {
-        mpCamera->renderUI();
-    }
+	
+	if (ui::CollapsingHeader("Scene")) {
+		if (mpCamera && ui::CollapsingHeader("Camera")) {
+			mpCamera->renderUI();
+		}
+		if (mpEnvLight && ui::CollapsingHeader("Environment")) {
+			mpEnvLight->renderUI();
+		}
+	}
+}
+
+void Scene::toDevice()
+{
+	//for (Material& material : materials)
+	//	material.toDevice();
+	for (Mesh& mesh : meshes)
+		mesh.toDevice();
 }
 
 bool Scene::onMouseEvent(const MouseEvent& mouseEvent)
 {
-    if(mpCameraController && mpCameraController->onMouseEvent(mouseEvent))
-        return true;
-    return false;
+	if(mpCameraController && mpCameraController->onMouseEvent(mouseEvent))
+		return true;
+	return false;
 }
 
 bool Scene::onKeyEvent(const KeyboardEvent& keyEvent)
 {
-    if(mpCameraController && mpCameraController->onKeyEvent(keyEvent))
-        return true;
-    return false;
+	if(mpCameraController && mpCameraController->onKeyEvent(keyEvent))
+		return true;
+	return false;
 }
 
 

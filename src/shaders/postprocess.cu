@@ -1,5 +1,6 @@
 #include "postprocess.h"
 #include "math/utils.h"
+#include "gpu/context.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -32,9 +33,11 @@ namespace shader {
 	}
 }
 
-void AccumulatePass::render(CUDABuffer& frame, cudaStream_t stream) {
+void AccumulatePass::render(CUDABuffer& frame) {
 
 	if (!mEnable) return;
+	if (mpScene->getChanges()) reset();
+	CUstream& stream = gpContext->cudaStream;
 	linear_kernel(accumulateFrame<vec4f>, 0, stream, mFrameSize.x * mFrameSize.y, 
 		frame.data<vec4f>(), mAccumBuffer.data<vec4f>(), mAccumCount, false);
 
@@ -102,18 +105,20 @@ namespace shader {
 void ToneMappingPass::renderUI()
 {
 	static const char* operators[] = {"Linear", "Reinhard", "Aces"};
-
-	ui::Checkbox("Enabled", &mEnable);
-	if (mEnable) {
-		ui::SliderFloat("Exposure compensation",
-			&mExposureCompensation, 0.01, 10, "%.2f");
-		ui::ListBox("Tonemap operator", (int*)&mOperator, operators, (int)Operator::NumsOperators);
+	if (ui::CollapsingHeader("Tone mapping pass")) {
+		ui::Checkbox("Enabled", &mEnable);
+		if (mEnable) {
+			ui::SliderFloat("Exposure compensation",
+				&mExposureCompensation, 0.01, 10, "%.2f");
+			ui::ListBox("Tonemap operator", (int*)&mOperator, operators, (int)Operator::NumsOperators);
+		}
 	}
 }
 
-void ToneMappingPass::render(CUDABuffer& frame, cudaStream_t stream)
+void ToneMappingPass::render(CUDABuffer& frame)
 {
 	if (!mEnable) return;
+	CUstream &stream = gpContext->cudaStream;
 	vec3f colorTransform = vec3f(mExposureCompensation);
 	linear_kernel(toneMap<float>, 0, stream, mFrameSize.x * mFrameSize.y,
 		frame.data<vec4f>(), colorTransform, mOperator);

@@ -21,7 +21,7 @@ public:
 	template <typename T>
 	__both__  inline T* data() const
 	{
-		return (T *)d_ptr;
+		return (T*)(d_ptr);
 	}
 
 	__both__  inline size_t size() const

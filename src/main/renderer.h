@@ -6,135 +6,132 @@
 #include "camera.h"
 
 #include "gpu/buffer.h"
+#include "gpu/context.h"
 #include "shaders/path.h"
 #include "shaders/postprocess.h"
 
 KRR_NAMESPACE_BEGIN
 
-class Renderer{
+class PathTracer: public RenderPass{
 public:
-    using SharedPtr = std::shared_ptr<Renderer>;
+	using SharedPtr = std::shared_ptr<PathTracer>;
 
-    Renderer();
+	PathTracer();
 
-    void initOptix();
-	void createContext();
 	void createModule();
 	void createRaygenPrograms();
 	void createMissPrograms();
 	void createHitgroupPrograms();
 	void createPipeline();
-    void buildSBT();
-    void buildAS();
-    void toDevice();
+	void buildSBT();
+	void buildAS();
 
-    bool onKeyEvent(const KeyboardEvent& keyEvent);
-    bool onMouseEvent(const MouseEvent& mouseEvent);
-    void resize(const vec2i &size);
-    void render();
-    void renderUI();
+	bool onKeyEvent(const KeyboardEvent& keyEvent) override;
+	bool onMouseEvent(const MouseEvent& mouseEvent) override;
+	void renderUI() override;
+	void render(CUDABuffer& frame) override;
+	void resize(const vec2i& size) override { 
+		mFrameSize = size;
+		launchParams.fbSize = size; 
+	}
 
-    Scene::SharedPtr getScene() { return mpScene; }
-
-    void setScene(Scene::SharedPtr scene) {
-        mpScene = scene;
-        logInfo("#krr: transfering host scene data to device ...");
-        toDevice();
-        logInfo("#krr: building AS ...");
-        buildAS();
-        logInfo("#krr: building SBT ...");
-        buildSBT();
-        logSuccess("Scene set...");
-    }
-
-    CUDABuffer& result();
+	void setScene(Scene::SharedPtr scene) override {
+		mpScene = scene;
+		logInfo("#krr: transfering host scene data to device ...");
+		logInfo("#krr: building AS ...");
+		buildAS();
+		logInfo("#krr: building SBT ...");
+		buildSBT();
+		logSuccess("Scene set...");
+	}
 
 private:
+	OptixPipeline               pipeline;
+	OptixPipelineCompileOptions pipelineCompileOptions = {};
+	OptixPipelineLinkOptions    pipelineLinkOptions = {};
 
-// OptiX and CUDA context
-	CUcontext cudaContext;
-	CUstream stream;
-	cudaDeviceProp deviceProps;
+	OptixModule                 module;
+	OptixModuleCompileOptions   moduleCompileOptions = {};
 
-    OptixDeviceContext mOptixContext;
+	std::vector<OptixProgramGroup> raygenPGs;
+	CUDABuffer raygenRecordsBuffer;
+	std::vector<OptixProgramGroup> missPGs;
+	CUDABuffer missRecordsBuffer;
+	std::vector<OptixProgramGroup> hitgroupPGs;
+	CUDABuffer hitgroupRecordsBuffer;
+	OptixShaderBindingTable sbt = {};
 
-    OptixPipeline               pipeline;
-    OptixPipelineCompileOptions pipelineCompileOptions = {};
-    OptixPipelineLinkOptions    pipelineLinkOptions = {};
+	LaunchParamsPT launchParams;
+	CUDABuffer   launchParamsBuffer;
 
-    OptixModule                 module;
-    OptixModuleCompileOptions   moduleCompileOptions = {};
-
-    std::vector<OptixProgramGroup> raygenPGs;
-    CUDABuffer raygenRecordsBuffer;
-    std::vector<OptixProgramGroup> missPGs;
-    CUDABuffer missRecordsBuffer;
-    std::vector<OptixProgramGroup> hitgroupPGs;
-    CUDABuffer hitgroupRecordsBuffer;
-    OptixShaderBindingTable sbt = {};
-
-    LaunchParamsPT launchParams;
-    CUDABuffer   launchParamsBuffer;
-
-    CUDABuffer colorBuffer;
-    CUDABuffer accelBuffer;
-
-// Intrinsic scene data and cuda buffers
-    Scene::SharedPtr mpScene;
-
-    CUDABuffer materialBuffer;
-// render passes
-    AccumulatePass::SharedPtr mpAccumulatePass;
-    ToneMappingPass::SharedPtr mpToneMappingPass;
+	CUDABuffer accelBuffer;
+	CUDABuffer materialBuffer;
 };
 
 class RenderApp : public WindowApp{
-
 public:
 
 	RenderApp(const char title[], vec2i size) : WindowApp(title, size) {
-        mpRenderer = Renderer::SharedPtr(new Renderer());
-    }
+		mpPasses = {
+			PathTracer::SharedPtr(new PathTracer()),
+			AccumulatePass::SharedPtr(new AccumulatePass()),
+			ToneMappingPass::SharedPtr(new ToneMappingPass())
+		};
+	}
 
-    void resize(const vec2i& size) override {
-        //logSuccess("Resizing window size to " + std::to_string(size.x));
-        mpRenderer->resize(size);
-        WindowApp::resize(size);
-    }
+	void initialize();
 
-    Renderer::SharedPtr getRenderer() { return mpRenderer; }
+	void resize(const vec2i& size) override {
 
-    virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {
-        if(mpRenderer && mpRenderer->onMouseEvent(mouseEvent)) return;
-    }
-    
-    virtual void onKeyEvent(io::KeyboardEvent &keyEvent) override {
-        if (mpRenderer && mpRenderer->onKeyEvent(keyEvent))return;
-    }
+		mRenderBuffer.resize(size.x * size.y * sizeof(vec4f));
+		WindowApp::resize(size);
+		for (auto p : mpPasses)
+			p->resize(size);
+	}
 
-    void render() override {
-        mpRenderer->render();
-        //mpAccumulatePass->render(mpRenderer->result());
-    }
+	virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {
+		if (mpScene && mpScene->onMouseEvent(mouseEvent)) return;
+		for (auto p : mpPasses)
+			if(p->onMouseEvent(mouseEvent)) return;
+	}
+	
+	virtual void onKeyEvent(io::KeyboardEvent &keyEvent) override {
+		if (mpScene && mpScene->onKeyEvent(keyEvent)) return;
+		for (auto p : mpPasses)
+			if(p->onKeyEvent(keyEvent)) return;
+	}
 
-    void renderUI() override{
-        ui::Begin(KRR_PROJECT_NAME);
-        ui::Text("Hello, world!");
-        ui::Text("Window size: %d %d", fbSize.x, fbSize.y);
-        mpRenderer->renderUI();
-        ui::End();
-    }
+	void setScene(Scene::SharedPtr scene) {
+		mpScene = scene;
+		for (auto p : mpPasses)
+			if(p) p->setScene(scene);
+	}
 
-    void draw() override {
-        //mpAccumulatePass->result().copy_to_device(fbPointer, fbSize.x * fbSize.y);
-        mpRenderer->result().copy_to_device(fbPointer, fbSize.x * fbSize.y);
-        WindowApp::draw();
-    }
+	void render() override {
+		mpScene->update();	// maybe this should be put into beginFrame() or sth...
+		for (auto p : mpPasses)
+			if (p) p->render(mRenderBuffer);
+	}
+
+	void renderUI() override{
+		ui::Begin(KRR_PROJECT_NAME);
+		ui::Text("Window size: %d %d", fbSize.x, fbSize.y);
+		if (mpScene) mpScene->renderUI();
+		for (auto p : mpPasses)
+			if (p) p->renderUI();
+		ui::End();
+	}
+
+	void draw() override {
+		mRenderBuffer.copy_to_device(fbPointer, fbSize.x * fbSize.y);
+		WindowApp::draw();
+	}
 
 
 private:
-    Renderer::SharedPtr mpRenderer;
-
+	std::vector<RenderPass::SharedPtr> mpPasses;
+	Scene::SharedPtr mpScene;
+	CUDABuffer mRenderBuffer;
 };
 
 KRR_NAMESPACE_END

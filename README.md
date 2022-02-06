@@ -1,6 +1,6 @@
 # KiRaRay
 
-*KiRaRay* is a simple ray-tracing renderer using optix. The purpose of this project is to let me (a beginner) learn c++ and optix in a more interesting way. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer. Currently it has very limited features and many bugs.
+*KiRaRay* is a simple ray-tracing renderer using optix. The purpose of this project is to let me (a beginner) learn c++ and optix in a more interesting way. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer. Currently it has very limited features and potentially some bugs.
 
 <p align=center>
 <img src=common/demo/kirara.jpg width="650">
@@ -25,7 +25,10 @@ If possible, more features will be added in the future, for example:
 
 #### Requirements
 
-This project is only tested with OptiX 7.3, CUDA 11.3, compiled on Windows using MSVC, on a device with an ampere gpu. But it is expected to run on platforms with OptiX 7.0+ and CUDA 11.0+. 
+- Nvidia gpu (Turing or higher if possible).
+- OptiX 7.0+ and CUDA 11.0+ installed.
+
+This project is only tested with OptiX 7.3, CUDA 11.3, compiled on Windows using MSVC, on a device with an ampere gpu. But it is expected to run on platforms with OptiX 7 and CUDA 11 or above. 
 
 #### Build
 
@@ -40,7 +43,7 @@ Please do note that one should choose Ninja as generator when build with Visual 
 
 ### Epilogue
 
-I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i'm like a lazy old uncle, trying to sleep as more as possible (\*/ω＼\*).
+I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i'm acting like a lazy old uncle, trying to sleep as more as possible (\*/ω＼\*).
 
 I wish i was like: 
 
@@ -62,3 +65,4 @@ But actually i'm like \***sleeps all the time**\*:
 
 
 </details>
+

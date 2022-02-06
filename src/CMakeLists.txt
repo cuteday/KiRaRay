@@ -35,6 +35,8 @@ SET ( KRR_CORE_SOURCE
 	core/scene.cpp
 	core/camera.cpp
 	core/light.cpp
+	# 
+	core/gpu/context.cpp
 	# components
 	core/window.cpp
 	core/logger.cpp
@@ -69,6 +71,7 @@ SET ( KRR_CORE_HEADERS
 	core/math/vec/rotate.h
 	core/math/vec/functors.h
 	# cuda/optix wrapper
+	core/gpu/context.h
 	core/gpu/buffer.h
 	core/gpu/optix7.h
 	# non core

@@ -5,15 +5,37 @@
 
 namespace krr{
 
+	/*! SBT record for a raygen program */
+	struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord
+	{
+		__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
+		void* data;
+	};
+
+	/*! SBT record for a miss program */
+	struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) MissRecord
+	{
+		__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
+		void* data;
+	};
+
+	/*! SBT record for a hitgroup program */
+	struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord
+	{
+		__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
+		MeshData data;
+	};
+
 	struct LaunchParamsPT
 	{
 		uint       frameID{ 0 };
 		vec4f* colorBuffer;
-		vec2i     fbSize;
+		vec2i     fbSize = 0;
 
 		uint maxDepth = 20;
 		float probRR = 0.15;
 		vec3f clampThreshold = 500;
+		uint spp = 1;
 
 		vec2i debugPixel = { 666, 666 };
 

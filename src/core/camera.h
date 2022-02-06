@@ -12,12 +12,24 @@ using namespace math;
 class Camera {
 public:
 	using SharedPtr = std::shared_ptr<Camera>;
+	struct CameraData {
+		vec2f frameSize = { 42.666667f, 24.0f };	// sensor size in mm [width, height]
+		float focalLength = 20;			// the distance from lens (pin hole) to sensor, in mm
+		float aspectRatio = 1.777777f;	// width divides height
 
-	Camera():
-		mpJitterSampler(new LCGSampler())
-	{
-		mpJitterSampler->setSeed(727272);
-	}
+		vec3f pos = { 0, 0, 0 };
+		vec3f target = { 0, 0, -1 };
+		vec3f up = { 0, 1, 0 };
+
+		vec3f u = { 1, 0, 0 };		// camera right		[dependent to aspect ratio]
+		vec3f v = { 0, 1, 0 };		// camera up		[dependent to aspect ratio]
+		vec3f w = { 0, 0, -1 };		// camera forward
+
+		vec2f jitter = { 0, 0 };		// within [-0.5, 0.5]^2
+	};
+
+	Camera():	mpJitterSampler(new LCGSampler())
+	{ mpJitterSampler->setSeed(727272); }
 
 	__both__ vec3f getRayDir(vec2i pixel, vec2i frameSize) {
 		vec2f p = vec2f(pixel) + vec2f(0.5) + mData.jitter;
@@ -26,7 +38,7 @@ public:
 	}	
 
 	//void beginFrame();
-	void update();
+	bool update();
 	void renderUI();
 
 	__both__ float getAspectRatio() { return mData.aspectRatio; }
@@ -46,23 +58,9 @@ public:
 
 protected:
 
-	struct{
-		vec2f frameSize = { 42.666667f, 24.0f };	// sensor size in mm [width, height]
-		float focalLength = 20;			// the distance from lens (pin hole) to sensor, in mm
-		float aspectRatio = 1.777777f;	// width divides height
+	CameraData mData, mDataPrev;
 
-		vec3f pos = { 0, 0, 0 };
-		vec3f target = { 0, 0, -1 };
-		vec3f up = { 0, 1, 0 };
-
-		vec3f u = { 1, 0, 0 };		// camera right		[dependent to aspect ratio]
-		vec3f v = { 0, 1, 0 };		// camera up		[dependent to aspect ratio]
-		vec3f w = { 0, 0, -1 };		// camera forward
-
-		vec2f jitter = {0, 0};		// within [-0.5, 0.5]^2
-
-	} mData;
-
+	bool mHasChanges = false;
 	bool mPreserveHeight = true;	// preserve sensor height on aspect ratio changes.
 	LCGSampler::SharedPtr mpJitterSampler;
 };
@@ -71,7 +69,7 @@ class CameraController{
 public:
 	using SharedPtr = std::shared_ptr<CameraController>;
 
-	virtual void update() = 0;
+	virtual bool update() = 0;
 	virtual bool onMouseEvent(const MouseEvent& mouseEvent) = 0;
 	virtual bool onKeyEvent(const KeyboardEvent& keyEvent) = 0;
 
@@ -85,28 +83,27 @@ protected:
 class OrbitCameraController: public CameraController{
 public:
 	using SharedPtr = std::shared_ptr<OrbitCameraController>;
+	struct CameraControllerData{
+		vec3f target = { 0, 0, 0 };
+		vec3f up = { 0, 1, 0 };
+		float radius = 5;
+		float pitch = 0;
+		float yaw = 0;
+	};
 
 	OrbitCameraController(Camera::SharedPtr pCamera): CameraController(pCamera) {}
 	static SharedPtr create(Camera::SharedPtr pCamera){
 		return SharedPtr(new OrbitCameraController(pCamera));
 	}
 	
-	virtual void update() override;
+	virtual bool update() override;
 	virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
 	virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
 private:
-	struct {
-		vec3f target = { 0, 0, 0 };
-		vec3f up = { 0, 1, 0 };
-		float radius = 5;
-
-		float pitch = 0;
-		float yaw = 0;
-
-	}mData;
-
+	CameraControllerData mData, mDataPrev;
 	// input states
+
 	vec2f mLastMousePos;
 	float mDampling = 1;
 	bool mOrbiting = false;

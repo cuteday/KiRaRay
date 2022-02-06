@@ -26,15 +26,17 @@ extern "C" int main(int argc, char* argv[]) {
 	locateWorkingDirectory();
 	logSuccess("Kiraray::Main Hello, world!");
 	//const string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
-	const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
+	const string sceneFile = "common/scenes/sponza/sponza.obj";
+	//const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
 
 	try {
+		gpContext = Context::SharedPtr(new Context());
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 });
 
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
 		AssimpImporter importer;
 		importer.import(sceneFile, scene);
-		app.getRenderer()->setScene(scene);
+		app.setScene(scene);
 		app.run();
 	} 
 	catch(std::exception e) {

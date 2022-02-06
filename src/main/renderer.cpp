@@ -1,44 +1,14 @@
-#include "renderer.h"
 #include <optix_function_table_definition.h>
 #include <optix_types.h>
 
 #include "renderer.h"
-//#include "shaders/shared.h"
 
 KRR_NAMESPACE_BEGIN
 
 extern "C" char PTX_CODE[];
 
-/*! SBT record for a raygen program */
-struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord
+PathTracer::PathTracer()
 {
-	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-	void* data;
-};
-
-/*! SBT record for a miss program */
-struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) MissRecord
-{
-	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-	void* data;
-};
-
-/*! SBT record for a hitgroup program */
-struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord
-{
-	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-	MeshData data;
-};
-
-Renderer::Renderer(): 
-	mpAccumulatePass(new AccumulatePass()),
-	mpToneMappingPass(new ToneMappingPass())
-{
-	initOptix();
-
-	logInfo("#krr: creating optix context ...");
-	createContext();
-
 	logInfo("#krr: setting up module ...");
 	createModule();
 
@@ -56,63 +26,10 @@ Renderer::Renderer():
 	launchParamsBuffer.alloc(sizeof(launchParams));
 
 	logInfo("#krr: context, module, pipeline, etc, all set up ...");
-	logSuccess("Renderer::Optix 7 context fully set up");
+	logSuccess("PathTracer::Optix 7 context fully set up");
 }
 
-void Renderer::initOptix()
-{
-	std::cout << "#krr: initializing optix..." << std::endl;
-
-	// -------------------------------------------------------
-	// check for available optix7 capable devices
-	// -------------------------------------------------------
-	cudaFree(0);
-	int numDevices;
-	cudaGetDeviceCount(&numDevices);
-	if (numDevices == 0)
-		throw std::runtime_error("#krr: no CUDA capable devices found!");
-	std::cout << "#krr: found " << numDevices << " CUDA devices" << std::endl;
-
-	// -------------------------------------------------------
-	// initialize optix
-	// -------------------------------------------------------
-	OPTIX_CHECK(optixInit());
-}
-
-static void context_log_cb(unsigned int level,
-	const char* tag,
-	const char* message,
-	void*)
-{
-	fprintf(stderr, "[%2d][%12s]: %s\n", (int)level, tag, message);
-}
-
-/*! creates and configures a optix device context (in this simple
-	example, only for the primary GPU device) */
-void Renderer::createContext()
-{
-	// for this sample, do everything on one device
-	const int deviceID = 0;
-	CUDA_CHECK(cudaSetDevice(deviceID));
-	CUDA_CHECK(cudaStreamCreate(&stream));
-
-	cudaGetDeviceProperties(&deviceProps, deviceID);
-	std::cout << "#krr: running on device: " << deviceProps.name << std::endl;
-
-	CUresult  cuRes = cuCtxGetCurrent(&cudaContext);
-	if (cuRes != CUDA_SUCCESS)
-		fprintf(stderr, "Error querying current context: error code %d\n", cuRes);
-
-	OPTIX_CHECK(optixDeviceContextCreate(cudaContext, 0, &mOptixContext));
-	OPTIX_CHECK(optixDeviceContextSetLogCallback
-	(mOptixContext, context_log_cb, nullptr, 4));
-}
-
-
-/*! creates the module that contains all the programs we are going
-	to use. in this simple example, we use a single module from a
-	single .cu file, using a single embedded ptx string */
-void Renderer::createModule()
+void PathTracer::createModule()
 {
 	moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 	moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
@@ -132,7 +49,7 @@ void Renderer::createModule()
 
 	char log[2048];
 	size_t sizeof_log = sizeof(log);
-	OPTIX_CHECK(optixModuleCreateFromPTX(mOptixContext,
+	OPTIX_CHECK(optixModuleCreateFromPTX(gpContext->optixContext,
 		&moduleCompileOptions,
 		&pipelineCompileOptions,
 		ptxCode.c_str(),
@@ -145,7 +62,7 @@ void Renderer::createModule()
 
 
 /*! does all setup for the raygen program(s) we are going to use */
-void Renderer::createRaygenPrograms()
+void PathTracer::createRaygenPrograms()
 {
 	// we do a single ray gen program in this example:
 	raygenPGs.resize(1);
@@ -159,7 +76,7 @@ void Renderer::createRaygenPrograms()
 	// OptixProgramGroup raypg;
 	char log[2048];
 	size_t sizeof_log = sizeof(log);
-	OPTIX_CHECK(optixProgramGroupCreate(mOptixContext,
+	OPTIX_CHECK(optixProgramGroupCreate(gpContext->optixContext,
 		&pgDesc,
 		1,
 		&pgOptions,
@@ -170,9 +87,8 @@ void Renderer::createRaygenPrograms()
 }
 
 /*! does all setup for the miss program(s) we are going to use */
-void Renderer::createMissPrograms()
+void PathTracer::createMissPrograms()
 {
-	// we do a single ray gen program in this example:
 	missPGs.resize(1);
 
 	OptixProgramGroupOptions pgOptions = {};
@@ -181,10 +97,9 @@ void Renderer::createMissPrograms()
 	pgDesc.miss.module = module;
 	pgDesc.miss.entryFunctionName = "__miss__PathTracer";
 
-	// OptixProgramGroup raypg;
 	char log[2048];
 	size_t sizeof_log = sizeof(log);
-	OPTIX_CHECK(optixProgramGroupCreate(mOptixContext,
+	OPTIX_CHECK(optixProgramGroupCreate(gpContext->optixContext,
 		&pgDesc,
 		1,
 		&pgOptions,
@@ -195,9 +110,8 @@ void Renderer::createMissPrograms()
 }
 
 /*! does all setup for the hitgroup program(s) we are going to use */
-void Renderer::createHitgroupPrograms()
+void PathTracer::createHitgroupPrograms()
 {
-	// for this simple example, we set up a single hit group
 	hitgroupPGs.resize(1);
 
 	OptixProgramGroupOptions pgOptions = {};
@@ -210,7 +124,7 @@ void Renderer::createHitgroupPrograms()
 
 	char log[2048];
 	size_t sizeof_log = sizeof(log);
-	OPTIX_CHECK(optixProgramGroupCreate(mOptixContext,
+	OPTIX_CHECK(optixProgramGroupCreate(gpContext->optixContext,
 		&pgDesc,
 		1,
 		&pgOptions,
@@ -223,7 +137,7 @@ void Renderer::createHitgroupPrograms()
 
 
 /*! assembles the full pipeline of all programs */
-void Renderer::createPipeline()
+void PathTracer::createPipeline()
 {
 	std::vector<OptixProgramGroup> programGroups;
 	for (auto pg : raygenPGs)
@@ -235,7 +149,7 @@ void Renderer::createPipeline()
 
 	char log[2048];
 	size_t sizeof_log = sizeof(log);
-	OPTIX_CHECK(optixPipelineCreate(mOptixContext,
+	OPTIX_CHECK(optixPipelineCreate(gpContext->optixContext,
 		&pipelineCompileOptions,
 		&pipelineLinkOptions,
 		programGroups.data(),
@@ -264,11 +178,9 @@ void Renderer::createPipeline()
 
 
 /*! constructs the shader binding table */
-void Renderer::buildSBT()
+void PathTracer::buildSBT()
 {
-	// ------------------------------------------------------------------
 	// build raygen records
-	// ------------------------------------------------------------------
 	std::vector<RaygenRecord> raygenRecords;
 	for (int i = 0; i < raygenPGs.size(); i++) {
 		RaygenRecord rec;
@@ -279,9 +191,7 @@ void Renderer::buildSBT()
 	raygenRecordsBuffer.alloc_and_copy_from_host(raygenRecords);
 	sbt.raygenRecord = raygenRecordsBuffer.data();
 
-	// ------------------------------------------------------------------
 	// build miss records
-	// ------------------------------------------------------------------
 	std::vector<MissRecord> missRecords;
 	for (int i = 0; i < missPGs.size(); i++) {
 		MissRecord rec;
@@ -294,10 +204,7 @@ void Renderer::buildSBT()
 	sbt.missRecordStrideInBytes = sizeof(MissRecord);
 	sbt.missRecordCount = (int)missRecords.size();
 
-	// ------------------------------------------------------------------
 	// build hitgroup records
-	// ------------------------------------------------------------------
-
 	uint numMeshes = mpScene->meshes.size();
 	std::vector<HitgroupRecord> hitgroupRecords;
 	for (uint i = 0; i < numMeshes; i++) {
@@ -313,7 +220,7 @@ void Renderer::buildSBT()
 	sbt.hitgroupRecordCount = hitgroupRecords.size();
 }
 
-void Renderer::buildAS()
+void PathTracer::buildAS()
 {
 	std::vector<Mesh>& meshes = mpScene->meshes;
 
@@ -324,10 +231,6 @@ void Renderer::buildAS()
 
 	for (uint i = 0; i < meshes.size(); i++) {
 		Mesh& mesh = meshes[i];
-
-		//logDebug("Mesh #" + to_string(i) + " indices: " + to_string(meshes[i].indices.size()));
-		//logDebug("Mesh #" + to_string(i) + " vertices: " + to_string(meshes[i].vertices.size()));
-		//logDebug("Mesh #" + to_string(i) + " normals: " + to_string(meshes[i].normals.size()));
 
 		indexBufferPtr[i] = mesh.mDeviceMemory.indices.data();
 		vertexBufferPtr[i] = mesh.mDeviceMemory.vertices.data();
@@ -362,7 +265,7 @@ void Renderer::buildAS()
 	accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
 
 	OptixAccelBufferSizes blasBufferSizes;
-	OPTIX_CHECK(optixAccelComputeMemoryUsage(mOptixContext,
+	OPTIX_CHECK(optixAccelComputeMemoryUsage(gpContext->optixContext,
 		&accelOptions, triangleInputs.data(), meshes.size(), &blasBufferSizes));
 
 	// prepare for compaction
@@ -381,8 +284,8 @@ void Renderer::buildAS()
 
 	OptixTraversableHandle &asHandle = launchParams.traversable;
 	
-	OPTIX_CHECK(optixAccelBuild(mOptixContext,
-		stream,
+	OPTIX_CHECK(optixAccelBuild(gpContext->optixContext,
+		gpContext->cudaStream,
 		&accelOptions,
 		triangleInputs.data(),
 		meshes.size(),
@@ -400,73 +303,47 @@ void Renderer::buildAS()
 	compactedSizeBuffer.copy_to_host(&compactedSize, 1);
 	
 	accelBuffer.alloc(compactedSize);
-	OPTIX_CHECK(optixAccelCompact(mOptixContext,
-		stream,
+	OPTIX_CHECK(optixAccelCompact(gpContext->optixContext,
+		gpContext->cudaStream,
 		asHandle,
 		accelBuffer.data(),
 		accelBuffer.size(),
 		&asHandle));
 	CUDA_SYNC_CHECK();
-
-	// clean up...
 }
 
-void Renderer::toDevice()
+bool PathTracer::onKeyEvent(const KeyboardEvent& keyEvent)
 {
-	std::vector<Mesh>& meshes = mpScene->meshes;
-	for (uint i = 0; i < meshes.size();i++) {
-		Mesh& mesh = meshes[i];
-		mesh.toDevice();
-	}
-}
-
-bool Renderer::onKeyEvent(const KeyboardEvent& keyEvent)
-{
-	if (mpScene && mpScene->onKeyEvent(keyEvent))
-		return true;
 	return false;
 }
 
-bool Renderer::onMouseEvent(const MouseEvent& mouseEvent)
+bool PathTracer::onMouseEvent(const MouseEvent& mouseEvent)
 {
-	if (mpScene && mpScene->onMouseEvent(mouseEvent))
-		return true;
 	return false;
 }
 
-void Renderer::renderUI() {
-	ui::Text("Hello from renderer!");
-	if (mpScene && ui::CollapsingHeader("Scene")) {
-		mpScene->renderUI();
-	}
+void PathTracer::renderUI() {
 	if (ui::CollapsingHeader("Path tracer")) {
 		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
 		ui::SliderInt("Max recursion depth", (int*)&launchParams.maxDepth, 1, 100, "%d");
 	}
-	if (mpAccumulatePass && ui::CollapsingHeader("Accumulate Pass")) {
-		mpAccumulatePass->renderUI();
-	}
-	if (mpToneMappingPass && ui::CollapsingHeader("Tone mapping Pass")) {
-		mpToneMappingPass->renderUI();
-	}
 }
 
 /*! render one frame */
-void Renderer::render()
+void PathTracer::render(CUDABuffer& frame)
 {
 	if (launchParams.fbSize.x * launchParams.fbSize.y == 0) return;
 
-	// maybe this should be put into beginFrame() or sth...
-	mpScene->update();
-
 	// setting up launch parameters! (similar to constant buffer in HLSL...)
+	launchParams.fbSize = mFrameSize;
+	launchParams.colorBuffer = frame.data<vec4f>();
 	launchParams.camera = *mpScene->getCamera();
 	launchParams.envLight = *mpScene->getEnvLight();
 	launchParams.frameID++;
 	launchParamsBuffer.copy_from_host(&launchParams, 1);
 
 	OPTIX_CHECK(optixLaunch(/*! pipeline we're launching launch: */
-		pipeline, stream,
+		pipeline, gpContext->cudaStream,
 		/*! parameters and SBT */
 		launchParamsBuffer.data(),
 		launchParamsBuffer.size(),
@@ -477,36 +354,7 @@ void Renderer::render()
 		1
 	));
 
-	// other render passes
-	mpAccumulatePass->render(colorBuffer, stream);
-	mpToneMappingPass->render(colorBuffer, stream);
-
 	CUDA_SYNC_CHECK();
-}
-
-/*! resize frame buffer to given resolution */
-void Renderer::resize(const vec2i& size)
-{
-	// if window minimized
-	if (size.x * size.y <= 0) return;
-
-	// resize our cuda frame buffer
-	colorBuffer.resize(size.x * size.y * sizeof(vec4f));
-
-	// update the launch parameters that we'll pass to the optix
-	// launch:
-	launchParams.fbSize = size;
-	launchParams.colorBuffer = (vec4f*)colorBuffer.data();
-
-	// update render pass sizes
-	mpAccumulatePass->resize(size);
-	mpToneMappingPass->resize(size);
-}
-
-/*! download the rendered color buffer */
-CUDABuffer& Renderer::result()
-{
-	return colorBuffer;
 }
 
 KRR_NAMESPACE_END

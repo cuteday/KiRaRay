@@ -35,21 +35,28 @@ private:
 
 class AssimpImporter {
 public:
-    AssimpImporter() = default;
-    bool import(const string& filepath, Scene::SharedPtr pScene);
+	enum class ImportMode {
+		Default = 0,
+		OBJ,
+		GLTF2,
+	};
+
+	AssimpImporter() = default;
+	bool import(const string& filepath, Scene::SharedPtr pScene);
 
 private:
 
-    void processMesh(aiMesh* mesh, aiMatrix4x4 transform);
-    void traverseNode(aiNode* node, aiMatrix4x4 transform);
-    void loadMaterials(const string& modelFolder);
+	void processMesh(aiMesh* mesh, aiMatrix4x4 transform);
+	void traverseNode(aiNode* node, aiMatrix4x4 transform);
+	void loadMaterials(const string& modelFolder);
 
-    AssimpImporter(const AssimpImporter&) = delete;
-    void operator=(const AssimpImporter&) = delete;
+	AssimpImporter(const AssimpImporter&) = delete;
+	void operator=(const AssimpImporter&) = delete;
 
-    string mFilepath;
-    aiScene* mpAiScene = nullptr;
-    Scene::SharedPtr mpScene;
+	ImportMode mImportMode = ImportMode::Default;
+	string mFilepath;
+	aiScene* mpAiScene = nullptr;
+	Scene::SharedPtr mpScene;
 };
 
 KRR_NAMESPACE_END

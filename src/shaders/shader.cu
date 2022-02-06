@@ -25,7 +25,7 @@ namespace krr
 		float tMax, OptixRayFlags flags, Args &&... payload) {
 
 		optixTrace(traversable, ray.origin, ray.dir,
-			0.f, tMax, 0.f,					/* ray time val min max */
+			0.f, tMax, 0.f,						/* ray time val min max */
 			OptixVisibilityMask(255),			/* all visible */
 			flags,
 			SURFACE_RAY_TYPE, RAY_TYPE_COUNT,	/* ray type and number of types */
@@ -38,10 +38,8 @@ namespace krr
 		vec3f wiLocal = cosineSampleHemisphere(r2v);
 		float bsdfPdf = wiLocal.z * M_1_PI;
 		vec3f wi = sd.fromLocal(wiLocal);
-		// [NOTE] the generated scattering ray must slightly offseted above the surface
-		// to avoid self-intersection with the original surface
-		// very, very, very important!
-		Ray ray = { sd.pos + sd.N * 1e-4f, wi };
+		// [NOTE] the generated scattering ray must slightly offseted above the surface to avoid self-intersection
+		Ray ray = { sd.pos + sd.N * 1e-3f, wi };
 		
 		path.ray = ray;
 		path.pdf = bsdfPdf;
@@ -54,15 +52,13 @@ namespace krr
 		// nothing for now...
 	}
 
-	extern "C" __global__ void KRR_RT_CH(PathTracer)()
-	{
+	KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd) {
 		vec2f barycentric = optixGetTriangleBarycentrics();
 		uint primId = optixGetPrimitiveIndex();
 		MeshData& mesh = *(MeshData*)optixGetSbtDataPointer();
 
-		ShadingData& sd = *getPRD<ShadingData>();
 		sd.wi = -normalize(vec3f(optixGetWorldRayDirection()));
-		unsigned int hitKind = optixGetHitKind();
+		uint hitKind = optixGetHitKind();
 		vec3f bc = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y };
 		vec3i triangle = mesh.indices[primId];
 
@@ -85,7 +81,7 @@ namespace krr
 			sd.N = -sd.N;
 		}
 
-		if (mesh.tangents != nullptr && mesh.bitangents != nullptr){
+		if (mesh.tangents != nullptr && mesh.bitangents != nullptr) {
 			sd.T = normalize(
 				bc.x * mesh.tangents[triangle.x] +
 				bc.y * mesh.tangents[triangle.y] +
@@ -104,7 +100,7 @@ namespace krr
 		if (mesh.material) {
 			Texture& diffuseTexture = mesh.material->mTextures[0];
 			cudaTextureObject_t cudaTexture = 0;
-			
+
 			if (mesh.texcoords && diffuseTexture.isValid()) {
 				cudaTexture = diffuseTexture.getCudaTexture();
 				sd.uv = (
@@ -121,9 +117,14 @@ namespace krr
 		else {
 			sd.diffuse = vec3f(1);
 		}
+	}
+
+	extern "C" __global__ void KRR_RT_CH(PathTracer)()
+	{
+		ShadingData& sd = *getPRD<ShadingData>();
+		prepareShadingData(sd);
 
 		//sd.emission = 0.2 + 0.8 * dot(sd.N, sd.wi);
-		sd.emission = vec3f(0);
 		sd.miss = false;
 	}
 
@@ -145,27 +146,7 @@ namespace krr
 		sd.miss = true;
 	}
 
-	extern "C" __global__ void KRR_RT_RG(PathTracer)()
-	{
-		vec3i launchIndex = optixGetLaunchIndex();
-		vec2i pixel = { launchIndex.x, launchIndex.y };
-
-		const int frameID = launchParams.frameID;
-		const uint32_t fbIndex = pixel.x + pixel.y * launchParams.fbSize.x;
-
-		Camera& camera = launchParams.camera;
-		PathData path = {};
-		//path.sampler = new LCGSampler();
-		path.sampler.setPixel(pixel, frameID);
-
-		// primary ray 
-		vec3f rayOrigin = camera.getPosition();
-		vec3f rayDir = camera.getRayDir(pixel, launchParams.fbSize);
-
-		path.L = 0;
-		path.throughput = 1;
-		path.ray = { rayOrigin, rayDir };
-
+	KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 		for (uint depth = 0; depth < launchParams.maxDepth; depth++) {
 			ShadingData sd = {};
 			uint u0, u1;
@@ -185,15 +166,40 @@ namespace krr
 			if (u < launchParams.probRR) break;
 			path.throughput /= 1 - launchParams.probRR;
 		}
-		//	printf("Pixel contrib: %f, %f, %f\n", path.L.x, path.L.y, path.L.z);
-		//	printf("Testing rng: %f, %f\n", path.sampler.get2D().x, path.sampler.get2D().y);
-		//	printf("Tracing ray at 666, 666: from %f, %f, %f to %f, %f, %f\n", 
-		//		rayOrigin.x, rayOrigin.y, rayOrigin.z, rayDir.x, rayDir.y, rayDir.z);
 
 		if (!(path.L < launchParams.clampThreshold))
 			path.L = launchParams.clampThreshold;
 		// clamp before accumulate?
 		path.L = clamp(path.L, vec3f(0), launchParams.clampThreshold);
-		launchParams.colorBuffer[fbIndex] = vec4f(path.L, 1.0f);
+	}
+
+	extern "C" __global__ void KRR_RT_RG(PathTracer)()
+	{
+		vec3i launchIndex = optixGetLaunchIndex();
+		vec2i pixel = { launchIndex.x, launchIndex.y };
+
+		const int frameID = launchParams.frameID;
+		const uint32_t fbIndex = pixel.x + pixel.y * launchParams.fbSize.x;
+
+		Camera& camera = launchParams.camera;
+		LCGSampler sampler;
+		sampler.setPixel(pixel, frameID);
+		// primary ray 
+		vec3f rayOrigin = camera.getPosition();
+		vec3f rayDir = camera.getRayDir(pixel, launchParams.fbSize);
+		PathData path = {};
+
+		vec3f color = vec3f(0);
+
+		for (uint i = 0; i < launchParams.spp; i++) {
+			PathData path = {};
+			path.sampler = sampler;
+			path.ray = { rayOrigin, rayDir };
+			tracePath(path);
+			color += path.L;
+		}
+
+		color /= launchParams.spp;
+		launchParams.colorBuffer[fbIndex] = vec4f(color, 1.0f);
 	}
 }

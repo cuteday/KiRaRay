@@ -81,8 +81,10 @@ public:
 	bool onMouseEvent(const MouseEvent& mouseEvent);
 	bool onKeyEvent(const KeyboardEvent& keyEvent);
 
-	void update();
+	bool update();
+	bool getChanges() { return mHasChanges; };
 	void renderUI();
+	void toDevice();
 
 	Camera::SharedPtr getCamera() { return mpCamera; }
 	CameraController::SharedPtr getCameraController() { return mpCameraController; }
@@ -99,11 +101,10 @@ private:
 	friend class AssimpImporter;
 
 	EnvLight::SharedPtr mpEnvLight;
-
 	Camera::SharedPtr mpCamera;
 	CameraController::SharedPtr mpCameraController;
-
-	aiScene* mScene;
+	
+	bool mHasChanges = false;
 };
 
 KRR_NAMESPACE_END

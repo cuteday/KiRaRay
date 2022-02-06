@@ -16,25 +16,25 @@ public:
 	AccumulatePass() = default;
 
 	void renderUI() override {
-		ui::Checkbox("Enabled", &mEnable);
-		if (mEnable) {
-			ui::Text("Accumulate count: %d\n", mAccumCount);
-			if (ui::Button("reset")) {
-				reset();
+		if (ui::CollapsingHeader("Accumulate pass")) {
+			ui::Checkbox("Enabled", &mEnable);
+			if (mEnable) {
+				ui::Text("Accumulate count: %d\n", mAccumCount);
+				if (ui::Button("reset")) {
+					reset();
+				}
 			}
 		}
 	}
 
-	void reset() {
-		mAccumCount = 0;
-	}
+	void reset() { mAccumCount = 0; }
 
-	void resize(vec2i size) override{
+	void resize(const vec2i& size) override{
 		mFrameSize = size;
 		mAccumBuffer.resize(size.x * size.y * sizeof(vec4f));
 	}
 
-	void render(CUDABuffer& frame, cudaStream_t stream = nullptr);
+	void render(CUDABuffer& frame);
 	CUDABuffer& result() { return mAccumBuffer; }
 
 private:
@@ -63,7 +63,7 @@ public:
 		{mOperator = toneMappingOperator; }
 	Operator getOperator() const { return mOperator; }
 
-	void render(CUDABuffer& frame, cudaStream_t stream = nullptr);
+	void render(CUDABuffer& frame);
 
 private:
 	bool mEnable = true;
