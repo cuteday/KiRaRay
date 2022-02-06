@@ -85,10 +85,12 @@ SET (KRR_SOURCE
 )
 
 SET ( KRR_SHADERS
-	shaders/shader.cu
 	shaders/shared.h
+	shaders/shading.h
+	shaders/bsdf.h
 	shaders/path.h
 	shaders/postprocess.h
+	shaders/shader.cu
 	shaders/postprocess.cu
 )
 

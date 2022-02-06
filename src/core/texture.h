@@ -76,11 +76,16 @@ public:
 		Count
 	};
 
+	enum class ShadingModel {
+		Diffuse = 0,
+		MetallicRoughness,
+		SpecularGlossiness,
+	};
+
 	struct MaterialParams {
-		vec4f diffuse = vec4f(1);
-		vec4f specular = vec4f(0);
+		vec4f diffuse = vec4f(1);		// 
+		vec4f specular = vec4f(0);		// G-roughness B-metallic in MetalRough model
 		vec3f emissive = vec3f(0);
-		float emissiveFactor = 1.f;
 		float IoR = 1.5f;
 		vec3f transmission = vec3f(1);
 	};
@@ -98,8 +103,11 @@ public:
 	void toDevice();
 
 //private:
+	friend class AssimpImporter;
+
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
+	ShadingModel mShadingModel;
 	bool mDoubleSided = false;
 	//cudaTextureObject_t mDiffuseTexture;
 	//cudaTextureObject_t mCudaTextures[5] = {};

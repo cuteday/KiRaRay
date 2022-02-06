@@ -53,8 +53,8 @@ bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent)
 
 	switch (mouseEvent.type) {
 	case io::MouseEvent::Type::Wheel:
-		mData.radius -= mouseEvent.wheelDelta.y * 0.2f;
-		mData.radius = clamp(mData.radius, 0.1f, 1000.f);
+		mData.radius -= mouseEvent.wheelDelta.y * mZoomSpeed;
+		mData.radius = clamp(mData.radius, 0.1f, 1e5f);
 		return true;
 	case io::MouseEvent::Type::LeftButtonDown:
 		mOrbiting = true;

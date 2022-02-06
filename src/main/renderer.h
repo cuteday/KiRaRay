@@ -37,10 +37,7 @@ public:
 
 	void setScene(Scene::SharedPtr scene) override {
 		mpScene = scene;
-		logInfo("#krr: transfering host scene data to device ...");
-		logInfo("#krr: building AS ...");
 		buildAS();
-		logInfo("#krr: building SBT ...");
 		buildSBT();
 		logSuccess("Scene set...");
 	}

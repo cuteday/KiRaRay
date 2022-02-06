@@ -3,6 +3,7 @@
 #include "common.h"
 #include "math/math.h"
 #include "texture.h"
+#include "window.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -24,7 +25,12 @@ public:
 
 	__both__ void setRotation(float angle) { mData.rotation = angle; }
 
-	void renderUI() {};
+	void renderUI() {
+		ui::SliderFloat("Intensity", &mData.intensity, 0, 10, "%.02f");
+		ui::SliderFloat("Rotation", &mData.rotation, 0, 1, "%.03f");
+		if(ui::CollapsingHeader("Tint color picker"))
+			ui::ColorPicker3("Tint", (float*)&mData.tint);
+	};
 	bool update() {
 		bool hasChanges = false;
 		hasChanges |= mData.tint != mDataPrev.tint;

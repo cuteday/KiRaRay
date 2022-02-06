@@ -110,6 +110,7 @@ private:
 	float mOrbitSpeed = 1;
 	bool mPanning = false;
 	float mPanSpeed = 1;
+	float mZoomSpeed = 1;
 };
 
 KRR_NAMESPACE_END

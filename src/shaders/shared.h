@@ -1,10 +1,7 @@
 #pragma once
-//#include <cuda.h>
-#include <cuda_runtime.h>
-#include <optix_device.h>
-#include <optix_types.h>
 
 #include "math/math.h"
+#include "math/utils.h"
 #include "scene.h"
 
 #define KRR_RT_RG(name) __raygen__ ## name
@@ -17,7 +14,62 @@
 #define KRR_RT_CC(name) __continuation_callable__ ## name
 
 namespace krr{
+	using namespace math;
+	using namespace math::utils;
+
 	namespace shader {
+
+		struct Ray {
+			vec3f origin;
+			vec3f dir;
+		};
+
+		struct ShadingFrame {
+			vec3f N;
+			vec3f T;
+			vec3f B;
+		};
+
+		struct HitInfo {
+			uint primitiveId;
+			vec3f barycentric;
+			
+			MeshData* mesh;
+			vec3f wi;
+			uint hitKind;
+		};
+
+		struct ShadingData {		// for use as per ray data, generated from ch
+			using ShadingModel = Material::ShadingModel;
+			
+			vec3f pos;
+			vec3f wi;				// view direction
+			vec2f uv;				// texture coords
+			vec3f geoN;				// geometry normal [on the front-facing side]
+
+			vec3f N;				// shading normal [flipped if back-facing]
+			vec3f T;				// tangent
+			vec3f B;				// bitangent
+
+			float IoR;
+			vec3f diffuse;			// diffuse reflectance
+			vec3f emission;			// for emissive material
+			float roughness;		// linear roughness (alpha=roughness^2)
+
+			bool miss = false;		// not valid if missing, or ?
+			bool frontFacing;		// shading normal and geo normal same dir?
+			
+			ShadingModel shadingModel;
+			uint flags = 0;			// user custom flags?
+
+			__both__ vec3f fromLocal(vec3f v) const {
+				return T * v.x + B * v.y + N * v.z;
+			}
+
+			__both__ vec3f toLocal(vec3f v) const {
+				return { dot(T, v) + dot(B, v) + dot(N, v) };
+			}
+		};
 
 		// the following routines are used to encode 64-bit payload pointers
 		static KRR_DEVICE_FUNCTION
@@ -43,6 +95,7 @@ namespace krr{
 			const uint32_t u1 = optixGetPayload_1();
 			return reinterpret_cast<T*>(unpackPointer(u0, u1));
 		}
+
 	}
 
 }

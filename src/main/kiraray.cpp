@@ -26,8 +26,9 @@ extern "C" int main(int argc, char* argv[]) {
 	locateWorkingDirectory();
 	logSuccess("Kiraray::Main Hello, world!");
 	//const string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
-	const string sceneFile = "common/scenes/sponza/sponza.obj";
-	//const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
+	//const string sceneFile = "common/scenes/sponza/sponza.obj";
+	//const string sceneFile = "common/scenes/living_room/living_room.obj";
+	const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
 
 	try {
 		gpContext = Context::SharedPtr(new Context());

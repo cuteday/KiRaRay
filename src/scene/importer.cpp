@@ -104,12 +104,12 @@ namespace assimp {
 			pMaterial->mMaterialParams.specular.a = shininess;
 		}
 
-		//// Refraction
+		// Refraction
 		float refraction;
 		if (pAiMaterial->Get(AI_MATKEY_REFRACTI, refraction) == AI_SUCCESS) 
 			pMaterial->mMaterialParams.IoR = refraction;
 
-		//// Diffuse color
+		// Diffuse color
 		aiColor3D color;
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
 		{
@@ -132,19 +132,12 @@ namespace assimp {
 			pMaterial->mMaterialParams.emissive = emissive;
 		}
 
-		//// Double-Sided
-		//int isDoubleSided;
-		//if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS)
-		//{
-		//	pMaterial->setDoubleSided(isDoubleSided);
-		//}
-
-		//// Use scalar opacity value for controlling specular transmission
-		//// TODO: Remove this workaround when we have a better way to define materials.
-		//if (opacity < 1.f)
-		//{
-		//	pMaterial->setSpecularTransmission(1.f - opacity);
-		//}
+		// Double-Sided
+		int isDoubleSided;
+		if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS)
+		{
+			pMaterial->mDoubleSided = true;
+		}
 
 		return pMaterial;
 	}
@@ -257,8 +250,9 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
 		mesh.indices.push_back(indices);
 	}
 
-	if (pAiMesh->mMaterialIndex >= 0 && pAiMesh->mMaterialIndex < mpScene->materials.size())
-		mesh.mMaterial = mpScene->materials[pAiMesh->mMaterialIndex];
+	if (pAiMesh->mMaterialIndex >= 0 && pAiMesh->mMaterialIndex < mpScene->materials.size()) {
+		mesh.mMaterialId = pAiMesh->mMaterialIndex + 1;
+	}
 	mpScene->meshes.push_back(mesh);
 }
 
@@ -278,6 +272,7 @@ void AssimpImporter::traverseNode(aiNode* node, aiMatrix4x4 transform)
 
 void AssimpImporter::loadMaterials(const string &modelFolder)
 {
+	mpScene->materials.push_back(Material());
 	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
 		const aiMaterial* aiMaterial = mpAiScene->mMaterials[i];
 		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);
@@ -289,6 +284,7 @@ void AssimpImporter::loadMaterials(const string &modelFolder)
 		pMaterial->toDevice();
 		mpScene->materials.push_back(*pMaterial);
 	}
+
 }
 
 KRR_NAMESPACE_END

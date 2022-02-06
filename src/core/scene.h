@@ -23,7 +23,7 @@ public:
 		vec2f* texcoords = nullptr;
 		vec3f* tangents = nullptr;
 		vec3f* bitangents = nullptr;
-		Material* material = nullptr;
+		uint materialId = 0;
 	};
 
 	struct DeviceMemory {
@@ -43,7 +43,6 @@ public:
 		mDeviceMemory.indices.alloc_and_copy_from_host(indices);
 		mDeviceMemory.tangents.alloc_and_copy_from_host(tangents);
 		mDeviceMemory.bitangents.alloc_and_copy_from_host(bitangents);
-		mDeviceMemory.material.alloc_and_copy_from_host(&mMaterial, 1);
 
 		mMeshData.vertices = (vec3f*)mDeviceMemory.vertices.data();
 		mMeshData.normals = (vec3f*)mDeviceMemory.normals.data();
@@ -51,7 +50,7 @@ public:
 		mMeshData.texcoords = (vec2f*)mDeviceMemory.texcoords.data();
 		mMeshData.tangents = (vec3f*)mDeviceMemory.tangents.data();
 		mMeshData.bitangents = (vec3f*)mDeviceMemory.bitangents.data();
-		mMeshData.material = (Material*)mDeviceMemory.material.data();
+		mMeshData.materialId = mMaterialId;
 	}
 
 	std::vector<vec3f> vertices;
@@ -61,7 +60,7 @@ public:
 	std::vector<vec3f> tangents;
 	std::vector<vec3f> bitangents;
 
-	Material mMaterial;
+	uint mMaterialId = 0;
 	MeshData mMeshData;
 	DeviceMemory mDeviceMemory;
 };
@@ -73,6 +72,10 @@ using MeshData = Mesh::MeshData;
 class Scene {
 public:
 	using SharedPtr = std::shared_ptr<Scene>;
+
+	struct SceneData {
+		Material* materials;
+	};
 
 	Scene();
 	~Scene() = default;
@@ -93,6 +96,7 @@ public:
 	void setCamera(Camera::SharedPtr camera) { mpCamera = camera; }
 	void setCameraController(CameraController::SharedPtr cameraController) { mpCameraController = cameraController; }
 	void setEnvLight(EnvLight::SharedPtr envLight) { mpEnvLight = envLight; }
+	SceneData getSceneData() { return mData; }
 
 	std::vector<Mesh> meshes;
 	std::vector<Material> materials;
@@ -100,6 +104,8 @@ public:
 private:
 	friend class AssimpImporter;
 
+	SceneData mData;
+	CUDABuffer mMaterialBuffer;
 	EnvLight::SharedPtr mpEnvLight;
 	Camera::SharedPtr mpCamera;
 	CameraController::SharedPtr mpCameraController;

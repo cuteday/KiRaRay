@@ -60,8 +60,6 @@ void PathTracer::createModule()
 	if (sizeof_log > 1) PRINT(log);
 }
 
-
-/*! does all setup for the raygen program(s) we are going to use */
 void PathTracer::createRaygenPrograms()
 {
 	// we do a single ray gen program in this example:
@@ -136,7 +134,6 @@ void PathTracer::createHitgroupPrograms()
 }
 
 
-/*! assembles the full pipeline of all programs */
 void PathTracer::createPipeline()
 {
 	std::vector<OptixProgramGroup> programGroups;
@@ -162,22 +159,14 @@ void PathTracer::createPipeline()
 	OPTIX_CHECK(optixPipelineSetStackSize
 	(/* [in] The pipeline to configure the stack size for */
 		pipeline,
-		/* [in] The direct stack size requirement for direct
-		   callables invoked from IS or AH. */
 		2 * 1024,
-		/* [in] The direct stack size requirement for direct
-		   callables invoked from RG, MS, or CH.  */
 		2 * 1024,
-		/* [in] The continuation stack requirement. */
 		2 * 1024,
-		/* [in] The maximum depth of a traversable graph
-		   passed to trace. */
 		1));
 	if (sizeof_log > 1) PRINT(log);
 }
 
 
-/*! constructs the shader binding table */
 void PathTracer::buildSBT()
 {
 	// build raygen records
@@ -247,9 +236,7 @@ void PathTracer::buildAS()
 		triangleInputs[i].triangleArray.indexStrideInBytes = sizeof(vec3i);
 		triangleInputs[i].triangleArray.numIndexTriplets = mesh.indices.size();
 		triangleInputs[i].triangleArray.indexBuffer = indexBufferPtr[i];
-
 		triangleInputFlags[i] = 0;
-
 		triangleInputs[i].triangleArray.flags = &triangleInputFlags[i];
 		triangleInputs[i].triangleArray.numSbtRecords = 1;
 		triangleInputs[i].triangleArray.sbtIndexOffsetBuffer = 0;
@@ -329,26 +316,22 @@ void PathTracer::renderUI() {
 	}
 }
 
-/*! render one frame */
 void PathTracer::render(CUDABuffer& frame)
 {
 	if (launchParams.fbSize.x * launchParams.fbSize.y == 0) return;
-
-	// setting up launch parameters! (similar to constant buffer in HLSL...)
 	launchParams.fbSize = mFrameSize;
 	launchParams.colorBuffer = frame.data<vec4f>();
-	launchParams.camera = *mpScene->getCamera();
-	launchParams.envLight = *mpScene->getEnvLight();
+	memcpy(&launchParams.camera, mpScene->getCamera().get(), sizeof(Camera));
+	memcpy(&launchParams.envLight, mpScene->getEnvLight().get(), sizeof(EnvLight));
+	launchParams.sceneData = mpScene->getSceneData();
 	launchParams.frameID++;
 	launchParamsBuffer.copy_from_host(&launchParams, 1);
 
-	OPTIX_CHECK(optixLaunch(/*! pipeline we're launching launch: */
+	OPTIX_CHECK(optixLaunch(
 		pipeline, gpContext->cudaStream,
-		/*! parameters and SBT */
 		launchParamsBuffer.data(),
 		launchParamsBuffer.size(),
 		&sbt,
-		/*! dimensions of the launch: */
 		launchParams.fbSize.x,
 		launchParams.fbSize.y,
 		1

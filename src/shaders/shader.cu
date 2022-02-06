@@ -2,9 +2,9 @@
 #include <optix.h>
 
 #include "math/utils.h"
-#include "shared.h"
-#include "sampler.h"
 #include "path.h"
+#include "shared.h"
+#include "shading.h"
 
 using namespace krr;	// this is needed or nvcc can't recognize the launchParams external var.
 
@@ -14,11 +14,6 @@ namespace krr
 	using namespace math::utils;
 	using namespace shader;
 	extern "C" __constant__ LaunchParamsPT launchParams;
-
-	enum {
-		SURFACE_RAY_TYPE = 0,
-		RAY_TYPE_COUNT
-	};
 
 	template <typename... Args>
 	KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
@@ -52,80 +47,24 @@ namespace krr
 		// nothing for now...
 	}
 
-	KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd) {
-		vec2f barycentric = optixGetTriangleBarycentrics();
-		uint primId = optixGetPrimitiveIndex();
-		MeshData& mesh = *(MeshData*)optixGetSbtDataPointer();
-
-		sd.wi = -normalize(vec3f(optixGetWorldRayDirection()));
-		uint hitKind = optixGetHitKind();
-		vec3f bc = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y };
-		vec3i triangle = mesh.indices[primId];
-
-		// prepare shading data
-		sd.pos = bc.x * mesh.vertices[triangle.x] +
-			bc.y * mesh.vertices[triangle.y] +
-			bc.z * mesh.vertices[triangle.z];
-
-		sd.geoN = normalize(cross(mesh.vertices[triangle.y] - mesh.vertices[triangle.x],
-			mesh.vertices[triangle.z] - mesh.vertices[triangle.x]));
-
-		sd.N = normalize(
-			bc.x * mesh.normals[triangle.x] +
-			bc.y * mesh.normals[triangle.y] +
-			bc.z * mesh.normals[triangle.z]);
-		// to do: seems some problem exists with optixIsFrontFaceHit()
-		//sd.frontFacing = optixIsFrontFaceHit(hitKind);
-		sd.frontFacing = dot(sd.wi, sd.N) > 0.f;
-		if (!sd.frontFacing) {
-			sd.N = -sd.N;
-		}
-
-		if (mesh.tangents != nullptr && mesh.bitangents != nullptr) {
-			sd.T = normalize(
-				bc.x * mesh.tangents[triangle.x] +
-				bc.y * mesh.tangents[triangle.y] +
-				bc.z * mesh.tangents[triangle.z]);
-			sd.B = normalize(
-				bc.x * mesh.bitangents[triangle.x] +
-				bc.y * mesh.bitangents[triangle.y] +
-				bc.z * mesh.bitangents[triangle.z]);
-		}
-		else {
-			// generate a fake tbn frame for now...
-			sd.T = getPerpendicular(sd.N);
-			sd.B = normalize(cross(sd.N, sd.T));
-		}
-
-		if (mesh.material) {
-			Texture& diffuseTexture = mesh.material->mTextures[0];
-			cudaTextureObject_t cudaTexture = 0;
-
-			if (mesh.texcoords && diffuseTexture.isValid()) {
-				cudaTexture = diffuseTexture.getCudaTexture();
-				sd.uv = (
-					bc.x * mesh.texcoords[triangle.x] +
-					bc.y * mesh.texcoords[triangle.y] +
-					bc.z * mesh.texcoords[triangle.z]);
-				vec4f diffuse = tex2D<float4>(cudaTexture, sd.uv.x, sd.uv.y);
-				sd.diffuse = (vec3f)diffuse;
-				//sd.diffuse = vec3f(0.7, 0, 0);
-			}
-			else
-				sd.diffuse = vec3f(mesh.material->mMaterialParams.diffuse);
-		}
-		else {
-			sd.diffuse = vec3f(1);
-		}
-	}
-
 	extern "C" __global__ void KRR_RT_CH(PathTracer)()
 	{
+		HitInfo hitInfo = {};
+		vec2f barycentric = optixGetTriangleBarycentrics();
+		hitInfo.primitiveId = optixGetPrimitiveIndex();
+		hitInfo.mesh = (MeshData*)optixGetSbtDataPointer();
+		hitInfo.wi = -normalize(vec3f(optixGetWorldRayDirection()));
+		hitInfo.hitKind = optixGetHitKind();
+		hitInfo.barycentric = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y };
+
 		ShadingData& sd = *getPRD<ShadingData>();
-		prepareShadingData(sd);
+		sd.miss = false;
+		Material& material = launchParams.sceneData.materials[hitInfo.mesh->materialId];
+
+		prepareShadingData(sd, hitInfo, material);
 
 		//sd.emission = 0.2 + 0.8 * dot(sd.N, sd.wi);
-		sd.miss = false;
+
 	}
 
 	extern "C" __global__ void KRR_RT_AH(PathTracer)()
