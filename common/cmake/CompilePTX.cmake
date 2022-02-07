@@ -35,7 +35,6 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name)
 		target_compile_options ("${lib_name}" PRIVATE
 								-Xcudafe=--display_error_number -Xcudafe=--diag_suppress=20044)
 	endif ()
-	
 	target_compile_options("${lib_name}" PRIVATE ${CUDA_NVCC_FLAGS})
 	# CUDA integration in Visual Studio seems broken as even if "Use
 	# Host Preprocessor Definitions" is checked, the host preprocessor
@@ -60,9 +59,8 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name)
 		${KRR_PROJECT_ROOT}/src/shaders
 		${CMAKE_BINARY_DIR}
 	)
-	#target_include_directories ("${lib_name}" SYSTEM PRIVATE ${NANOVDB_INCLUDE})
-	#target_link_libraries ("${lib_name}" PRIVATE cuda_build_configuration pbrt_opt pbrt_warnings)
-	#add_dependencies ("${lib_name}" pbrt_soa_generated)
+	target_link_libraries("${lib_name}" PRIVATE krr_cuda_cfg)
+	
 	set (c_var_name ${output_var})
 	set (embedded_file ${cuda_file}.ptx_embedded.c)
 	add_custom_command (

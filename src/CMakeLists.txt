@@ -51,6 +51,7 @@ SET ( KRR_CORE_HEADERS
 	core/logger.h
 	core/io.h
 	core/window.h
+	core/taggedptr.h
 	# rendering
 	core/renderpass.h
 	core/camera.h
@@ -79,19 +80,24 @@ SET ( KRR_CORE_HEADERS
 	scene/importer.h
 )
 
+SET(KRR_HEADERS
+	util/check.h
+	util/string.h
+)
+
 SET (KRR_SOURCE
 	main/renderer.cpp
 	scene/importer.cpp
 )
 
 SET ( KRR_SHADERS
-	shaders/shared.h
-	shaders/shading.h
-	shaders/bsdf.h
-	shaders/path.h
-	shaders/postprocess.h
-	shaders/shader.cu
-	shaders/postprocess.cu
+	render/shared.h
+	render/shading.h
+	render/bsdf.h
+	render/path.h
+	render/postprocess.h
+	render/shader.cu
+	render/postprocess.cu
 )
 
 FILE ( GLOB KRR_SOURCE_ALL
@@ -105,13 +111,14 @@ FILE ( GLOB KRR_SOURCE_ALL
 
 INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code 
-CUDA_COMPILE_EMBED(PTX_CODE shaders/shader.cu krr-shader)
-#cuda_compile_and_embed(PTX_CODE shaders/shader.cu)
+CUDA_COMPILE_EMBED(PTX_CODE render/shader.cu krr-shader)
+#cuda_compile_and_embed(PTX_CODE render/shader.cu)
 
 ADD_LIBRARY ( krr STATIC
 	${KRR_CORE_SOURCE}
 	${KRR_CORE_HEADERS}
 	${KRR_SOURCE}
+	${KRR_HEADERS}
 	${KRR_SOURCE_ALL}
 	${KRR_SHADERS}
 	${PTX_CODE}
@@ -122,6 +129,7 @@ TARGET_LINK_LIBRARIES(krr PUBLIC ${optix_LIBRARY})
 SET(KRR_ALL_LIBS
 	krr
 	krr-cuda
+	krr_cuda_cfg
 	assimp
 	OpenGL::GL
 	libglew_static

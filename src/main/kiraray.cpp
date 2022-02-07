@@ -3,6 +3,7 @@
 #include "kiraray.h"
 #include "renderer.h"
 #include "scene/importer.h"
+#include "render/bsdf.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -25,12 +26,20 @@ extern "C" int main(int argc, char* argv[]) {
 
 	locateWorkingDirectory();
 	logSuccess("Kiraray::Main Hello, world!");
+#ifdef KRR_DEBUG_BUILD
+	logWarning("Kiraray::Running in debug mode!");
+#endif
+
 	//const string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
-	//const string sceneFile = "common/scenes/sponza/sponza.obj";
+	const string sceneFile = "common/scenes/sponza/sponza.obj";
 	//const string sceneFile = "common/scenes/living_room/living_room.obj";
-	const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
+	//const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
 
 	try {
+		BxDF bsdf = new DiffuseBxDF();
+		ShadingData sd;
+		bsdf.setup(sd);
+
 		gpContext = Context::SharedPtr(new Context());
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 });
 

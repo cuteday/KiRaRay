@@ -4,6 +4,7 @@
 #include "sampler.h"
 #include "scene.h"
 #include "shared.h"
+//#include "bsdf.h"
 
 namespace krr{
 

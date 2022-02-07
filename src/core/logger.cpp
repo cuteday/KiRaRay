@@ -36,6 +36,8 @@ namespace {
         switch (level) {
         case Level::Success:
             return TERMINAL_GREEN;
+        case Level::Warning:
+            return TERMINAL_YELLOW;
         case Level::Error:
             return TERMINAL_LIGHT_RED;
         case Level::Fatal:

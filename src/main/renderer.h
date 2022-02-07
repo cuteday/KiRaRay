@@ -7,8 +7,8 @@
 
 #include "gpu/buffer.h"
 #include "gpu/context.h"
-#include "shaders/path.h"
-#include "shaders/postprocess.h"
+#include "render/path.h"
+#include "render/postprocess.h"
 
 KRR_NAMESPACE_BEGIN
 

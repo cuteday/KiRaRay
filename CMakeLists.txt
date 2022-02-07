@@ -25,6 +25,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# the CONFIG inherently comes from CMAKE_BUILD_TYPE
+add_compile_definitions ("$<$<CONFIG:Debug>:KRR_DEBUG_BUILD>")
+
 ###############################################################################
 # CUDA compiler setup
 ###############################################################################
@@ -69,8 +72,19 @@ else()
 	list(APPEND CUDA_NVCC_FLAGS "-Xcompiler=-Wno-float-conversion")
 	list(APPEND CUDA_NVCC_FLAGS "-Xcompiler=-fno-strict-aliasing")
 endif()
+list(APPEND CUDA_NVCC_FLAGS "--std=c++17")
 list(APPEND CUDA_NVCC_FLAGS "--extended-lambda")
 list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
+list(APPEND CUDA_NVCC_FLAGS "--forward-unknown-to-host-compiler")
+
+add_library (krr_cuda_cfg INTERFACE)
+target_compile_options (
+	krr_cuda_cfg
+	INTERFACE
+		"$<$<COMPILE_LANGUAGE:CUDA>:--std=c++17;--use_fast_math;--expt-relaxed-constexpr;--extended-lambda;--forward-unknown-to-host-compiler>"
+		# Do not add debugging symbols when generating PTX files for OptiX (not supported).
+		"$<$<COMPILE_LANGUAGE:CUDA>:$<IF:$<AND:$<CONFIG:Debug>,$<NOT:$<BOOL:$<TARGET_PROPERTY:CUDA_PTX_COMPILATION>>>>,-G;-g,-lineinfo>>"
+)
 
 ###############################################################################
 # other dependencies

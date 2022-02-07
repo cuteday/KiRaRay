@@ -51,11 +51,11 @@ Texture::SharedPtr Texture::createFromFile(const string& filepath, bool srgb)
 }
 
 void Texture::toDevice() {
-	if (!mImage.isValid()) return;
+	if (!mImage->isValid()) return;
 
 	// we transfer our texture data to a cuda array, then make the array a cuda texture object.
-	vec2i size = mImage.getSize();
-	uint numComponents = mImage.getChannels();
+	vec2i size = mImage->getSize();
+	uint numComponents = mImage->getChannels();
 	if (numComponents != 4)
 		logError("Incorrect texture image channels (not 4)");
 	// we have no padding so pitch == width
@@ -66,7 +66,7 @@ void Texture::toDevice() {
 	// create internal cuda array for texture object
 	CUDA_CHECK(cudaMallocArray(&mCudaArray, &channelDesc, size.x, size.y));
 	// transfer data to cuda array
-	CUDA_CHECK(cudaMemcpy2DToArray(mCudaArray, 0, 0, mImage.data(), pitch, pitch, size.y, cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy2DToArray(mCudaArray, 0, 0, mImage->data(), pitch, pitch, size.y, cudaMemcpyHostToDevice));
 
 	cudaResourceDesc resDesc = {};
 	resDesc.resType = cudaResourceTypeArray;

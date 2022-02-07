@@ -28,18 +28,26 @@ namespace krr
 			std::forward<Args>(payload)...);
 	}
 
-	KRR_DEVICE_FUNCTION void handleHit(const ShadingData sd, PathData& path) {
-		vec2f r2v = path.sampler.get2D();
-		vec3f wiLocal = cosineSampleHemisphere(r2v);
-		float bsdfPdf = wiLocal.z * M_1_PI;
-		vec3f wi = sd.fromLocal(wiLocal);
-		// [NOTE] the generated scattering ray must slightly offseted above the surface to avoid self-intersection
-		Ray ray = { sd.pos + sd.N * 1e-3f, wi };
-		
-		path.ray = ray;
-		path.pdf = bsdfPdf;
-		//path.throughput *= sd.diffuse * M_1_PI * wiLocal.z / bsdfPdf;
-		path.throughput *= sd.diffuse;
+	KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
+		vec2f u = path.sampler.get2D();
+
+		DiffuseBxDF bsdf;
+		bsdf.setup(sd);
+		vec3f wo = sd.toLocal(sd.wo);
+		BSDFSample sample = bsdf.sample(wo, u);
+		vec3f wi = sd.fromLocal(sample.wi);
+		path.ray = { sd.pos + sd.N * 1e-3f, wi };
+		path.pdf = sample.pdf;
+		path.throughput *= sample.f / sample.pdf;
+
+		//vec3f wiLocal = cosineSampleHemisphere(u);
+		//float bsdfPdf = wiLocal.z * M_1_PI;
+		//vec3f wi = sd.fromLocal(wiLocal);
+		//// [NOTE] the generated scattering ray must slightly offseted above the surface to avoid self-intersection
+		//Ray ray = { sd.pos + sd.N * 1e-3f, wi };
+		//path.ray = ray;
+		//path.pdf = bsdfPdf;
+		//path.throughput *= sd.diffuse;
 		// TODO: direct lighting sampling here
 	}
 
@@ -53,7 +61,7 @@ namespace krr
 		vec2f barycentric = optixGetTriangleBarycentrics();
 		hitInfo.primitiveId = optixGetPrimitiveIndex();
 		hitInfo.mesh = (MeshData*)optixGetSbtDataPointer();
-		hitInfo.wi = -normalize(vec3f(optixGetWorldRayDirection()));
+		hitInfo.wo = -normalize(vec3f(optixGetWorldRayDirection()));
 		hitInfo.hitKind = optixGetHitKind();
 		hitInfo.barycentric = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y };
 
@@ -63,7 +71,7 @@ namespace krr
 
 		prepareShadingData(sd, hitInfo, material);
 
-		//sd.emission = 0.2 + 0.8 * dot(sd.N, sd.wi);
+		//sd.emission = 0.2 + 0.8 * dot(sd.N, sd.wo);
 
 	}
 
@@ -79,7 +87,7 @@ namespace krr
 		vec3f rayDir = optixGetWorldRayDirection();
 
 		LightSample ls = {};
-		ls.wi = rayDir;
+		ls.wi = normalize(rayDir);
 		launchParams.envLight.eval(ls);
 		sd.emission = ls.Li;
 		sd.miss = true;

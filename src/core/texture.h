@@ -9,9 +9,10 @@
 
 KRR_NAMESPACE_BEGIN
  
+// Image class is opaque to gpu.
 class Image {
 public:
-	KRR_CLASS_DEFINE(Image);
+	using SharedPtr = std::shared_ptr<Image>;
 	
 	enum class Format {
 		NONE = 0,
@@ -27,14 +28,15 @@ public:
 	};
 	
 	Image() {};
+	~Image() {}
 
 	bool loadImage(const string& filepath, bool srgb = false);
 	bool saveImage(const string& filepath) { return false; }
 
 	static Image::SharedPtr createFromFile(const string& filepath, bool srgb = false);
-	__both__ bool isValid() const { return mSize.x * mSize.y; }
-	__both__ vec2i getSize() const { return mSize; }
-	__both__ int getChannels() const { return mChannels; }
+	bool isValid() const { return mSize.x * mSize.y; }
+	vec2i getSize() const { return mSize; }
+	int getChannels() const { return mChannels; }
 	uchar* data() { return mData.data(); }
 
 	bool mSrgb = false;
@@ -47,26 +49,31 @@ private:
 
 class Texture {
 public:
-	KRR_CLASS_DEFINE(Texture);
-	Texture() {};
+	using SharedPtr = std::shared_ptr<Texture>;
+
+	Texture() {
+		mImage = Image::SharedPtr(new Image());
+	};
 
 	void loadImage(const string& filepath, bool srgb = false) {
-		mImage.loadImage(filepath);
+		mImage->loadImage(filepath);
 	}
-	__both__ bool isValid() { return mImage.isValid() && mCudaTexture; }
+	__both__ bool isValid() { return mCudaTexture; }
 	__both__ cudaTextureObject_t getCudaTexture() { return mCudaTexture; }
 	void toDevice();
 
 	static Texture::SharedPtr createFromFile(const string& filepath, bool srgb = false);
 
 //private:
-	Image mImage;
+	Image::SharedPtr mImage;
 	cudaTextureObject_t mCudaTexture = 0;
 	cudaArray_t mCudaArray = 0;
 };
 
 class Material {
 public:
+	using SharedPtr = std::shared_ptr<Material>;
+
 	enum class TextureType {
 		Diffuse = 0,
 		Specular,
@@ -90,7 +97,6 @@ public:
 		vec3f transmission = vec3f(1);
 	};
 
-	KRR_CLASS_DEFINE(Material);
 	Material() {};
 	Material(const string& name) { mName = name; }
 
@@ -107,7 +113,7 @@ public:
 
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
-	ShadingModel mShadingModel;
+	ShadingModel mShadingModel = ShadingModel::Diffuse;
 	bool mDoubleSided = false;
 	//cudaTextureObject_t mDiffuseTexture;
 	//cudaTextureObject_t mCudaTextures[5] = {};

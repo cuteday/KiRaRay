@@ -35,7 +35,7 @@ namespace krr{
 			vec3f barycentric;
 			
 			MeshData* mesh;
-			vec3f wi;
+			vec3f wo;
 			uint hitKind;
 		};
 
@@ -43,7 +43,7 @@ namespace krr{
 			using ShadingModel = Material::ShadingModel;
 			
 			vec3f pos;
-			vec3f wi;				// view direction
+			vec3f wo;				// view direction
 			vec2f uv;				// texture coords
 			vec3f geoN;				// geometry normal [on the front-facing side]
 
@@ -53,13 +53,15 @@ namespace krr{
 
 			float IoR;
 			vec3f diffuse;			// diffuse reflectance
+			vec3f specular;			// specular reflectance
 			vec3f emission;			// for emissive material
 			float roughness;		// linear roughness (alpha=roughness^2)
+			float metallic;
 
 			bool miss = false;		// not valid if missing, or ?
 			bool frontFacing;		// shading normal and geo normal same dir?
 			
-			ShadingModel shadingModel;
+			ShadingModel shadingModel = ShadingModel::Diffuse;
 			uint flags = 0;			// user custom flags?
 
 			__both__ vec3f fromLocal(vec3f v) const {
