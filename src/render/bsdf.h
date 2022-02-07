@@ -9,6 +9,8 @@
 
 KRR_NAMESPACE_BEGIN
 
+using namespace shader;
+
 struct BSDFSample {
 	vec3f f;
 	vec3f wi;
@@ -20,6 +22,14 @@ class DiffuseBxDF {
 public:
 
 	DiffuseBxDF() = default;
+
+	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, vec2f u) {
+		DiffuseBxDF bsdf;
+		bsdf.setup(sd);
+		return bsdf.sample(sd.wo, u);
+	}
+
+	__both__ DiffuseBxDF(vec3f r) : diffuse(r) {}
 	
 	__both__ void setup(const ShadingData &sd) {
 		diffuse = sd.diffuse;
@@ -45,10 +55,16 @@ private:
 	vec3f diffuse;
 };
 
-class MicroFacetBxDF {
+class MicrofacetBxDF {
 public:
 
-	MicroFacetBxDF() = default;
+	MicrofacetBxDF() = default;
+
+	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, vec2f u) {
+		MicrofacetBxDF bsdf;
+		bsdf.setup(sd);
+		return bsdf.sample(sd.wo, u);
+	}
 
 	__both__ void setup(const ShadingData & sd) {
 		diffuse = sd.diffuse;
@@ -76,9 +92,14 @@ private:
 };
 
 
-class BxDF :public TaggedPointer<DiffuseBxDF, MicroFacetBxDF>{
+class BxDF :public TaggedPointer<DiffuseBxDF, MicrofacetBxDF>{
 public:
 	using TaggedPointer::TaggedPointer;
+
+	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, vec2f u, int index) {
+		auto sample = [&](auto ptr)->BSDFSample {return ptr->sampleInternal(sd, u); };
+		return dispatch(sample, index);
+	}
 
 	__both__ inline void setup(const ShadingData &sd) {
 		auto setup = [&](auto ptr)->void {return ptr->setup(sd); };

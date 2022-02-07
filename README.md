@@ -39,7 +39,7 @@ This project uses cmake to build, no additional setting is needed.
 
 #### Choosing generator for Visual Studio
 
-Please do note that one should choose Ninja as generator when build with Visual Studio, otherwise some strange CUDA errors will occur at runtime. This problem has totally gone beyond my knowledge and takes me a day to find it out o(*≧▽≦)ツ┏━┓.
+Ninja is recommended as generator when build with Visual Studio, otherwise some strange CUDA errors may be observed at runtime.
 
 ### Epilogue
 

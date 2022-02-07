@@ -96,7 +96,7 @@ SET ( KRR_SHADERS
 	render/bsdf.h
 	render/path.h
 	render/postprocess.h
-	render/shader.cu
+	render/path.cu
 	render/postprocess.cu
 )
 
@@ -111,8 +111,8 @@ FILE ( GLOB KRR_SOURCE_ALL
 
 INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code 
-CUDA_COMPILE_EMBED(PTX_CODE render/shader.cu krr-shader)
-#cuda_compile_and_embed(PTX_CODE render/shader.cu)
+CUDA_COMPILE_EMBED(PTX_CODE render/path.cu krr-shader)
+#cuda_compile_and_embed(PTX_CODE render/path.cu)
 
 ADD_LIBRARY ( krr STATIC
 	${KRR_CORE_SOURCE}
@@ -129,7 +129,7 @@ TARGET_LINK_LIBRARIES(krr PUBLIC ${optix_LIBRARY})
 SET(KRR_ALL_LIBS
 	krr
 	krr-cuda
-	krr_cuda_cfg
+	#krr_cuda_cfg
 	assimp
 	OpenGL::GL
 	libglew_static

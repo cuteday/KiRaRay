@@ -7,6 +7,7 @@
 #include "shading.h"
 
 using namespace krr;	// this is needed or nvcc can't recognize the launchParams external var.
+using namespace types;
 
 namespace krr
 {
@@ -29,26 +30,22 @@ namespace krr
 	}
 
 	KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
-		vec2f u = path.sampler.get2D();
+		BSDFSample sample = {};
 
-		DiffuseBxDF bsdf;
-		bsdf.setup(sd);
+		vec2f u = path.sampler.get2D();
 		vec3f wo = sd.toLocal(sd.wo);
-		BSDFSample sample = bsdf.sample(wo, u);
+
+		// how to eliminate branches here to improve performance?
+		//DiffuseBxDF bsdf;
+		//bsdf.setup(sd);
+		//sample = bsdf.sample(wo, u);
+
+		sample = BxDF::sampleInternal(sd, u, 0);
+
 		vec3f wi = sd.fromLocal(sample.wi);
 		path.ray = { sd.pos + sd.N * 1e-3f, wi };
 		path.pdf = sample.pdf;
-		path.throughput *= sample.f / sample.pdf;
-
-		//vec3f wiLocal = cosineSampleHemisphere(u);
-		//float bsdfPdf = wiLocal.z * M_1_PI;
-		//vec3f wi = sd.fromLocal(wiLocal);
-		//// [NOTE] the generated scattering ray must slightly offseted above the surface to avoid self-intersection
-		//Ray ray = { sd.pos + sd.N * 1e-3f, wi };
-		//path.ray = ray;
-		//path.pdf = bsdfPdf;
-		//path.throughput *= sd.diffuse;
-		// TODO: direct lighting sampling here
+		path.throughput *= sample.f / max(sample.pdf, 1e-5f);	// to avoid fireflies
 	}
 
 	KRR_DEVICE_FUNCTION void handleMiss() {

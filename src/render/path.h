@@ -4,7 +4,7 @@
 #include "sampler.h"
 #include "scene.h"
 #include "shared.h"
-//#include "bsdf.h"
+#include "bsdf.h"
 
 namespace krr{
 
@@ -44,7 +44,7 @@ namespace krr{
 
 		uint maxDepth = 20;
 		float probRR = 0.15;
-		vec3f clampThreshold = 500;
+		vec3f clampThreshold = 50;
 		uint spp = 1;
 
 		vec2i debugPixel = { 666, 666 };
@@ -52,6 +52,7 @@ namespace krr{
 		Camera camera;
 		EnvLight envLight;
 		Scene::SceneData sceneData;
+		BxDF bsdf;
 
 		OptixTraversableHandle traversable;
 	};

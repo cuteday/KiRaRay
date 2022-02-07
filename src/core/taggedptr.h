@@ -37,6 +37,78 @@ namespace types {
 		static constexpr int count = 1 + IndexOf<T, TypePack<Ts...>>::count;
 	};
 
+	template <typename T, typename... Ts>
+	struct HasType {
+		static constexpr bool value = false;
+	};
+
+	template <typename T, typename Tfirst, typename... Ts>
+	struct HasType<T, TypePack<Tfirst, Ts...>> {
+		static constexpr bool value =
+			(std::is_same<T, Tfirst>::value || HasType<T, TypePack<Ts...>>::value);
+	};
+
+	template <typename T>
+	struct GetFirst {};
+	template <typename T, typename... Ts>
+	struct GetFirst<TypePack<T, Ts...>> {
+		using type = T;
+	};
+
+	template <typename T>
+	struct RemoveFirst {};
+	template <typename T, typename... Ts>
+	struct RemoveFirst<TypePack<T, Ts...>> {
+		using type = TypePack<Ts...>;
+	};
+
+	template <int index, typename T, typename... Ts>
+	struct RemoveFirstN;
+	template <int index, typename T, typename... Ts>
+	struct RemoveFirstN<index, TypePack<T, Ts...>> {
+		using type = typename RemoveFirstN<index - 1, TypePack<Ts...>>::type;
+	};
+
+	template <typename T, typename... Ts>
+	struct RemoveFirstN<0, TypePack<T, Ts...>> {
+		using type = TypePack<T, Ts...>;
+	};
+
+	template <typename... Ts>
+	struct Prepend;
+	template <typename T, typename... Ts>
+	struct Prepend<T, TypePack<Ts...>> {
+		using type = TypePack<T, Ts...>;
+	};
+	template <typename... Ts>
+	struct Prepend<void, TypePack<Ts...>> {
+		using type = TypePack<Ts...>;
+	};
+
+	template <int index, typename T, typename... Ts>
+	struct TakeFirstN;
+	template <int index, typename T, typename... Ts>
+	struct TakeFirstN<index, TypePack<T, Ts...>> {
+		using type =
+			typename Prepend<T, typename TakeFirstN<index - 1, TypePack<Ts...>>::type>::type;
+	};
+	template <typename T, typename... Ts>
+	struct TakeFirstN<1, TypePack<T, Ts...>> {
+		using type = TypePack<T>;
+	};
+
+	template <template <typename> class M, typename... Ts>
+	struct MapType;
+	template <template <typename> class M, typename T>
+	struct MapType<M, TypePack<T>> {
+		using type = TypePack<M<T>>;
+	};
+
+	template <template <typename> class M, typename T, typename... Ts>
+	struct MapType<M, TypePack<T, Ts...>> {
+		using type = typename Prepend<M<T>, typename MapType<M, TypePack<Ts...>>::type>::type;
+	};
+
 	// TaggedPointer Helper Templates
 	template <typename F, typename R, typename T>
 	__both__ R Dispatch(F &&func, const void *ptr, int index) {
@@ -420,22 +492,19 @@ class TaggedPointer {
 		return 1 + types::IndexOf<Tp, Types>::count;
 	}
 
+	// the index of the type pack plus one. tag=0 means nullptr.
 	__both__ unsigned int tag() const { return ((bits & tagMask) >> tagShift); }
 	template <typename T>
 	__both__ bool is() const {
 		return tag() == typeIndex<T>();
 	}
 
-	__both__
-	static constexpr unsigned int maxTag() { return sizeof...(Ts); }
-	__both__
-	static constexpr unsigned int numTags() { return maxTag() + 1; }
+	__both__ static constexpr unsigned int maxTag() { return sizeof...(Ts); }
+	__both__ static constexpr unsigned int numTags() { return maxTag() + 1; }
 
-	__both__
-	explicit operator bool() const { return (bits & ptrMask) != 0; }
+	__both__ explicit operator bool() const { return (bits & ptrMask) != 0; }
 
-	__both__
-	bool operator<(const TaggedPointer &tp) const { return bits < tp.bits; }
+	__both__ bool operator < (const TaggedPointer &tp) const { return bits < tp.bits; }
 
 	template <typename T>
 	__both__ T *cast() {
@@ -465,16 +534,13 @@ class TaggedPointer {
 			return nullptr;
 	}
 
-	__both__
-	bool operator==(const TaggedPointer &tp) const { return bits == tp.bits; }
-	__both__
-	bool operator!=(const TaggedPointer &tp) const { return bits != tp.bits; }
+	__both__ bool operator==(const TaggedPointer &tp) const { return bits == tp.bits; }
+	
+	__both__ bool operator!=(const TaggedPointer &tp) const { return bits != tp.bits; }
 
-	__both__
-	void *ptr() { return reinterpret_cast<void *>(bits & ptrMask); }
+	__both__ void *ptr() { return reinterpret_cast<void *>(bits & ptrMask); }
 
-	__both__
-	const void *ptr() const { return reinterpret_cast<const void *>(bits & ptrMask); }
+	__both__ const void *ptr() const { return reinterpret_cast<const void *>(bits & ptrMask); }
 
 	template <typename F>
 	__both__ decltype(auto) dispatch(F &&func) {
@@ -488,6 +554,12 @@ class TaggedPointer {
 		DCHECK(ptr());
 		using R = typename types::ReturnType<F, Ts...>::type;
 		return types::Dispatch<F, R, Ts...>(func, ptr(), tag() - 1);
+	}
+
+	template <typename F>
+	__both__ static decltype(auto) dispatch(F&& func, int index) {
+		using R = typename types::ReturnType<F, Ts...>::type;
+		return types::Dispatch<F, R, Ts...>(func, (const void*)nullptr, index);
 	}
 
   private:
