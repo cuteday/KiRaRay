@@ -28,8 +28,10 @@ public:
 		vec2f jitter = { 0, 0 };		// within [-0.5, 0.5]^2
 	};
 
-	Camera():	mpJitterSampler(new LCGSampler())
-	{ mpJitterSampler->setSeed(727272); }
+	Camera(){
+		mpJitterSampler = new LCGSampler();
+		mpJitterSampler.setPixelSample({ 114, 514 }, 1919810);
+	}
 
 	__both__ vec3f getRayDir(vec2i pixel, vec2i frameSize) {
 		vec2f p = vec2f(pixel) + vec2f(0.5) + mData.jitter;
@@ -62,7 +64,7 @@ protected:
 
 	bool mHasChanges = false;
 	bool mPreserveHeight = true;	// preserve sensor height on aspect ratio changes.
-	LCGSampler::SharedPtr mpJitterSampler;
+	Sampler mpJitterSampler;
 };
 
 class CameraController{

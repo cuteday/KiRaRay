@@ -93,6 +93,7 @@ SET (KRR_SOURCE
 SET ( KRR_SHADERS
 	render/shared.h
 	render/shading.h
+	render/sampling.h
 	render/bsdf.h
 	render/path.h
 	render/postprocess.h
@@ -129,7 +130,7 @@ TARGET_LINK_LIBRARIES(krr PUBLIC ${optix_LIBRARY})
 SET(KRR_ALL_LIBS
 	krr
 	krr-cuda
-	#krr_cuda_cfg
+	krr_cuda_cfg
 	assimp
 	OpenGL::GL
 	libglew_static

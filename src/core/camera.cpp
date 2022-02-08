@@ -16,7 +16,7 @@ bool Camera::update()
 	mData.v = normalize(cross(mData.u, mData.w)) * mData.frameSize.y * 0.5f;
 
 	// update jitter value
-	mData.jitter = mpJitterSampler->get2D() - vec2f(1);
+	mData.jitter = mpJitterSampler.get2D() - vec2f(1);
 
 	// checking if camera data have changes
 	bool hasChanges = false;

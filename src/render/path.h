@@ -52,7 +52,6 @@ namespace krr{
 		Camera camera;
 		EnvLight envLight;
 		Scene::SceneData sceneData;
-		BxDF bsdf;
 
 		OptixTraversableHandle traversable;
 	};
@@ -65,7 +64,7 @@ namespace krr{
 		Ray ray;
 		float pdf;			
 		// random sample generator
-		LCGSampler sampler;
+		Sampler sampler;
 	};
 
 }

@@ -31,16 +31,15 @@ namespace krr
 
 	KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 		BSDFSample sample = {};
-
-		vec2f u = path.sampler.get2D();
 		vec3f wo = sd.toLocal(sd.wo);
 
 		// how to eliminate branches here to improve performance?
 		//DiffuseBxDF bsdf;
+		//BxDF bxdf = &bsdf;
 		//bsdf.setup(sd);
 		//sample = bsdf.sample(wo, u);
 
-		sample = BxDF::sampleInternal(sd, u, 0);
+		sample = BxDF::sampleInternal(sd, path.sampler, 0);
 
 		vec3f wi = sd.fromLocal(sample.wi);
 		path.ray = { sd.pos + sd.N * 1e-3f, wi };
@@ -126,8 +125,8 @@ namespace krr
 		const uint32_t fbIndex = pixel.x + pixel.y * launchParams.fbSize.x;
 
 		Camera& camera = launchParams.camera;
-		LCGSampler sampler;
-		sampler.setPixel(pixel, frameID);
+		LCGSampler sampler;		// dont use new(= malloc) here since slow performance 
+		sampler.setPixelSample(pixel, frameID);
 		// primary ray 
 		vec3f rayOrigin = camera.getPosition();
 		vec3f rayDir = camera.getRayDir(pixel, launchParams.fbSize);
@@ -137,7 +136,7 @@ namespace krr
 
 		for (uint i = 0; i < launchParams.spp; i++) {
 			PathData path = {};
-			path.sampler = sampler;
+			path.sampler = &sampler;
 			path.ray = { rayOrigin, rayDir };
 			tracePath(path);
 			color += path.L;

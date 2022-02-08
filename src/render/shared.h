@@ -61,7 +61,7 @@ namespace krr{
 			bool miss = false;		// not valid if missing, or ?
 			bool frontFacing;		// shading normal and geo normal same dir?
 			
-			ShadingModel shadingModel = ShadingModel::Diffuse;
+			ShadingModel shadingModel = ShadingModel::MetallicRoughness;
 			uint flags = 0;			// user custom flags?
 
 			__both__ vec3f fromLocal(vec3f v) const {

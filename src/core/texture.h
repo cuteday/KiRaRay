@@ -58,7 +58,7 @@ public:
 	void loadImage(const string& filepath, bool srgb = false) {
 		mImage->loadImage(filepath);
 	}
-	__both__ bool isValid() { return mCudaTexture; }
+	__both__ bool isValid() { return mCudaTexture != 0; }
 	__both__ cudaTextureObject_t getCudaTexture() { return mCudaTexture; }
 	void toDevice();
 
@@ -75,17 +75,22 @@ public:
 	using SharedPtr = std::shared_ptr<Material>;
 
 	enum class TextureType {
-		Diffuse = 0,
-		Specular,
-		Emissive,
-		Normal,
+		Diffuse	= 0	,
+		Specular	,
+		Emissive	,
+		Normal		,
 		Transmission,
 		Count
 	};
 
+	enum class BsdfType {
+		Diffuse		= 0,
+		Microfacet
+	};
+
 	enum class ShadingModel {
-		Diffuse = 0,
-		MetallicRoughness,
+		//Diffuse = 0,
+		MetallicRoughness = 0,
 		SpecularGlossiness,
 	};
 
@@ -113,10 +118,9 @@ public:
 
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
-	ShadingModel mShadingModel = ShadingModel::Diffuse;
+	BsdfType mBsdfType = BsdfType::Diffuse;
+	ShadingModel mShadingModel = ShadingModel::MetallicRoughness;
 	bool mDoubleSided = false;
-	//cudaTextureObject_t mDiffuseTexture;
-	//cudaTextureObject_t mCudaTextures[5] = {};
 	string mName;
 };
 

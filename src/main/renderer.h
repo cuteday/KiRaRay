@@ -39,9 +39,6 @@ public:
 		mpScene = scene;
 		buildAS();
 		buildSBT();
-		DiffuseBxDF diffuseBsdf;
-		bsdfBuffer.alloc_and_copy_from_host(&diffuseBsdf, 1);
-		launchParams.bsdf = bsdfBuffer.data<DiffuseBxDF>();
 		logSuccess("Scene set...");
 	}
 
@@ -65,7 +62,6 @@ private:
 	CUDABuffer   launchParamsBuffer;
 
 	CUDABuffer accelBuffer;
-	CUDABuffer bsdfBuffer;
 };
 
 class RenderApp : public WindowApp{

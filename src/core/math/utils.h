@@ -106,40 +106,7 @@ namespace math{
 		* sampling distributions
 		********************************************************/
 
-		__both__ inline vec3f uniformSampleHemisphere(const vec2f& u) {
-			float z = u[0];
-			float r = sqrt(max(0.f, (float)1.f - z * z));
-			float phi = 2 * M_PI * u[1];
-			return vec3f(r * cos(phi), r * sin(phi), z);
-		}
 
-		__both__ inline vec2f uniformSampleDisk(const vec2f& u) {
-			// simpler method derived using marginal distribution...
-			//float r = sqrt(u[0]);
-			//float theta = 2 * M_PI * u[1];
-			//return vec2f(r * cos(theta), r * sin(theta));
-				
-			// the concentric method
-			vec2f uOffset = 2.f * u - vec2f(1, 1);
-			if (uOffset.x == 0 && uOffset.y == 0)
-				return vec2f(0, 0);
-			float theta, r;
-			if (fabs(uOffset.x) > fabs(uOffset.y)) {
-				r = uOffset.x;
-				theta = M_PI / 4 * (uOffset.y / uOffset.x);
-			}
-			else {
-				r = uOffset.y;
-				theta = M_PI / 2 - M_PI / 4 * (uOffset.x / uOffset.y);
-			}
-			return r * vec2f(cos(theta), sin(theta));
-		}
-
-		__both__ inline vec3f cosineSampleHemisphere(const vec2f& u) {
-			vec2f d = uniformSampleDisk(u);
-			float z = sqrt(max(0.f, 1 - d.x * d.x - d.y * d.y));
-			return { d.x, d.y, z };
-		}
 
 		/*******************************************************
 		* hashing utils

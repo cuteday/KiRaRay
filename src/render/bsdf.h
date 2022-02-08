@@ -6,6 +6,8 @@
 
 #include "math/math.h"
 #include "math/utils.h"
+#include "sampling.h"
+#include "sampler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -23,10 +25,10 @@ public:
 
 	DiffuseBxDF() = default;
 
-	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, vec2f u) {
+	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, Sampler& sg) {
 		DiffuseBxDF bsdf;
 		bsdf.setup(sd);
-		return bsdf.sample(sd.wo, u);
+		return bsdf.sample(sd.wo, sg);
 	}
 
 	__both__ DiffuseBxDF(vec3f r) : diffuse(r) {}
@@ -39,9 +41,10 @@ public:
 		return diffuse * M_1_PI * wi.z;
 	}
 
-	__both__ BSDFSample sample(vec3f wo, vec2f u) const {
+	__both__ BSDFSample sample(vec3f wo, Sampler& sg) const {
 		BSDFSample sample;
-		sample.wi = utils::cosineSampleHemisphere(u);
+		vec2f u = sg.get2D();
+		sample.wi = cosineSampleHemisphere(u);
 		sample.f = f(wo, sample.wi);
 		sample.pdf = pdf(wo, sample.wi);
 		return sample;
@@ -60,26 +63,23 @@ public:
 
 	MicrofacetBxDF() = default;
 
-	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, vec2f u) {
+	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, Sampler& sg) {
 		MicrofacetBxDF bsdf;
 		bsdf.setup(sd);
-		return bsdf.sample(sd.wo, u);
+		return bsdf.sample(sd.wo, sg);
 	}
 
 	__both__ void setup(const ShadingData & sd) {
-		diffuse = sd.diffuse;
+		albedo = sd.specular;
 		return void();
 	}
 
 	__both__ vec3f f(vec3f wo, vec3f wi) const {
-		return diffuse * M_1_PI * wi.z;
+		return albedo * M_1_PI * wi.z;
 	}
 
-	__both__  BSDFSample sample(vec3f wo, vec2f u) const {
-		BSDFSample sample;
-		sample.wi = utils::cosineSampleHemisphere(u);
-		sample.f = f(wo, sample.wi);
-		sample.pdf = pdf(wo, sample.wi);
+	__both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
+		BSDFSample sample = {};
 		return sample;
 	}
 
@@ -88,7 +88,8 @@ public:
 	}
 
 private:
-	vec3f diffuse;
+	vec3f albedo;		// specular reflectance
+	float alpha;		// GGX alpha (r^2)
 };
 
 
@@ -96,9 +97,9 @@ class BxDF :public TaggedPointer<DiffuseBxDF, MicrofacetBxDF>{
 public:
 	using TaggedPointer::TaggedPointer;
 
-	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, vec2f u, int index) {
-		auto sample = [&](auto ptr)->BSDFSample {return ptr->sampleInternal(sd, u); };
-		return dispatch(sample, index);
+	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, Sampler& sg, int bsdfIndex) {
+		auto sample = [&](auto ptr)->BSDFSample {return ptr->sampleInternal(sd, sg); };
+		return dispatch(sample, bsdfIndex);
 	}
 
 	__both__ inline void setup(const ShadingData &sd) {
@@ -111,8 +112,8 @@ public:
 		return dispatch(f);
 	}
 
-	__both__ inline BSDFSample sample(vec3f wo, vec2f u) const{
-		auto sample = [&](auto ptr)->BSDFSample {return ptr->sample(wo, u); };
+	__both__ inline BSDFSample sample(vec3f wo, Sampler& sg) const{
+		auto sample = [&](auto ptr)->BSDFSample {return ptr->sample(wo, sg); };
 		return dispatch(sample);
 	}
 

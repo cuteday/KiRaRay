@@ -1,8 +1,24 @@
-# Kirara Coding
+# Kirakira Coding
 
-### Implementation
+### Components
 
-#### Virtual Classes
+#### Render passes
+
+To be added...
+
+#### Tone mappers
+
+Currently supported operators: ACES, Reinhard.
+
+#### Camera and controlling
+
+To be added...
+
+#### BSDFs
+
+To be added...
+
+#### Tagged Pointer
 
 To be added...
 
@@ -10,5 +26,5 @@ To be added...
 
 #### Macros
 
-There will be a `KRR_DEBUG_BUILD` macro defined for all code files. See cmake file for detail.
+For debug build, there will be a `KRR_DEBUG_BUILD` macro defined for all code files. See cmake file for detail.
 

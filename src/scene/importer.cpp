@@ -139,6 +139,9 @@ namespace assimp {
 			pMaterial->mDoubleSided = true;
 		}
 
+		pMaterial->mShadingModel = importMode == ImportMode::OBJ ? 
+			Material::ShadingModel::SpecularGlossiness : Material::ShadingModel::MetallicRoughness;
+		
 		return pMaterial;
 	}
 }
