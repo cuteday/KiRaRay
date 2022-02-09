@@ -29,22 +29,26 @@ namespace krr
 			std::forward<Args>(payload)...);
 	}
 
-	KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
+	KRR_DEVICE_FUNCTION bool handleHit(const ShadingData& sd, PathData& path) {
 		BSDFSample sample = {};
+		Material::BsdfType bsdfType = Material::BsdfType::FresnelBlended;
 		vec3f wo = sd.toLocal(sd.wo);
 
-		// how to eliminate branches here to improve performance?
-		//DiffuseBxDF bsdf;
-		//BxDF bxdf = &bsdf;
-		//bsdf.setup(sd);
-		//sample = bsdf.sample(wo, u);
+		//printf("T: %f\n", length(sd.T));
+		//printf("B: %f\n", length(sd.B));
+		//printf("N: %f\n", length(sd.N));
+		printf("wo: %f\n", length(sd.wo));
 
-		sample = BxDF::sampleInternal(sd, path.sampler, 0);
+		// how to eliminate branches here to improve performance?
+
+		sample = BxDF::sampleInternal(sd, path.sampler, (uint)bsdfType);
+		if (!sample.valid) return false;
 
 		vec3f wi = sd.fromLocal(sample.wi);
 		path.ray = { sd.pos + sd.N * 1e-3f, wi };
-		path.pdf = sample.pdf;
-		path.throughput *= sample.f / max(sample.pdf, 1e-5f);	// to avoid fireflies
+		path.pdf = max(sample.pdf, 1e-6f);
+		path.throughput *= sample.f * fabs(dot(wi, sd.N)) / path.pdf;	// (a bad way) to avoid fireflies
+		return true;
 	}
 
 	KRR_DEVICE_FUNCTION void handleMiss() {
@@ -98,11 +102,8 @@ namespace krr
 				OPTIX_RAY_FLAG_DISABLE_ANYHIT, u0, u1);
 			path.L += path.throughput * sd.emission;
 
-			if (sd.miss) {
+			if (sd.miss || !handleHit(sd, path)) {
 				break;
-			}
-			else {
-				handleHit(sd, path);
 			}
 			// russian roulette
 			float u = path.sampler.get1D();

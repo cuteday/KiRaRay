@@ -44,6 +44,9 @@ __both__ inline vec3f cosineSampleHemisphere(const vec2f& u) {
 	return { d.x, d.y, z };
 }
 
+/////////////////////////////////////////////////////////////////////////
+//				microfacet bsdf evaluation and sampling 
+
 __both__ inline float evalG1GGX(float alphaSqr, float cosTheta)
 {
 	if (cosTheta <= 0) return 0;
@@ -64,6 +67,22 @@ __both__ inline float evalPdfGGX_VNDF(float alpha, vec3f wo, vec3f h)
 	float G1 = evalG1GGX(alpha * alpha, wo.z);
 	float D = evalNdfGGX(alpha, h.z);
 	return G1 * D * max(0.f, dot(wo, h)) / wo.z;
+}
+
+__both__ inline float evalLambdaGGX(float alphaSqr, float cosTheta)
+{
+	if (cosTheta <= 0) return 0;
+	float cosThetaSqr = cosTheta * cosTheta;
+	float tanThetaSqr = max(1 - cosThetaSqr, 0.f) / cosThetaSqr;
+	return 0.5 * (-1 + sqrt(1 + alphaSqr * tanThetaSqr));
+}
+
+__both__ inline float evalMaskingSmithGGXSeparable(float alpha, float cosThetaI, float cosThetaO)
+{
+	float alphaSqr = alpha * alpha;
+	float lambdaI = evalLambdaGGX(alphaSqr, cosThetaI);
+	float lambdaO = evalLambdaGGX(alphaSqr, cosThetaO);
+	return 1 / ((1 + lambdaI) * (1 + lambdaO));
 }
 
 __both__ inline vec3f sampleGGX_VNDF(float alpha, vec3f wo, vec2f u, float &pdf)

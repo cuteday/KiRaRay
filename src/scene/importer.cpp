@@ -6,6 +6,7 @@
 #include "assimp/scene.h"
 #include "assimp/pbrmaterial.h"
 
+#include "math/math.h"
 #include "scene/importer.h"
 #include "logger.h"
 
@@ -141,7 +142,7 @@ namespace assimp {
 
 		pMaterial->mShadingModel = importMode == ImportMode::OBJ ? 
 			Material::ShadingModel::SpecularGlossiness : Material::ShadingModel::MetallicRoughness;
-		
+
 		return pMaterial;
 	}
 }
@@ -183,6 +184,7 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 		//| aiProcess_TransformUVCoords
 		| aiProcess_FlipUVs
 		//| aiProcess_FlipWindingOrder
+		| aiProcess_PreTransformVertices
 		;
 	int removeFlags = aiComponent_COLORS;
 	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS; uvLayer++) 
@@ -228,7 +230,7 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
 		mesh.vertices.push_back(vertex);
 
 		assert(pAiMesh->HasNormals());
-		vec3f normal = aiCast(pAiMesh->mNormals[i]);
+		vec3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
 		mesh.normals.push_back(normal);
 
 		if (pAiMesh->HasTextureCoords(0)) {
@@ -238,10 +240,14 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
 		}
 
 		if (pAiMesh->HasTangentsAndBitangents()) {
-			vec3f tangent = aiCast(pAiMesh->mTangents[i]);
-			vec3f bitangent = aiCast(pAiMesh->mBitangents[i]);
-			mesh.tangents.push_back(tangent);
-			mesh.bitangents.push_back(bitangent);
+			vec3f T = aiCast(pAiMesh->mTangents[i]);
+			//vec3f B = aiCast(pAiMesh->mBitangents[i]);
+			// in assimp the tangents and bitangents are not necessarily orthogonal!
+			// however we need them to be orthonormal since we use tbn as world-local transformations
+			T = normalize(T - normal * dot(normal, T));
+			vec3f B = normalize(cross(normal, T));
+			mesh.tangents.push_back(T);
+			mesh.bitangents.push_back(B);
 		}
 	}
 

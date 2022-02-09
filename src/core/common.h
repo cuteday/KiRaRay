@@ -82,7 +82,7 @@ typedef unsigned char uchar;
 namespace krr {
 	namespace math {
 
-#ifdef __NVCC__
+#ifdef __CUDA_ARCH__
 		using ::min;
 		using ::max;
 		using std::abs;

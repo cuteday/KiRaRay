@@ -7,6 +7,18 @@
 namespace krr {
   namespace math {
 
+    // power shortcuts
+    template <typename T>
+    __both__ constexpr T pow1(T x) { return x; }
+    template <typename T>
+    __both__ constexpr T pow2(T x) { return x * x; }
+    template <typename T>
+    __both__ constexpr T pow3(T x) { return x* x * x; }
+    template <typename T>
+    __both__ constexpr T pow4(T x) { return x * x * x * x; }
+    template <typename T>
+    __both__ constexpr T pow5(T x) { return x * x * x * x * x; }
+
     // =======================================================
     // vector specializations of those scalar functors
     // =======================================================
@@ -186,7 +198,7 @@ namespace krr {
     { return vec_t<T,4>(a op b.x, a op b.y, a op b.z, a op b.w); }      \
                                                                         \
                                                                         \
-    
+
     _define_operator(*);
     _define_operator(/);
     _define_operator(+);

@@ -90,7 +90,13 @@ SET (KRR_SOURCE
 	scene/importer.cpp
 )
 
+SET(KRR_MATERIALS
+	render/materials/matutils.h
+	render/materials/microfacet.h
+)
+
 SET ( KRR_SHADERS
+	${KRR_MATERIALS}
 	render/shared.h
 	render/shading.h
 	render/sampling.h
@@ -125,7 +131,7 @@ ADD_LIBRARY ( krr STATIC
 	${PTX_CODE}
 )
 
-TARGET_LINK_LIBRARIES(krr PUBLIC ${optix_LIBRARY})
+# TARGET_LINK_LIBRARIES(krr PUBLIC ${optix_LIBRARY})
 
 SET(KRR_ALL_LIBS
 	krr
@@ -143,4 +149,6 @@ SET(KRR_ALL_LIBS
 )
 
 ADD_EXECUTABLE ( kiraray main/kiraray.cpp )
+
+TARGET_LINK_OPTIONS (kiraray PUBLIC "/FORCE:MULTIPLE" "/IGNORE:4006")
 TARGET_LINK_LIBRARIES (kiraray PUBLIC ${KRR_ALL_LIBS} )

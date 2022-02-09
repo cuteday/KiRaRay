@@ -41,6 +41,7 @@ namespace krr{
 
 		struct ShadingData {		// for use as per ray data, generated from ch
 			using ShadingModel = Material::ShadingModel;
+			using BsdfType = Material::BsdfType;
 			
 			vec3f pos;
 			vec3f wo;				// view direction
@@ -61,14 +62,15 @@ namespace krr{
 			bool miss = false;		// not valid if missing, or ?
 			bool frontFacing;		// shading normal and geo normal same dir?
 			
-			ShadingModel shadingModel = ShadingModel::MetallicRoughness;
+			//ShadingModel shadingModel = ShadingModel::MetallicRoughness;
+			BsdfType bsdfType = BsdfType::Diffuse;
 			uint flags = 0;			// user custom flags?
 
 			__both__ vec3f fromLocal(vec3f v) const {
 				return T * v.x + B * v.y + N * v.z;
 			}
 
-			__both__ vec3f toLocal(vec3f v) const {
+			__both__ vec3f  toLocal(vec3f v) const {
 				return { dot(T, v) + dot(B, v) + dot(N, v) };
 			}
 		};

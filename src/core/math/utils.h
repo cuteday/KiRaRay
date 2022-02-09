@@ -6,6 +6,7 @@
 KRR_NAMESPACE_BEGIN
 
 namespace math{
+
 	namespace utils{
 		/*******************************************************
 		* colors
@@ -65,7 +66,7 @@ namespace math{
 		}
 
 		/*******************************************************
-		* vectors
+		* vectors and coordinates
 		********************************************************/
 
 		// generate a perpendicular vector which is orthogonal to the given vector
@@ -81,6 +82,7 @@ namespace math{
 			return v;
 		}
 
+		// world => y-up
 		__both__ inline vec2f worldToLatLong(const vec3f& dir) {
 			vec3f p = normalize(dir);
 			vec2f uv;
@@ -89,6 +91,19 @@ namespace math{
 			return uv;
 		}
 
+		/// <param name="latlong"> in [0, 1]*[0, 1] </param>
+		__both__ inline vec3f latlongToWorld(vec2f latlong)
+		{
+			float phi = M_PI * (2.f * saturate(latlong.x) - 1.f);
+			float theta = M_PI * saturate(latlong.y);
+			float sinTheta = sin(theta);
+			float cosTheta = cos(theta);
+			float sinPhi = sin(phi);
+			float cosPhi = cos(phi);
+			return { sinTheta * sinPhi, cosTheta, -sinTheta * cosPhi };
+		}
+
+		// caetesian, or local frame => z-up 
 		__both__ inline vec2f cartesianToSpherical(const vec3f& v) {
 			vec3f nv = normalize(v);
 			vec2f sph;
@@ -102,11 +117,27 @@ namespace math{
 			return { sph.x / M_PI, sph.y / M_2PI };
 		}
 
-		/*******************************************************
-		* sampling distributions
-		********************************************************/
+		/// <param name="sph">\phi in [0, 2pi] and \theta in [0, pi]</param>
+		__both__ inline vec3f sphericalToCartesian(float theta, float phi) {
+			float sinTheta = sin(theta);
+			float cosTheta = cos(theta);
+			float sinPhi = sin(phi);
+			float cosPhi = cos(phi);
+			return { sinTheta * sinPhi, -sinTheta * cosPhi, cosTheta, };
+		}
 
+		__both__ inline vec3f sphericalToCartesian(float sinTheta, float cosTheta, float phi) {
+			return vec3f(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+		}
 
+		__both__ inline float sphericalTheta(const vec3f& v) {
+			return acos(clamp(v.z, -1.f, 1.f));
+		}
+
+		__both__ inline float sphericalPhi(const vec3f& v) {
+			float p = atan2(v.y, v.x);
+			return (p < 0) ? (p + 2 * M_PI) : p;
+		}
 
 		/*******************************************************
 		* hashing utils

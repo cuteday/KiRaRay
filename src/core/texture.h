@@ -85,11 +85,11 @@ public:
 
 	enum class BsdfType {
 		Diffuse		= 0,
-		Microfacet
+		Microfacet	,
+		FresnelBlended
 	};
 
 	enum class ShadingModel {
-		//Diffuse = 0,
 		MetallicRoughness = 0,
 		SpecularGlossiness,
 	};
@@ -118,7 +118,7 @@ public:
 
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
-	BsdfType mBsdfType = BsdfType::Diffuse;
+	BsdfType mBsdfType = BsdfType::FresnelBlended;
 	ShadingModel mShadingModel = ShadingModel::MetallicRoughness;
 	bool mDoubleSided = false;
 	string mName;

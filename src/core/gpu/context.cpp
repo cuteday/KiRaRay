@@ -41,6 +41,7 @@ void Context::initialize() {
 
 	OPTIX_CHECK(optixDeviceContextCreate(cudaContext, &optixContextOptions, &optixContext));
 	OPTIX_CHECK(optixDeviceContextSetLogCallback(optixContext, optixContextLogCallback, nullptr, 4));
+	//OPTIX_CHECK(optixDeviceContextSetCacheEnabled(optixContext, false));
 }
 
 void Context::finalize(){

@@ -32,6 +32,7 @@ public:
 	void resize(const vec2i& size) override{
 		mFrameSize = size;
 		mAccumBuffer.resize(size.x * size.y * sizeof(vec4f));
+		reset();
 	}
 
 	void render(CUDABuffer& frame);

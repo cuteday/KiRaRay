@@ -35,7 +35,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	MeshData& mesh = *hitInfo.mesh;
 	vec3i triangle = mesh.indices[hitInfo.primitiveId];
 
-	sd.wo = hitInfo.wo;
+	sd.wo = normalize(hitInfo.wo);
 
 	sd.pos = bc.x * mesh.vertices[triangle.x] +
 		bc.y * mesh.vertices[triangle.y] +
@@ -58,10 +58,16 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 			bc.x * mesh.tangents[triangle.x] +
 			bc.y * mesh.tangents[triangle.y] +
 			bc.z * mesh.tangents[triangle.z]);
-		sd.B = normalize(
-			bc.x * mesh.bitangents[triangle.x] +
-			bc.y * mesh.bitangents[triangle.y] +
-			bc.z * mesh.bitangents[triangle.z]);
+		//sd.B = normalize(
+		//	bc.x * mesh.bitangents[triangle.x] +
+		//	bc.y * mesh.bitangents[triangle.y] +
+		//	bc.z * mesh.bitangents[triangle.z]);
+		
+		// re-orthogonize the tangent space 
+		// since tbn may become not orthogonal after the interpolation process.
+		// or they are not orthogonal at the beginning (when we import the models)
+		sd.T = normalize(sd.T - sd.N * dot(sd.N, sd.T));
+		sd.B = normalize(cross(sd.N, sd.T));
 	}
 	else {
 		// generate a fake tbn frame for now...
@@ -79,7 +85,8 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	Material::MaterialParams& materialParams = material.mMaterialParams;
 		
 	sd.IoR = materialParams.IoR;
-	sd.shadingModel = material.mShadingModel;
+	//sd.shadingModel = material.mShadingModel;
+	sd.bsdfType = material.mBsdfType;
 
 	Texture& diffuseTexture = material.mTextures[(uint)Material::TextureType::Diffuse];
 	Texture& specularTexture = material.mTextures[(uint)Material::TextureType::Specular];
@@ -89,7 +96,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 
 	vec3f baseColor = (vec3f)diff;
 
-	if (sd.shadingModel == Material::ShadingModel::MetallicRoughness) {
+	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// this is the default except for OBJ or when user specified 
 		// G - Roughness; B - Metallic
 			
@@ -105,7 +112,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		sd.roughness = spec.g;
 		sd.metallic = spec.b;
 	}
-	else if (sd.shadingModel == Material::ShadingModel::SpecularGlossiness) {
+	else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		sd.diffuse = baseColor;
 		sd.specular = (vec3f)spec;			// specular reflectance
 		sd.roughness = 1 - spec.a;	// 
