@@ -14,7 +14,7 @@ namespace bsdf{
     }
     __both__ inline float CosTheta(const vec3f& w) { return w.z; }
     __both__ inline float Cos2Theta(const vec3f& w) { return w.z * w.z; }
-    __both__ inline float AbsCosTheta(const vec3f& w) { return abs(w.z); }
+    __both__ inline float AbsCosTheta(const vec3f& w) { return fabs(w.z); }
     __both__ inline float Sin2Theta(const vec3f& w) {
         return max((float)0, (float)1 - Cos2Theta(w));
     }
@@ -79,7 +79,7 @@ namespace bsdf{
 	}
 }
 struct BSDFSample {
-	vec3f f;
+	vec3f f = 0;
 	vec3f wi;
 	float pdf = 0;
 	uint flags;

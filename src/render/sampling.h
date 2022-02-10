@@ -85,7 +85,7 @@ __both__ inline float evalMaskingSmithGGXSeparable(float alpha, float cosThetaI,
 	return 1 / ((1 + lambdaI) * (1 + lambdaO));
 }
 
-__both__ inline vec3f sampleGGX_VNDF(float alpha, vec3f wo, vec2f u, float &pdf)
+__both__ inline vec3f sampleGGX_VNDF(float alpha, vec3f wo, vec2f u)
 {
 	float alpha_x = alpha, alpha_y = alpha;
 
@@ -109,8 +109,6 @@ __both__ inline vec3f sampleGGX_VNDF(float alpha, vec3f wo, vec2f u, float &pdf)
 
 	// Transform the normal back to the ellipsoid configuration. This is our half vector.
 	vec3f h = normalize(vec3f(alpha_x * Nh.x, alpha_y * Nh.y, max(0.f, Nh.z)));
-
-	pdf = evalPdfGGX_VNDF(alpha, wo, h);
 	return h;
 }
 

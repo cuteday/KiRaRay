@@ -71,7 +71,7 @@ namespace krr{
 			}
 
 			__both__ vec3f  toLocal(vec3f v) const {
-				return { dot(T, v) + dot(B, v) + dot(N, v) };
+				return { dot(T, v), dot(B, v), dot(N, v) };
 			}
 		};
 

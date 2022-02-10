@@ -22,7 +22,8 @@ namespace {
 	}
 }
 
-KRR_DEVICE_FUNCTION vec4f sampleTexture(Texture& texture, vec2f uv, vec4f fallback) {
+template <typename T>
+KRR_DEVICE_FUNCTION T sampleTexture(Texture& texture, vec2f uv, T fallback) {
 	if (texture.isValid()) {
 		cudaTextureObject_t cudaTexture = texture.getCudaTexture();
 		return tex2D<float4>(cudaTexture, uv.x, uv.y);
@@ -83,16 +84,18 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	}
 
 	Material::MaterialParams& materialParams = material.mMaterialParams;
-		
+	
 	sd.IoR = materialParams.IoR;
 	//sd.shadingModel = material.mShadingModel;
 	sd.bsdfType = material.mBsdfType;
 
 	Texture& diffuseTexture = material.mTextures[(uint)Material::TextureType::Diffuse];
 	Texture& specularTexture = material.mTextures[(uint)Material::TextureType::Specular];
+	Texture& emissiveTexture = material.mTextures[(uint)Material::TextureType::Emissive];
 
 	vec4f diff = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
 	vec4f spec = sampleTexture(specularTexture, sd.uv, materialParams.specular);
+	sd.emission = (vec3f)sampleTexture(emissiveTexture, sd.uv, materialParams.emissive);
 
 	vec3f baseColor = (vec3f)diff;
 

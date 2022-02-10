@@ -32,17 +32,11 @@ namespace krr
 	KRR_DEVICE_FUNCTION bool handleHit(const ShadingData& sd, PathData& path) {
 		BSDFSample sample = {};
 		Material::BsdfType bsdfType = Material::BsdfType::FresnelBlended;
-		vec3f wo = sd.toLocal(sd.wo);
-
-		//printf("T: %f\n", length(sd.T));
-		//printf("B: %f\n", length(sd.B));
-		//printf("N: %f\n", length(sd.N));
-		printf("wo: %f\n", length(sd.wo));
 
 		// how to eliminate branches here to improve performance?
-
-		sample = BxDF::sampleInternal(sd, path.sampler, (uint)bsdfType);
-		if (!sample.valid) return false;
+		sample = BxDF::sampleInternal(sd, path.sampler, (uint)2);
+		if (sample.pdf == 0) return false;
+		if (sample.f == vec3f(0.f)) return false;
 
 		vec3f wi = sd.fromLocal(sample.wi);
 		path.ray = { sd.pos + sd.N * 1e-3f, wi };

@@ -17,10 +17,10 @@ public:
 
     __both__ static inline float RoughnessToAlpha(float roughness);
     
-    __both__ void setup(float alphax, float alphay, bool samplevis = true){
+    __both__ void setup(float ax, float ay, bool samplevis = true){
         sampleVisibleArea = samplevis;
-        alphax = max(float(0.001), alphax);
-        alphay = max(float(0.001), alphay);
+        alphax = max(float(0.001), ax);
+        alphay = max(float(0.001), ay);
     }
 
     __both__ GGXMicrofacetDistribution(float alphax, float alphay,
@@ -30,7 +30,6 @@ public:
         alphay(max(float(0.001), alphay)) {}
 
     __both__ float G1(const vec3f& w) const {
-        //    if (Dot(w, wh) * CosTheta(w) < 0.) return 0.;
         return 1 / (1 + Lambda(w));
     }
     __both__ float G(const vec3f& wo, const vec3f& wi) const {
@@ -40,13 +39,15 @@ public:
         float tan2Theta = Tan2Theta(wh);
         if (isinf(tan2Theta)) return 0.;
         const float cos4Theta = Cos2Theta(wh) * Cos2Theta(wh);
-        float e =
-            (Cos2Phi(wh) / (alphax * alphax) + Sin2Phi(wh) / (alphay * alphay)) *
-            tan2Theta;
+        float e = (Cos2Phi(wh) / (alphax * alphax) + Sin2Phi(wh) / (alphay * alphay)) * tan2Theta;
+        //printf("cos2Phi: %f, sin2Phi %f, tan2Theta: %f, cos4Theta: %f\n"
+        //    "alphax: %f, alphay: %f, e : %f\n", 
+        //    Cos2Phi(wh), Sin2Phi(wh), tan2Theta, cos4Theta, alphax, alphay, e);
         return 1 / (M_PI * alphax * alphay * cos4Theta * (1 + e) * (1 + e));
     }
 
     __both__ inline vec3f Sample(const vec3f& wo, const vec2f& u) const;
+    __both__ inline float Pdf(const vec3f& wo, const vec3f& wh) const;
 
 private:
     // GGXMicrofacetDistribution Private Methods
@@ -57,7 +58,6 @@ private:
     bool sampleVisibleArea;
 };
 
-// MicrofacetDistribution Inline Methods
 inline float GGXMicrofacetDistribution::RoughnessToAlpha(float roughness) {
     roughness = max(roughness, (float)1e-3);
     float x = log(roughness);
@@ -75,7 +75,7 @@ inline float GGXMicrofacetDistribution::Lambda(const vec3f& w) const {
     return (-1 + sqrt(1.f + alpha2Tan2Theta)) / 2;
 }
 
-inline static void GGXSample11(float cosTheta, float U1, float U2,
+__both__ inline static void GGXSample11(float cosTheta, float U1, float U2,
     float* slope_x, float* slope_y) {
     // special case (normal incidence)
     if (cosTheta > .9999) {
@@ -122,7 +122,7 @@ inline static void GGXSample11(float cosTheta, float U1, float U2,
     CHECK(!isnan(*slope_y));
 }
 
-inline static vec3f GGXSample(const vec3f& wi, float alpha_x,
+__both__ inline static vec3f GGXSample(const vec3f& wi, float alpha_x,
     float alpha_y, float U1, float U2) {
     // 1. stretch wi
     vec3f wiStretched =
@@ -175,6 +175,13 @@ inline vec3f GGXMicrofacetDistribution::Sample(const vec3f& wo,
         if (flip) wh = -wh;
     }
     return wh;
+}
+
+float GGXMicrofacetDistribution::Pdf(const vec3f& wo, const vec3f& wh) const {
+    if (sampleVisibleArea)
+        return D(wh) * G1(wo) * fabs(dot(wo, wh)) / AbsCosTheta(wo);
+    else
+        return D(wh) * AbsCosTheta(wh);
 }
 
 KRR_NAMESPACE_END

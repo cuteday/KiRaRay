@@ -114,8 +114,7 @@ namespace assimp {
 		aiColor3D color;
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
 		{
-			vec4f diffuse = vec4f(color.r, color.g, color.b, 
-				pMaterial->mMaterialParams.diffuse.a);
+			vec4f diffuse = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.diffuse.a);
 			pMaterial->mMaterialParams.diffuse = diffuse;
 		}
 

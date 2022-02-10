@@ -12,7 +12,7 @@
 
 - Orbit camera controlling.
 - Assimp as scene importer.
-- Diffuse (only) materials and sampling. 
+- Diffuse, microfacet and fresnel-blended brdf. 
 - Tone mapping and frame accumulating.
 
 If possible, more features will be added in the future, for example:
