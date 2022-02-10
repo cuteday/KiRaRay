@@ -24,8 +24,8 @@ namespace {
 
 template <typename T>
 KRR_DEVICE_FUNCTION T sampleTexture(Texture& texture, vec2f uv, T fallback) {
-	if (texture.isValid()) {
-		cudaTextureObject_t cudaTexture = texture.getCudaTexture();
+	cudaTextureObject_t cudaTexture = texture.getCudaTexture();
+	if (texture.isValid() && cudaTexture) {
 		return tex2D<float4>(cudaTexture, uv.x, uv.y);
 	}
 	return fallback;

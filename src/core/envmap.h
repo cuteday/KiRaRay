@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "math/math.h"
+#include "math/utils.h"
 #include "texture.h"
 #include "window.h"
 
@@ -24,6 +25,12 @@ public:
 	};
 
 	__both__ void setRotation(float angle) { mData.rotation = angle; }
+	
+	void setImage(const string &filename) {
+		logDebug("Loading environment texture from: " + filename);
+		mData.mEnvTexture.loadImage(filename);
+		mData.mEnvTexture.toDevice();
+	}
 
 	void renderUI() {
 		ui::SliderFloat("Intensity", &mData.intensity, 0, 10, "%.02f");
@@ -41,9 +48,20 @@ public:
 	}
 
 	__both__ void sample(LightSample& ls) {}
-	__both__ void eval(LightSample& ls) {
+
+	KRR_DEVICE_FUNCTION void eval(LightSample& ls) {
 		ls.pdf = 0.25 * M_1_PI;
 		ls.Li = mData.tint * mData.intensity;
+#ifdef __NVCC__
+		if (mData.mEnvTexture.isValid()) {
+			cudaTextureObject_t texture = mData.mEnvTexture.getCudaTexture();
+			if (!texture) return;
+			vec2f uv = utils::worldToLatLong(ls.wi);
+			uv.x = fmod(uv.x + mData.rotation, 1.f);
+			vec3f env = (vec3f)tex2D<float4>(texture, uv.x, uv.y);
+			ls.Li *= env;
+		}
+#endif
 	}
 
 private:

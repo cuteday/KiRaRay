@@ -3,7 +3,7 @@
 *KiRaRay* is a simple interactive ray-tracing renderer using optix. The purpose of this project is to let me (a beginner) learn c++ and optix in a more interesting way. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer. Currently it has very limited features and potentially some bugs.
 
 <p align=center>
-<img src=common/demo/kirara.jpg width="800">
+<img src=common/demo/kirara.jpg width="750">
 
 ### Features
 
@@ -13,6 +13,7 @@
 - Orbit camera controlling.
 - Assimp as scene importer.
 - Diffuse, microfacet and fresnel-blended brdf. 
+- Image-based environment lighting.
 - Tone mapping and frame accumulating.
 
 If possible, more features will be added in the future, for example:
@@ -32,7 +33,7 @@ This project is only tested with OptiX 7.3, CUDA 11.3, compiled on Windows using
 
 #### Build
 
-This project uses cmake to build, no additional setting is needed. 
+This project uses cmake to build, no additional setting is needed. For testing, HDR environment images can be downloaded at [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html).
 
 
 ### Common Issues
@@ -66,3 +67,14 @@ But actually i'm like \***sleeps all the time**\*:
 
 </details>
 
+### Galleries
+
+#### Breakfast room
+
+<p align=center>
+<img src=common/demo/breakfast_room.jpg width="750">
+
+#### Rungholt
+
+<p align=center>
+<img src=common/demo/Rungholt.jpg width="750">

@@ -3,6 +3,7 @@
 
 KRR_NAMESPACE_BEGIN
 
+
 bool Camera::update()
 {
 	if (mPreserveHeight)

@@ -83,6 +83,7 @@ public:
 		WindowApp::resize(size);
 		for (auto p : mpPasses)
 			p->resize(size);
+		mpScene->getCamera()->setAspectRatio((float)size.x / size.y);
 	}
 
 	virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {

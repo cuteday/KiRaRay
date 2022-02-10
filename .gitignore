@@ -43,4 +43,5 @@ out
 
 # Assets and resource data
 common/scenes
+common/assets
 imgui.ini

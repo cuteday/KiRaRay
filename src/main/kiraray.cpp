@@ -30,9 +30,14 @@ extern "C" int main(int argc, char* argv[]) {
 #endif
 
 	//const string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
-	const string sceneFile = "common/scenes/sponza/sponza.obj";
+	const string sceneFile = "common/scenes/rungholt/rungholt.obj";
+	//const string sceneFile = "common/scenes/sponza/sponza.obj";
 	//const string sceneFile = "common/scenes/living_room/living_room.obj";
 	//const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
+
+	//const string iblFile = "common/assets/Tropical_Beach.jpg";
+	//const string iblFile = "common/assets/Mono_Lake_B.jpg";
+	const string iblFile = "common/assets/Ridgecrest_Road.jpg";
 
 	try {
 		BxDF bsdf = new DiffuseBrdf();
@@ -43,6 +48,7 @@ extern "C" int main(int argc, char* argv[]) {
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 });
 
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
+		scene->getEnvLight()->setImage(iblFile);
 		AssimpImporter importer;
 		importer.import(sceneFile, scene);
 		app.setScene(scene);
