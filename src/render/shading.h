@@ -92,9 +92,11 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	Texture& diffuseTexture = material.mTextures[(uint)Material::TextureType::Diffuse];
 	Texture& specularTexture = material.mTextures[(uint)Material::TextureType::Specular];
 	Texture& emissiveTexture = material.mTextures[(uint)Material::TextureType::Emissive];
+	Texture& normalTexture = material.mTextures[(uint)Material::TextureType::Normal];
 
 	vec4f diff = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
 	vec4f spec = sampleTexture(specularTexture, sd.uv, materialParams.specular);
+
 	sd.emission = (vec3f)sampleTexture(emissiveTexture, sd.uv, materialParams.emissive);
 
 	vec3f baseColor = (vec3f)diff;

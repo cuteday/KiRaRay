@@ -8,6 +8,8 @@
 #include "stb_image_write.h"
 #include "tinyexr.h"
 
+#include <filesystem>
+
 #include "texture.h"
 #include "logger.h"
 #include "gpu/optix7.h"
@@ -20,15 +22,41 @@ bool Image::loadImage(const string& filepath, bool srgb)
 	//	return sImageCache[filepath];
 	vec2i size;
 	int channels;
-	uchar* data = stbi_load(filepath.c_str(), &size.x, &size.y, &channels, STBI_rgb_alpha);
-	if (data == nullptr) {
-		logError("Failed to load image at " + filepath);
-		return false;
+	string suffix = std::filesystem::path(filepath).extension().string();
+	uchar* data = nullptr;
+	if (IsEXR(filepath.c_str()) == TINYEXR_SUCCESS) {
+		char* errMsg = nullptr;
+		// to do: if loadEXR always return RGBA data?
+		int res = LoadEXR((float**)&data, &size.x, &size.y, filepath.c_str(), (const char**)&errMsg);
+		if (res != TINYEXR_SUCCESS) {
+			logError("Failed to load EXR image at " + filepath);
+			if (errMsg) logError(errMsg);
+			return false;
+		}
+		mFormat = Format::RGBAfloat;
 	}
+	else if (stbi_is_hdr(filepath.c_str())){
+		data = (uchar*)stbi_loadf(filepath.c_str(), &size.x, &size.y, &channels, STBI_rgb_alpha);
+		if (data == nullptr) {
+			logError("Failed to load float hdr image at " + filepath);
+			return false;
+		}
+		mFormat = Format::RGBAfloat;
+	}
+	else {	// formats other than exr...
+		data = stbi_load(filepath.c_str(), &size.x, &size.y, &channels, STBI_rgb_alpha);
+		if (data == nullptr) {
+			logError("Failed to load image at " + filepath);
+			return false;
+		}
+		mFormat = Format::RGBAuchar;
+	}
+	int elementSize = mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(char);
+	mData = std::vector<uchar>(data, data + size.x * size.y * 4 * elementSize);
+	free(data);
+
 	mSize = size;
 	mChannels = 4;
-	mData = std::vector<uchar>(data, data + size.x * size.y * mChannels);
-	free(data);
 	//mData = data;
 	logDebug("Loaded image " + to_string(size.x) + "*" + to_string(size.y) + " with channels " + to_string(channels));
 	//sImageCache[filepath] = image;
@@ -59,10 +87,19 @@ void Texture::toDevice() {
 	if (numComponents != 4)
 		logError("Incorrect texture image channels (not 4)");
 	// we have no padding so pitch == width
-	uint pitch = size.x * numComponents * sizeof(uchar);
+	uint pitch;
 	cudaChannelFormatDesc channelDesc = {};
-	channelDesc = cudaCreateChannelDesc<uchar4>();
+	Format textureFormat = mImage->getFormat();
 
+	if (textureFormat == Format::RGBAfloat) {
+		pitch = size.x * numComponents * sizeof(float);
+		channelDesc = cudaCreateChannelDesc<float4>();
+	}
+	else {
+		pitch = size.x * numComponents * sizeof(uchar);
+		channelDesc = cudaCreateChannelDesc<uchar4>();
+	}
+	
 	// create internal cuda array for texture object
 	CUDA_CHECK(cudaMallocArray(&mCudaArray, &channelDesc, size.x, size.y));
 	// transfer data to cuda array
@@ -76,7 +113,7 @@ void Texture::toDevice() {
 	texDesc.addressMode[0] = cudaAddressModeWrap;
 	texDesc.addressMode[1] = cudaAddressModeWrap;
 	texDesc.filterMode = cudaFilterModeLinear;
-	texDesc.readMode = cudaReadModeNormalizedFloat;
+	texDesc.readMode = textureFormat == Format::RGBAfloat ? cudaReadModeElementType : cudaReadModeNormalizedFloat;
 	texDesc.normalizedCoords = 1;
 	texDesc.maxAnisotropy = 1;
 	texDesc.maxMipmapLevelClamp = 99;

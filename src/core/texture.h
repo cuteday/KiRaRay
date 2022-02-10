@@ -16,16 +16,10 @@ public:
 	
 	enum class Format {
 		NONE = 0,
-		R,
-		RG,
-		RGB,
-		RGBA,
+		RGBAuchar,
+		RGBAfloat,
 	};
-	enum class DataType {
-		Uint8,
-		Float16,
-		Float32
-	};
+
 	
 	Image() {};
 	~Image() {}
@@ -34,8 +28,10 @@ public:
 	bool saveImage(const string& filepath) { return false; }
 
 	static Image::SharedPtr createFromFile(const string& filepath, bool srgb = false);
-	bool isValid() const { return mSize.x * mSize.y; }
+	bool isValid() const { return mFormat != Format::NONE && mSize.x * mSize.y; }
 	vec2i getSize() const { return mSize; }
+	Format getFormat() const { return mFormat; }
+	size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
 	int getChannels() const { return mChannels; }
 	uchar* data() { return mData.data(); }
 
@@ -43,6 +39,7 @@ public:
 private:
 	vec2i mSize = {0, 0};
 	int mChannels = 0;
+	Format mFormat = Format::NONE;
 	std::vector<uchar> mData;
 	//uchar* mData = nullptr;
 };
@@ -50,6 +47,7 @@ private:
 class Texture {
 public:
 	using SharedPtr = std::shared_ptr<Texture>;
+	using Format = Image::Format;
 
 	Texture() {
 		mImage = Image::SharedPtr(new Image());
