@@ -77,4 +77,4 @@ But actually i'm like \***sleeps all the time**\*:
 #### Rungholt
 
 <p align=center>
-<img src=common/demo/Rungholt.jpg width="750">
+<img src=common/demo/rungholt.jpg width="750">
