@@ -29,14 +29,16 @@ public:
 
 	static Image::SharedPtr createFromFile(const string& filepath, bool srgb = false);
 	bool isValid() const { return mFormat != Format::NONE && mSize.x * mSize.y; }
+	bool isSrgb() const { return mSrgb; }
 	vec2i getSize() const { return mSize; }
 	Format getFormat() const { return mFormat; }
 	size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
 	int getChannels() const { return mChannels; }
 	uchar* data() { return mData.data(); }
 
-	bool mSrgb = false;
+	
 private:
+	bool mSrgb = false;
 	vec2i mSize = {0, 0};
 	int mChannels = 0;
 	Format mFormat = Format::NONE;

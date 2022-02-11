@@ -52,6 +52,7 @@ bool Image::loadImage(const string& filepath, bool srgb)
 		mFormat = Format::RGBAuchar;
 	}
 	int elementSize = mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(char);
+	mSrgb = mFormat == Format::RGBAuchar;
 	mData = std::vector<uchar>(data, data + size.x * size.y * 4 * elementSize);
 	free(data);
 
@@ -120,7 +121,7 @@ void Texture::toDevice() {
 	texDesc.minMipmapLevelClamp = 0;
 	texDesc.mipmapFilterMode = cudaFilterModePoint;
 	*(vec4f*)texDesc.borderColor = vec4f(1.0f);
-	texDesc.sRGB = 0;
+	texDesc.sRGB = (int)mImage->isSrgb();
 
 	cudaTextureObject_t cudaTexture;
 	CUDA_CHECK(cudaCreateTextureObject(&cudaTexture, &resDesc, &texDesc, nullptr));

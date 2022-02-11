@@ -16,6 +16,32 @@ namespace math{
 			return dot(color, vec3f(0.299, 0.587, 0.114));
 		}
 
+		__both__ inline float srgb2linear(float sRGBColor)
+		{
+			if (sRGBColor <= 0.04045)
+				return sRGBColor / 12.92;
+			else
+				return pow((sRGBColor + 0.055) / 1.055, 2.4);
+		}
+
+		__both__ inline vec3f srgb2linear(vec3f sRGBColor)
+		{
+			return vec3f(srgb2linear(sRGBColor.r), srgb2linear(sRGBColor.g), srgb2linear(sRGBColor.b));
+		}
+
+		__both__ inline float linear2srgb(float linearColor)
+		{
+			if (linearColor <= 0.0031308)
+				return linearColor * 12.92;
+			else
+				return 1.055 * pow(linearColor, 1.0 / 2.4) - 0.055;
+		}
+
+		__both__ inline vec3f linear2srgb(vec3f linearColor)
+		{
+			return vec3f(linear2srgb(linearColor.r), linear2srgb(linearColor.g), linear2srgb(linearColor.b));
+		}
+
 		/*******************************************************
 		* numbers
 		********************************************************/
