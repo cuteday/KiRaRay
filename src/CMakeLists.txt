@@ -11,9 +11,12 @@ ADD_SUBDIRECTORY(cuda)
 MESSAGE ("Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE ("Build output directory: ${CMAKE_BINARY_DIR}")
 
+CONFIGURE_FILE (core/config.in.h ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
+
 INCLUDE_DIRECTORIES ( 
 	core
 	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_BINARY_DIR}/include
 	${ASSIMP_INCLUDE_DIRS}
 	${GLEW_INCLUDE_DIRS}
 	${GLFW_INCLUDE_DIRS}
@@ -35,11 +38,12 @@ SET ( KRR_CORE_SOURCE
 	core/scene.cpp
 	core/camera.cpp
 	core/light.cpp
-	# 
+	# device side
 	core/gpu/context.cpp
 	# components
 	core/window.cpp
 	core/logger.cpp
+	core/file.cpp
 	# non core
 	core/texture.cpp
 )
@@ -52,6 +56,7 @@ SET ( KRR_CORE_HEADERS
 	core/io.h
 	core/window.h
 	core/taggedptr.h
+	core/file.h
 	# rendering
 	core/renderpass.h
 	core/camera.h

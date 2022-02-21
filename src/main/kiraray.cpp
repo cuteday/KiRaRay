@@ -1,5 +1,6 @@
 #include <filesystem>
 
+#include "file.h"
 #include "kiraray.h"
 #include "renderer.h"
 #include "scene/importer.h"
@@ -8,15 +9,7 @@ KRR_NAMESPACE_BEGIN
 
 namespace {
 	inline void locateWorkingDirectory() {
-		auto current_directory = std::filesystem::current_path();
-		while(current_directory.filename().string().find(KRR_PROJECT_NAME) == string::npos) {
-			if (current_directory.parent_path() == current_directory) break;
-			current_directory = current_directory.parent_path();
-		}
-		if (current_directory.filename().string().find(KRR_PROJECT_NAME) == string::npos)
-			logFatal("Kiraray::Can not locate root working directory, "
-				"make sure you are with in the project folder.");
-		std::filesystem::current_path(current_directory);
+		std::filesystem::current_path(File::cwd());
 		logInfo("Main Working directory: " + std::filesystem::current_path().string());
 	}
 }

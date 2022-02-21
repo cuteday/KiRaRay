@@ -63,6 +63,12 @@ bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent)
 	case io::MouseEvent::Type::LeftButtonUp:
 		mOrbiting = false;
 		return true;
+	case io::MouseEvent::Type::MiddleButtonDown:
+		mPanning = mOrbiting = true;
+		return true;
+	case io::MouseEvent::Type::MiddleButtonUp:
+		mPanning = mOrbiting = false;
+		return true;
 	case io::MouseEvent::Type::Move:
 		vec2f curMousePos = mouseEvent.pos;
 		vec2f deltaPos = curMousePos - mLastMousePos;

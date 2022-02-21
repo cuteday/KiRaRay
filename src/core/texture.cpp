@@ -14,54 +14,160 @@
 #include "logger.h"
 #include "gpu/optix7.h"
 
+namespace tinyexr {
+	void save_exr(const float* data, int width, int height, int nChannels, int channelStride, const char* outfilename, bool flip = true) {
+		EXRHeader header;
+		InitEXRHeader(&header);
+
+		EXRImage image;
+		InitEXRImage(&image);
+
+		image.num_channels = nChannels;
+
+		std::vector<std::vector<float>> images(nChannels);
+		std::vector<float*> image_ptr(nChannels);
+		for (int i = 0; i < nChannels; ++i) {
+			images[i].resize((size_t)width * (size_t)height);
+		}
+
+		for (int i = 0; i < nChannels; ++i) {
+			image_ptr[i] = images[nChannels - i - 1].data();
+		}
+
+		for (int c = 0; c < nChannels; c++) {
+			for (int y = 0; y < height; y++) {
+				for (int x = 0; x < width; x++) {
+					// whether flip vertically? 
+					int ry = flip ? height - 1 - y : y;
+					int idx = y * width + x;
+					int ridx = ry * width + x;
+					images[c][ridx] = data[channelStride * idx + c];
+				}
+			}
+		}
+
+		image.images = (unsigned char**)image_ptr.data();
+		image.width = width;
+		image.height = height;
+
+		header.line_order = 1;
+		header.num_channels = nChannels;
+		header.channels = (EXRChannelInfo*)malloc(sizeof(EXRChannelInfo) * header.num_channels);
+		// Must be (A)BGR order, since most of EXR viewers expect this channel order.
+		strncpy(header.channels[0].name, "B", 255); header.channels[0].name[strlen("B")] = '\0';
+		if (nChannels > 1) {
+			strncpy(header.channels[1].name, "G", 255); header.channels[1].name[strlen("G")] = '\0';
+		}
+		if (nChannels > 2) {
+			strncpy(header.channels[2].name, "R", 255); header.channels[2].name[strlen("R")] = '\0';
+		}
+		if (nChannels > 3) {
+			strncpy(header.channels[3].name, "A", 255); header.channels[3].name[strlen("A")] = '\0';
+		}
+
+		header.pixel_types = (int*)malloc(sizeof(int) * header.num_channels);
+		header.requested_pixel_types = (int*)malloc(sizeof(int) * header.num_channels);
+		for (int i = 0; i < header.num_channels; i++) {
+			header.pixel_types[i] = TINYEXR_PIXELTYPE_FLOAT; // pixel type of input image
+			header.requested_pixel_types[i] = TINYEXR_PIXELTYPE_HALF; // pixel type of output image to be stored in .EXR
+		}
+
+		const char* err = NULL; // or nullptr in C++11 or later.
+		int ret = SaveEXRImageToFile(&image, &header, outfilename, &err);
+		if (ret != TINYEXR_SUCCESS) {
+			std::string error_message = std::string("Failed to save EXR image: ") + err;
+			FreeEXRErrorMessage(err); // free's buffer for an error message
+			throw std::runtime_error(error_message);
+		}
+		printf("Saved exr file. [ %s ] \n", outfilename);
+
+		free(header.channels);
+		free(header.pixel_types);
+		free(header.requested_pixel_types);
+	}
+}
+
 KRR_NAMESPACE_BEGIN
 
-bool Image::loadImage(const string& filepath, bool srgb)
+Image::Image(vec2i size, Format format, bool srgb):
+	mSrgb(srgb), mFormat(format), mSize(size){
+	mData.resize(size.x * size.y * 4 * getElementSize());
+}
+
+bool Image::loadImage(const fs::path& filepath, bool srgb)
 {
-	//if (sImageCache.count(filepath))
-	//	return sImageCache[filepath];
 	vec2i size;
 	int channels;
-	string suffix = std::filesystem::path(filepath).extension().string();
+	string filename = filepath.string();
 	uchar* data = nullptr;
-	if (IsEXR(filepath.c_str()) == TINYEXR_SUCCESS) {
+	if (IsEXR(filename.c_str()) == TINYEXR_SUCCESS) {
 		char* errMsg = nullptr;
 		// to do: if loadEXR always return RGBA data?
-		int res = LoadEXR((float**)&data, &size.x, &size.y, filepath.c_str(), (const char**)&errMsg);
+		int res = LoadEXR((float**)&data, &size.x, &size.y, filename.c_str(), (const char**)&errMsg);
 		if (res != TINYEXR_SUCCESS) {
-			logError("Failed to load EXR image at " + filepath);
+			logError("Failed to load EXR image at " + filename);
 			if (errMsg) logError(errMsg);
 			return false;
 		}
 		mFormat = Format::RGBAfloat;
 	}
-	else if (stbi_is_hdr(filepath.c_str())){
-		data = (uchar*)stbi_loadf(filepath.c_str(), &size.x, &size.y, &channels, STBI_rgb_alpha);
+	else if (stbi_is_hdr(filename.c_str())){
+		data = (uchar*)stbi_loadf(filename.c_str(), &size.x, &size.y, &channels, STBI_rgb_alpha);
 		if (data == nullptr) {
-			logError("Failed to load float hdr image at " + filepath);
+			logError("Failed to load float hdr image at " + filename);
 			return false;
 		}
 		mFormat = Format::RGBAfloat;
 	}
 	else {	// formats other than exr...
-		data = stbi_load(filepath.c_str(), &size.x, &size.y, &channels, STBI_rgb_alpha);
+		data = stbi_load(filename.c_str(), &size.x, &size.y, &channels, STBI_rgb_alpha);
 		if (data == nullptr) {
-			logError("Failed to load image at " + filepath);
+			logError("Failed to load image at " + filename);
 			return false;
 		}
 		mFormat = Format::RGBAuchar;
 	}
-	int elementSize = mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(char);
+	int elementSize = getElementSize();
 	mSrgb = mFormat == Format::RGBAuchar;
 	mData = std::vector<uchar>(data, data + size.x * size.y * 4 * elementSize);
 	free(data);
 
 	mSize = size;
-	mChannels = 4;
-	//mData = data;
 	logDebug("Loaded image " + to_string(size.x) + "*" + to_string(size.y) + " with channels " + to_string(channels));
-	//sImageCache[filepath] = image;
 	return true;
+}
+
+bool Image::saveImage(const fs::path& filepath)
+{
+	string extension = filepath.extension().string();
+	uint nElements = mSize.x * mSize.y * 4;
+	if (extension == ".png") {
+		stbi_flip_vertically_on_write(true);
+		if (mFormat == Format::RGBAuchar) {
+			stbi_write_png(filepath.string().c_str(), mSize.x, mSize.y, 4, mData.data(), 0);
+		}
+		else if (mFormat == Format::RGBAfloat) {
+			uchar* data = new uchar[nElements];
+			float* internalData = reinterpret_cast<float*>(mData.data());
+			std::transform(internalData, internalData + nElements, data,
+				[](float v) -> uchar { return math::clamp((int)(v * 255), 0, 255); });
+			stbi_write_png(filepath.string().c_str(), mSize.x, mSize.y, 4, data, 0);
+			delete[] data;
+		}
+		return true;
+	}
+	else if (extension == ".exr") {
+		if (mFormat != Format::RGBAfloat) {
+			logError("Image::saveImage Saving non-hdr image as hdr file...");
+			return false;
+		}
+		tinyexr::save_exr(reinterpret_cast<float*>(mData.data()), mSize.x, mSize.y, 4, 4, filepath.string().c_str());
+	}
+	else {
+		logError("Image::saveImage Unknown image extension: " + extension);
+		return false;
+	}
+	return false;
 }
 
 Image::SharedPtr Image::createFromFile(const string& filepath, bool srgb)

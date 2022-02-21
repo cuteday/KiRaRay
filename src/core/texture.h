@@ -6,6 +6,7 @@
 
 #include "common.h"
 #include "math/math.h"
+#include "file.h"
 
 KRR_NAMESPACE_BEGIN
  
@@ -22,17 +23,18 @@ public:
 
 	
 	Image() {};
+	Image(vec2i size, Format format = Format::RGBAuchar, bool srgb = false);
 	~Image() {}
 
-	bool loadImage(const string& filepath, bool srgb = false);
-	bool saveImage(const string& filepath) { return false; }
+	bool loadImage(const fs::path& filepath, bool srgb = false);
+	bool saveImage(const fs::path& filepath);
 
 	static Image::SharedPtr createFromFile(const string& filepath, bool srgb = false);
 	bool isValid() const { return mFormat != Format::NONE && mSize.x * mSize.y; }
 	bool isSrgb() const { return mSrgb; }
 	vec2i getSize() const { return mSize; }
 	Format getFormat() const { return mFormat; }
-	size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
+	inline size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
 	int getChannels() const { return mChannels; }
 	uchar* data() { return mData.data(); }
 
@@ -40,10 +42,9 @@ public:
 private:
 	bool mSrgb = false;
 	vec2i mSize = {0, 0};
-	int mChannels = 0;
+	int mChannels = 4;
 	Format mFormat = Format::NONE;
 	std::vector<uchar> mData;
-	//uchar* mData = nullptr;
 };
 
 class Texture {

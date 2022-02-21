@@ -4,6 +4,7 @@
 #include "window.h"
 #include "scene.h"
 #include "camera.h"
+#include "file.h"
 
 #include "gpu/buffer.h"
 #include "gpu/context.h"
@@ -78,7 +79,6 @@ public:
 	void initialize();
 
 	void resize(const vec2i& size) override {
-
 		mRenderBuffer.resize(size.x * size.y * sizeof(vec4f));
 		WindowApp::resize(size);
 		for (auto p : mpPasses)
@@ -112,8 +112,14 @@ public:
 	}
 
 	void renderUI() override{
+		static bool saveHdr = false;
+
 		ui::Begin(KRR_PROJECT_NAME);
 		ui::Text("Window size: %d %d", fbSize.x, fbSize.y);
+		if(ui::Button("Screen shot"))
+			captureFrame(saveHdr); 
+		ui::SameLine();
+		ui::Checkbox("Save HDR", &saveHdr);
 		if (mpScene) mpScene->renderUI();
 		for (auto p : mpPasses)
 			if (p) p->renderUI();
@@ -125,8 +131,16 @@ public:
 		WindowApp::draw();
 	}
 
-
 private:
+	void captureFrame(bool hdr = false) {
+		string extension = hdr ? ".exr" : ".png";
+		Image image(fbSize, Image::Format::RGBAfloat);
+		mRenderBuffer.copy_to_host(image.data(), fbSize.x * fbSize.y * 4 * sizeof(float));
+		fs::path filepath = File::resolve("common/images") / ("krr_" + Log::nowToString("%H_%M_%S") + extension);
+		image.saveImage(filepath.string());
+		logInfo("Saved screen shot to " + filepath.string());
+	}
+
 	std::vector<RenderPass::SharedPtr> mpPasses;
 	Scene::SharedPtr mpScene;
 	CUDABuffer mRenderBuffer;
