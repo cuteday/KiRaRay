@@ -32,8 +32,14 @@ namespace krr{
 	};
 
 	enum {
-		SURFACE_RAY_TYPE = 0,
+		RADIANCE_RAY_TYPE = 0,
+		SHADOW_RAY_TYPE = 1,
 		RAY_TYPE_COUNT
+	};
+
+	const string shaderProgramNames[RAY_TYPE_COUNT] = {
+		"Radiance",
+		"ShadowRay"
 	};
 
 	struct LaunchParamsPT
@@ -42,6 +48,7 @@ namespace krr{
 		vec4f* colorBuffer;
 		vec2i     fbSize = 0;
 
+		bool NEE = false;	// enable NEE + MIS
 		uint maxDepth = 20;
 		float probRR = 0.15;
 		vec3f clampThreshold = 50;
@@ -61,10 +68,15 @@ namespace krr{
 		vec3f L = 0;			// total contribution to the current pixel
 		vec3f throughput = 1;	//
 		// info of the current sampled scattering ray
-		Ray ray;
+		vec3f pos;
+		vec3f dir;
+		//Ray ray;
 		float pdf;			
 		// random sample generator
 		Sampler sampler;
 	};
 
+	struct ShadowRayData {
+		bool visible = false;
+	};
 }

@@ -558,6 +558,7 @@ class TaggedPointer {
 
 	template <typename F>
 	__both__ static decltype(auto) dispatch(F&& func, int index) {
+		//DCHECK(ptr());
 		using R = typename types::ReturnType<F, Ts...>::type;
 		return types::Dispatch<F, R, Ts...>(func, (const void*)nullptr, index);
 	}

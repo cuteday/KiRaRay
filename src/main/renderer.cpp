@@ -69,7 +69,7 @@ void PathTracer::createRaygenPrograms()
 	OptixProgramGroupDesc pgDesc = {};
 	pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
 	pgDesc.raygen.module = module;
-	pgDesc.raygen.entryFunctionName = "__raygen__PathTracer";
+	pgDesc.raygen.entryFunctionName = "__raygen__Pathtracer";
 
 	// OptixProgramGroup raypg;
 	char log[2048];
@@ -87,50 +87,60 @@ void PathTracer::createRaygenPrograms()
 /*! does all setup for the miss program(s) we are going to use */
 void PathTracer::createMissPrograms()
 {
-	missPGs.resize(1);
+	missPGs.resize(RAY_TYPE_COUNT);
 
 	OptixProgramGroupOptions pgOptions = {};
 	OptixProgramGroupDesc pgDesc = {};
 	pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
 	pgDesc.miss.module = module;
-	pgDesc.miss.entryFunctionName = "__miss__PathTracer";
 
 	char log[2048];
 	size_t sizeof_log = sizeof(log);
-	OPTIX_CHECK(optixProgramGroupCreate(gpContext->optixContext,
-		&pgDesc,
-		1,
-		&pgOptions,
-		log, &sizeof_log,
-		&missPGs[0]
-	));
-	if (sizeof_log > 1) PRINT(log);
+
+	for (int i = 0; i < RAY_TYPE_COUNT; i++) {
+		string msFuncName = "__miss__" + shaderProgramNames[i];
+		pgDesc.miss.entryFunctionName = msFuncName.c_str();
+		OPTIX_CHECK(optixProgramGroupCreate(gpContext->optixContext,
+			&pgDesc,
+			1,
+			&pgOptions,
+			log, &sizeof_log,
+			&missPGs[i]
+		));
+		if (sizeof_log > 1) PRINT(log);
+	}
+
 }
 
 /*! does all setup for the hitgroup program(s) we are going to use */
 void PathTracer::createHitgroupPrograms()
 {
-	hitgroupPGs.resize(1);
+	hitgroupPGs.resize(RAY_TYPE_COUNT);
 
 	OptixProgramGroupOptions pgOptions = {};
 	OptixProgramGroupDesc pgDesc = {};
 	pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
 	pgDesc.hitgroup.moduleCH = module;
-	pgDesc.hitgroup.entryFunctionNameCH = "__closesthit__PathTracer";
 	pgDesc.hitgroup.moduleAH = module;
-	pgDesc.hitgroup.entryFunctionNameAH = "__anyhit__PathTracer";
 
 	char log[2048];
 	size_t sizeof_log = sizeof(log);
-	OPTIX_CHECK(optixProgramGroupCreate(gpContext->optixContext,
-		&pgDesc,
-		1,
-		&pgOptions,
-		log, &sizeof_log,
-		&hitgroupPGs[0]
-	));
+	
+	for (int i = 0; i < RAY_TYPE_COUNT; i++) {
+		string chFuncName = "__closesthit__" + shaderProgramNames[i];
+		string ahFuncName = "__anyhit__" + shaderProgramNames[i];
+		pgDesc.hitgroup.entryFunctionNameCH = chFuncName.c_str();
+		pgDesc.hitgroup.entryFunctionNameAH = ahFuncName.c_str();
 
-	if (sizeof_log > 1) PRINT(log);
+		OPTIX_CHECK(optixProgramGroupCreate(gpContext->optixContext,
+			&pgDesc,
+			1,
+			&pgOptions,
+			log, &sizeof_log,
+			&hitgroupPGs[i]
+		));
+		if (sizeof_log > 1) PRINT(log);
+	}
 }
 
 
@@ -197,11 +207,12 @@ void PathTracer::buildSBT()
 	uint numMeshes = mpScene->meshes.size();
 	std::vector<HitgroupRecord> hitgroupRecords;
 	for (uint i = 0; i < numMeshes; i++) {
-		int objectType = 0;
-		HitgroupRecord rec;
-		OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[objectType], &rec));
-		rec.data = mpScene->meshes[i].mMeshData;
-		hitgroupRecords.push_back(rec);
+		for (uint rayId = 0; rayId < RAY_TYPE_COUNT; rayId++) {
+			HitgroupRecord rec;
+			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayId], &rec));
+			rec.data = mpScene->meshes[i].mMeshData;
+			hitgroupRecords.push_back(rec);
+		}
 	}
 	hitgroupRecordsBuffer.alloc_and_copy_from_host(hitgroupRecords);
 	sbt.hitgroupRecordBase = hitgroupRecordsBuffer.data();
@@ -246,8 +257,7 @@ void PathTracer::buildAS()
 
 	OptixAccelBuildOptions accelOptions = {};
 	accelOptions.buildFlags = OPTIX_BUILD_FLAG_NONE |
-		OPTIX_BUILD_FLAG_ALLOW_COMPACTION
-		;
+		OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
 	accelOptions.motionOptions.numKeys = 1;
 	accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
 
@@ -313,6 +323,7 @@ void PathTracer::renderUI() {
 	if (ui::CollapsingHeader("Path tracer")) {
 		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
 		ui::SliderInt("Max recursion depth", (int*)&launchParams.maxDepth, 1, 100, "%d");
+		ui::Checkbox("Next event estimation", &launchParams.NEE);
 	}
 }
 

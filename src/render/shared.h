@@ -63,7 +63,7 @@ namespace krr{
 			bool frontFacing;		// shading normal and geo normal same dir?
 			
 			//ShadingModel shadingModel = ShadingModel::MetallicRoughness;
-			BsdfType bsdfType = BsdfType::Diffuse;
+			BsdfType bsdfType = BsdfType::FresnelBlended;
 			uint flags = 0;			// user custom flags?
 
 			__both__ vec3f fromLocal(vec3f v) const {

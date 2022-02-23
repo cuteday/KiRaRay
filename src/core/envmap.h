@@ -47,21 +47,31 @@ public:
 		return hasChanges;
 	}
 
-	__both__ void sample(LightSample& ls) {}
+	__device__ float pdf(vec3f wi) {
+		return 0.25 * M_1_PI;
+	}
 
-	KRR_DEVICE_FUNCTION void eval(LightSample& ls) {
+	__device__ void sample(vec2f u, LightSample& ls) {
+		vec3f wi = utils::latlongToWorld(u);
+		ls.wi = wi;
+		ls.Li = eval(wi);
 		ls.pdf = 0.25 * M_1_PI;
-		ls.Li = mData.tint * mData.intensity;
+	}
+
+	__device__ vec3f eval(vec3f wi) {
+		vec3f Li;
+		Li = mData.tint * mData.intensity;
 #ifdef __NVCC__
 		if (mData.mEnvTexture.isValid()) {
 			cudaTextureObject_t texture = mData.mEnvTexture.getCudaTexture();
-			if (!texture) return;
-			vec2f uv = utils::worldToLatLong(ls.wi);
+			if (!texture) return Li;
+			vec2f uv = utils::worldToLatLong(wi);
 			uv.x = fmod(uv.x + mData.rotation, 1.f);
 			vec3f env = (vec3f)tex2D<float4>(texture, uv.x, uv.y);
-			ls.Li *= env;
+			Li *= env;
 		}
 #endif
+		return Li;
 	}
 
 private:

@@ -133,7 +133,7 @@ bool Image::loadImage(const fs::path& filepath, bool srgb)
 	free(data);
 
 	mSize = size;
-	logDebug("Loaded image " + to_string(size.x) + "*" + to_string(size.y) + " with channels " + to_string(channels));
+	logDebug("Loaded image " + to_string(size.x) + "*" + to_string(size.y));
 	return true;
 }
 

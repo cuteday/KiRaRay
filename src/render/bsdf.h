@@ -14,6 +14,25 @@
 
 KRR_NAMESPACE_BEGIN
 
+#define _DEFINE_BSDF_INTERNAL_ROUTINES(bsdf_name)														\
+	__both__ inline static BSDFSample sampleInternal(const ShadingData &sd, vec3f wo, Sampler & sg) {	\
+		bsdf_name bsdf;																		\
+		bsdf.setup(sd);																					\
+		return bsdf.sample(wo, sg);																		\
+	}																									\
+																										\
+	__both__ inline static vec3f fInternal(const ShadingData& sd, vec3f wo, vec3f wi) {					\
+		bsdf_name bsdf;																		\
+		bsdf.setup(sd);																					\
+		return bsdf.f(wo, wi);																			\
+	}																									\
+																										\
+	__both__ inline static float pdfInternal(const ShadingData& sd, vec3f wo, vec3f wi) {				\
+		bsdf_name bsdf;																		\
+		bsdf.setup(sd);																					\
+		return bsdf.pdf(wo, wi);																		\
+	}																									\
+
 using namespace shader;
 using namespace bsdf;
 
@@ -22,12 +41,7 @@ public:
 
 	DiffuseBrdf() = default;
 
-	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, Sampler& sg) {
-		DiffuseBrdf bsdf;
-		vec3f wo = sd.toLocal(sd.wo);
-		bsdf.setup(sd);
-		return bsdf.sample(wo, sg);
-	}
+	_DEFINE_BSDF_INTERNAL_ROUTINES(DiffuseBrdf);
 	
 	__both__ void setup(const ShadingData &sd) {
 		diffuse = sd.diffuse;
@@ -58,12 +72,7 @@ class MicrofacetBrdfAlter {
 public:
 	MicrofacetBrdfAlter() = default;
 
-	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, Sampler& sg) {
-		MicrofacetBrdfAlter bsdf;
-		vec3f wo = sd.toLocal(sd.wo);
-		bsdf.setup(sd);
-		return bsdf.sample(wo, sg);
-	}
+	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBrdfAlter);
 
 	__both__ void setup(const ShadingData & sd) {
 		albedo = sd.specular;
@@ -112,12 +121,7 @@ class MicrofacetBrdf {
 public:
 	MicrofacetBrdf() = default;
 
-	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, Sampler& sg) {
-		MicrofacetBrdf bsdf;
-		vec3f wo = sd.toLocal(sd.wo);
-		bsdf.setup(sd);
-		return bsdf.sample(wo, sg);
-	}
+	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBrdf);
 
 	__both__ void setup(const ShadingData& sd) {
 		R = sd.specular;
@@ -173,12 +177,7 @@ class FresnelBlendedBrdf {
 public:
 	FresnelBlendedBrdf() = default;
 
-	__both__ inline static BSDFSample sampleInternal(const ShadingData & sd, Sampler & sg) {
-		FresnelBlendedBrdf bsdf;
-		bsdf.setup(sd);
-		vec3f wo = sd.toLocal(sd.wo);
-		return bsdf.sample(wo, sg);
-	}
+	_DEFINE_BSDF_INTERNAL_ROUTINES(FresnelBlendedBrdf);
 
 	__both__ void setup(const ShadingData & sd) {
 		diffuse = sd.diffuse;
@@ -231,6 +230,7 @@ public:
 
 		return 0.5 * (diffPdf + specPdf);
 	}
+
 private:
 	vec3f diffuse;
 	vec3f specular;
@@ -241,9 +241,19 @@ class BxDF :public TaggedPointer<DiffuseBrdf, MicrofacetBrdf, FresnelBlendedBrdf
 public:
 	using TaggedPointer::TaggedPointer;
 
-	__both__ inline static BSDFSample sampleInternal(const ShadingData& sd, Sampler& sg, int bsdfIndex) {
-		auto sample = [&](auto ptr)->BSDFSample {return ptr->sampleInternal(sd, sg); };
+	__both__ inline static BSDFSample sample(const ShadingData& sd, vec3f wo, Sampler& sg, int bsdfIndex) {
+		auto sample = [&](auto ptr)->BSDFSample {return ptr->sampleInternal(sd, wo, sg); };
 		return dispatch(sample, bsdfIndex);
+	}
+
+	__both__ inline static vec3f f(const ShadingData& sd, vec3f wo, vec3f wi, int bsdfIndex) {
+		auto f = [&](auto ptr)->vec3f {return ptr->fInternal(sd, wo, wi); };
+		return dispatch(f, bsdfIndex);
+	}
+
+	__both__ inline static float pdf(const ShadingData& sd, vec3f wo, vec3f wi, int bsdfIndex) {
+		auto pdf = [&](auto ptr)->float {return ptr->pdfInternal(sd, wo, wi); };
+		return dispatch(pdf, bsdfIndex);
 	}
 
 	__both__ inline void setup(const ShadingData &sd) {

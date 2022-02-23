@@ -58,6 +58,8 @@ SET ( KRR_CORE_HEADERS
 	core/taggedptr.h
 	core/file.h
 	# rendering
+	core/envmap.h
+	core/light.h
 	core/renderpass.h
 	core/camera.h
 	core/scene.h

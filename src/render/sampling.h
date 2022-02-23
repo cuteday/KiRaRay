@@ -4,10 +4,30 @@
 #include "math/utils.h"
 #include "common.h"
 
+#define MIS_POWER_HEURISTIC 1	// 0 for balance heuristic
+
 KRR_NAMESPACE_BEGIN
 
 using namespace math;
 using namespace utils;
+
+__both__ inline float evalMIS(float p0, float p1) {
+#if MIS_POWER_HEURISTIC
+	return p0 * p0 / (p0 * p0 + p1 * p1);
+#else 
+	return p0 / (p0 + p1);
+#endif
+}
+
+__both__ inline float evalMIS(float n0, float p0, float n1, float p1) {
+#if MIS_POWER_HEURISTIC
+	float q0 = (n0 * p0) * (n0 * p0);
+	float q1 = (n1 * p1) * (n1 * p1);
+	return q0 / (q0 + q1);
+#else 
+	return (n0 * p0) / (n0 * p0 + n1 * p1);
+#endif
+}
 
 __both__ inline vec3f uniformSampleHemisphere(const vec2f& u) {
 	float z = u[0];

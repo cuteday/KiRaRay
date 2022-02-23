@@ -109,7 +109,7 @@ void ToneMappingPass::renderUI()
 		ui::Checkbox("Enabled", &mEnable);
 		if (mEnable) {
 			ui::SliderFloat("Exposure compensation",
-				&mExposureCompensation, 0.01, 10, "%.2f");
+				&mExposureCompensation, 0.001, 50, "%.3f");
 			ui::ListBox("Tonemap operator", (int*)&mOperator, operators, (int)Operator::NumsOperators);
 		}
 	}

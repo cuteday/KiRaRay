@@ -33,13 +33,18 @@ public:
 		mpJitterSampler.setPixelSample({ 114, 514 }, 1919810);
 	}
 
+	__both__ inline vec3f getRayDir(vec2i pixel, vec2i frameSize, vec2f jitter) const {
+		vec2f p = vec2f(pixel) + vec2f(0.5) + jitter;
+		vec2f ndc = vec2f(2, 2) * (p) / vec2f(frameSize) + vec2f(-1, -1);
+		return	normalize(ndc.x * mData.u + ndc.y * mData.v + mData.w);
+	}
+
 	__both__ inline vec3f getRayDir(vec2i pixel, vec2i frameSize) const {
 		vec2f p = vec2f(pixel) + vec2f(0.5) + mData.jitter;
 		vec2f ndc = vec2f(2, 2) * (p) / vec2f(frameSize) + vec2f(-1, -1);
 		return	normalize(ndc.x * mData.u + ndc.y * mData.v + mData.w);
 	}
 
-	//void beginFrame();
 	bool update();
 	void renderUI();
 
@@ -109,8 +114,8 @@ private:
 	vec2f mLastMousePos;
 	float mDampling = 1;
 	bool mOrbiting = false;
-	float mOrbitSpeed = 1;
 	bool mPanning = false;
+	float mOrbitSpeed = 1;
 	float mPanSpeed = 1;
 	float mZoomSpeed = 1;
 };

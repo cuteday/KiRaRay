@@ -41,6 +41,8 @@ private:
 	uint mState = 0;
 };
 
+
+
 class Sampler :public TaggedPointer<LCGSampler>{
 public:
 	using SharedPtr = std::shared_ptr<Sampler>;

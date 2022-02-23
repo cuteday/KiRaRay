@@ -182,6 +182,23 @@ namespace math{
 			return vec2ui(v0, v1);
 		}
 
+		/*******************************************************
+		* low discrepancy
+		********************************************************/
+		//__both__ inline float RadicalInverse(int baseIndex, uint64_t a) {
+		//	int base = Primes[baseIndex];
+		//	float invBase = (float)1 / (float)base, invBaseN = 1;
+		//	uint64_t reversedDigits = 0;
+		//	while (a) {
+		//		// Extract least significant digit from _a_ and update _reversedDigits_
+		//		uint64_t next = a / base;
+		//		uint64_t digit = a - next * base;
+		//		reversedDigits = reversedDigits * base + digit;
+		//		invBaseN *= invBase;
+		//		a = next;
+		//	}
+		//	return min(reversedDigits * invBaseN, OneMinusEpsilon);
+		//}
 	}
 }
 

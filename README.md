@@ -12,7 +12,7 @@
 
 - Orbit camera controlling.
 - Assimp as scene importer.
-- Diffuse, microfacet and fresnel-blended brdf. 
+- Diffuse, ggx microfacet and fresnel-blended brdf. 
 - Image-based environment lighting.
 - Tone mapping and frame accumulating.
 
