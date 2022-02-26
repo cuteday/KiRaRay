@@ -9,6 +9,7 @@
 #include "envmap.h"
 #include "texture.h"
 #include "kiraray.h"
+#include "interop.h"
 #include "device/buffer.h"
 
 KRR_NAMESPACE_BEGIN

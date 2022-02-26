@@ -80,7 +80,10 @@ SET ( KRR_CORE_HEADERS
 	core/math/vec/compare.h
 	core/math/vec/rotate.h
 	core/math/vec/functors.h
-	# cuda/optix wrapper
+	# cuda device backend and host-device interops
+	core/interop.h
+	core/host/memory.h
+	core/device/memory.h
 	core/device/context.h
 	core/device/buffer.h
 	core/device/optix7.h
