@@ -1,4 +1,5 @@
-// Code modified from pbrt-v4, which is licensed under the Apache License, Version 2.0.
+// Code taken and modified from pbrt-v4,  
+// Originally licensed under the Apache License, Version 2.0.
 #pragma once
 
 #include <algorithm>
@@ -547,6 +548,11 @@ class TaggedPointer {
 		DCHECK(ptr());
 		using R = typename types::ReturnType<F, Ts...>::type;
 		return types::Dispatch<F, R, Ts...>(func, ptr(), tag() - 1);
+	}
+
+	__both__ size_t realSize() const {
+		auto f = [&](auto* ptr)-> size_t {return sizeof * ptr; };
+		return dispatch(f);
 	}
 
 	template <typename F>

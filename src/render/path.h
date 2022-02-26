@@ -10,6 +10,10 @@ namespace krr{
 
 	using namespace shader;
 
+	struct HitGroupSBTData {
+		uint meshId;
+	};
+
 	/*! SBT record for a raygen program */
 	struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord
 	{
@@ -28,7 +32,7 @@ namespace krr{
 	struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord
 	{
 		__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-		MeshData data;
+		HitGroupSBTData data;
 	};
 
 	enum {
@@ -37,7 +41,7 @@ namespace krr{
 		RAY_TYPE_COUNT
 	};
 
-	const string shaderProgramNames[RAY_TYPE_COUNT] = {
+	const string shaderProgramNames[] = {
 		"Radiance",
 		"ShadowRay"
 	};
@@ -48,7 +52,8 @@ namespace krr{
 		vec4f* colorBuffer;
 		vec2i     fbSize = 0;
 
-		bool NEE = false;	// enable NEE + MIS
+		bool NEE = false;			// enable next event estimation
+		bool MIS = false;			// enable multiple importance sample
 		uint maxDepth = 20;
 		float probRR = 0.15;
 		vec3f clampThreshold = 50;

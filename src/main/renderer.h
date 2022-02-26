@@ -6,8 +6,8 @@
 #include "camera.h"
 #include "file.h"
 
-#include "gpu/buffer.h"
-#include "gpu/context.h"
+#include "device/buffer.h"
+#include "device/context.h"
 #include "render/path.h"
 #include "render/postprocess.h"
 

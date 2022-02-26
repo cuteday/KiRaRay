@@ -19,7 +19,6 @@ typedef uint32_t uint;
 typedef unsigned char uchar;
 
 #define KRR_NAME_STRING(s) #s
-#define KRR_PROJECT_NAME "KiRaRay"
 #define KRR_NAMESPACE_BEGIN namespace krr {
 #define KRR_NAMESPACE_END }
 #define KRR_CLASS_DEFINE(name) using SharedPtr = std::shared_ptr<##name>

@@ -1,12 +1,11 @@
-#include <optix_device.h>
-#include <optix.h>
-
 #include "math/utils.h"
 #include "path.h"
 #include "shared.h"
 #include "shading.h"
 
-using namespace krr;	// this is needed or nvcc can't recognize the launchParams external var.
+#include <optix_device.h>
+
+using namespace krr;	// this is needed or nvcc can't recognize the launchParams extern "C"al var.
 
 KRR_NAMESPACE_BEGIN
 
@@ -66,11 +65,10 @@ KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 
 KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 	// currently evaluate environment map only.
-	LightSample ls = {};
 	vec2f u = path.sampler.get2D();
 	vec3f woLocal = sd.toLocal(sd.wo);
 
-	launchParams.envLight.sample(u, ls);
+	EnvLightSample ls = launchParams.envLight.sample(u);
 	vec3f wiWorld = sd.fromLocal(ls.wi);
 	if (dot(wiWorld, sd.N) < 0) return;
 
@@ -104,10 +102,12 @@ KRR_DEVICE_FUNCTION bool generateScatter(const ShadingData& sd, PathData& path) 
 
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo = {};
+	HitGroupSBTData* hitData = (HitGroupSBTData*)optixGetSbtDataPointer();
+	uint meshId = hitData->meshId;
 	vec2f barycentric = optixGetTriangleBarycentrics();
 	hitInfo.primitiveId = optixGetPrimitiveIndex();
-	hitInfo.mesh = (MeshData*)optixGetSbtDataPointer();
-	hitInfo.wo = -normalize(vec3f(optixGetWorldRayDirection()));
+	hitInfo.mesh = launchParams.sceneData.meshes + meshId;
+	hitInfo.wo = -normalize((vec3f)optixGetWorldRayDirection());
 	hitInfo.hitKind = optixGetHitKind();
 	hitInfo.barycentric = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y };
 
@@ -176,7 +176,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 }
 
 extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
-	vec3i launchIndex = optixGetLaunchIndex();
+	vec3i launchIndex = (vec3i)optixGetLaunchIndex();
 	vec2i pixel = { launchIndex.x, launchIndex.y };
 
 	const int frameID = launchParams.frameID;

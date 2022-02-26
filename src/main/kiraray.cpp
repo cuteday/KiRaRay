@@ -7,24 +7,19 @@
 
 KRR_NAMESPACE_BEGIN
 
-namespace {
-	inline void locateWorkingDirectory() {
-		std::filesystem::current_path(File::cwd());
-		logInfo("Main Working directory: " + std::filesystem::current_path().string());
-	}
-}
-
 extern "C" int main(int argc, char* argv[]) {
 
-	locateWorkingDirectory();
 	logSuccess("Kiraray::Main Hello, world!");
+
+	std::filesystem::current_path(File::cwd());
+	logInfo("Working directory: " + string(KRR_PROJECT_DIR));
+	logInfo("Kiraray build type: " + string(KRR_BUILD_TYPE));
 #ifdef KRR_DEBUG_BUILD
 	logWarning("Kiraray::Running in debug mode!");
 #endif
 
-	//const string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
-	const string sceneFile = "common/scenes/rungholt/rungholt.obj";
-	//const string sceneFile = "common/scenes/little_witch/03.obj";
+	const string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
+	//const string sceneFile = "common/scenes/rungholt/rungholt.obj";
 	//const string sceneFile = "common/scenes/sponza/sponza.obj";
 	//const string sceneFile = "common/scenes/living_room/living_room.obj";
 	//const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
@@ -34,11 +29,11 @@ extern "C" int main(int argc, char* argv[]) {
 	//const string iblFile = "common/assets/Mono_Lake_B.hdr";
 	//const string iblFile = "common/assets/Ridgecrest_Road.hdr";
 
-	try {
-		BxDF bsdf = new DiffuseBrdf();
-		ShadingData sd;
-		bsdf.setup(sd);
+	Shape shape;
+	shape = new Triangle(3, 3);
+	logSuccess("Triangle type size: " + to_string(shape.size()));
 
+	try {
 		gpContext = Context::SharedPtr(new Context());
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 });
 

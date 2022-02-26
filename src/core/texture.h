@@ -59,7 +59,7 @@ public:
 	void loadImage(const string& filepath, bool srgb = false) {
 		mImage->loadImage(filepath);
 	}
-	__both__ bool isValid() { return mCudaTexture != 0; }
+	bool isValid() { return mImage->isValid(); }
 	__both__ cudaTextureObject_t getCudaTexture() { return mCudaTexture; }
 	void toDevice();
 
@@ -107,6 +107,11 @@ public:
 	Material(const string& name) { mName = name; }
 
 	void setTexture(TextureType type, Texture& texture);
+
+	bool hasEmission() { 
+		return any(mMaterialParams.emissive) || 
+			mTextures[(int)TextureType::Emissive].isValid(); 
+	}
 
 	__both__ cudaTextureObject_t getCudaTexture(TextureType type) {
 		return mTextures[(uint)type].getCudaTexture();

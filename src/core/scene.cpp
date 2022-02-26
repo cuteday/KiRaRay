@@ -37,12 +37,17 @@ void Scene::renderUI() {
 
 void Scene::toDevice()
 {
+	std::vector<MeshData> meshData;
 	for (Material& material : materials)
 		material.toDevice();
-	for (Mesh& mesh : meshes)
+	for (Mesh& mesh : meshes) {
 		mesh.toDevice();
+		meshData.push_back(mesh.mMeshData);
+	}
 	mMaterialBuffer.alloc_and_copy_from_host(materials);
-	mData.materials = mMaterialBuffer.data<Material>();
+	mMeshBuffer.alloc_and_copy_from_host(meshData);
+	mData.materials = (Material*)mMaterialBuffer.data();
+	mData.meshes = (MeshData*)mMeshBuffer.data();
 }
 
 bool Scene::onMouseEvent(const MouseEvent& mouseEvent)

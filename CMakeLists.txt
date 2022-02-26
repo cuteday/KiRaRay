@@ -1,11 +1,11 @@
 CMAKE_MINIMUM_REQUIRED ( VERSION 3.17 )
 
-PROJECT (KIRARAY
+PROJECT (KiRaRay
 	DESCRIPTION "A simple implememtation of an optix renderer."
 	LANGUAGES C CXX CUDA
 )
 SET (CMAKE_EXPORT_COMPILE_COMMANDS ON)
-SET(KRR_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+SET(KRR_PROJECT_ROOT ${CMAKE_SOURCE_DIR})
 
 ###############################################################################
 # Build type and C++ compiler setup

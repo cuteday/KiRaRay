@@ -39,7 +39,7 @@ SET ( KRR_CORE_SOURCE
 	core/camera.cpp
 	core/light.cpp
 	# device side
-	core/gpu/context.cpp
+	core/device/context.cpp
 	# components
 	core/window.cpp
 	core/logger.cpp
@@ -58,7 +58,9 @@ SET ( KRR_CORE_HEADERS
 	core/taggedptr.h
 	core/file.h
 	# rendering
+	core/mesh.h
 	core/envmap.h
+	core/shape.h
 	core/light.h
 	core/renderpass.h
 	core/camera.h
@@ -79,9 +81,9 @@ SET ( KRR_CORE_HEADERS
 	core/math/vec/rotate.h
 	core/math/vec/functors.h
 	# cuda/optix wrapper
-	core/gpu/context.h
-	core/gpu/buffer.h
-	core/gpu/optix7.h
+	core/device/context.h
+	core/device/buffer.h
+	core/device/optix7.h
 	# non core
 	main/renderer.h
 	scene/importer.h
@@ -108,6 +110,7 @@ SET ( KRR_SHADERS
 	render/shading.h
 	render/sampling.h
 	render/bsdf.h
+	render/lightsampler.h
 	render/path.h
 	render/postprocess.h
 	render/path.cu
@@ -138,7 +141,8 @@ ADD_LIBRARY ( krr STATIC
 	${PTX_CODE}
 )
 
-# TARGET_LINK_LIBRARIES(krr PUBLIC ${optix_LIBRARY})
+TARGET_INCLUDE_DIRECTORIES (krr SYSTEM PUBLIC ${OptiX_INCLUDE})
+TARGET_LINK_LIBRARIES(krr PUBLIC ${optix_LIBRARY})
 
 SET(KRR_ALL_LIBS
 	krr

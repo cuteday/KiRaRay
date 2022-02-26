@@ -8,7 +8,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-struct LightSample {
+struct EnvLightSample {
 	vec3f Li;
 	float pdf;
 	vec3f wi;
@@ -51,25 +51,25 @@ public:
 		return 0.25 * M_1_PI;
 	}
 
-	__device__ void sample(vec2f u, LightSample& ls) {
+	__device__ EnvLightSample sample(vec2f u) {
 		vec3f wi = utils::latlongToWorld(u);
+		EnvLightSample ls = {};
 		ls.wi = wi;
 		ls.Li = eval(wi);
 		ls.pdf = 0.25 * M_1_PI;
+		return ls;
 	}
 
 	__device__ vec3f eval(vec3f wi) {
 		vec3f Li;
 		Li = mData.tint * mData.intensity;
 #ifdef __NVCC__
-		if (mData.mEnvTexture.isValid()) {
-			cudaTextureObject_t texture = mData.mEnvTexture.getCudaTexture();
-			if (!texture) return Li;
-			vec2f uv = utils::worldToLatLong(wi);
-			uv.x = fmod(uv.x + mData.rotation, 1.f);
-			vec3f env = (vec3f)tex2D<float4>(texture, uv.x, uv.y);
-			Li *= env;
-		}
+		cudaTextureObject_t texture = mData.mEnvTexture.getCudaTexture();
+		if (!texture) return Li;
+		vec2f uv = utils::worldToLatLong(wi);
+		uv.x = fmod(uv.x + mData.rotation, 1.f);
+		vec3f env = (vec3f)tex2D<float4>(texture, uv.x, uv.y);
+		Li *= env;
 #endif
 		return Li;
 	}

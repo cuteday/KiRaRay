@@ -3,7 +3,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-fs::path File::cwd() { return PROJECT_DIR; }
+fs::path File::cwd() { return KRR_PROJECT_DIR; }
 fs::path File::projectDir() { return cwd(); }
 fs::path File::dataDir() { return cwd() / "data"; }
 fs::path File::codeDir() { return cwd() / "src"; }

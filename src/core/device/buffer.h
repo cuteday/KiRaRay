@@ -4,6 +4,7 @@
 
 #include "optix7.h"
 #include "common.h"
+#include "util/check.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -18,13 +19,7 @@ public:
 		return (CUdeviceptr)d_ptr;
 	}
 
-	template <typename T>
-	__both__  inline T* data() const
-	{
-		return (T*)(d_ptr);
-	}
-
-	__both__  inline size_t size() const
+	__both__ inline size_t size() const
 	{
 		return sizeInBytes;
 	}
@@ -34,14 +29,6 @@ public:
 	{
 		if (sizeInBytes == size) return;
 		if (d_ptr) free();
-		alloc(size);
-	}
-
-	//! allocate to given number of bytes
-	void alloc(size_t size)
-	{
-		assert(d_ptr == nullptr);
-		if (size == 0) return;
 		this->sizeInBytes = size;
 		CUDA_CHECK(cudaMalloc((void**)&d_ptr, sizeInBytes));
 	}
@@ -58,7 +45,7 @@ public:
 	void alloc_and_copy_from_host(const std::vector<T>& vt)
 	{
 		if (vt.size() == 0) return;
-		alloc(vt.size() * sizeof(T));
+		resize(vt.size() * sizeof(T));
 		copy_from_host((const T*)vt.data(), vt.size());
 	}
 
@@ -66,7 +53,7 @@ public:
 	void alloc_and_copy_from_device(const std::vector<T>& vt)
 	{
 		if (vt.size() == 0) return;
-		alloc(vt.size() * sizeof(T));
+		resize(vt.size() * sizeof(T));
 		copy_from_device((const T*)vt.data(), vt.size());
 	}
 
@@ -74,7 +61,7 @@ public:
 	void alloc_and_copy_from_host(const T* t, size_t count)
 	{
 		if (count == 0) return;
-		alloc(count * sizeof(T));
+		resize(count * sizeof(T));
 		copy_from_host((const T*)t, count);
 	}
 
@@ -82,7 +69,7 @@ public:
 	void alloc_and_copy_from_device(const T* t, size_t count)
 	{
 		if (count == 0) return;
-		alloc(count * sizeof(T));
+		resize(count * sizeof(T));
 		copy_from_device((const T*)t, count);
 	}
 
@@ -122,17 +109,101 @@ public:
 			count * sizeof(T), cudaMemcpyDeviceToDevice));
 	}
 
-protected:
+private:
 	size_t sizeInBytes{ 0 };
 	void* d_ptr{ nullptr };
 };
 
 template <typename T>
-class TypedBuffer :CUDABuffer{
+class TypedBuffer {
+public:
+	__both__ inline T* data() const { return d_ptr; }
 
-	__both__ inline T* data() { return (T*)d_ptr; }
+	__both__ inline T& operator [] (uint index) { 
+		assert(index < size);
+		return d_ptr[index]; 
+	}
 
-	__both__ inline T& operator [] (uint index) { return ((T*)d_ptr)[index]; }
+	__both__ inline size_t size() const { return m_size; }
+
+	__both__ inline size_t sizeInBytes() const { return m_size * sizeof(T); }
+
+	inline void resize(size_t new_size) {
+		if (m_size == new_size) return;
+		if (d_ptr) clear();
+		m_size = new_size;
+		CUDA_CHECK(cudaMalloc((void**)&d_ptr, new_size * sizeof(T)));
+	}
+
+	inline void clear(){
+		CUDA_CHECK(cudaFree(d_ptr));
+		d_ptr = nullptr;
+		m_size = 0;
+	}
+
+	void alloc_and_copy_from_host(const std::vector<T>& vt)
+	{
+		if (vt.size() == 0) return;
+		resize(vt.size());
+		copy_from_host((const T*)vt.data(), vt.size());
+	}
+
+	void alloc_and_copy_from_device(const std::vector<T>& vt)
+	{
+		if (vt.size() == 0) return;
+		resize(vt.size());
+		copy_from_device((const T*)vt.data(), vt.size());
+	}
+
+	void alloc_and_copy_from_host(const T* t, size_t count)
+	{
+		if (count == 0) return;
+		resize(count * sizeof(T));
+		copy_from_host((const T*)t, count);
+	}
+
+	void alloc_and_copy_from_device(const T* t, size_t count)
+	{
+		if (count == 0) return;
+		resize(count * sizeof(T));
+		copy_from_device((const T*)t, count);
+	}
+
+	void copy_from_host(const T* t, size_t count)
+	{
+		assert(d_ptr);
+		assert(m_size >= count);
+		CUDA_CHECK(cudaMemcpy(d_ptr, (void*)t,
+			count * sizeof(T), cudaMemcpyHostToDevice));
+	}
+
+	void copy_to_host(T* t, size_t count)
+	{
+		assert(d_ptr);
+		assert(m_size >= count);
+		CUDA_CHECK(cudaMemcpy((void*)t, d_ptr,
+			count * sizeof(T), cudaMemcpyDeviceToHost));
+	}
+
+	void copy_from_device(const T* t, size_t count)
+	{
+		assert(d_ptr);
+		assert(m_size >= count);
+		CUDA_CHECK(cudaMemcpy(d_ptr, (void*)t,
+			count * sizeof(T), cudaMemcpyDeviceToDevice));
+	}
+
+	void copy_to_device(T* t, size_t count)
+	{
+		assert(d_ptr);
+		assert(m_size >= count);
+		CUDA_CHECK(cudaMemcpy((void*)t, d_ptr,
+			count * sizeof(T), cudaMemcpyDeviceToDevice));
+	}
+
+private:
+	size_t m_size;
+	T* d_ptr{ nullptr };
 };
 
 KRR_NAMESPACE_END

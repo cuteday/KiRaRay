@@ -210,8 +210,9 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 
 	logDebug("Start traversing scene nodes");
 	traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
-
 	logDebug("Total imported meshes: " + std::to_string(mpScene->meshes.size()));
+
+	loadMeshLights();
 
 	Assimp::DefaultLogger::kill();
 	
@@ -293,6 +294,17 @@ void AssimpImporter::loadMaterials(const string &modelFolder)
 		mpScene->materials.push_back(*pMaterial);
 	}
 
+}
+
+void AssimpImporter::loadMeshLights()
+{
+	for (uint meshId = 0; meshId < mpScene->meshes.size(); meshId ++) {
+		Mesh& mesh = mpScene->meshes[meshId];
+		Material& material = mpScene->materials[mesh.mMaterialId];
+		if (material.hasEmission()) {
+			mesh.emissiveTriangles = Mesh::createTriangles(meshId, mesh);
+		}
+	}
 }
 
 KRR_NAMESPACE_END

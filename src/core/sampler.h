@@ -26,6 +26,7 @@ public:
 		mState = utils::blockCipherTEA(v0, v1, 16).x;
 	}
 
+	// return u in [0, 1)
 	__both__ float get1D() {
 		const uint LCG_A = 1664525u;
 		const uint LCG_C = 1013904223u;

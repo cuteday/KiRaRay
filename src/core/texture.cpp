@@ -12,7 +12,7 @@
 
 #include "texture.h"
 #include "logger.h"
-#include "gpu/optix7.h"
+#include "device/optix7.h"
 
 namespace tinyexr {
 	void save_exr(const float* data, int width, int height, int nChannels, int channelStride, const char* outfilename, bool flip = true) {

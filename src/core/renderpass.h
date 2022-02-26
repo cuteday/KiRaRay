@@ -2,7 +2,7 @@
 
 #include "common.h"
 #include "math/math.h"
-#include "gpu/buffer.h"
+#include "device/buffer.h"
 #include "scene.h"
 #include "window.h"
 

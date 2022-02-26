@@ -23,7 +23,7 @@ PathTracer::PathTracer()
 	logInfo("#krr: setting up optix pipeline ...");
 	createPipeline();
 	
-	launchParamsBuffer.alloc(sizeof(launchParams));
+	launchParamsBuffer.resize(sizeof(launchParams));
 
 	logInfo("#krr: context, module, pipeline, etc, all set up ...");
 	logSuccess("PathTracer::Optix 7 context fully set up");
@@ -206,11 +206,12 @@ void PathTracer::buildSBT()
 	// build hitgroup records
 	uint numMeshes = mpScene->meshes.size();
 	std::vector<HitgroupRecord> hitgroupRecords;
-	for (uint i = 0; i < numMeshes; i++) {
+	for (uint meshId = 0; meshId < numMeshes; meshId++) {
 		for (uint rayId = 0; rayId < RAY_TYPE_COUNT; rayId++) {
 			HitgroupRecord rec;
 			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayId], &rec));
-			rec.data = mpScene->meshes[i].mMeshData;
+			rec.data.meshId = meshId;
+			//rec.data = mpScene->meshes[meshId].mMeshData;
 			hitgroupRecords.push_back(rec);
 		}
 	}
@@ -267,7 +268,7 @@ void PathTracer::buildAS()
 
 	// prepare for compaction
 	CUDABuffer compactedSizeBuffer;
-	compactedSizeBuffer.alloc(sizeof(uint64_t));
+	compactedSizeBuffer.resize(sizeof(uint64_t));
 
 	OptixAccelEmitDesc emitDesc;
 	emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
@@ -275,9 +276,9 @@ void PathTracer::buildAS()
 
 	// building process
 	CUDABuffer tempBuffer;
-	tempBuffer.alloc(blasBufferSizes.tempSizeInBytes);
+	tempBuffer.resize(blasBufferSizes.tempSizeInBytes);
 	CUDABuffer outputBuffer;
-	outputBuffer.alloc(blasBufferSizes.outputSizeInBytes);
+	outputBuffer.resize(blasBufferSizes.outputSizeInBytes);
 
 	OptixTraversableHandle &asHandle = launchParams.traversable;
 	
@@ -299,7 +300,7 @@ void PathTracer::buildAS()
 	uint64_t compactedSize;
 	compactedSizeBuffer.copy_to_host(&compactedSize, 1);
 	
-	accelBuffer.alloc(compactedSize);
+	accelBuffer.resize(compactedSize);
 	OPTIX_CHECK(optixAccelCompact(gpContext->optixContext,
 		gpContext->cudaStream,
 		asHandle,
@@ -331,7 +332,7 @@ void PathTracer::render(CUDABuffer& frame)
 {
 	if (launchParams.fbSize.x * launchParams.fbSize.y == 0) return;
 	launchParams.fbSize = mFrameSize;
-	launchParams.colorBuffer = frame.data<vec4f>();
+	launchParams.colorBuffer = (vec4f*)frame.data();
 	memcpy(&launchParams.camera, mpScene->getCamera().get(), sizeof(Camera));
 	memcpy(&launchParams.envLight, mpScene->getEnvLight().get(), sizeof(EnvLight));
 	launchParams.sceneData = mpScene->getSceneData();

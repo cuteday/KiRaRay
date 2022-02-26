@@ -2,7 +2,7 @@
 
 #include "common.h"
 #include "optix.h"
-#include "gpu/buffer.h"
+#include "device/buffer.h"
 #include "renderpass.h"
 
 KRR_NAMESPACE_BEGIN

@@ -1,6 +1,6 @@
 #include "postprocess.h"
 #include "math/utils.h"
-#include "gpu/context.h"
+#include "device/context.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -39,7 +39,7 @@ void AccumulatePass::render(CUDABuffer& frame) {
 	if (mpScene->getChanges()) reset();
 	CUstream& stream = gpContext->cudaStream;
 	linear_kernel(accumulateFrame<vec4f>, 0, stream, mFrameSize.x * mFrameSize.y, 
-		frame.data<vec4f>(), mAccumBuffer.data<vec4f>(), mAccumCount, false);
+		(vec4f*)frame.data(), (vec4f*)mAccumBuffer.data(), mAccumCount, false);
 
 	mAccumCount = min(mAccumCount + 1, mMaxAccumCount - 1);
 }
@@ -121,7 +121,7 @@ void ToneMappingPass::render(CUDABuffer& frame)
 	CUstream &stream = gpContext->cudaStream;
 	vec3f colorTransform = vec3f(mExposureCompensation);
 	linear_kernel(toneMap<float>, 0, stream, mFrameSize.x * mFrameSize.y,
-		frame.data<vec4f>(), colorTransform, mOperator);
+		(vec4f*)frame.data(), colorTransform, mOperator);
 	
 }
 
