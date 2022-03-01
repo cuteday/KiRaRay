@@ -64,9 +64,102 @@ __both__ inline vec3f cosineSampleHemisphere(const vec2f& u) {
 	return { d.x, d.y, z };
 }
 
-/////////////////////////////////////////////////////////////////////////
-//				microfacet bsdf evaluation and sampling 
+__both__ inline vec3f uniformSampleTriangle(const vec2f& u) {
+	float b0, b1;
+	if (u[0] < u[1]) {
+		b0 = u[0] / 2;
+		b1 = u[1] - b0;
+	}
+	else {
+		b1 = u[1] / 2;
+		b0 = u[0] - b1;
+	}
+	return { b0, b1, 1 - b0 - b1 };
+}
 
+//__both__ inline vec3f sampleSphericalTriangle(vec3f v, vec3f p, vec2f u, float& pdf) {
+//	if (pdf)
+//		pdf = 0;
+//	// Compute vectors _a_, _b_, and _c_ to spherical triangle vertices
+//	vec3f a(v[0] - p), b(v[1] - p), c(v[2] - p);
+//	CHECK_GT(lengthSquared(a), 0);
+//	CHECK_GT(lengthSquared(b), 0);
+//	CHECK_GT(lengthSquared(c), 0);
+//	a = normalize(a);
+//	b = normalize(b);
+//	c = normalize(c);
+//
+//	// Compute normalized cross products of all direction pairs
+//	vec3f n_ab = cross(a, b), n_bc = cross(b, c), n_ca = cross(c, a);
+//	if (lengthSquared(n_ab) == 0 || lengthSquared(n_bc) == 0 || lengthSquared(n_ca) == 0)
+//		return {};
+//	n_ab = normalize(n_ab);
+//	n_bc = normalize(n_bc);
+//	n_ca = normalize(n_ca);
+//
+//	// Find angles $\alpha$, $\beta$, and $\gamma$ at spherical triangle vertices
+//	float alpha = AngleBetween(n_ab, -n_ca);
+//	float beta = AngleBetween(n_bc, -n_ab);
+//	float gamma = AngleBetween(n_ca, -n_bc);
+//
+//	// Uniformly sample triangle area $A$ to compute $A'$
+//	float A_pi = alpha + beta + gamma;
+//	float Ap_pi = lerp(u[0], M_PI, A_pi);
+//	if (pdf) {
+//		float A = A_pi - Pi;
+//		*pdf = (A <= 0) ? 0 : 1 / A;
+//	}
+//
+//	// Find $\cos \beta'$ for point along _b_ for sampled area
+//	float cosAlpha = std::cos(alpha), sinAlpha = std::sin(alpha);
+//	float sinPhi = std::sin(Ap_pi) * cosAlpha - std::cos(Ap_pi) * sinAlpha;
+//	float cosPhi = std::cos(Ap_pi) * cosAlpha + std::sin(Ap_pi) * sinAlpha;
+//	float k1 = cosPhi + cosAlpha;
+//	float k2 = sinPhi - sinAlpha * Dot(a, b) /* cos c */;
+//	float cosBp = (k2 + (DifferenceOfProducts(k2, cosPhi, k1, sinPhi)) * cosAlpha) /
+//		((SumOfProducts(k2, sinPhi, k1, cosPhi)) * sinAlpha);
+//	// Happens if the triangle basically covers the entire hemisphere.
+//	// We currently depend on calling code to detect this case, which
+//	// is sort of ugly/unfortunate.
+//	CHECK(!IsNaN(cosBp));
+//	cosBp = Clamp(cosBp, -1, 1);
+//
+//	// Sample $c'$ along the arc between $b'$ and $a$
+//	float sinBp = SafeSqrt(1 - Sqr(cosBp));
+//	vec3f cp = cosBp * a + sinBp * normalize(GramSchmidt(c, a));
+//
+//	// Compute sampled spherical triangle direction and return barycentrics
+//	float cosTheta = 1 - u[1] * (1 - Dot(cp, b));
+//	float sinTheta = SafeSqrt(1 - Sqr(cosTheta));
+//	vec3f w = cosTheta * b + sinTheta * normalize(GramSchmidt(cp, b));
+//	// Find barycentric coordinates for sampled direction _w_
+//	vec3f e1 = v[1] - v[0], e2 = v[2] - v[0];
+//	vec3f s1 = cross(w, e2);
+//	float divisor = Dot(s1, e1);
+//
+//	if (divisor == 0) {
+//		// This happens with triangles that cover (nearly) the whole
+//		// hemisphere.
+//		return { 1.f / 3.f, 1.f / 3.f, 1.f / 3.f };
+//	}
+//	float invDivisor = 1 / divisor;
+//	vec3f s = p - v[0];
+//	float b1 = Dot(s, s1) * invDivisor;
+//	float b2 = Dot(w, cross(s, e1)) * invDivisor;
+//
+//	// Return clamped barycentrics for sampled direction
+//	b1 = Clamp(b1, 0, 1);
+//	b2 = Clamp(b2, 0, 1);
+//	if (b1 + b2 > 1) {
+//		b1 /= b1 + b2;
+//		b2 /= b1 + b2;
+//	}
+//	return { float(1 - b1 - b2), float(b1), float(b2) };
+//}
+
+/////////////////////////////////////////////////////////////////////////
+//				ggx microfacet evaluation and sampling				   //
+/////////////////////////////////////////////////////////////////////////
 __both__ inline float evalG1GGX(float alphaSqr, float cosTheta)
 {
 	if (cosTheta <= 0) return 0;

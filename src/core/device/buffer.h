@@ -120,7 +120,7 @@ public:
 	__both__ inline T* data() const { return d_ptr; }
 
 	__both__ inline T& operator [] (uint index) { 
-		assert(index < size);
+		assert(index < m_size);
 		return d_ptr[index]; 
 	}
 

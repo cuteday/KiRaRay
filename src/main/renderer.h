@@ -38,6 +38,8 @@ public:
 
 	void setScene(Scene::SharedPtr scene) override {
 		mpScene = scene;
+		mpScene->toDevice();
+		mpScene->processMeshLights();
 		buildAS();
 		buildSBT();
 		logSuccess("Scene set...");
@@ -138,7 +140,7 @@ private:
 		mRenderBuffer.copy_to_host(image.data(), fbSize.x * fbSize.y * 4 * sizeof(float));
 		fs::path filepath = File::resolve("common/images") / ("krr_" + Log::nowToString("%H_%M_%S") + extension);
 		image.saveImage(filepath.string());
-		logInfo("Saved screen shot to " + filepath.string());
+		logSuccess("Saved screen shot to " + filepath.string());
 	}
 
 	std::vector<RenderPass::SharedPtr> mpPasses;

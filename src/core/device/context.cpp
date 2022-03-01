@@ -1,11 +1,16 @@
 #include "logger.h"
 #include "context.h"
 
+
 KRR_NAMESPACE_BEGIN
 
+using namespace inter;
 Context::SharedPtr gpContext;
 
+CUDATrackedMemory CUDATrackedMemory::singleton;
+
 namespace {
+
 	static void optixContextLogCallback(unsigned int level,
 		const char* tag,
 		const char* message,
@@ -15,12 +20,14 @@ namespace {
 }
 
 void Context::initialize() {
+	logInfo("Initializing device context");
+
 	// initialize optix and cuda 
 	cudaFree(0);
 	int numDevices;
 	cudaGetDeviceCount(&numDevices);
 	if (numDevices == 0)
-		logFatal("#krr: no CUDA capable devices found!");
+		logFatal("No CUDA capable devices found!");
 	logInfo("Found " + to_string(numDevices) + " CUDA devices!");
 	OPTIX_CHECK(optixInit());
 
@@ -32,7 +39,7 @@ void Context::initialize() {
 	cudaGetDeviceProperties(&deviceProps, deviceID);
 	logInfo("#krr: running on device: " + string(deviceProps.name));
 
-	CUresult  cuRes = cuCtxGetCurrent(&cudaContext);
+	CUresult cuRes = cuCtxGetCurrent(&cudaContext);
 	if (cuRes != CUDA_SUCCESS)
 		logError("Error querying current context: error code " + cuRes);
 
@@ -42,6 +49,10 @@ void Context::initialize() {
 	OPTIX_CHECK(optixDeviceContextCreate(cudaContext, &optixContextOptions, &optixContext));
 	OPTIX_CHECK(optixDeviceContextSetLogCallback(optixContext, optixContextLogCallback, nullptr, 4));
 	//OPTIX_CHECK(optixDeviceContextSetCacheEnabled(optixContext, false));
+
+	// tracked cuda device memory management
+	logInfo("Setting default memory manager to CUDA memory");
+	set_default_resource(&CUDATrackedMemory::singleton);
 }
 
 void Context::finalize(){

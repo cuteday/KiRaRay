@@ -3,6 +3,8 @@
 #include "common.h"
 #include "optix.h"
 #include "device/buffer.h"
+#include "device/memory.h"
+#include "interop.h"
 #include "renderpass.h"
 
 KRR_NAMESPACE_BEGIN
@@ -14,10 +16,9 @@ public:
 	Context() { initialize(); }
 	~Context() { finalize(); }
 
+//private:
 	void initialize();
 	void finalize();
-
-//private:
 
 	CUcontext cudaContext;
 	CUstream cudaStream;

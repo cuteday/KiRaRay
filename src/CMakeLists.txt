@@ -38,7 +38,9 @@ SET ( KRR_CORE_SOURCE
 	core/scene.cpp
 	core/camera.cpp
 	core/light.cpp
-	# device side
+	core/mesh.cpp
+	# host-device side
+	core/interop.cpp
 	core/device/context.cpp
 	# components
 	core/window.cpp
@@ -58,6 +60,7 @@ SET ( KRR_CORE_HEADERS
 	core/taggedptr.h
 	core/file.h
 	# rendering
+	core/raytracing.h
 	core/mesh.h
 	core/envmap.h
 	core/shape.h

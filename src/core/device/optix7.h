@@ -5,6 +5,7 @@
 #include <optix_stubs.h>
 #include <sstream>
 #include <stdexcept>
+#include "logger.h"
 
 #define CUDA_CHECK(call)							\
     {									\
@@ -13,7 +14,8 @@
         std::stringstream ss;                                          \
         cudaError_t err =  rc; /*cudaGetLastError();*/                  \
         ss << "CUDA Error " << cudaGetErrorName(err)                   \
-            << " (" << cudaGetErrorString(err) << ")";                  \
+            << " (" << cudaGetErrorString(err) << ")"; \
+        logError(ss.str());               \
         throw std::runtime_error(ss.str());                            \
       }                                                                 \
     }

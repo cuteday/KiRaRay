@@ -7,6 +7,7 @@
 #include "assimp/pbrmaterial.h"
 
 #include "math/math.h"
+#include "light.h"
 #include "scene/importer.h"
 #include "logger.h"
 
@@ -212,18 +213,25 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 	traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
 	logDebug("Total imported meshes: " + std::to_string(mpScene->meshes.size()));
 
-	loadMeshLights();
+	//loadMeshLights();
 
 	Assimp::DefaultLogger::kill();
-	
-	mpScene->toDevice();
-
+	//mpScene->toDevice();
 	return true;
 }
 
 void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
 {
 	Mesh mesh;
+	mesh.vertices.reserve(pAiMesh->mNumVertices);
+	mesh.normals.reserve(pAiMesh->mNumVertices);
+	mesh.indices.reserve(pAiMesh->mNumFaces);
+	if (pAiMesh->HasTextureCoords(0)) 
+		mesh.texcoords.reserve(pAiMesh->mNumVertices);
+	if (pAiMesh->HasTangentsAndBitangents()) {
+		mesh.tangents.reserve(pAiMesh->mNumVertices);
+		mesh.bitangents.reserve(pAiMesh->mNumVertices);
+	}
 
 	for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
 		vec3f vertex = aiCast(pAiMesh->mVertices[i]);
@@ -259,10 +267,13 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
 		mesh.indices.push_back(indices);
 	}
 
-	if (pAiMesh->mMaterialIndex >= 0 && pAiMesh->mMaterialIndex < mpScene->materials.size()) {
-		mesh.mMaterialId = pAiMesh->mMaterialIndex + 1;
+	if (pAiMesh->mMaterialIndex >= 0 && pAiMesh->mMaterialIndex < mpScene->mData.materials.size()) {
+		mesh.materialId = pAiMesh->mMaterialIndex + 1;
 	}
+
+	// finalizing creating a mesh
 	mpScene->meshes.push_back(mesh);
+	//mpScene->mData.meshes.push_back(mesh.mData);
 }
 
 void AssimpImporter::traverseNode(aiNode* node, aiMatrix4x4 transform)
@@ -281,7 +292,8 @@ void AssimpImporter::traverseNode(aiNode* node, aiMatrix4x4 transform)
 
 void AssimpImporter::loadMaterials(const string &modelFolder)
 {
-	mpScene->materials.push_back(Material());
+	mpScene->mData.materials.reserve(mpAiScene->mNumMaterials + 1LL);
+	mpScene->mData.materials.push_back(Material());
 	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
 		const aiMaterial* aiMaterial = mpAiScene->mMaterials[i];
 		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);
@@ -289,22 +301,32 @@ void AssimpImporter::loadMaterials(const string &modelFolder)
 			logError("Failed to create material...");
 			return;
 		}
-		// we transfer alll material data to gpu memory here.
 		pMaterial->toDevice();
-		mpScene->materials.push_back(*pMaterial);
+		mpScene->mData.materials.push_back(*pMaterial);
 	}
 
 }
 
-void AssimpImporter::loadMeshLights()
-{
-	for (uint meshId = 0; meshId < mpScene->meshes.size(); meshId ++) {
-		Mesh& mesh = mpScene->meshes[meshId];
-		Material& material = mpScene->materials[mesh.mMaterialId];
-		if (material.hasEmission()) {
-			mesh.emissiveTriangles = Mesh::createTriangles(meshId, mesh);
-		}
-	}
-}
+//void AssimpImporter::loadMeshLights()
+//{
+//	std::vector<Mesh>& meshes = mpScene->meshes;
+//	uint nMeshes = meshes.size();
+//	for (uint meshId = 0; meshId < nMeshes; meshId++) {
+//		Mesh& mesh = meshes[meshId];
+//		Material& material = mpScene->mData.materials[mesh.materialId];
+//		if (material.hasEmission()) {
+//			std::vector<Triangle> triangles = mesh.createTriangles(&mpScene->mData.meshes[meshId]);
+//			mesh.emissiveTriangles.assign(triangles.begin(), triangles.end());
+//			for (Triangle& tri : mesh.emissiveTriangles) {
+//				vec3f Le = material.mMaterialParams.emissive;
+//				Texture& texture = material.getTexture(Material::TextureType::Emissive);
+//				//DiffuseAreaLight light(Shape(&tri), texture, Le, true, 1.f);
+//				mesh.lights.push_back(DiffuseAreaLight(Shape(&tri), texture, Le, true, 1.f));
+//				mpScene->mData.lights.push_back(&mesh.lights.back());
+//			}
+//		}
+//	}
+//	mpScene->mData.lightSampler = new UniformLightSampler((inter::span<Light>)mpScene->mData.lights);
+//}
 
 KRR_NAMESPACE_END

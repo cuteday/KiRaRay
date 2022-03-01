@@ -17,6 +17,9 @@ extern "C" int main(int argc, char* argv[]) {
 #ifdef KRR_DEBUG_BUILD
 	logWarning("Kiraray::Running in debug mode!");
 #endif
+#if KRR_PLATFORM_UNKNOWN
+	logFatal("Kiraray::Running on unsupported platform!");
+#endif
 
 	const string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
 	//const string sceneFile = "common/scenes/rungholt/rungholt.obj";
@@ -29,11 +32,9 @@ extern "C" int main(int argc, char* argv[]) {
 	//const string iblFile = "common/assets/Mono_Lake_B.hdr";
 	//const string iblFile = "common/assets/Ridgecrest_Road.hdr";
 
-	Shape shape;
-	shape = new Triangle(3, 3);
-	logSuccess("Triangle type size: " + to_string(shape.size()));
-
+#ifndef KRR_DEBUG_BUILD
 	try {
+#endif
 		gpContext = Context::SharedPtr(new Context());
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 });
 
@@ -43,10 +44,11 @@ extern "C" int main(int argc, char* argv[]) {
 		importer.import(sceneFile, scene);
 		app.setScene(scene);
 		app.run();
-	} 
-	catch(std::exception e) {
+#ifndef KRR_DEBUG_BUILD
+	} catch (std::exception e) {
 		logFatal("Kiraray::Unhandled exception: " + string(e.what()));
 	}
+#endif // KRR_DEBUG_BUILD
 
 	return 0;
 }

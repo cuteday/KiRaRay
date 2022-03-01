@@ -14,12 +14,12 @@
 - Assimp as scene importer.
 - Diffuse, ggx microfacet and fresnel-blended brdf. 
 - Image-based environment lighting.
+- Next event estimation and multiple importance sampling (naive ver.).
 - Tone mapping and frame accumulating.
 
 If possible, more features will be added in the future, for example:
 
-- More BSDFs.
-- More light sources, sampling via NEE.
+- More BSDFs and light sources.
 - Mesh instancing and scene animations.
 
 ### Build and run

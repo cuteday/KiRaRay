@@ -37,17 +37,42 @@ void Scene::renderUI() {
 
 void Scene::toDevice()
 {
-	std::vector<MeshData> meshData;
-	for (Material& material : materials)
-		material.toDevice();
+	//for (Material& material : mData.materials)
+	//	material.toDevice();
+	mData.meshes.clear();
 	for (Mesh& mesh : meshes) {
 		mesh.toDevice();
-		meshData.push_back(mesh.mMeshData);
+		mData.meshes.push_back(mesh.mData);
 	}
-	mMaterialBuffer.alloc_and_copy_from_host(materials);
-	mMeshBuffer.alloc_and_copy_from_host(meshData);
-	mData.materials = (Material*)mMaterialBuffer.data();
-	mData.meshes = (MeshData*)mMeshBuffer.data();
+	//mData.nLights = mData.lights.size();
+	
+}
+
+void Scene::processMeshLights()
+{
+	// This function should be called AFTER all scene data are moved to device
+	uint nMeshes = meshes.size();
+	for (uint meshId = 0; meshId < nMeshes; meshId++) {
+		Mesh& mesh = meshes[meshId];
+		Material& material = mData.materials[mesh.materialId];
+		if (material.hasEmission()) {
+			logDebug("Emissive diffuse area light detected,"
+				" number of shapes: " + to_string(mesh.indices.size()) +
+				" constant emission(?) "+ to_string(length(material.mMaterialParams.emissive)));
+			std::vector<Triangle> triangles = mesh.createTriangles(&mData.meshes[meshId]);
+			mesh.emissiveTriangles.assign(triangles.begin(), triangles.end());
+			for (Triangle& tri : mesh.emissiveTriangles) {
+				vec3f Le = material.mMaterialParams.emissive;
+				Texture& texture = material.getTexture(Material::TextureType::Emissive);
+				//DiffuseAreaLight light(Shape(&tri), texture, Le, true, 1.f);
+				mesh.lights.push_back(DiffuseAreaLight(Shape(&tri), texture, Le, true, 1.f));
+				mData.lights.push_back(&mesh.lights.back());
+			}
+			mesh.mData.lights = mesh.lights.data();
+			mData.meshes[meshId] = mesh.mData;
+		}
+	}
+	mData.lightSampler = UniformLightSampler((inter::span<Light>)mData.lights);
 }
 
 bool Scene::onMouseEvent(const MouseEvent& mouseEvent)

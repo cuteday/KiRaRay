@@ -89,6 +89,17 @@ target_compile_options (
 )
 
 ###############################################################################
+# platform
+###############################################################################
+if(WIN32)
+	set(KRR_PLATFORM_WINDOWS 1)
+elseif(UNIX AND NOT APPLE)
+	set(KRR_PLATFORM_LINUX 1)
+else()
+	set(KRR_PLATFORM_KNOWN 1)
+endif()
+
+###############################################################################
 # other dependencies
 ###############################################################################
 INCLUDE (common/cmake/FindOptiX.cmake)

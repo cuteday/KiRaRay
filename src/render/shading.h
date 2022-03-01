@@ -32,37 +32,39 @@ KRR_DEVICE_FUNCTION T sampleTexture(Texture& texture, vec2f uv, T fallback) {
 }
 
 KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitInfo, Material& material) {
-	vec3f bc = hitInfo.barycentric;
+	vec3f b = hitInfo.barycentric;
+	//Mesh& mesh = *hitInfo.mesh;
 	MeshData& mesh = *hitInfo.mesh;
-	vec3i triangle = mesh.indices[hitInfo.primitiveId];
+	vec3i v = mesh.indices[hitInfo.primitiveId];
 
 	sd.wo = normalize(hitInfo.wo);
 
-	sd.pos = bc.x * mesh.vertices[triangle.x] +
-		bc.y * mesh.vertices[triangle.y] +
-		bc.z * mesh.vertices[triangle.z];
+	sd.pos = b[0] * mesh.vertices[v[0]] +
+		b[1] * mesh.vertices[v[1]] +
+		b[2] * mesh.vertices[v[2]];
 
-	sd.geoN = normalize(cross(mesh.vertices[triangle.y] - mesh.vertices[triangle.x],
-		mesh.vertices[triangle.z] - mesh.vertices[triangle.x]));
+	sd.geoN = normalize(cross(mesh.vertices[v[1]] - mesh.vertices[v[0]],
+		mesh.vertices[v[2]] - mesh.vertices[v[0]]));
 
 	sd.N = normalize(
-		bc.x * mesh.normals[triangle.x] +
-		bc.y * mesh.normals[triangle.y] +
-		bc.z * mesh.normals[triangle.z]);
+		b[0] * mesh.normals[v[0]] +
+		b[1] * mesh.normals[v[1]] +
+		b[2] * mesh.normals[v[2]]);
 
 	sd.frontFacing = dot(sd.wo, sd.N) > 0.f;
 	if (!sd.frontFacing) 
 		sd.N = -sd.N;
 
-	if (mesh.tangents != nullptr && mesh.bitangents != nullptr) {
+//	if (mesh.tangents.data() && mesh.bitangents.data()) {
+	if (mesh.tangents && mesh.bitangents) {
 		sd.T = normalize(
-			bc.x * mesh.tangents[triangle.x] +
-			bc.y * mesh.tangents[triangle.y] +
-			bc.z * mesh.tangents[triangle.z]);
+			b[0] * mesh.tangents[v[0]] +
+			b[1] * mesh.tangents[v[1]] +
+			b[2] * mesh.tangents[v[2]]);
 		//sd.B = normalize(
-		//	bc.x * mesh.bitangents[triangle.x] +
-		//	bc.y * mesh.bitangents[triangle.y] +
-		//	bc.z * mesh.bitangents[triangle.z]);
+		//	b[0] * mesh.bitangents[v[0]] +
+		//	b[1] * mesh.bitangents[v[1]] +
+		//	b[2] * mesh.bitangents[v[2]]);
 		
 		// re-orthogonize the tangent space 
 		// since tbn may become not orthogonal after the interpolation process.
@@ -76,11 +78,19 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		sd.B = normalize(cross(sd.N, sd.T));
 	}
 
+	vec2f uv[3];
 	if (mesh.texcoords) {
-		sd.uv = (
-			bc.x * mesh.texcoords[triangle.x] +
-			bc.y * mesh.texcoords[triangle.y] +
-			bc.z * mesh.texcoords[triangle.z]);
+		uv[0] = mesh.texcoords[v[0]],
+			uv[1] = mesh.texcoords[v[1]],
+			uv[2] = mesh.texcoords[v[2]];
+	}
+	else {
+		uv[0] = { 0,0 }, uv[1] = { 1,0 }, uv[1] = { 1,1 };
+	}
+	sd.uv = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
+
+	if (mesh.lights) {
+		sd.light = &mesh.lights[hitInfo.primitiveId];
 	}
 
 	Material::MaterialParams& materialParams = material.mMaterialParams;
@@ -92,7 +102,6 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	Texture& diffuseTexture = material.mTextures[(uint)Material::TextureType::Diffuse];
 	Texture& specularTexture = material.mTextures[(uint)Material::TextureType::Specular];
 	Texture& emissiveTexture = material.mTextures[(uint)Material::TextureType::Emissive];
-	Texture& normalTexture = material.mTextures[(uint)Material::TextureType::Normal];
 
 	vec4f diff = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
 	vec4f spec = sampleTexture(specularTexture, sd.uv, materialParams.specular);
@@ -105,7 +114,6 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		// this is the default except for OBJ or when user specified 
 		// G - Roughness; B - Metallic
 			
-		printf("%.3f\n",spec.b);
 		sd.diffuse = lerp(baseColor, vec3f(0), spec.b);
 
 		// Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
@@ -114,14 +122,17 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		float F0 = f * f;
 
 		sd.specular = lerp(vec3f(F0), baseColor, spec.b);
-		sd.roughness = spec.g;
 		sd.metallic = spec.b;
+		sd.roughness = spec.g;
 	}
 	else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		sd.diffuse = baseColor;
 		sd.specular = (vec3f)spec;			// specular reflectance
 		sd.roughness = 1 - spec.a;	// 
 		sd.metallic = getMetallic(sd.diffuse, sd.specular);
+	}
+	else {
+		assert(false);
 	}
 }
 

@@ -57,15 +57,29 @@ public:
 	};
 
 	void loadImage(const string& filepath, bool srgb = false) {
-		mImage->loadImage(filepath);
+		mValid = mImage->loadImage(filepath);
+
 	}
-	bool isValid() { return mImage->isValid(); }
-	__both__ cudaTextureObject_t getCudaTexture() { return mCudaTexture; }
+	__both__ bool isValid() const { return mValid; }
+	__both__ bool isOnDevice() const { return mCudaTexture != 0; }
+	
+	__both__ cudaTextureObject_t getCudaTexture()const { return mCudaTexture; }
+	
+	__device__ vec3f tex(vec2f uv)const {
+#ifdef __NVCC__ 
+		DCHECK(mCudaTexture);
+		vec3f color = (vec3f)tex2D<float4>(mCudaTexture, uv.x, uv.y);
+		return color;
+#endif 
+		return 0;
+	}
+
 	void toDevice();
 
 	static Texture::SharedPtr createFromFile(const string& filepath, bool srgb = false);
 
 //private:
+	bool mValid = false;
 	Image::SharedPtr mImage;
 	cudaTextureObject_t mCudaTexture = 0;
 	cudaArray_t mCudaArray = 0;
@@ -111,6 +125,10 @@ public:
 	bool hasEmission() { 
 		return any(mMaterialParams.emissive) || 
 			mTextures[(int)TextureType::Emissive].isValid(); 
+	}
+
+	__both__ Texture getTexture(TextureType type) {
+		return mTextures[(uint)type];
 	}
 
 	__both__ cudaTextureObject_t getCudaTexture(TextureType type) {

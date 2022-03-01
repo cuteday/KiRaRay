@@ -5,8 +5,11 @@ KRR_NAMESPACE_BEGIN
 using namespace Log;
 
 namespace {
-
+#ifdef KRR_DEBUG_BUILD
     static Level sVerbosity = Level::Debug;
+#else
+    static Level sVerbosity = Level::Info;
+#endif
     static bool sLogTime = true;
     static bool sLogToConsole = true;
     static bool sAnsiControlSequence = false;

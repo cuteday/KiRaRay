@@ -34,6 +34,7 @@ namespace krr{
 			uint primitiveId;
 			vec3f barycentric;
 			
+			//Mesh* mesh;
 			MeshData* mesh;
 			vec3f wo;
 			uint hitKind;
@@ -59,6 +60,7 @@ namespace krr{
 			float roughness;		// linear roughness (alpha=roughness^2)
 			float metallic;
 
+			Light light{ nullptr };
 			bool miss = false;		// not valid if missing, or ?
 			bool frontFacing;		// shading normal and geo normal same dir?
 			

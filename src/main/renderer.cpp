@@ -205,13 +205,13 @@ void PathTracer::buildSBT()
 
 	// build hitgroup records
 	uint numMeshes = mpScene->meshes.size();
+	//uint numMeshes = mpScene->meshes.size();
 	std::vector<HitgroupRecord> hitgroupRecords;
 	for (uint meshId = 0; meshId < numMeshes; meshId++) {
 		for (uint rayId = 0; rayId < RAY_TYPE_COUNT; rayId++) {
 			HitgroupRecord rec;
 			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayId], &rec));
 			rec.data.meshId = meshId;
-			//rec.data = mpScene->meshes[meshId].mMeshData;
 			hitgroupRecords.push_back(rec);
 		}
 	}
@@ -223,6 +223,7 @@ void PathTracer::buildSBT()
 
 void PathTracer::buildAS()
 {
+	//inter::vector<Mesh>& meshes = mpScene->meshes;
 	std::vector<Mesh>& meshes = mpScene->meshes;
 
 	std::vector<OptixBuildInput> triangleInputs(meshes.size());
@@ -233,8 +234,10 @@ void PathTracer::buildAS()
 	for (uint i = 0; i < meshes.size(); i++) {
 		Mesh& mesh = meshes[i];
 
-		indexBufferPtr[i] = mesh.mDeviceMemory.indices.data();
-		vertexBufferPtr[i] = mesh.mDeviceMemory.vertices.data();
+		//indexBufferPtr[i] = (CUdeviceptr)mesh.mData.indices;
+		//vertexBufferPtr[i] = (CUdeviceptr)mesh.mData.vertices;
+		indexBufferPtr[i] = (CUdeviceptr)mesh.indices.data();
+		vertexBufferPtr[i] = (CUdeviceptr)mesh.vertices.data();
 
 		triangleInputs[i] = {};
 		triangleInputs[i].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
@@ -322,15 +325,26 @@ bool PathTracer::onMouseEvent(const MouseEvent& mouseEvent)
 
 void PathTracer::renderUI() {
 	if (ui::CollapsingHeader("Path tracer")) {
+		
+		ui::Text("Path tracing parameters");
 		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
 		ui::SliderInt("Max recursion depth", (int*)&launchParams.maxDepth, 1, 100, "%d");
-		ui::Checkbox("Next event estimation", &launchParams.NEE);
+		if (mpScene->mData.lights.size() > 0)	// only when we have light sources...
+			ui::Checkbox("Next event estimation", &launchParams.NEE);
+		
+		ui::Text("Debugging");
+		ui::Checkbox("Shader debug output", &launchParams.debugOutput);
+		ui::InputInt2("Debug pixel", (int*)&launchParams.debugPixel);
 	}
 }
 
 void PathTracer::render(CUDABuffer& frame)
 {
 	if (launchParams.fbSize.x * launchParams.fbSize.y == 0) return;
+
+	// prefetch memory resource
+	CUDATrackedMemory::singleton.PrefetchToGPU();
+
 	launchParams.fbSize = mFrameSize;
 	launchParams.colorBuffer = (vec4f*)frame.data();
 	memcpy(&launchParams.camera, mpScene->getCamera().get(), sizeof(Camera));

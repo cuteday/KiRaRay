@@ -95,6 +95,16 @@ namespace math{
 		* vectors and coordinates
 		********************************************************/
 
+		template <typename T>
+		__both__ inline float lengthSquared(T v) {
+			float l = length(v);
+			return l * l;
+		}
+
+		__both__ inline float sphericalTriangleArea(vec3f a, vec3f b, vec3f c) {
+			return abs(2 * atan2(dot(a, cross(b, c)), 1 + dot(a, b) + dot(a, c) + dot(b, c)));
+		}
+
 		// generate a perpendicular vector which is orthogonal to the given vector
 		__both__ inline vec3f getPerpendicular(const vec3f& u){
 			vec3f a = abs(u);
@@ -163,6 +173,13 @@ namespace math{
 		__both__ inline float sphericalPhi(const vec3f& v) {
 			float p = atan2(v.y, v.x);
 			return (p < 0) ? (p + 2 * M_PI) : p;
+		}
+
+		__both__ inline vec3f offsetRayOrigin(vec3f p, vec3f n, vec3f w) {
+			vec3f offset = n * 1e-4f;
+			if (dot(n, w) < 0.f)
+				offset = -offset;
+			return p + offset;
 		}
 
 		/*******************************************************

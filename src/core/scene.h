@@ -11,6 +11,9 @@
 #include "kiraray.h"
 #include "interop.h"
 #include "device/buffer.h"
+#include "device/memory.h"
+#include "host/memory.h"
+#include "render/lightsampler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -26,9 +29,12 @@ public:
 	using SharedPtr = std::shared_ptr<Scene>;
 
 	struct SceneData {
-		Material* materials;
-		MeshData* meshes;
-		TypedBuffer<Light> lights;
+		inter::vector<Material> materials;
+		inter::vector<MeshData> meshes;
+		inter::vector<Light> lights;
+
+		UniformLightSampler lightSampler;
+		//uint nLights{ 0 };
 	};
 
 	Scene();
@@ -42,6 +48,8 @@ public:
 	bool getChanges() { return mHasChanges; };
 	void renderUI();
 	void toDevice();
+
+	void processMeshLights();
 
 	Camera::SharedPtr getCamera() { return mpCamera; }
 	CameraController::SharedPtr getCameraController() { return mpCameraController; }
@@ -57,16 +65,10 @@ private:
 	friend class PathTracer;
 
 	std::vector<Mesh> meshes;
-	std::vector<Material> materials;
-
 	SceneData mData;
-	CUDABuffer mMeshBuffer;
-	CUDABuffer mMaterialBuffer;
-	TypedBuffer<Light> mLightBuffer;
 	EnvLight::SharedPtr mpEnvLight;
 	Camera::SharedPtr mpCamera;
 	CameraController::SharedPtr mpCameraController;
-	
 	bool mHasChanges = false;
 };
 
