@@ -261,6 +261,7 @@ public:
 		return dispatch(setup);
 	}
 
+	// [NOTE] f the cosine theta term in render equation is not contained in f().
 	__both__ inline vec3f f(vec3f wo, vec3f wi) const {
 		auto f = [&](auto ptr)->vec3f {return ptr->f(wo, wi); };
 		return dispatch(f);

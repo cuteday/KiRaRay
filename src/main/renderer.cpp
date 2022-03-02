@@ -327,8 +327,9 @@ void PathTracer::renderUI() {
 	if (ui::CollapsingHeader("Path tracer")) {
 		
 		ui::Text("Path tracing parameters");
+		ui::InputInt("Sample per pixel", &launchParams.spp);
 		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
-		ui::SliderInt("Max recursion depth", (int*)&launchParams.maxDepth, 1, 100, "%d");
+		ui::SliderInt("Max recursion depth", &launchParams.maxDepth, 1, 100, "%d");
 		if (mpScene->mData.lights.size() > 0)	// only when we have light sources...
 			ui::Checkbox("Next event estimation", &launchParams.NEE);
 		

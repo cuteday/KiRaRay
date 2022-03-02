@@ -44,8 +44,6 @@ void Scene::toDevice()
 		mesh.toDevice();
 		mData.meshes.push_back(mesh.mData);
 	}
-	//mData.nLights = mData.lights.size();
-	
 }
 
 void Scene::processMeshLights()
@@ -56,6 +54,7 @@ void Scene::processMeshLights()
 		Mesh& mesh = meshes[meshId];
 		Material& material = mData.materials[mesh.materialId];
 		if (material.hasEmission()) {
+			//if (mesh.indices.size() > 2) continue;
 			logDebug("Emissive diffuse area light detected,"
 				" number of shapes: " + to_string(mesh.indices.size()) +
 				" constant emission(?) "+ to_string(length(material.mMaterialParams.emissive)));

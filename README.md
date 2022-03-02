@@ -33,14 +33,18 @@ This project is only tested with OptiX 7.3, CUDA 11.3, compiled on Windows using
 
 #### Build
 
-This project uses cmake to build, no additional setting is needed. For testing, HDR environment images can be downloaded at [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html).
-
+This project uses cmake to build, no additional setting is needed. 
 
 ### Common Issues
 
 #### Choosing generator for Visual Studio
 
 Ninja is recommended as generator when build with Visual Studio, otherwise some strange CUDA errors may be observed at runtime.
+
+#### Test scenes and assets
+
+For testing, HDR environment images can be downloaded at [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), OBJ scenes can be obtained at [McGuire's Archive](https://casual-effects.com/data/).
+
 
 ### Epilogue
 
@@ -49,7 +53,7 @@ I really wish to add more features and make it a fully-functional path-tracing r
 I wish i was like: 
 
 <details>
-<summary>aris meme</summary>
+<summary>aris</summary>
 
 <p align=center>
 <img src=https://cutesail.com/wp-content/uploads/2022/02/aris-meme.jpg width="500">
@@ -59,7 +63,7 @@ I wish i was like:
 But actually i'm like \***sleeps all the time**\*:
 
 <details>
-<summary>hoshino meme</summary>
+<summary>hoshino</summary>
 
 <p align=center>
 <img src=https://cutesail.com/wp-content/uploads/2022/02/hoshino-meme.png width="320">

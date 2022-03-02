@@ -52,10 +52,10 @@ struct LaunchParamsPT
 	bool RR = true;				// enable russian roulette
 	bool NEE = false;			// enable next event estimation
 	bool MIS = false;			// enable multiple importance sample
-	uint maxDepth = 20;
+	int maxDepth = 20;
 	float probRR = 0.15;
 	vec3f clampThreshold = 5000;
-	uint spp = 1;
+	int spp = 1;
 	// scene 
 	Camera camera;
 	EnvLight envLight;

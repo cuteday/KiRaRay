@@ -261,7 +261,6 @@ void WindowApp::resize(const vec2i &size)
 	{
 		resourceSharingSuccessful = true;
 	}
-	//setAspect(fbSize.x/float(fbSize.y));
 }
 
 void WindowApp::draw()
