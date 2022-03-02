@@ -23,7 +23,7 @@ public:
 	DiffuseAreaLight() = default;
 
 	DiffuseAreaLight(Shape& shape, Texture& texture, vec3f Le = 0.f,
-		bool twoSided = false, float scale = 1.f) :
+		bool twoSided = true, float scale = 1.f) :
 		shape(shape),
 		texture(texture),
 		Le(Le),
@@ -47,7 +47,7 @@ public:
 	}
 
 	__device__ inline vec3f L(vec3f p, vec3f n, vec2f uv, vec3f w) const {
-		if (dot(n, w) < 0.f) return 0;	// hit backface
+		if (!twoSided && dot(n, w) < 0.f) return 0;	// hit backface
 
 		if (texture.isValid()) {
 			return scale * texture.tex(uv);
@@ -66,7 +66,7 @@ private:
 	Shape shape;
 	Texture texture{};		// emissive image texture
 	vec3f Le{0};
-	bool twoSided{false};
+	bool twoSided{true};
 	float scale{1};
 };
 

@@ -142,7 +142,7 @@ public:
 
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
-	BsdfType mBsdfType = BsdfType::FresnelBlended;
+	BsdfType mBsdfType = BsdfType::Diffuse;
 	ShadingModel mShadingModel = ShadingModel::MetallicRoughness;
 	bool mDoubleSided = false;
 	string mName;

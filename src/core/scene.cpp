@@ -72,6 +72,7 @@ void Scene::processMeshLights()
 			mData.meshes[meshId] = mesh.mData;
 		}
 	}
+	logDebug("Total " + to_string(mData.lights.size()) + " area lights processed!");
 	mData.lightSampler = UniformLightSampler((inter::span<Light>)mData.lights);
 }
 

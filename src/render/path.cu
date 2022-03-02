@@ -9,13 +9,14 @@ using namespace krr;	// this is needed or nvcc can't recognize the launchParams 
 
 KRR_NAMESPACE_BEGIN
 
-namespace {
+namespace path {
 	constexpr float kMaxDistance = 1e9f;
 	constexpr float kShadowEpsilon = 1e-4f;
 	constexpr float kSampleEnvLightPdf = 0.5f;
 	constexpr float kSampleAreaLightPdf = 1 - kSampleEnvLightPdf;
 }
 
+using namespace path;
 using namespace math;
 using namespace math::utils;
 using namespace shader;
@@ -40,10 +41,23 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 	optixTrace(traversable, ray.origin, ray.dir,
 		0.f, tMax, 0.f,						/* ray time val min max */
 		OptixVisibilityMask(255),			/* all visible */
-		flags,								
+		flags,
 		rayType, RAY_TYPE_COUNT,			/* ray type and number of types */
 		rayType,							/* miss SBT index */
 		std::forward<Args>(payload)...);	/* (unpacked pointers to) payloads */
+}
+
+KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
+	float tMax, int rayType, OptixRayFlags flags, void* payload) {
+	uint u0, u1;
+	packPointer(payload, u0, u1);
+	optixTrace(traversable, ray.origin, ray.dir,
+		0.f, tMax, 0.f,						/* ray time val min max */
+		OptixVisibilityMask(255),			/* all visible */
+		flags,
+		rayType, RAY_TYPE_COUNT,			/* ray type and number of types */
+		rayType,							/* miss SBT index */
+		u0, u1);							/* (unpacked pointers to) payloads */
 }
 
 template <typename... Args>
@@ -61,14 +75,11 @@ KRR_DEVICE_FUNCTION bool traceShadowRay(OptixTraversableHandle traversable,
 KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 	
 	const Light& light = sd.light;
-
-	if (!light) return;
 	// incorporate the contribution from diffuse surface emission 
 	Interaction intr = Interaction(sd.pos, sd.wo, sd.N, sd.uv);
+	vec3f Le = sd.light.L(sd.pos, sd.geoN, sd.uv, sd.wo);
 
-	vec3f Le = sd.light.L(sd.pos, sd.N, sd.uv, sd.wo);
-
-	if (!path.depth) {
+	if (path.depth == 0) {
 		// emission at primary vertex
 		path.L = Le;
 		return;
@@ -138,7 +149,9 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 		u[0] = (u[0] - kSampleEnvLightPdf) / kSampleAreaLightPdf;
 		SampledLight sampledLight = path.lightSampler.sample(u[0]);
 		Light& light = sampledLight.light;
+		if(!light.ptr()) return;
 		LightSample ls = light.sampleLi(u, { sd.pos, sd.N });
+		//LightSample ls = {};
 
 		vec3f wiWorld = normalize(ls.intr.p - sd.pos);
 		vec3f wiLocal = sd.toLocal(wiWorld);
@@ -170,16 +183,16 @@ KRR_DEVICE_FUNCTION bool generateScatter(const ShadingData& sd, PathData& path) 
 	BSDFSample sample = {};
 
 	// how to eliminate branches here to improve performance?
-	vec3f wo = sd.toLocal(sd.wo);
-	sample = BxDF::sample(sd, wo, path.sampler, (int)sd.bsdfType);
+	vec3f woLocal = sd.toLocal(sd.wo);
+	sample = BxDF::sample(sd, woLocal, path.sampler, (int)sd.bsdfType);
 	if (sample.pdf == 0) return false;
 	if (sample.f == vec3f(0)) return false;
 		
-	vec3f wi = sd.fromLocal(sample.wi);
+	vec3f wiWorld = sd.fromLocal(sample.wi);
 	path.pos = offsetRayOrigin(sd.pos, sd.N, sd.wo);
-	path.dir = wi;
+	path.dir = wiWorld;
 	path.pdf = max(sample.pdf, 1e-6f);
-	path.throughput *= sample.f * fabs(dot(wi, sd.N)) / path.pdf;
+	path.throughput *= sample.f * fabs(dot(wiWorld, sd.N)) / path.pdf;
 	return true;
 }
 
@@ -187,7 +200,7 @@ extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo = {};
 	HitGroupSBTData* hitData = (HitGroupSBTData*)optixGetSbtDataPointer();
 	uint meshId = hitData->meshId;
-	vec2f barycentric = optixGetTriangleBarycentrics();
+	vec2f barycentric = (vec2f)optixGetTriangleBarycentrics();
 	hitInfo.primitiveId = optixGetPrimitiveIndex();
 	hitInfo.mesh = &launchParams.sceneData.meshes[meshId];
 	hitInfo.wo = -normalize((vec3f)optixGetWorldRayDirection());
@@ -199,7 +212,6 @@ extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	Material& material = launchParams.sceneData.materials[hitInfo.mesh->materialId];
 
 	prepareShadingData(sd, hitInfo, material);
-	//sd.emission = 0.2 + 0.8 * dot(sd.N, sd.wo);
 }
 
 extern "C" __global__ void KRR_RT_AH(Radiance)() {	//skipped
@@ -227,44 +239,59 @@ extern "C" __global__ void KRR_RT_MS(ShadowRay)() {
 KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	// TODO: at last vertex, the contribution of bsdf sampled direct lighting is not counted in
 	ShadingData sd = {};
-	for (uint depth = 0; depth < launchParams.maxDepth; depth++) {
-		path.depth = depth;
+	//for (int& depth = path.depth; depth < launchParams.maxDepth; depth++) {
+	//	if (launchParams.NEE && path.depth) {
+	//		evalDirect(sd, path);
+	//	}
+	//	if (launchParams.RR && path.depth) {
+	//		float u = path.sampler.get1D();
+	//		if (u < launchParams.probRR) break;
+	//		path.throughput /= 1 - launchParams.probRR;
+	//	}
+	//	if (path.depth) {
+	//		if (!generateScatter(sd, path))
+	//			break;
+	//	}
+	//	traceRay(launchParams.traversable, { path.pos, path.dir }, 1e20f,
+	//		RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_DISABLE_ANYHIT, (void*)&sd);
+	//	if (sd.miss) {
+	//		handleMiss(sd, path);
+	//		break;
+	//	}
+	//	else if (sd.light) {
+	//		handleHit(sd, path);
+	//	}
+	//}
 
-		if (launchParams.NEE && path.depth) {
-			// estimate direct illumination of last vertex, not the newest hit below
-			evalDirect(sd, path);
-		}
+	// an alternate version of main loop
+	for (int &depth = path.depth; depth < launchParams.maxDepth; depth++) {
+		// ShadingData is updated in CH shader
+		traceRay(launchParams.traversable, { path.pos, path.dir }, 1e20f,
+			RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_DISABLE_ANYHIT, (void*)&sd);
 
-		uint u0, u1;
-		packPointer(&sd, u0, u1);
-		traceRay(launchParams.traversable, {path.pos, path.dir}, 1e20f,
-			RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_DISABLE_ANYHIT, u0, u1);
-
-		if (sd.miss) {
+		if (sd.miss) {			// incorporate emission from envmap, by escaped rays
 			handleMiss(sd, path);
 			break;
 		}
-		else{
+		else if (sd.light){		// incorporate emission from surface area lights
 			handleHit(sd, path);
 		}
-			
-		if (!generateScatter(sd, path))
-			break;
 
-		// russian roulette
-		float u = path.sampler.get1D();
-		if (u < launchParams.probRR) break;
-		path.throughput /= 1 - launchParams.probRR;
+		if (launchParams.NEE) {
+			evalDirect(sd, path);
+		}
+		if (launchParams.RR) {
+			float u = path.sampler.get1D();
+			if (u < launchParams.probRR) break;
+			path.throughput /= 1 - launchParams.probRR;
+		}
+		if (!generateScatter(sd, path)) break;
 	}
-
-	if (!(path.L < launchParams.clampThreshold))
-		path.L = launchParams.clampThreshold;
-	// clamp before accumulate?
 	path.L = clamp(path.L, vec3f(0), launchParams.clampThreshold);
 }
 
 extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
-	vec3i launchIndex = (vec3i)optixGetLaunchIndex();
+	vec3i launchIndex = *(vec3i*)&optixGetLaunchIndex();
 	vec2i pixel = { launchIndex.x, launchIndex.y };
 
 	const int frameID = launchParams.frameID;

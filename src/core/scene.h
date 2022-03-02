@@ -34,13 +34,11 @@ public:
 		inter::vector<Light> lights;
 
 		UniformLightSampler lightSampler;
-		//uint nLights{ 0 };
 	};
 
 	Scene();
 	~Scene() = default;
 
-	// user input handler
 	bool onMouseEvent(const MouseEvent& mouseEvent);
 	bool onKeyEvent(const KeyboardEvent& keyEvent);
 

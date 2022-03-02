@@ -27,6 +27,8 @@ public:
 		uint sampleId = u * mLights.size();
 		sl.light = mLights[sampleId];
 		sl.pdf = 1.f / mLights.size();
+		//DCHECK(0 <= sampleId && sampleId < mLights.size());
+		DCHECK(sl.light.ptr());
 		return sl;
 	}
 
