@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <sstream>
 #include <vector>
-#include <filesystem>
 
 using std::string;
 using std::to_string;
@@ -103,6 +102,7 @@ namespace krr {
 
 		using ::sin; // this is the double version
 		using ::cos; // this is the double version
+		using ::pow;
 
 		namespace polymorphic {
 

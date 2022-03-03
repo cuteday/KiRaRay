@@ -184,6 +184,7 @@ public:
 		specular = sd.specular;
 		//printf("specular: %f %f %f\n", specular.x, specular.y, specular.z);
 		float alpha = ggx.RoughnessToAlpha(sd.roughness);
+		alpha = sd.roughness * sd.roughness;
 		//printf("roughness: %f, alpha: %f\n", sd.roughness, alpha);
 		ggx.setup(alpha, alpha, true);
 	}

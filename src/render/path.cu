@@ -12,7 +12,7 @@ KRR_NAMESPACE_BEGIN
 namespace path {
 	constexpr float kMaxDistance = 1e9f;
 	constexpr float kShadowEpsilon = 1e-4f;
-	constexpr float kSampleEnvLightPdf = 0.5f;
+	constexpr float kSampleEnvLightPdf = 0.2f;
 	constexpr float kSampleAreaLightPdf = 1 - kSampleEnvLightPdf;
 }
 

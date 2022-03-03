@@ -141,6 +141,8 @@ namespace krr {
 	_define_binary_functor(divRoundUp)
 	_define_binary_functor(min)
 	_define_binary_functor(max)
+	_define_binary_functor(pow)
+
 #undef _define_binary_functor
 
 	// -------------------------------------------------------

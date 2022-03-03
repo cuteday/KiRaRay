@@ -17,12 +17,10 @@ public:
 
 	void renderUI() override {
 		if (ui::CollapsingHeader("Accumulate pass")) {
-			ui::Checkbox("Enabled", &mEnable);
+			if (ui::Checkbox("Enabled", &mEnable)) reset();
 			if (mEnable) {
 				ui::Text("Accumulate count: %d\n", mAccumCount);
-				if (ui::Button("reset")) {
-					reset();
-				}
+				if (ui::Button("reset")) reset();
 			}
 		}
 	}
@@ -53,6 +51,8 @@ public:
 		Linear = 0,
 		Reinhard,
 		Aces,
+		Uncharted2,
+		HejiHable,
 		NumsOperators,
 	};
 

@@ -76,6 +76,14 @@ namespace shader {
 			color = ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - (E / F);
 			return color;
 		}
+
+		__both__ inline vec3f toneMapHejiHableAlu(vec3f color)
+		{
+			color = max(vec3f(0), color - 0.004f);
+			color = (color * (6.2f * color + 0.5f)) / (color * (6.2f * color + 1.7f) + 0.06f);
+			// Result includes sRGB conversion
+			return pow(color, vec3f(2.2));
+		}
 	}
 
 	using namespace tonemapper;
@@ -95,6 +103,12 @@ namespace shader {
 		case krr::ToneMappingPass::Operator::Aces:
 			color = toneMapAces(color);
 			break;
+		case krr::ToneMappingPass::Operator::Uncharted2:
+			color = toneMapUC2(color);
+			break;
+		case krr::ToneMappingPass::Operator::HejiHable:
+			color = toneMapHejiHableAlu(color);
+			break;
 		default:
 			break;
 		}
@@ -104,7 +118,7 @@ namespace shader {
 
 void ToneMappingPass::renderUI()
 {
-	static const char* operators[] = {"Linear", "Reinhard", "Aces"};
+	static const char* operators[] = {"Linear", "Reinhard", "Aces", "Uncharted2", "HejiHable"};
 	if (ui::CollapsingHeader("Tone mapping pass")) {
 		ui::Checkbox("Enabled", &mEnable);
 		if (mEnable) {
