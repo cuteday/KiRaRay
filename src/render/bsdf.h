@@ -16,25 +16,25 @@ KRR_NAMESPACE_BEGIN
 
 #define _DEFINE_BSDF_INTERNAL_ROUTINES(bsdf_name)														\
 	__both__ inline static BSDFSample sampleInternal(const ShadingData &sd, vec3f wo, Sampler & sg) {	\
-		bsdf_name bsdf;																		\
+		bsdf_name bsdf;																					\
 		bsdf.setup(sd);																					\
 		return bsdf.sample(wo, sg);																		\
 	}																									\
 																										\
 	__both__ inline static vec3f fInternal(const ShadingData& sd, vec3f wo, vec3f wi) {					\
-		bsdf_name bsdf;																		\
+		bsdf_name bsdf;																					\
 		bsdf.setup(sd);																					\
 		return bsdf.f(wo, wi);																			\
 	}																									\
 																										\
 	__both__ inline static float pdfInternal(const ShadingData& sd, vec3f wo, vec3f wi) {				\
-		bsdf_name bsdf;																		\
+		bsdf_name bsdf;																					\
 		bsdf.setup(sd);																					\
 		return bsdf.pdf(wo, wi);																		\
 	}																									\
 
 using namespace shader;
-using namespace bsdf;
+//using namespace bsdf;
 
 class DiffuseBrdf {
 public:
@@ -67,61 +67,164 @@ public:
 	vec3f diffuse;
 };
 
-class MicrofacetBrdfAlter {
-	// yet another microfacet implementation for comparison.
+class DiffuseBsdf {
 public:
-	MicrofacetBrdfAlter() = default;
 
-	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBrdfAlter);
+	DiffuseBsdf() = default;
 
-	__both__ void setup(const ShadingData & sd) {
-		albedo = sd.specular;
-		alpha = pow2(sd.roughness);
+	_DEFINE_BSDF_INTERNAL_ROUTINES(DiffuseBsdf);
+
+	__both__ void setup(const ShadingData& sd) {
+		// luminance as weight to sample different components?
+		reflection = sd.diffuse;
+		transmission = sd.diffuseTransmission;
+		if (any(reflection) || any(transmission)) {
+			pR = luminance(reflection) / luminance(reflection) + luminance(transmission);
+			pT = luminance(transmission) / luminance(reflection) + luminance(transmission);
+		}
 	}
 
 	__both__ vec3f f(vec3f wo, vec3f wi) const {
-		vec3f h = normalize(wo + wi);
-		float woDotH = dot(wo, h);
-
-		float D = evalNdfGGX(alpha, h.z);
-		float G = evalMaskingSmithGGXSeparable(alpha, wo.z, wi.z);
-		vec3f F = evalFresnelSchlick(albedo, vec3f(1.f), woDotH);
-		return F * D * G * 0.25f / (wo.z * wi.z);
+		if (SameHemisphere(wo, wi)) return reflection * M_1_PI;
+		return transmission * M_1_PI;
 	}
 
-	__both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
-		// @ref: Sampling the GGX Distribution of Visible Normals
-		BSDFSample sample = {};
+	__both__ BSDFSample sample(vec3f wo, Sampler& sg) const {
+		BSDFSample sample;
+		float c = sg.get1D();
 		vec2f u = sg.get2D();
-		vec3f wi = {};
-
-		vec3f h = sampleGGX_VNDF(alpha, wo, u);    
-		wi = Reflect(wo, h);		// Reflect the outgoing direction to find the incident direction.
-		
+		vec3f wi = cosineSampleHemisphere(u);
+		if (c < pR) {
+			if (!SameHemisphere(wi, wo))
+				wi.z *= -1;
+		}
+		else {
+			if (SameHemisphere(wi, wo))
+				wi.z *= -1;
+		}
 		sample.wi = wi;
-		sample.pdf = pdf(wo, wi);
-		sample.f = f(wo, wi);
+		sample.f = f(wo, sample.wi);
+		sample.pdf = pdf(wo, sample.wi);
 		return sample;
 	}
 
 	__both__ float pdf(vec3f wo, vec3f wi) const {
-		if (min(wo.z, wi.z) < minCosTheta) return 0.f;
-
-		vec3f h = normalize(wo + wi);
-		float woDotH = dot(wo, h);
-		float pdf = evalPdfGGX_VNDF(alpha, wo, h);
-		return pdf / (4.f * woDotH);
+		if (SameHemisphere(wo, wi))
+			return pR * fabs(wi.z);
+		else return pT * fabs(wi.z);
+		return wi.z * M_1_PI;
 	}
 
-	vec3f albedo;		// specular reflectance
-	float alpha;		// GGX alpha (r^2)
+	vec3f reflection{ 0 }, transmission{ 0 };
+	float pR{ 1 }, pT{ 0 };
 };
 
-class MicrofacetBrdf {
+class SpecularBsdf {
 public:
-	MicrofacetBrdf() = default;
+	SpecularBsdf() = default;
 
-	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBrdf);
+	_DEFINE_BSDF_INTERNAL_ROUTINES(SpecularBsdf);
+
+	__both__ void setup(const ShadingData & sd) {
+		// luminance as weight to sample different components?
+		reflection = sd.diffuse;
+		transmission = sd.diffuseTransmission;
+		if (any(reflection) || any(transmission)) {
+			pR = luminance(reflection) / luminance(reflection) + luminance(transmission);
+			pT = luminance(transmission) / luminance(reflection) + luminance(transmission);
+		}
+	}
+
+	__both__ vec3f f(vec3f wo, vec3f wi) const {
+		if (SameHemisphere(wo, wi)) return reflection * M_1_PI;
+		return transmission * M_1_PI;
+	}
+
+	__both__ BSDFSample sample(vec3f wo, Sampler & sg) const {
+		BSDFSample sample;
+		float c = sg.get1D();
+		vec2f u = sg.get2D();
+		vec3f wi = cosineSampleHemisphere(u);
+		if (c < pR) {
+			if (!SameHemisphere(wi, wo))
+				wi.z *= -1;
+		}
+		else {
+			if (SameHemisphere(wi, wo))
+				wi.z *= -1;
+		}
+		sample.wi = wi;
+		sample.f = f(wo, sample.wi);
+		sample.pdf = pdf(wo, sample.wi);
+		return sample;
+	}
+
+	__both__ float pdf(vec3f wo, vec3f wi) const {
+		if (SameHemisphere(wo, wi))
+			return pR * fabs(wi.z);
+		else return pT * fabs(wi.z);
+		return wi.z * M_1_PI;
+	}
+
+	vec3f reflection{ 0 }, transmission{ 0 };
+	float pR{ 1 }, pT{ 0 };
+};
+
+//class MicrofacetBxdfAlter {
+//	// yet another microfacet implementation for comparison.
+//public:
+//	MicrofacetBxdfAlter() = default;
+//
+//	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBxdfAlter);
+//
+//	__both__ void setup(const ShadingData & sd) {
+//		albedo = sd.specular;
+//		alpha = pow2(sd.roughness);
+//	}
+//
+//	__both__ vec3f f(vec3f wo, vec3f wi) const {
+//		vec3f h = normalize(wo + wi);
+//		float woDotH = dot(wo, h);
+//
+//		float D = evalNdfGGX(alpha, h.z);
+//		float G = evalMaskingSmithGGXSeparable(alpha, wo.z, wi.z);
+//		vec3f F = evalFresnelSchlick(albedo, vec3f(1.f), woDotH);
+//		return F * D * G * 0.25f / (wo.z * wi.z);
+//	}
+//
+//	__both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
+//		// @ref: Sampling the GGX Distribution of Visible Normals
+//		BSDFSample sample = {};
+//		vec2f u = sg.get2D();
+//		vec3f wi = {};
+//
+//		vec3f h = sampleGGX_VNDF(alpha, wo, u);    
+//		wi = Reflect(wo, h);		// Reflect the outgoing direction to find the incident direction.
+//		
+//		sample.wi = wi;
+//		sample.pdf = pdf(wo, wi);
+//		sample.f = f(wo, wi);
+//		return sample;
+//	}
+//
+//	__both__ float pdf(vec3f wo, vec3f wi) const {
+//		if (min(wo.z, wi.z) < minCosTheta) return 0.f;
+//
+//		vec3f h = normalize(wo + wi);
+//		float woDotH = dot(wo, h);
+//		float pdf = evalPdfGGX_VNDF(alpha, wo, h);
+//		return pdf / (4.f * woDotH);
+//	}
+//
+//	vec3f albedo;		// specular reflectance
+//	float alpha;		// GGX alpha (r^2)
+//};
+
+class MicrofacetBxdf {
+public:
+	MicrofacetBxdf() = default;
+
+	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBxdf);
 
 	__both__ void setup(const ShadingData& sd) {
 		R = sd.specular;
@@ -173,11 +276,11 @@ public:
 	GGXMicrofacetDistribution distribution;
 };
 
-class FresnelBlendedBrdf {
+class FresnelBlendedBxdf {
 public:
-	FresnelBlendedBrdf() = default;
+	FresnelBlendedBxdf() = default;
 
-	_DEFINE_BSDF_INTERNAL_ROUTINES(FresnelBlendedBrdf);
+	_DEFINE_BSDF_INTERNAL_ROUTINES(FresnelBlendedBxdf);
 
 	__both__ void setup(const ShadingData & sd) {
 		diffuse = sd.diffuse;
@@ -238,7 +341,7 @@ private:
 	GGXMicrofacetDistribution ggx;
 };
 
-class BxDF :public TaggedPointer<DiffuseBrdf, MicrofacetBrdf, FresnelBlendedBrdf, MicrofacetBrdfAlter>{
+class BxDF :public TaggedPointer<DiffuseBrdf, MicrofacetBxdf, FresnelBlendedBxdf>{
 public:
 	using TaggedPointer::TaggedPointer;
 

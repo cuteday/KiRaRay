@@ -63,6 +63,8 @@ namespace shader {
 		float IoR;
 		vec3f diffuse;			// diffuse reflectance
 		vec3f specular;			// specular reflectance
+		vec3f diffuseTransmission;
+		vec3f specularTransmission;
 		float roughness;		// linear roughness (alpha=roughness^2)
 		float metallic;
 

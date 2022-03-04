@@ -15,6 +15,8 @@ public:
     
     GGXMicrofacetDistribution() = default;
 
+    __both__ inline bool isSpecular() { return max(alphax, alphay) < 1e-3f; }
+
     __both__ static inline float RoughnessToAlpha(float roughness);
     
     __both__ void setup(float ax, float ay, bool samplevis = true){

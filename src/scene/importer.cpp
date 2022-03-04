@@ -87,10 +87,12 @@ namespace assimp {
 		loadTextures(pAiMaterial, modelFolder, pMaterial);
 
 		// Opacity
-		float opacity = 1.f;
+		float opacity = 1;
 		if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS)
 		{
 			pMaterial->mMaterialParams.diffuse.a = opacity;
+			if (opacity < 1.f) 
+				pMaterial->mMaterialParams.specularTransmission = 1 - opacity;
 		}
 
 		// Shininess

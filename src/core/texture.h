@@ -100,8 +100,8 @@ public:
 
 	enum class BsdfType {
 		Diffuse		= 0,
-		Microfacet	,
-		FresnelBlended
+		Microfacet,
+		FresnelBlended,
 	};
 
 	enum class ShadingModel {
@@ -110,11 +110,12 @@ public:
 	};
 
 	struct MaterialParams {
-		vec4f diffuse = vec4f(1);		// 
-		vec4f specular = vec4f(0);		// G-roughness B-metallic in MetalRough model
-		vec3f emissive = vec3f(0);
-		float IoR = 1.5f;
-		vec3f transmission = vec3f(1);
+		vec4f diffuse{ 0 };		// 
+		vec4f specular{ 0 };		// G-roughness B-metallic in MetalRough model
+		vec3f emissive{ 0 };
+		float IoR{ 1.5f };
+		vec3f diffuseTransmission{ 0 };
+		vec3f specularTransmission{ 0 };
 	};
 
 	Material() {};

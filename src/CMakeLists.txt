@@ -107,6 +107,7 @@ SET (KRR_SOURCE
 
 SET(KRR_MATERIALS
 	render/materials/matutils.h
+	render/materials/fresnel.h
 	render/materials/microfacet.h
 )
 

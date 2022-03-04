@@ -21,6 +21,7 @@ If possible, more features will be added in the future, for example:
 
 - More BSDFs and light sources.
 - Mesh instancing and scene animations.
+- Importer for gltf, pbrt or mitsuba scenes.
 
 ### Build and run
 
@@ -45,29 +46,26 @@ Ninja is recommended as generator when build with Visual Studio, otherwise some 
 
 For testing, HDR environment images can be downloaded at [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), OBJ scenes can be obtained at [McGuire's Archive](https://casual-effects.com/data/).
 
+#### Performance
+
+Currently the renderer should run at 30+ fps for rendering an 1 spp 1920*1080 image on an RTX 3060 or similar GPU, if the average path length is less than 5 and NEE disabled.
 
 ### Epilogue
 
 I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i'm acting like a lazy old uncle, trying to sleep as more as possible (\*/ω＼\*).
 
-I wish i was like: 
-
 <details>
-<summary>aris</summary>
+<summary>meme</summary>
+
+I wish i was like: 
 
 <p align=center>
 <img src=https://cutesail.com/wp-content/uploads/2022/02/aris-meme.jpg width="500">
 
-</details>
-
 But actually i'm like \***sleeps all the time**\*:
-
-<details>
-<summary>hoshino</summary>
 
 <p align=center>
 <img src=https://cutesail.com/wp-content/uploads/2022/02/hoshino-meme.png width="320">
-
 
 </details>
 
