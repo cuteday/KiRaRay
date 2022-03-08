@@ -20,7 +20,6 @@ public:
 		RGBAuchar,
 		RGBAfloat,
 	};
-
 	
 	Image() {};
 	Image(vec2i size, Format format = Format::RGBAuchar, bool srgb = false);
@@ -37,7 +36,6 @@ public:
 	inline size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
 	int getChannels() const { return mChannels; }
 	uchar* data() { return mData.data(); }
-
 	
 private:
 	bool mSrgb = false;
@@ -102,6 +100,7 @@ public:
 		Diffuse		= 0,
 		Microfacet,
 		FresnelBlended,
+		Uniform,
 	};
 
 	enum class ShadingModel {
@@ -110,8 +109,8 @@ public:
 	};
 
 	struct MaterialParams {
-		vec4f diffuse{ 0 };		// 
-		vec4f specular{ 0 };		// G-roughness B-metallic in MetalRough model
+		vec4f diffuse{ 0 };			 
+		vec4f specular{ 0 };			// G-roughness B-metallic in MetalRough model
 		vec3f emissive{ 0 };
 		float IoR{ 1.5f };
 		vec3f diffuseTransmission{ 0 };
@@ -143,12 +142,10 @@ public:
 
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
-	BsdfType mBsdfType = BsdfType::FresnelBlended;
+	BsdfType mBsdfType = BsdfType::Uniform;
 	ShadingModel mShadingModel = ShadingModel::MetallicRoughness;
 	bool mDoubleSided = false;
 	string mName;
 };
-
-
 
 KRR_NAMESPACE_END

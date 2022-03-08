@@ -54,7 +54,7 @@ struct LaunchParamsPT
 	bool MIS = false;			// enable multiple importance sample
 	int maxDepth = 20;
 	float probRR = 0.15;
-	vec3f clampThreshold = 5000;
+	vec3f clampThreshold = 100;
 	int spp = 1;
 	// scene 
 	Camera camera;

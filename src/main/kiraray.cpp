@@ -18,14 +18,15 @@ extern "C" int main(int argc, char* argv[]) {
 	logWarning("Kiraray::Running in debug mode!");
 #endif
 #if KRR_PLATFORM_UNKNOWN
-	logFatal("Kiraray::Running on unsupported platform!");
+	logError("Kiraray::Running on unsupported platform!");
 #endif
 
+	const string sceneFile = "common/scenes/cbox/CornellBox-Sphere.obj";
 	//const string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
 	//const string sceneFile = "common/scenes/rungholt/rungholt.obj";
 	//const string sceneFile = "common/scenes/sponza/sponza.obj";
 	//const string sceneFile = "common/scenes/living_room/living_room.obj";
-	const string sceneFile = "common/scenes/fireplace_room/fireplace_room.obj";
+	//const string sceneFile = "common/scenes/fireplace_room/fireplace_room.obj";
 	//const string sceneFile = "common/scenes/salle_de_bain/salle_de_bain.obj";
 	//const string sceneFile = "common/scenes/bedroom/bedroom.obj";
 	//const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
@@ -53,7 +54,7 @@ extern "C" int main(int argc, char* argv[]) {
 	}
 #endif // KRR_DEBUG_BUILD
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 KRR_NAMESPACE_END

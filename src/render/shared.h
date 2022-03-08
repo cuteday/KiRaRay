@@ -13,6 +13,8 @@
 #define KRR_RT_DC(name) __direct_callable__ ## name
 #define KRR_RT_CC(name) __continuation_callable__ ## name
 
+#define EMPTY_DECLARE(name) extern "C" __global__ void name () { return; }
+
 KRR_NAMESPACE_BEGIN
 
 using namespace math;
@@ -60,20 +62,22 @@ namespace shader {
 		vec3f T;				// tangent
 		vec3f B;				// bitangent
 
-		float IoR;
+		float IoR{ 1.5 };
 		vec3f diffuse;			// diffuse reflectance
 		vec3f specular;			// specular reflectance
-		vec3f diffuseTransmission;
-		vec3f specularTransmission;
+
+		vec3f transmission{ 1 };// transmission color (shared by diffuse and specular for now)
+		vec3f diffuseTransmission{ 0 };
+		vec3f specularTransmission{ 0 };
+
 		float roughness;		// linear roughness (alpha=roughness^2)
-		float metallic;
 
 		Light light{ nullptr };
 		bool miss = false;		// not valid if missing, or ?
 		bool frontFacing;		// shading normal and geo normal same dir?
 			
 		//ShadingModel shadingModel = ShadingModel::MetallicRoughness;
-		BsdfType bsdfType = BsdfType::FresnelBlended;
+		BsdfType bsdfType = BsdfType::Diffuse;
 		uint flags = 0;			// user custom flags?
 
 		__both__ vec3f fromLocal(vec3f v) const {

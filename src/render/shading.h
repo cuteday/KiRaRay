@@ -32,6 +32,10 @@ KRR_DEVICE_FUNCTION T sampleTexture(Texture& texture, vec2f uv, T fallback) {
 }
 
 KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitInfo, Material& material) {
+	// [NOTE] about local shading frame (tangent space, TBN, etc.)
+	// The shading normal sd.N and face normal sd.geoN is always points towards the outside of the object,
+	// we can use this convention to determine whether an incident ray is coming from outside of the object.
+	
 	vec3f b = hitInfo.barycentric;
 	//Mesh& mesh = *hitInfo.mesh;
 	MeshData& mesh = *hitInfo.mesh;
@@ -52,8 +56,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		b[2] * mesh.normals[v[2]]);
 
 	sd.frontFacing = dot(sd.wo, sd.N) > 0.f;
-	if (!sd.frontFacing) 
-		sd.N = -sd.N;
+//	if (!sd.frontFacing) sd.N *= -1;
 
 //	if (mesh.tangents.data() && mesh.bitangents.data()) {
 	if (mesh.tangents && mesh.bitangents) {
@@ -121,14 +124,14 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		float F0 = f * f;
 
 		sd.specular = lerp(vec3f(F0), baseColor, spec.b);
-		sd.metallic = spec.b;
+		//sd.metallic = spec.b;
 		sd.roughness = spec.g;
 	}
 	else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		sd.diffuse = baseColor;
 		sd.specular = (vec3f)spec;			// specular reflectance
 		sd.roughness = 1 - spec.a;	// 
-		sd.metallic = getMetallic(sd.diffuse, sd.specular);
+		//sd.metallic = getMetallic(sd.diffuse, sd.specular);
 	}
 	else {
 		assert(false);

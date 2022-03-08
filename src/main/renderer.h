@@ -115,13 +115,15 @@ public:
 
 	void renderUI() override{
 		static bool saveHdr = false;
-
 		ui::Begin(KRR_PROJECT_NAME);
-		ui::Text("Window size: %d %d", fbSize.x, fbSize.y);
-		if(ui::Button("Screen shot"))
-			captureFrame(saveHdr); 
+
+		if (ui::Button("Screen shot"))
+			captureFrame(saveHdr);
 		ui::SameLine();
 		ui::Checkbox("Save HDR", &saveHdr);
+		//ui::SetTooltip("Disable tone mapping (render to linear color space) if you want to save HDR");
+		if(ui::InputInt2("Frame size", (int*)&fbSize))
+			resize(fbSize);
 		if (mpScene) mpScene->renderUI();
 		for (auto p : mpPasses)
 			if (p) p->renderUI();

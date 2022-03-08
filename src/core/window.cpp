@@ -221,6 +221,7 @@ WindowApp::~WindowApp(){
 void WindowApp::resize(const vec2i &size)
 {
 	glfwMakeContextCurrent(handle);
+	glfwSetWindowSize(handle, size.x, size.y);
 	if (fbPointer)
 		cudaFree(fbPointer);
 	cudaMallocManaged(&fbPointer, sizeof(vec4f) * size.x * size.y);

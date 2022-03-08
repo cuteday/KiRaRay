@@ -176,7 +176,7 @@ namespace math{
 		}
 
 		__both__ inline vec3f offsetRayOrigin(vec3f p, vec3f n, vec3f w) {
-			vec3f offset = n * 1e-4f;
+			vec3f offset = n * 1e-6f;
 			if (dot(n, w) < 0.f)
 				offset = -offset;
 			return p + offset;

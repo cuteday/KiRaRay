@@ -26,12 +26,10 @@ extern "C" __constant__ LaunchParamsPT launchParams;
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
-#ifdef KRR_DEBUG_BUILD
 	if (!launchParams.debugOutput) return;
 	vec2i pixel = (vec2i)optixGetLaunchIndex();
 	if (pixel == launchParams.debugPixel)
 		printf(fmt, std::forward<Args>(args)...);
-#endif
 }
 
 template <typename... Args>
@@ -124,14 +122,14 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 
 		vec3f wiLocal = ls.wi;
 		vec3f wiWorld = sd.fromLocal(wiLocal);
-		if (dot(wiWorld, sd.N) < 0) return;
+		//if (dot(wiWorld, sd.N) < 0) return;
 
 		float lightPdf = ls.pdf * kSampleEnvLightPdf;
 		float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
 		vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
 		float misWeight = evalMIS(lightPdf, bsdfPdf);
 
-		vec3f p = offsetRayOrigin(sd.pos, sd.N, sd.wo);
+		vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
 		Ray shadowRay = { p, wiWorld };
 		bool visible = traceShadowRay(launchParams.traversable, shadowRay, kMaxDistance);
 
@@ -144,7 +142,6 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 		Light& light = sampledLight.light;
 		if(!light.ptr()) return;
 		LightSample ls = light.sampleLi(u, { sd.pos, sd.N });
-		//LightSample ls = {};
 
 		vec3f wiWorld = normalize(ls.intr.p - sd.pos);
 		vec3f wiLocal = sd.toLocal(wiWorld);
@@ -156,15 +153,11 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 
 		if (lightPdf == 0 || isnan(lightPdf) || isinf(lightPdf)) return;
 
-		vec3f p = offsetRayOrigin(sd.pos, sd.N, sd.wo);
-		vec3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
+		vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
+		vec3f to = ls.intr.offsetRayOrigin(-wiWorld);
 		Ray shadowRay = { p, to - p };
 		bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1 - kShadowEpsilon);
 	
-		print("NEE light pdf: %.6f bsdf pdf: %.6f mis weight: %.6f L: %.3f visible: %d\n",
-			lightPdf, bsdfPdf, misWeight, length(ls.L), visible);
-		//print("NEE light choose pdf: %.6f light sample pdf: %.6f\n",
-		//	sampledLight.pdf, ls.pdf);
 		if (visible)
 			path.L += path.throughput * bsdfVal * misWeight / lightPdf * ls.L;
 	}
@@ -176,11 +169,14 @@ KRR_DEVICE_FUNCTION bool generateScatter(const ShadingData& sd, PathData& path) 
 	// how to eliminate branches here to improve performance?
 	vec3f woLocal = sd.toLocal(sd.wo);
 	sample = BxDF::sample(sd, woLocal, path.sampler, (int)sd.bsdfType);
-	if (sample.pdf == 0) return false;
-	if (!any(sample.f)) return false;
-		
+	if (woLocal.z < 0) {
+		print("wi.z: %f\n", sample.wi.z);
+		print("Transmit out! F: %f, PDF: %f\n", sample.f, sample.pdf);
+	}
+	if (sample.pdf == 0 || !any(sample.f)) return false;
+
 	vec3f wiWorld = sd.fromLocal(sample.wi);
-	path.pos = offsetRayOrigin(sd.pos, sd.N, sd.wo);
+	path.pos = offsetRayOrigin(sd.pos, sd.N, wiWorld);
 	path.dir = wiWorld;
 	path.pdf = max(sample.pdf, 1e-7f);
 	path.throughput *= sample.f * fabs(dot(wiWorld, sd.N)) / path.pdf;
@@ -229,29 +225,6 @@ extern "C" __global__ void KRR_RT_MS(ShadowRay)() {
 
 KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	ShadingData sd = {};
-	//for (int& depth = path.depth; depth < launchParams.maxDepth; depth++) {
-	//	if (launchParams.NEE && path.depth) {
-	//		evalDirect(sd, path);
-	//	}
-	//	if (launchParams.RR && path.depth) {
-	//		float u = path.sampler.get1D();
-	//		if (u < launchParams.probRR) break;
-	//		path.throughput /= 1 - launchParams.probRR;
-	//	}
-	//	if (path.depth) {
-	//		if (!generateScatter(sd, path))
-	//			break;
-	//	}
-	//	traceRay(launchParams.traversable, { path.pos, path.dir }, 1e20f,
-	//		RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_DISABLE_ANYHIT, (void*)&sd);
-	//	if (sd.miss) {
-	//		handleMiss(sd, path);
-	//		break;
-	//	}
-	//	else if (sd.light) {
-	//		handleHit(sd, path);
-	//	}
-	//}
 
 	// an alternate version of main loop
 	for (int &depth = path.depth; depth < launchParams.maxDepth; depth++) {
@@ -311,6 +284,7 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	}
 	color /= launchParams.spp;
 	//print("Final radiance: %.4f %.4f %.4f\n", color.x, color.y, color.z);
+	assert(!isnan(luminance(color)));
 	launchParams.colorBuffer[fbIndex] = vec4f(color, 1.0f);
 }
 

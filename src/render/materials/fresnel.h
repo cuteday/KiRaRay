@@ -2,37 +2,43 @@
 
 #include "common.h"
 #include "math/math.h"
+#include "matutils.h"
 
 KRR_NAMESPACE_BEGIN
 
 namespace bsdf {
+    using namespace math;
 
+    // eta: just etaT/etaI if incident ray
     __both__ inline float FrDielectric(float cosTheta_i, float eta) {
-        cosTheta_i = Clamp(cosTheta_i, -1, 1);
+        // computes the reflected fraction of light, i.e. the Fresnel reflectance
+        // while the transmitted energy is 1-Fr due to energy conservation
+        cosTheta_i = clamp(cosTheta_i, -1.f, 1.f);
         // Potentially flip interface orientation for Fresnel equations
         if (cosTheta_i < 0) {
             eta = 1 / eta;
             cosTheta_i = -cosTheta_i;
         }
-
         // Compute $\cos\,\theta_\roman{t}$ for Fresnel equations using Snell's law
-        float sin2Theta_i = 1 - Sqr(cosTheta_i);
-        float sin2Theta_t = sin2Theta_i / Sqr(eta);
-        if (sin2Theta_t >= 1)
+        float sin2Theta_i = 1 - pow2(cosTheta_i);
+        float sin2Theta_t = sin2Theta_i / pow2(eta);
+        if (sin2Theta_t >= 1)       // NONE of the light pass into another medium (>critical angle)
             return 1.f;
-        float cosTheta_t = SafeSqrt(1 - sin2Theta_t);
+        
+        float cosTheta_t = sqrt(max(1 - sin2Theta_t, 0.f));
 
         float r_parl = (eta * cosTheta_i - cosTheta_t) / (eta * cosTheta_i + cosTheta_t);
         float r_perp = (cosTheta_i - eta * cosTheta_t) / (cosTheta_i + eta * cosTheta_t);
-        return (Sqr(r_parl) + Sqr(r_perp)) / 2;
+        return (pow2(r_parl) + pow2(r_perp)) / 2;
     }
 
     __both__ inline float FrComplex(float cosTheta_i, complex<float> eta) {
+        // Fresnel for conductors: some of the energy is absorbed by the material and turned into heat.
         using Complex = complex<float>;
-        cosTheta_i = Clamp(cosTheta_i, 0, 1);
+        cosTheta_i = clamp(cosTheta_i, 0.f, 1.f);
         // Compute complex $\cos\,\theta_\roman{t}$ for Fresnel equations using Snell's law
-        float sin2Theta_i = 1 - Sqr(cosTheta_i);
-        Complex sin2Theta_t = sin2Theta_i / Sqr(eta);
+        float sin2Theta_i = 1 - pow2(cosTheta_i);
+        Complex sin2Theta_t = sin2Theta_i / pow2(eta);
         Complex cosTheta_t = sqrt(1 - sin2Theta_t);
 
         Complex r_parl = (eta * cosTheta_i - cosTheta_t) / (eta * cosTheta_i + cosTheta_t);
@@ -40,10 +46,9 @@ namespace bsdf {
         return (r_parl.norm() + r_perp.norm()) / 2;
     }
 
-    __both__ inline vec3f FrComplex(float cosTheta_i, vec3f eta,
-        vec3f k) {
+    __both__ inline vec3f FrComplex(float cosTheta_i, vec3f eta, vec3f k) {
         vec3f result;
-        for (int i = 0; i < NSpectrumSamples; ++i)
+        for (int i = 0; i < 3; ++i)
             result[i] = FrComplex(cosTheta_i, complex<float>(eta[i], k[i]));
         return result;
     }

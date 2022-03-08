@@ -9,8 +9,11 @@
 
 #include "materials/matutils.h"
 #include "materials/microfacet.h"
+#include "materials/fresnel.h"
 #include "sampling.h"
 #include "sampler.h"
+
+#define SCHLICK_APPROX_FRESNEL 1
 
 KRR_NAMESPACE_BEGIN
 
@@ -54,14 +57,16 @@ public:
 	__both__ BSDFSample sample(vec3f wo, Sampler& sg) const {
 		BSDFSample sample;
 		vec2f u = sg.get2D();
-		sample.wi = cosineSampleHemisphere(u);
+		vec3f wi = cosineSampleHemisphere(u);
+		sample.wi = ToSameHemisphere(wi, wo);
 		sample.f = f(wo, sample.wi);
 		sample.pdf = pdf(wo, sample.wi);
 		return sample;
 	}
 
 	__both__ float pdf(vec3f wo, vec3f wi) const {
-		return wi.z * M_1_PI;
+		if (!SameHemisphere(wo, wi)) return 0;
+		return fabs(wi.z) * M_1_PI;
 	}
 
 	vec3f diffuse;
@@ -77,7 +82,7 @@ public:
 	__both__ void setup(const ShadingData& sd) {
 		// luminance as weight to sample different components?
 		reflection = sd.diffuse;
-		transmission = sd.diffuseTransmission;
+		transmission = sd.transmission;
 		if (any(reflection) || any(transmission)) {
 			pR = luminance(reflection) / luminance(reflection) + luminance(transmission);
 			pT = luminance(transmission) / luminance(reflection) + luminance(transmission);
@@ -119,117 +124,17 @@ public:
 	float pR{ 1 }, pT{ 0 };
 };
 
-class SpecularBsdf {
+class MicrofacetBrdf {
 public:
-	SpecularBsdf() = default;
+	MicrofacetBrdf() = default;
 
-	_DEFINE_BSDF_INTERNAL_ROUTINES(SpecularBsdf);
-
-	__both__ void setup(const ShadingData & sd) {
-		// luminance as weight to sample different components?
-		reflection = sd.diffuse;
-		transmission = sd.diffuseTransmission;
-		if (any(reflection) || any(transmission)) {
-			pR = luminance(reflection) / luminance(reflection) + luminance(transmission);
-			pT = luminance(transmission) / luminance(reflection) + luminance(transmission);
-		}
-	}
-
-	__both__ vec3f f(vec3f wo, vec3f wi) const {
-		if (SameHemisphere(wo, wi)) return reflection * M_1_PI;
-		return transmission * M_1_PI;
-	}
-
-	__both__ BSDFSample sample(vec3f wo, Sampler & sg) const {
-		BSDFSample sample;
-		float c = sg.get1D();
-		vec2f u = sg.get2D();
-		vec3f wi = cosineSampleHemisphere(u);
-		if (c < pR) {
-			if (!SameHemisphere(wi, wo))
-				wi.z *= -1;
-		}
-		else {
-			if (SameHemisphere(wi, wo))
-				wi.z *= -1;
-		}
-		sample.wi = wi;
-		sample.f = f(wo, sample.wi);
-		sample.pdf = pdf(wo, sample.wi);
-		return sample;
-	}
-
-	__both__ float pdf(vec3f wo, vec3f wi) const {
-		if (SameHemisphere(wo, wi))
-			return pR * fabs(wi.z);
-		else return pT * fabs(wi.z);
-		return wi.z * M_1_PI;
-	}
-
-	vec3f reflection{ 0 }, transmission{ 0 };
-	float pR{ 1 }, pT{ 0 };
-};
-
-//class MicrofacetBxdfAlter {
-//	// yet another microfacet implementation for comparison.
-//public:
-//	MicrofacetBxdfAlter() = default;
-//
-//	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBxdfAlter);
-//
-//	__both__ void setup(const ShadingData & sd) {
-//		albedo = sd.specular;
-//		alpha = pow2(sd.roughness);
-//	}
-//
-//	__both__ vec3f f(vec3f wo, vec3f wi) const {
-//		vec3f h = normalize(wo + wi);
-//		float woDotH = dot(wo, h);
-//
-//		float D = evalNdfGGX(alpha, h.z);
-//		float G = evalMaskingSmithGGXSeparable(alpha, wo.z, wi.z);
-//		vec3f F = evalFresnelSchlick(albedo, vec3f(1.f), woDotH);
-//		return F * D * G * 0.25f / (wo.z * wi.z);
-//	}
-//
-//	__both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
-//		// @ref: Sampling the GGX Distribution of Visible Normals
-//		BSDFSample sample = {};
-//		vec2f u = sg.get2D();
-//		vec3f wi = {};
-//
-//		vec3f h = sampleGGX_VNDF(alpha, wo, u);    
-//		wi = Reflect(wo, h);		// Reflect the outgoing direction to find the incident direction.
-//		
-//		sample.wi = wi;
-//		sample.pdf = pdf(wo, wi);
-//		sample.f = f(wo, wi);
-//		return sample;
-//	}
-//
-//	__both__ float pdf(vec3f wo, vec3f wi) const {
-//		if (min(wo.z, wi.z) < minCosTheta) return 0.f;
-//
-//		vec3f h = normalize(wo + wi);
-//		float woDotH = dot(wo, h);
-//		float pdf = evalPdfGGX_VNDF(alpha, wo, h);
-//		return pdf / (4.f * woDotH);
-//	}
-//
-//	vec3f albedo;		// specular reflectance
-//	float alpha;		// GGX alpha (r^2)
-//};
-
-class MicrofacetBxdf {
-public:
-	MicrofacetBxdf() = default;
-
-	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBxdf);
+	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBrdf);
 
 	__both__ void setup(const ShadingData& sd) {
 		R = sd.specular;
-		alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
+		float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
 		alpha = pow2(sd.roughness);
+		eta = sd.IoR;
 		distribution.setup(alpha, alpha, true);
 	}
 
@@ -237,11 +142,16 @@ public:
 		float cosThetaO = AbsCosTheta(wo), cosThetaI = AbsCosTheta(wi);
 		vec3f wh = wi + wo;
 		if (cosThetaI == 0 || cosThetaO == 0) return 0;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return 0;
-			wh = normalize(wh);
+		if (!any(wh)) return 0;
+		wh = normalize(wh);
+		// fresnel is also on the microfacet (wrt to wh)
+#if SCHLICK_APPROX_FRESNEL
 		vec3f F = evalFresnelSchlick(R, vec3f(1.f), dot(wo, wh));
-		return distribution.D(wh) * distribution.G(wo, wi) * F * 0.25f /
-			(cosThetaI * cosThetaO);
+#else
+		vec3f F = R * FrDielectric(dot(wo, wh), wo.z > 0 ? eta : 1 / eta);	// etaT / etaI
+#endif
+		return distribution.D(wh) * distribution.G(wo, wi) * F /
+			(4.f * cosThetaI * cosThetaO);
 	}
 
 	__both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
@@ -260,7 +170,6 @@ public:
 		sample.f = f(wo, wi);
 		sample.wi = wi;
 		sample.pdf = distribution.Pdf(wo, wh) / (4 * dot(wo, wh));
-		//printf("F: %.8f, PDF: %.8f\n", sample.f, sample.pdf);
 		return sample;
 
 	}
@@ -271,40 +180,115 @@ public:
 		return distribution.Pdf(wo, wi) / (4 * dot(wo, wh));
 	}
 
-	vec3f R;		// specular reflectance
-	float alpha;		// GGX alpha (r^2)
+	vec3f R;									// specular reflectance
+	float eta;									// 
 	GGXMicrofacetDistribution distribution;
 };
 
-class FresnelBlendedBxdf {
+// Microfacet transmission, for dielectric only now.
+class MicrofacetBtdf {
 public:
-	FresnelBlendedBxdf() = default;
+	MicrofacetBtdf() = default;
 
-	_DEFINE_BSDF_INTERNAL_ROUTINES(FresnelBlendedBxdf);
+	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBtdf);
+
+	__both__ void setup(const ShadingData& sd) {
+		T = sd.transmission;
+		float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
+		alpha = pow2(sd.roughness);
+		// TODO: ETA=1 causes NaN, should switch to delta scattering
+		etaA = 1; etaB = max(1.01f, sd.IoR);
+		etaB = 1.5;
+		distribution.setup(alpha, alpha, true);
+	}
+
+	__both__ vec3f f(vec3f wo, vec3f wi) const {
+		if (SameHemisphere(wo, wi)) return 0;
+
+		float cosThetaO = wo.z, cosThetaI = wi.z;
+		if (cosThetaI == 0 || cosThetaO == 0) return 0;
+
+		// Compute $\wh$ from $\wo$ and $\wi$ for microfacet transmission
+		float eta = CosTheta(wo) > 0 ? etaB/etaA : etaA/etaB;
+		vec3f wh = normalize(wo + wi * eta);
+		if (wh.z < 0) wh = -wh;
+
+		// Same side?
+		if (dot(wo, wh) * dot(wi, wh) > 0) return 0;
+		vec3f F = FrDielectric(dot(wo, wh), etaB/etaA);
+
+		float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
+		float factor =  1.f / eta;
+
+		return (vec3f(1) - F) * T *
+			fabs(distribution.D(wh) * distribution.G(wo, wi) * eta * eta *
+				AbsDot(wi, wh) * AbsDot(wo, wh) * factor * factor /
+				(cosThetaI * cosThetaO * sqrtDenom * sqrtDenom));
+	}
+
+	__both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
+		BSDFSample sample = {};
+		if (wo.z == 0) return sample;
+		
+		vec2f u = sg.get2D();
+		vec3f wh = distribution.Sample(wo, u);
+		if (dot(wo, wh) < 0)
+			return sample;  // Should be rare
+		
+		float eta = CosTheta(wo) > 0 ? etaA/etaB : etaB/etaA;
+		if (!Refract(wo, wh, eta, &sample.wi)) return sample;
+
+		sample.pdf = pdf(wo, sample.wi);
+		sample.f = f(wo, sample.wi);
+		return sample;
+	}
+
+	__both__ float pdf(vec3f wo, vec3f wi) const {
+		if (SameHemisphere(wo, wi)) return 0;
+		float eta = CosTheta(wo) > 0 ? etaB/etaA : etaA/etaB;	// wo is outside?
+		// wh = wo + eta * wi, eta = etaI / etaT
+		vec3f wh = normalize(wo + wi * eta);	// eta=etaI/etaT
+
+		if (dot(wo, wh) * dot(wi, wh) > 0) return 0;
+		// Compute change of variables _dwh\_dwi_ for microfacet transmission
+		float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
+		float dwh_dwi = fabs((eta * eta * dot(wi, wh)) / (sqrtDenom * sqrtDenom));
+		float pdf = distribution.Pdf(wo, wh);
+		//printf("wh pdf: %.6f, dwh_dwi: %.6f\n", pdf, dwh_dwi);
+		return pdf * dwh_dwi;
+	}
+
+	vec3f T{ 0 };									// specular reflectance
+	float etaA, etaB				/* etaA: outside IoR, etaB: inside IoR */;
+	GGXMicrofacetDistribution distribution;
+};
+
+class FresnelBlendedBrdf {
+public:
+	FresnelBlendedBrdf() = default;
+
+	_DEFINE_BSDF_INTERNAL_ROUTINES(FresnelBlendedBrdf);
 
 	__both__ void setup(const ShadingData & sd) {
 		diffuse = sd.diffuse;
 		specular = sd.specular;
-		//printf("specular: %f %f %f\n", specular.x, specular.y, specular.z);
 		float alpha = ggx.RoughnessToAlpha(sd.roughness);
 		alpha = sd.roughness * sd.roughness;
-		//printf("roughness: %f, alpha: %f\n", sd.roughness, alpha);
 		ggx.setup(alpha, alpha, true);
 	}
 
 	__both__ vec3f f(vec3f wo, vec3f wi) const {
 		vec3f diff = (28.f / (23.f * M_PI)) * diffuse
-			* (vec3f(1.f) - specular)
+			* (vec3f(1) - specular)
 			* (1.f - pow5(1.f - 0.5f * AbsCosTheta(wi)))
 			* (1.f - pow5(1.f - 0.5f * AbsCosTheta(wo)));
 		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return diff;
+		if (!any(wh)) return diff;
 		wh = normalize(wh);
 		float D = ggx.D(wh);
 		vec3f F = evalFresnelSchlick(specular, vec3f(1.f), dot(wi, wh));
 		vec3f spec = D * F * 0.25f / (fabs(dot(wi, wh)) * max(AbsCosTheta(wi), AbsCosTheta(wo)));
 
-		//printf("diff: %.8f , spec: %.8f \n", diff.x, spec.x);
 		return diff + spec;
 	}
 
@@ -312,14 +296,17 @@ public:
 		BSDFSample sample = {};
 		float comp = sg.get1D();
 		vec2f u = sg.get2D();
+		vec3f wi;
 		if (comp < 0.5f) {
-			sample.wi = cosineSampleHemisphere(u);
+			wi = cosineSampleHemisphere(u);
+			wi = ToSameHemisphere(wi, wo);
 		}
 		else {
 			vec3f wh = ggx.Sample(wo, u);
-			sample.wi = Reflect(wo, wh);
+			wi = Reflect(wo, wh);
+			if (!SameHemisphere(wi, wo)) return sample;
 		}
-		if (!SameHemisphere(sample.wi, wo)) return sample;
+		sample.wi = wi;
 		sample.f = f(wo, sample.wi);
 		sample.pdf = pdf(wo, sample.wi);
 		return sample;
@@ -327,12 +314,12 @@ public:
 
 	__both__ float pdf(vec3f wo, vec3f wi) const {
 		if (!SameHemisphere(wo, wi)) return 0;
-		float diffPdf = wi.z * M_1_PI;
+		float diffPdf = fabs(wi.z) * M_1_PI;
 
 		vec3f wh = normalize(wo + wi);
 		float specPdf = ggx.Pdf(wo, wh) / (4 * dot(wo, wh));
 
-		return 0.5 * (diffPdf + specPdf);
+		return 0.5f * (diffPdf + specPdf);
 	}
 
 private:
@@ -341,7 +328,118 @@ private:
 	GGXMicrofacetDistribution ggx;
 };
 
-class BxDF :public TaggedPointer<DiffuseBrdf, MicrofacetBxdf, FresnelBlendedBxdf>{
+
+class UniformBsdf {
+	// A BSDF model taken from NVIDIA's render framework Falcor.
+	// Hmm... seems not energy conservative?
+public:
+	UniformBsdf() = default;
+
+	_DEFINE_BSDF_INTERNAL_ROUTINES(UniformBsdf);
+
+	__both__ void setup(const ShadingData & sd) {
+		specTrans = sd.specularTransmission;
+
+		diffuseBsdf.setup(sd);
+		microfacetBrdf.setup(sd);
+		microfacetBtdf.setup(sd);
+
+		float metallic = getMetallic(sd.diffuse, sd.specular);
+
+		float metallicBRDF = metallic;
+		float specularBSDF = (1.f - metallic) * luminance(specTrans);
+		float dielectricBSDF = (1.f - metallic) * (1.f - luminance(specTrans));
+
+		float diffuseWeight = luminance(sd.diffuse);
+		float specularWeight = luminance(evalFresnelSchlick(sd.specular, 1.f, dot(sd.wo, sd.N)));
+	
+		pDiff = diffuseWeight * dielectricBSDF;
+		pSpecRefl = specularWeight * (metallicBRDF + dielectricBSDF);
+		pSpecTrans = any(specTrans) ? specularBSDF : 0;
+
+		float norm = pDiff + pSpecRefl + pSpecTrans;
+		if (norm > 0) pDiff /= norm, pSpecRefl /= norm, pSpecTrans /= norm;
+		if (pSpecTrans > 0) {
+			//printf("pDiff %f pSpecRefl %f pSpecTrans %f\n", pDiff, pSpecRefl, pSpecTrans);
+			pDiff = pSpecRefl = pSpecTrans = 1.f / 3;
+		}
+	}
+
+	__both__ vec3f f(vec3f wo, vec3f wi) const {
+		vec3f val = 0;
+		if(pDiff) val += (vec3f(1) - specTrans) * diffuseBsdf.f(wo, wi);
+		if(pSpecRefl) val += (vec3f(1) - specTrans) * microfacetBrdf.f(wo, wi);
+		if(pSpecTrans) val += specTrans * microfacetBtdf.f(wo, wi);
+		return val;
+	}
+
+	__both__ BSDFSample sample(vec3f wo, Sampler & sg) const {
+		float u = sg.get1D();
+		BSDFSample sample = {};
+		if (u < pDiff) {
+			sample = diffuseBsdf.sample(wo, sg);
+			sample.f *= (vec3f(1) - specTrans) / pDiff;
+			sample.pdf *= pDiff;
+			if (pSpecRefl) sample.pdf += pSpecRefl * microfacetBrdf.pdf(wo, sample.wi);
+			if (pSpecTrans) sample.pdf += pSpecTrans * microfacetBtdf.pdf(wo, sample.wi);
+		}
+		else if (u < pDiff + pSpecRefl) {
+			sample = microfacetBrdf.sample(wo, sg);
+			sample.f *= (vec3f(1) - specTrans) / pSpecRefl;
+			sample.pdf *= pSpecRefl;
+			if (pDiff) sample.pdf += pDiff * diffuseBsdf.pdf(wo, sample.wi);
+			if (pSpecTrans) sample.pdf += pSpecTrans * microfacetBtdf.pdf(wo, sample.wi);
+		}
+		else if (pSpecTrans > 0) {
+			sample = microfacetBtdf.sample(wo, sg);
+			//sample.f *= specTrans / pSpecTrans;
+			sample.pdf *= pSpecTrans;
+			if (pDiff) sample.pdf += pDiff * diffuseBsdf.pdf(wo, sample.wi);
+			if (pSpecRefl) sample.pdf += pSpecRefl * microfacetBrdf.pdf(wo, sample.wi);
+		}
+		//sample.f = f(wo, sample.wi);
+		//sample.pdf = pdf(wo, sample.wi);
+		return sample;
+	}
+
+	__both__ float pdf(vec3f wo, vec3f wi) const {
+		float val = 0;
+		if (pDiff) val += pDiff * diffuseBsdf.pdf(wo, wi);
+		if (pSpecRefl) val += pSpecRefl * microfacetBrdf.pdf(wo, wi);
+		if (pSpecTrans) val += pSpecTrans * microfacetBtdf.pdf(wo, wi);
+		return val;
+	}
+
+	float pDiff{ 1 };
+	float pSpecTrans{ 0 };
+	float pSpecRefl{ 1 };
+
+	vec3f specTrans{ 0 };
+
+	DiffuseBrdf diffuseBsdf;
+	MicrofacetBrdf microfacetBrdf;
+	MicrofacetBtdf microfacetBtdf;
+
+private:
+	__both__ static inline float getMetallic(vec3f diffuse, vec3f spec){
+		// This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors
+		// We don't have the specular level information, so the assumption is that it is equal to 0.5 (based on the UE4 documentation)
+		float d = luminance(diffuse);
+		float s = luminance(spec);
+		if (s == 0) return 0;
+		float b = s + d - 0.08;
+		float c = 0.04 - s;
+		float root = sqrt(b * b - 0.16 * c);
+		float m = (root - b) * 12.5;
+		return max(0.f, m);
+	}
+};
+
+class BxDF :public TaggedPointer<
+	DiffuseBrdf, 
+	MicrofacetBrdf, 
+	FresnelBlendedBrdf, 
+	UniformBsdf>{
 public:
 	using TaggedPointer::TaggedPointer;
 

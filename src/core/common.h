@@ -87,10 +87,12 @@ namespace krr {
 		using ::max;
 		using std::abs;
 		using ::saturate;
+		using ::copysign;
 #else
 		using std::min;
 		using std::max;
 		using std::abs;
+		using std::copysign;
 		inline __both__ float saturate(const float& f) { return min(1.f, max(0.f, f)); }
 #endif
 

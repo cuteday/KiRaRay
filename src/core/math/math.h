@@ -51,4 +51,38 @@ struct complex {
     T re, im;
 };
 
+template <typename T>
+__both__ inline T real(const complex<T>& z) {
+    return z.re;
+}
+
+template <typename T>
+__both__ inline T imag(const complex<T>& z) {
+    return z.im;
+}
+
+template <typename T>
+__both__ inline T norm(const complex<T>& z) {
+    return z.re * z.re + z.im * z.im;
+}
+
+template <typename T>
+__both__ inline T abs(const complex<T>& z) {
+    return sqrt(norm(z));
+}
+
+template <typename T>
+__both__ inline complex<T> sqrt(const complex<T>& z) {
+    T n = abs(z), t1 = sqrt(T(.5) * (n + abs(z.re))),
+        t2 = T(.5) * z.im / t1;
+
+    if (n == 0)
+        return 0;
+
+    if (z.re >= 0)
+        return { t1, t2 };
+    else
+        return { abs(t2), copysign(t1, z.im) };
+}
+
 KRR_NAMESPACE_END

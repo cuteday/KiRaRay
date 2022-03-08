@@ -14,6 +14,10 @@ Currently supported operators: ACES, Reinhard.
 
 To be added...
 
+#### Shading
+
+Shading normal in world space always points to the outside of an object. We determine if an incident ray comes from outside of the object if its direction wi.z>0 in local space. 
+
 #### BSDFs
 
 To be added...

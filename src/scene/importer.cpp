@@ -83,6 +83,7 @@ namespace assimp {
 		}
 		Material::SharedPtr pMaterial = Material::SharedPtr(new Material(nameStr));
 
+		logDebug("Importing material: " + nameStr);
 		// Load textures. Note that loading is affected by the current shading model.
 		loadTextures(pAiMaterial, modelFolder, pMaterial);
 
@@ -93,6 +94,7 @@ namespace assimp {
 			pMaterial->mMaterialParams.diffuse.a = opacity;
 			if (opacity < 1.f) 
 				pMaterial->mMaterialParams.specularTransmission = 1 - opacity;
+			logDebug("opacity: " + to_string(opacity));
 		}
 
 		// Shininess
@@ -110,11 +112,21 @@ namespace assimp {
 
 		// Refraction
 		float refraction;
-		if (pAiMaterial->Get(AI_MATKEY_REFRACTI, refraction) == AI_SUCCESS) 
+		if (pAiMaterial->Get(AI_MATKEY_REFRACTI, refraction) == AI_SUCCESS) {
 			pMaterial->mMaterialParams.IoR = refraction;
+			logDebug("IoR: " + to_string(refraction));
+		}
 
 		// Diffuse color
 		aiColor3D color;
+
+		if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS)
+		{
+			vec3f transmission = 1.f - vec3f( color.r,color.g,color.b );
+			pMaterial->mMaterialParams.specularTransmission = transmission;
+			logDebug("transmission: " + to_string(luminance(transmission)));
+		}
+
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
 		{
 			vec4f diffuse = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.diffuse.a);
@@ -126,6 +138,7 @@ namespace assimp {
 		{
 			vec4f specular = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.specular.a);
 			pMaterial->mMaterialParams.specular = specular;
+			logDebug("specular : " + to_string(specular.r) + " " + to_string(specular.g) + " " + to_string(specular.b) + " ");
 		}
 
 		// Emissive color
@@ -206,9 +219,10 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 
 	string modelFolder = std::filesystem::path(filepath).parent_path().string();
 	string modelSuffix = std::filesystem::path(filepath).extension().string();
-	if (modelSuffix == ".obj")
+	if (modelSuffix == ".obj") {
 		mImportMode = ImportMode::OBJ;
-
+		logDebug("Importing OBJ model, using Specular Glossiness shading method.");
+	}
 	loadMaterials(modelFolder);
 
 	logDebug("Start traversing scene nodes");
@@ -308,27 +322,5 @@ void AssimpImporter::loadMaterials(const string &modelFolder)
 	}
 
 }
-
-//void AssimpImporter::loadMeshLights()
-//{
-//	std::vector<Mesh>& meshes = mpScene->meshes;
-//	uint nMeshes = meshes.size();
-//	for (uint meshId = 0; meshId < nMeshes; meshId++) {
-//		Mesh& mesh = meshes[meshId];
-//		Material& material = mpScene->mData.materials[mesh.materialId];
-//		if (material.hasEmission()) {
-//			std::vector<Triangle> triangles = mesh.createTriangles(&mpScene->mData.meshes[meshId]);
-//			mesh.emissiveTriangles.assign(triangles.begin(), triangles.end());
-//			for (Triangle& tri : mesh.emissiveTriangles) {
-//				vec3f Le = material.mMaterialParams.emissive;
-//				Texture& texture = material.getTexture(Material::TextureType::Emissive);
-//				//DiffuseAreaLight light(Shape(&tri), texture, Le, true, 1.f);
-//				mesh.lights.push_back(DiffuseAreaLight(Shape(&tri), texture, Le, true, 1.f));
-//				mpScene->mData.lights.push_back(&mesh.lights.back());
-//			}
-//		}
-//	}
-//	mpScene->mData.lightSampler = new UniformLightSampler((inter::span<Light>)mpScene->mData.lights);
-//}
 
 KRR_NAMESPACE_END
