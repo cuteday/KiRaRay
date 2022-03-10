@@ -22,7 +22,7 @@ public:
 		mLights(lights.begin(), lights.end()) {}
 
 	// assumes u in [0, 1)
-	__both__ inline SampledLight sample(float u)const {
+	KRR_CALLABLE SampledLight sample(float u)const {
 		SampledLight sl = {};
 		uint sampleId = u * mLights.size();
 		sl.light = mLights[sampleId];
@@ -32,11 +32,11 @@ public:
 		return sl;
 	}
 
-	__both__ inline float pdf(const Light& light)const {
+	KRR_CALLABLE float pdf(const Light& light)const {
 		return 1.f / mLights.size();
 	}
 
-	__both__ inline inter::vector<Light> getLights() {
+	KRR_CALLABLE inter::vector<Light> getLights() {
 		return mLights;
 	}
 
@@ -48,12 +48,12 @@ class LightSampler: TaggedPointer<UniformLightSampler>{
 public:
 	using TaggedPointer::TaggedPointer;
 
-	__both__ inline SampledLight sample(float u) const {
+	KRR_CALLABLE SampledLight sample(float u) const {
 		auto sample = [&](auto ptr)->SampledLight {return ptr->sample(u); };
 		return dispatch(sample);
 	}
 
-	__both__ inline float pdf(const Light& light) const{
+	KRR_CALLABLE float pdf(const Light& light) const{
 		auto pdf = [&](auto ptr)->float {return ptr->pdf(light); };
 		return dispatch(pdf);
 	}

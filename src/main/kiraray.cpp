@@ -31,10 +31,11 @@ extern "C" int main(int argc, char* argv[]) {
 	//sceneFile = "common/scenes/bedroom/iscv2.obj";
 	//sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
 
-	//const string iblFile = "common/assets/Tropical_Beach.hdr";
-	//const string iblFile = "common/assets/Playa_Sunrise.exr";
-	//const string iblFile = "common/assets/Mono_Lake_B.hdr";
-	//const string iblFile = "common/assets/Ridgecrest_Road.hdr";
+	const string iblFile = "common/assets/snowwhite.jpg";
+	//iblFile = "common/assets/Tropical_Beach.hdr";
+	//iblFile = "common/assets/Playa_Sunrise.exr";
+	//iblFile = "common/assets/Mono_Lake_B.hdr";
+	//iblFile = "common/assets/Ridgecrest_Road.hdr";
 
 #ifndef KRR_DEBUG_BUILD
 	try {

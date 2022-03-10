@@ -25,7 +25,7 @@ KRR_NAMESPACE_BEGIN
 namespace inter {
 
 	template <typename T>
-	__both__ inline void swap(T& a, T& b) {
+	KRR_CALLABLE void swap(T& a, T& b) {
 		T tmp = std::move(a);
 		a = std::move(b);
 		b = std::move(tmp);
@@ -286,13 +286,13 @@ namespace inter {
 
 		// Wrappers for access to container data pointers.
 		template <typename C>
-		__both__ inline constexpr auto GetDataImpl(C& c, char) noexcept
+		KRR_CALLABLE constexpr auto GetDataImpl(C& c, char) noexcept
 			-> decltype(c.data()) {
 			return c.data();
 		}
 
 		template <typename C>
-		__both__ inline constexpr auto GetData(C& c) noexcept -> decltype(GetDataImpl(c, 0)) {
+		KRR_CALLABLE constexpr auto GetData(C& c) noexcept -> decltype(GetDataImpl(c, 0)) {
 			return GetDataImpl(c, 0);
 		}
 
@@ -425,12 +425,12 @@ namespace inter {
 	};
 
 	template <int &...ExplicitArgumentBarrier, typename T>
-	__both__ inline constexpr span<T> MakeSpan(T* ptr, size_t size) noexcept {
+	KRR_CALLABLE constexpr span<T> MakeSpan(T* ptr, size_t size) noexcept {
 		return span<T>(ptr, size);
 	}
 
 	template <int &...ExplicitArgumentBarrier, typename T>
-	__both__ inline span<T> MakeSpan(T* begin, T* end) noexcept {
+	KRR_CALLABLE span<T> MakeSpan(T* begin, T* end) noexcept {
 		return span<T>(begin, end - begin);
 	}
 
@@ -440,23 +440,23 @@ namespace inter {
 	}
 
 	template <int &...ExplicitArgumentBarrier, typename C>
-	__both__ inline constexpr auto MakeSpan(C& c) noexcept
+	KRR_CALLABLE constexpr auto MakeSpan(C& c) noexcept
 		-> decltype(MakeSpan(span_internal::GetData(c), c.size())) {
 		return MakeSpan(span_internal::GetData(c), c.size());
 	}
 
 	template <int &...ExplicitArgumentBarrier, typename T, size_t N>
-	__both__ inline constexpr span<T> MakeSpan(T(&array)[N]) noexcept {
+	KRR_CALLABLE constexpr span<T> MakeSpan(T(&array)[N]) noexcept {
 		return span<T>(array, N);
 	}
 
 	template <int &...ExplicitArgumentBarrier, typename T>
-	__both__ inline constexpr span<const T> MakeConstSpan(T* ptr, size_t size) noexcept {
+	KRR_CALLABLE constexpr span<const T> MakeConstSpan(T* ptr, size_t size) noexcept {
 		return span<const T>(ptr, size);
 	}
 
 	template <int &...ExplicitArgumentBarrier, typename T>
-	__both__ inline span<const T> MakeConstSpan(T* begin, T* end) noexcept {
+	KRR_CALLABLE span<const T> MakeConstSpan(T* begin, T* end) noexcept {
 		return span<const T>(begin, end - begin);
 	}
 
@@ -466,13 +466,13 @@ namespace inter {
 	}
 
 	template <int &...ExplicitArgumentBarrier, typename C>
-	__both__ inline constexpr auto MakeConstSpan(const C& c) noexcept
+	KRR_CALLABLE constexpr auto MakeConstSpan(const C& c) noexcept
 		-> decltype(MakeSpan(c)) {
 		return MakeSpan(c);
 	}
 
 	template <int &...ExplicitArgumentBarrier, typename T, size_t N>
-	__both__ inline constexpr span<const T> MakeConstSpan(const T(&array)[N]) noexcept {
+	KRR_CALLABLE constexpr span<const T> MakeConstSpan(const T(&array)[N]) noexcept {
 		return span<const T>(array, N);
 	}
 
@@ -789,9 +789,9 @@ namespace inter {
 			reference back() { return ptr[nStored - 1]; }
 		__both__
 			const_reference back() const { return ptr[nStored - 1]; }
-		__both__ inline
+		KRR_CALLABLE
 			pointer data() { return ptr; }
-		__both__ inline
+		KRR_CALLABLE
 			const_pointer data() const { return ptr; }
 
 		void clear() {

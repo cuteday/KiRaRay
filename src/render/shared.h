@@ -37,8 +37,7 @@ namespace shader {
 	struct HitInfo {
 		uint primitiveId;
 		vec3f barycentric;
-			
-		//Mesh* mesh;
+
 		MeshData* mesh;
 		vec3f wo;
 		uint hitKind;

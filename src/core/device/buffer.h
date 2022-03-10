@@ -14,12 +14,12 @@ public:
 	CUDABuffer() = default;
 	~CUDABuffer() { free(); }
 
-	__both__ inline CUdeviceptr data() const
+	KRR_CALLABLE CUdeviceptr data() const
 	{
 		return (CUdeviceptr)d_ptr;
 	}
 
-	__both__ inline size_t size() const
+	KRR_CALLABLE size_t size() const
 	{
 		return sizeInBytes;
 	}
@@ -117,16 +117,16 @@ private:
 template <typename T>
 class TypedBuffer {
 public:
-	__both__ inline T* data() const { return d_ptr; }
+	KRR_CALLABLE T* data() const { return d_ptr; }
 
-	__both__ inline T& operator [] (uint index) { 
+	KRR_CALLABLE T& operator [] (uint index) { 
 		assert(index < m_size);
 		return d_ptr[index]; 
 	}
 
-	__both__ inline size_t size() const { return m_size; }
+	KRR_CALLABLE size_t size() const { return m_size; }
 
-	__both__ inline size_t sizeInBytes() const { return m_size * sizeof(T); }
+	KRR_CALLABLE size_t sizeInBytes() const { return m_size * sizeof(T); }
 
 	inline void resize(size_t new_size) {
 		if (m_size == new_size) return;

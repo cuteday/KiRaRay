@@ -18,7 +18,7 @@ class GGXMicrofacetDistribution {
 public:
     GGXMicrofacetDistribution() = default;
 
-    __both__ inline bool isSpecular() { return max(alphax, alphay) < 1e-3f; }
+    KRR_CALLABLE bool isSpecular() { return max(alphax, alphay) < 1e-3f; }
 
     __both__ static inline float RoughnessToAlpha(float roughness) {
         roughness = max(roughness, (float)1e-3);
@@ -55,7 +55,7 @@ public:
         return 1 / (M_PI * alphax * alphay * cos4Theta * (1 + e) * (1 + e));
     }
 
-    __both__ inline vec3f Sample(const vec3f& wo, const vec2f& u) const;
+    KRR_CALLABLE vec3f Sample(const vec3f& wo, const vec2f& u) const;
     
     __both__ float Pdf(const vec3f& wo, const vec3f& wh) const {
         if (sampleVisibleArea)
@@ -66,7 +66,7 @@ public:
 
 private:
     // GGXMicrofacetDistribution Private Methods
-    __both__ inline float Lambda(const vec3f& w) const {
+    KRR_CALLABLE float Lambda(const vec3f& w) const {
         float absTanTheta = abs(TanTheta(w));
         if (isinf(absTanTheta)) return 0.;
         // Compute _alpha_ for direction _w_
@@ -95,7 +95,7 @@ public:
     }
 };
 
-__both__ inline static void GGXSample11(float cosTheta, float U1, float U2,
+KRR_CALLABLE static void GGXSample11(float cosTheta, float U1, float U2,
     float* slope_x, float* slope_y) {
     // special case (normal incidence)
     if (cosTheta > .9999) {
@@ -142,7 +142,7 @@ __both__ inline static void GGXSample11(float cosTheta, float U1, float U2,
     CHECK(!isnan(*slope_y));
 }
 
-__both__ inline static vec3f GGXSample(const vec3f& wi, float alpha_x,
+KRR_CALLABLE static vec3f GGXSample(const vec3f& wi, float alpha_x,
     float alpha_y, float U1, float U2) {
     // 1. stretch wi
     vec3f wiStretched =

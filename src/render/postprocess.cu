@@ -46,7 +46,7 @@ void AccumulatePass::render(CUDABuffer& frame) {
 
 namespace shader {
 	namespace tonemapper {
-		__both__ inline vec3f toneMapAces(vec3f color) {
+		KRR_CALLABLE vec3f toneMapAces(vec3f color) {
 			// https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
 			color *= 0.6;
 			float A = 2.51;
@@ -58,14 +58,14 @@ namespace shader {
 			return color;
 		}
 
-		__both__ inline vec3f toneMapReinhard(vec3f color)
+		KRR_CALLABLE vec3f toneMapReinhard(vec3f color)
 		{
 			float luminance = utils::luminance(color);
 			float reinhard = luminance / (luminance + 1);
 			return color * (reinhard / luminance);
 		}
 
-		__both__ inline vec3f toneMapUC2(vec3f color) {
+		KRR_CALLABLE vec3f toneMapUC2(vec3f color) {
 			float A = 0.22; // Shoulder Strength
 			float B = 0.3;  // Linear Strength
 			float C = 0.1;  // Linear Angle
@@ -77,7 +77,7 @@ namespace shader {
 			return color;
 		}
 
-		__both__ inline vec3f toneMapHejiHableAlu(vec3f color)
+		KRR_CALLABLE vec3f toneMapHejiHableAlu(vec3f color)
 		{
 			color = max(vec3f(0), color - 0.004f);
 			color = (color * (6.2f * color + 0.5f)) / (color * (6.2f * color + 1.7f) + 0.06f);

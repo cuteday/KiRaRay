@@ -5,7 +5,7 @@
 *.slo
 *.lo
 *.o
-
+*.obj
 
 # Precompiled Headers
 *.gch
@@ -42,7 +42,7 @@ out
 .DS_Store
 
 # Assets and resource data
-#common/scenes
-common/assets
+common/scenes
+#common/assets
 common/images
 imgui.ini

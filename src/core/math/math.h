@@ -13,66 +13,66 @@ KRR_NAMESPACE_BEGIN
 
 template <typename T>
 struct complex {
-    __both__ inline complex(T re) : re(re), im(0) {}
-    __both__ inline complex(T re, T im) : re(re), im(im) {}
+    KRR_CALLABLE complex(T re) : re(re), im(0) {}
+    KRR_CALLABLE complex(T re, T im) : re(re), im(im) {}
 
-    __both__ inline complex operator-() const { return { -re, -im }; }
+    KRR_CALLABLE complex operator-() const { return { -re, -im }; }
 
-    __both__ inline complex operator+(complex z) const { return { re + z.re, im + z.im }; }
+    KRR_CALLABLE complex operator+(complex z) const { return { re + z.re, im + z.im }; }
 
-    __both__ inline complex operator-(complex z) const { return { re - z.re, im - z.im }; }
+    KRR_CALLABLE complex operator-(complex z) const { return { re - z.re, im - z.im }; }
 
-    __both__ inline complex operator*(complex z) const {
+    KRR_CALLABLE complex operator*(complex z) const {
         return { re * z.re - im * z.im, re * z.im + im * z.re };
     }
 
-    __both__ inline complex operator/(complex z) const {
+    KRR_CALLABLE complex operator/(complex z) const {
         T scale = 1 / (z.re * z.re + z.im * z.im);
         return { scale * (re * z.re + im * z.im), scale * (im * z.re - re * z.im) };
     }
 
-    friend __both__ inline complex operator+(T value, complex z) {
+    friend KRR_CALLABLE complex operator+(T value, complex z) {
         return complex(value) + z;
     }
 
-    friend __both__ inline complex operator-(T value, complex z) {
+    friend KRR_CALLABLE complex operator-(T value, complex z) {
         return complex(value) - z;
     }
 
-    friend __both__ inline complex operator*(T value, complex z) {
+    friend KRR_CALLABLE complex operator*(T value, complex z) {
         return complex(value) * z;
     }
 
-    friend __both__ inline complex operator/(T value, complex z) {
+    friend KRR_CALLABLE complex operator/(T value, complex z) {
         return complex(value) / z;
     }
 
-    __both__ inline T norm() { return re * re + im * im; }
+    KRR_CALLABLE T norm() { return re * re + im * im; }
     T re, im;
 };
 
 template <typename T>
-__both__ inline T real(const complex<T>& z) {
+KRR_CALLABLE T real(const complex<T>& z) {
     return z.re;
 }
 
 template <typename T>
-__both__ inline T imag(const complex<T>& z) {
+KRR_CALLABLE T imag(const complex<T>& z) {
     return z.im;
 }
 
 template <typename T>
-__both__ inline T norm(const complex<T>& z) {
+KRR_CALLABLE T norm(const complex<T>& z) {
     return z.re * z.re + z.im * z.im;
 }
 
 template <typename T>
-__both__ inline T abs(const complex<T>& z) {
+KRR_CALLABLE T abs(const complex<T>& z) {
     return sqrt(norm(z));
 }
 
 template <typename T>
-__both__ inline complex<T> sqrt(const complex<T>& z) {
+KRR_CALLABLE complex<T> sqrt(const complex<T>& z) {
     T n = abs(z), t1 = sqrt(T(.5) * (n + abs(z.re))),
         t2 = T(.5) * z.im / t1;
 

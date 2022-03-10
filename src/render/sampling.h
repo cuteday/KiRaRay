@@ -11,7 +11,7 @@ KRR_NAMESPACE_BEGIN
 using namespace math;
 using namespace utils;
 
-__both__ inline float evalMIS(float p0, float p1) {
+KRR_CALLABLE float evalMIS(float p0, float p1) {
 #if MIS_POWER_HEURISTIC
 	return p0 * p0 / (p0 * p0 + p1 * p1);
 #else 
@@ -19,7 +19,7 @@ __both__ inline float evalMIS(float p0, float p1) {
 #endif
 }
 
-__both__ inline float evalMIS(float n0, float p0, float n1, float p1) {
+KRR_CALLABLE float evalMIS(float n0, float p0, float n1, float p1) {
 #if MIS_POWER_HEURISTIC
 	float q0 = (n0 * p0) * (n0 * p0);
 	float q1 = (n1 * p1) * (n1 * p1);
@@ -29,14 +29,14 @@ __both__ inline float evalMIS(float n0, float p0, float n1, float p1) {
 #endif
 }
 
-__both__ inline vec3f uniformSampleHemisphere(const vec2f& u) {
+KRR_CALLABLE vec3f uniformSampleHemisphere(const vec2f& u) {
 	float z = u[0];
 	float r = sqrt(max(0.f, (float)1.f - z * z));
 	float phi = 2 * M_PI * u[1];
 	return vec3f(r * cos(phi), r * sin(phi), z);
 }
 
-__both__ inline vec2f uniformSampleDisk(const vec2f& u) {
+KRR_CALLABLE vec2f uniformSampleDisk(const vec2f& u) {
 	// simpler method derived using marginal distribution...
 	//float r = sqrt(u[0]);
 	//float theta = 2 * M_PI * u[1];
@@ -58,13 +58,13 @@ __both__ inline vec2f uniformSampleDisk(const vec2f& u) {
 	return r * vec2f(cos(theta), sin(theta));
 }
 
-__both__ inline vec3f cosineSampleHemisphere(const vec2f& u) {
+KRR_CALLABLE vec3f cosineSampleHemisphere(const vec2f& u) {
 	vec2f d = uniformSampleDisk(u);
 	float z = sqrt(max(0.f, 1 - d.x * d.x - d.y * d.y));
 	return { d.x, d.y, z };
 }
 
-__both__ inline vec3f uniformSampleTriangle(const vec2f& u) {
+KRR_CALLABLE vec3f uniformSampleTriangle(const vec2f& u) {
 	float b0, b1;
 	if (u[0] < u[1]) {
 		b0 = u[0] / 2;
@@ -77,7 +77,7 @@ __both__ inline vec3f uniformSampleTriangle(const vec2f& u) {
 	return { b0, b1, 1 - b0 - b1 };
 }
 
-//__both__ inline vec3f sampleSphericalTriangle(vec3f v, vec3f p, vec2f u, float& pdf) {
+//KRR_CALLABLE vec3f sampleSphericalTriangle(vec3f v, vec3f p, vec2f u, float& pdf) {
 //	if (pdf)
 //		pdf = 0;
 //	// Compute vectors _a_, _b_, and _c_ to spherical triangle vertices

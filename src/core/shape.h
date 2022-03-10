@@ -30,7 +30,7 @@ public:
 	Triangle(uint triId, MeshData* mesh) :
 		primId(triId), mesh(mesh) {}
 
-	__both__ inline float area()const {
+	KRR_CALLABLE float area()const {
 		vec3i v = mesh->indices[primId];
 		vec3f p0 = mesh->vertices[v[0]],
 			p1 = mesh->vertices[v[1]],
@@ -40,7 +40,7 @@ public:
 		return s;
 	}
 
-	__both__ inline float solidAngle(vec3f p) const {
+	KRR_CALLABLE float solidAngle(vec3f p) const {
 		vec3i v = mesh->indices[primId];
 		vec3f p0 = mesh->vertices[v[0]], p1 = mesh->vertices[v[1]], p2 = mesh->vertices[v[2]];
 
@@ -49,7 +49,7 @@ public:
 			normalize(p2 - p));
 	}
 
-	__both__ inline ShapeSample sample(vec2f u) const {
+	KRR_CALLABLE ShapeSample sample(vec2f u) const {
 		// uniform sample on triangle
 		ShapeSample ss = {};
 		
@@ -85,7 +85,7 @@ public:
 		return ss;
 	}
 
-	__both__ inline ShapeSample sample(vec2f u, ShapeSampleContext& ctx) const {
+	KRR_CALLABLE ShapeSample sample(vec2f u, ShapeSampleContext& ctx) const {
 		// sample w.r.t. the reference point,
 		// also the pdf counted is in solid angle.
 		
@@ -106,11 +106,11 @@ public:
 		//}
 	}
 
-	__both__ inline float pdf(Interaction& sample) const {
+	KRR_CALLABLE float pdf(Interaction& sample) const {
 		return 1 / area();
 	}
 
-	__both__ inline float pdf(Interaction& sample, ShapeSampleContext& ctx) const {
+	KRR_CALLABLE float pdf(Interaction& sample, ShapeSampleContext& ctx) const {
 		float sr = solidAngle(ctx.p);
 
 		// Return PDF based on uniform area sampling for challenging triangles
@@ -145,27 +145,27 @@ class Shape: public TaggedPointer<Triangle>{
 public:
 	using TaggedPointer::TaggedPointer;
 
-	__both__ inline float area()const {
+	KRR_CALLABLE float area()const {
 		auto area = [&](auto ptr) ->float {return ptr->area(); };
 		return dispatch(area);
 	}
 
-	__both__ inline ShapeSample sample(vec2f u) const {
+	KRR_CALLABLE ShapeSample sample(vec2f u) const {
 		auto sample = [&](auto ptr) ->ShapeSample {return ptr->sample(u); };
 		return dispatch(sample);
 	}
 
-	__both__ inline ShapeSample sample(vec2f u, ShapeSampleContext& ctx) const {
+	KRR_CALLABLE ShapeSample sample(vec2f u, ShapeSampleContext& ctx) const {
 		auto sample = [&](auto ptr) ->ShapeSample {return ptr->sample(u, ctx); };
 		return dispatch(sample);
 	}
 
-	__both__ inline float pdf( Interaction& sample) const {
+	KRR_CALLABLE float pdf( Interaction& sample) const {
 		auto pdf = [&](auto ptr) ->float {return ptr->pdf(sample); };
 		return dispatch(pdf);
 	}
 
-	__both__ inline float pdf(Interaction& sample, ShapeSampleContext& ctx) const {
+	KRR_CALLABLE float pdf(Interaction& sample, ShapeSampleContext& ctx) const {
 		auto pdf = [&](auto ptr) ->float {return ptr->pdf(sample, ctx); };
 		return dispatch(pdf);
 	}

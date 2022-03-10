@@ -115,11 +115,11 @@ namespace krr
 		// Unary Operators
 
 		template <typename T>
-		__both__ inline mat2_t<T> operator-(const mat2_t<T> &a) { return mat2_t<T>(-a.vx, -a.vy); }
+		KRR_CALLABLE mat2_t<T> operator-(const mat2_t<T> &a) { return mat2_t<T>(-a.vx, -a.vy); }
 		template <typename T>
-		__both__ inline mat2_t<T> operator+(const mat2_t<T> &a) { return mat2_t<T>(+a.vx, +a.vy); }
+		KRR_CALLABLE mat2_t<T> operator+(const mat2_t<T> &a) { return mat2_t<T>(+a.vx, +a.vy); }
 		template <typename T>
-		__both__ inline mat2_t<T> rcp(const mat2_t<T> &a) { return a.inverse(); }
+		KRR_CALLABLE mat2_t<T> rcp(const mat2_t<T> &a) { return a.inverse(); }
 
 		// Binary Operators
 
@@ -358,10 +358,10 @@ namespace krr
 		inline __both__ mat3_t<T> operator*(const mat3_t<T> &a, const mat3_t<T> &b) { return mat3_t<T>(a * b.vx, a * b.vy, a * b.vz); }
 
 		template <typename T>
-		__both__ inline mat3_t<T> operator/(const mat3_t<T> &a, const typename T::scalar_t &b) { return mat3_t<T>(a.vx / b, a.vy / b, a.vz / b); }
+		KRR_CALLABLE mat3_t<T> operator/(const mat3_t<T> &a, const typename T::scalar_t &b) { return mat3_t<T>(a.vx / b, a.vy / b, a.vz / b); }
 
 		template <typename T>
-		__both__ inline mat3_t<T> operator/(const mat3_t<T> &a, const mat3_t<T> &b) { return a * rcp(b); }
+		KRR_CALLABLE mat3_t<T> operator/(const mat3_t<T> &a, const mat3_t<T> &b) { return a * rcp(b); }
 
 		template <typename T>
 		inline mat3_t<T> &operator*=(mat3_t<T> &a, const mat3_t<T> &b) { return a = a * b; }

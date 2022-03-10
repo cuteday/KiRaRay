@@ -10,17 +10,17 @@ KRR_NAMESPACE_BEGIN
 namespace bsdf {
 	using namespace math;
 
-	__both__ inline vec3f FrSchlick(vec3f f0, vec3f f90, float cosTheta){
+	KRR_CALLABLE vec3f FrSchlick(vec3f f0, vec3f f90, float cosTheta){
 		//return lerp(f0, f90, pow(max(1 - cosTheta, 0.f), 5.f));
 		return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0.f), 5.f); // clamp to avoid NaN if cosTheta = 1+epsilon
 	}
 
-	__both__ inline float FrSchlick(float f0, float f90, float cosTheta){
+	KRR_CALLABLE float FrSchlick(float f0, float f90, float cosTheta){
 		return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0.f), 5.f); // clamp to avoid NaN if cosTheta = 1+epsilon
 	}
 
 	// eta: just etaT/etaI if incident ray
-	__both__ inline float FrDielectric(float cosTheta_i, float eta) {
+	KRR_CALLABLE float FrDielectric(float cosTheta_i, float eta) {
 		// computes the reflected fraction of light, i.e. the Fresnel reflectance
 		// while the transmitted energy is 1-Fr due to energy conservation
 		cosTheta_i = clamp(cosTheta_i, -1.f, 1.f);
@@ -42,7 +42,7 @@ namespace bsdf {
 		return (pow2(r_parl) + pow2(r_perp)) / 2;
 	}
 
-	__both__ inline float FrComplex(float cosTheta_i, complex<float> eta) {
+	KRR_CALLABLE float FrComplex(float cosTheta_i, complex<float> eta) {
 		// Fresnel for conductors: some of the energy is absorbed by the material and turned into heat.
 		using Complex = complex<float>;
 		cosTheta_i = clamp(cosTheta_i, 0.f, 1.f);
@@ -56,7 +56,7 @@ namespace bsdf {
 		return (r_parl.norm() + r_perp.norm()) / 2;
 	}
 
-	__both__ inline vec3f FrComplex(float cosTheta_i, vec3f eta, vec3f k) {
+	KRR_CALLABLE vec3f FrComplex(float cosTheta_i, vec3f eta, vec3f k) {
 		vec3f result;
 		for (int i = 0; i < 3; ++i)
 			result[i] = FrComplex(cosTheta_i, complex<float>(eta[i], k[i]));
@@ -64,7 +64,7 @@ namespace bsdf {
 	}
 
 	// eta: etaI/etaT if incident ray
-	__both__ inline vec3f DisneyFresnel(const vec3f& R0, float metallic, float eta, float cosI) {
+	KRR_CALLABLE vec3f DisneyFresnel(const vec3f& R0, float metallic, float eta, float cosI) {
 		return lerp(vec3f(FrDielectric(cosI, eta)), FrSchlick(R0, vec3f(1), cosI), metallic);
 	}
 

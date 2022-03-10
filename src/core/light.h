@@ -57,7 +57,7 @@ public:
 		}
 	}
 
-	__both__ inline float pdfLi(Interaction& p, LightSampleContext& ctx) const {
+	KRR_CALLABLE float pdfLi(Interaction& p, LightSampleContext& ctx) const {
 		ShapeSampleContext shapeCtx = { ctx.p, ctx.n };
 		return shape.pdf(p, shapeCtx);
 	}
@@ -74,17 +74,17 @@ class Light :public TaggedPointer<DiffuseAreaLight> {
 public:
 	using TaggedPointer::TaggedPointer;
 
-	__both__ inline LightSample sampleLi(vec2f u, const LightSampleContext& ctx) const {
+	KRR_CALLABLE LightSample sampleLi(vec2f u, const LightSampleContext& ctx) const {
 		auto sampleLi = [&](auto ptr) -> LightSample {return ptr->sampleLi(u, ctx); };
 		return dispatch(sampleLi);
 	}
 
-	__both__ inline vec3f L(vec3f p, vec3f n, vec2f uv, vec3f w)const {
+	KRR_CALLABLE vec3f L(vec3f p, vec3f n, vec2f uv, vec3f w)const {
 		auto L = [&](auto ptr) -> vec3f { return ptr->L(p, n, uv, w); };
 		return dispatch(L);
 	}
 	
-	__both__ inline float pdfLi(Interaction& p, LightSampleContext& ctx) const {
+	KRR_CALLABLE float pdfLi(Interaction& p, LightSampleContext& ctx) const {
 		auto pdf = [&](auto ptr) -> float { return ptr->pdfLi(p, ctx); };
 		return dispatch(pdf);
 	}

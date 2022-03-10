@@ -98,9 +98,7 @@ public:
 
 	enum class BsdfType {
 		Diffuse		= 0,
-		Microfacet,
 		FresnelBlend,
-		Uniform,
 		Disney,
 	};
 

@@ -49,16 +49,16 @@ public:
 	using SharedPtr = std::shared_ptr<Sampler>;
 	using TaggedPointer::TaggedPointer;
 
-	__both__ inline void setPixelSample(vec2i samplePixel, uint sampleIndex){
+	KRR_CALLABLE void setPixelSample(vec2i samplePixel, uint sampleIndex){
 		auto setPixelSample = [&](auto ptr) ->void {return ptr->setPixelSample(samplePixel, sampleIndex); };
 		return dispatch(setPixelSample);
 	}
 
-	__both__ inline float get1D() {
+	KRR_CALLABLE float get1D() {
 		auto get1D = [&](auto ptr) ->float {return ptr->get1D(); };
 		return dispatch(get1D);
 	};
-	__both__ inline vec2f get2D() {
+	KRR_CALLABLE vec2f get2D() {
 		auto get2D = [&](auto ptr) ->vec2f {return ptr->get2D(); };
 		return dispatch(get2D);
 	};

@@ -35,9 +35,8 @@ public:
 	void renderUI() {
 		ui::SliderFloat("Intensity", &mData.intensity, 0, 10, "%.02f");
 		ui::SliderFloat("Rotation", &mData.rotation, 0, 1, "%.03f");
-		if (ui::CollapsingHeader("Tint color picker"))
-			ui::ColorEdit3("Tint", (float*)&mData.tint);
-			//ui::ColorPicker3("Tint", (float*)&mData.tint);
+		ui::ColorEdit3("Tint", (float*)&mData.tint);
+		//ui::ColorPicker3("Tint", (float*)&mData.tint);
 		if (mData.mEnvTexture.isOnDevice())
 			ui::Checkbox("IBL", &mIBL);
 	};
