@@ -7,11 +7,11 @@
 #include "common.h"
 #include "math/math.h"
 #include "file.h"
+#include "render/materials/bxdf.h"
 
 KRR_NAMESPACE_BEGIN
  
-// Image class is opaque to gpu.
-class Image {
+class Image {	// Not available on GPU
 public:
 	using SharedPtr = std::shared_ptr<Image>;
 	
@@ -99,8 +99,9 @@ public:
 	enum class BsdfType {
 		Diffuse		= 0,
 		Microfacet,
-		FresnelBlended,
+		FresnelBlend,
 		Uniform,
+		Disney,
 	};
 
 	enum class ShadingModel {
@@ -113,8 +114,8 @@ public:
 		vec4f specular{ 0 };			// G-roughness B-metallic in MetalRough model
 		vec3f emissive{ 0 };
 		float IoR{ 1.5f };
-		vec3f diffuseTransmission{ 0 };
-		vec3f specularTransmission{ 0 };
+		float diffuseTransmission{ 0 };
+		float specularTransmission{ 0 };
 	};
 
 	Material() {};
@@ -137,12 +138,16 @@ public:
 
 	void toDevice();
 
-//private:
 	friend class AssimpImporter;
-
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
-	BsdfType mBsdfType = BsdfType::Uniform;
+#if KRR_USE_DISNEY
+	BsdfType mBsdfType = BsdfType::Disney;
+#elif KRR_USE_FRESNEL_BLEND
+	BsdfType mBsdfType = BsdfType::FresnelBlend;
+#else
+	BsdfType mBsdfType = BsdfType::Diffuse;
+#endif
 	ShadingModel mShadingModel = ShadingModel::MetallicRoughness;
 	bool mDoubleSided = false;
 	string mName;

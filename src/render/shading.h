@@ -99,7 +99,6 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	Material::MaterialParams& materialParams = material.mMaterialParams;
 	
 	sd.IoR = materialParams.IoR;
-	//sd.shadingModel = material.mShadingModel;
 	sd.bsdfType = material.mBsdfType;
 	sd.diffuseTransmission = materialParams.diffuseTransmission;
 	sd.specularTransmission = materialParams.specularTransmission;
@@ -115,7 +114,6 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// this is the default except for OBJ or when user specified 
 		// G - Roughness; B - Metallic
-			
 		sd.diffuse = lerp(baseColor, vec3f(0), spec.b);
 
 		// Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
@@ -124,14 +122,14 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		float F0 = f * f;
 
 		sd.specular = lerp(vec3f(F0), baseColor, spec.b);
-		//sd.metallic = spec.b;
+		sd.metallic = spec.b;
 		sd.roughness = spec.g;
 	}
 	else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		sd.diffuse = baseColor;
 		sd.specular = (vec3f)spec;			// specular reflectance
-		sd.roughness = 1 - spec.a;	// 
-		//sd.metallic = getMetallic(sd.diffuse, sd.specular);
+		sd.roughness = 1 - spec.a;			// 
+		sd.metallic = getMetallic(sd.diffuse, sd.specular);
 	}
 	else {
 		assert(false);

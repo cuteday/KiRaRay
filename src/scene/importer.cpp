@@ -123,7 +123,7 @@ namespace assimp {
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS)
 		{
 			vec3f transmission = 1.f - vec3f( color.r,color.g,color.b );
-			pMaterial->mMaterialParams.specularTransmission = transmission;
+			pMaterial->mMaterialParams.specularTransmission = luminance(transmission);
 			logDebug("transmission: " + to_string(luminance(transmission)));
 		}
 

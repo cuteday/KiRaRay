@@ -14,7 +14,6 @@
 
 using std::string;
 using std::to_string;
-//namespace fs = std::filesystem;
 
 typedef uint32_t uint;
 typedef unsigned char uchar;
@@ -41,7 +40,6 @@ typedef unsigned char uchar;
 #  define __PRETTY_FUNCTION__ __FUNCTION__
 #endif
 
-
 #ifndef PRINT
 # define PRINT(var) std::cout << #var << "=" << var << std::endl;
 #ifdef __WIN32__
@@ -62,6 +60,7 @@ typedef unsigned char uchar;
 #endif
 
 # define __both__   __krr_host __krr_device
+# define KRR_CALLABLE __krr_host __krr_device inline
 # define KRR_DEVICE_FUNCTION __krr_device __krr_forceinline
 
 #ifdef __GNUC__
@@ -85,7 +84,7 @@ namespace krr {
 #ifdef __CUDA_ARCH__
 		using ::min;
 		using ::max;
-		using std::abs;
+		using ::abs;
 		using ::saturate;
 		using ::copysign;
 #else

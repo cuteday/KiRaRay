@@ -12,9 +12,9 @@
 
 - Orbit camera controlling.
 - Assimp as scene importer.
-- Diffuse, ggx microfacet and fresnel-blended brdf. 
 - Image-based environment lighting.
-- Next event estimation and multiple importance sampling (naive ver.).
+- Diffuse, microfacet, disney and fresnel-blended bsdfs. 
+- Next event estimation and multiple importance sampling (naive ver.)
 - Tone mapping and frame accumulating.
 
 If possible, more features will be added in the future, for example:
@@ -30,7 +30,7 @@ If possible, more features will be added in the future, for example:
 - Nvidia gpu (Turing or higher if possible).
 - OptiX 7.0+ and CUDA 11.0+ installed.
 
-This project is only tested with OptiX 7.3, CUDA 11.3, compiled on Windows using MSVC, on a device with an ampere gpu. But it is expected to run on platforms with OptiX 7 and CUDA 11 or above. 
+This project is only tested with optix 7.3 & cuda 11.3, compiled on Windows using msvc on an ampere gpu device. But it is expected to run on platforms with support for optix 7 and cuda 11. 
 
 #### Build
 
@@ -55,7 +55,7 @@ Currently the renderer should run at 30+ fps for rendering an 1 spp 1920*1080 im
 I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i'm acting like a lazy old uncle, trying to sleep as more as possible (\*/ω＼\*).
 
 <details>
-<summary>meme</summary>
+<summary>blue archive meme</summary>
 
 I wish i was like: 
 
@@ -71,12 +71,17 @@ But actually i'm like \***sleeps all the time**\*:
 
 ### Galleries
 
+#### Salle de bain
+
+<p align=center>
+<img src=common/demo/salle_de_bain.jpg width="700">
+
 #### Breakfast room
 
 <p align=center>
-<img src=common/demo/breakfast_room.jpg width="750">
+<img src=common/demo/breakfast_room.jpg width="700">
 
 #### Rungholt
 
 <p align=center>
-<img src=common/demo/rungholt.jpg width="750">
+<img src=common/demo/rungholt.jpg width="700">

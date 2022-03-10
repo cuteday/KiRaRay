@@ -21,15 +21,15 @@ extern "C" int main(int argc, char* argv[]) {
 	logError("Kiraray::Running on unsupported platform!");
 #endif
 
-	const string sceneFile = "common/scenes/cbox/CornellBox-Sphere.obj";
-	//const string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
-	//const string sceneFile = "common/scenes/rungholt/rungholt.obj";
-	//const string sceneFile = "common/scenes/sponza/sponza.obj";
-	//const string sceneFile = "common/scenes/living_room/living_room.obj";
-	//const string sceneFile = "common/scenes/fireplace_room/fireplace_room.obj";
-	//const string sceneFile = "common/scenes/salle_de_bain/salle_de_bain.obj";
-	//const string sceneFile = "common/scenes/bedroom/bedroom.obj";
-	//const string sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
+	string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
+	sceneFile = "common/scenes/cbox/CornellBox-Sphere.obj";
+	sceneFile = "common/scenes/rungholt/rungholt.obj";
+	//sceneFile = "common/scenes/sponza/sponza.obj";
+	//sceneFile = "common/scenes/living_room/living_room.obj";
+	//sceneFile = "common/scenes/fireplace_room/fireplace_room.obj";
+	//sceneFile = "common/scenes/salle_de_bain/salle_de_bain.obj";
+	//sceneFile = "common/scenes/bedroom/bedroom.obj";
+	//sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
 
 	//const string iblFile = "common/assets/Tropical_Beach.hdr";
 	const string iblFile = "common/assets/Playa_Sunrise.exr";

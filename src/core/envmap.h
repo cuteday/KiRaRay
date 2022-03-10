@@ -35,9 +35,13 @@ public:
 	void renderUI() {
 		ui::SliderFloat("Intensity", &mData.intensity, 0, 10, "%.02f");
 		ui::SliderFloat("Rotation", &mData.rotation, 0, 1, "%.03f");
-		if(ui::CollapsingHeader("Tint color picker"))
-			ui::ColorPicker3("Tint", (float*)&mData.tint);
+		if (ui::CollapsingHeader("Tint color picker"))
+			ui::ColorEdit3("Tint", (float*)&mData.tint);
+			//ui::ColorPicker3("Tint", (float*)&mData.tint);
+		if (mData.mEnvTexture.isOnDevice())
+			ui::Checkbox("IBL", &mIBL);
 	};
+
 	bool update() {
 		bool hasChanges = false;
 		hasChanges |= mData.tint != mDataPrev.tint;
@@ -65,10 +69,9 @@ public:
 		Li = mData.tint * mData.intensity;
 
 		//cudaTextureObject_t texture = mData.mEnvTexture.getCudaTexture();
-		if (!mData.mEnvTexture.isOnDevice()) return Li;
+		if (!mIBL && mData.mEnvTexture.isOnDevice()) return Li;
 		vec2f uv = utils::worldToLatLong(wi);
 		uv.x = fmod(uv.x + mData.rotation, 1.f);
-		//vec3f env = (vec3f)tex2D<float4>(texture, uv.x, uv.y);
 		vec3f env = mData.mEnvTexture.tex(uv);
 		Li *= env;
 
@@ -77,6 +80,7 @@ public:
 
 private:
 	EnvLightData mData, mDataPrev;
+	bool mIBL{ true };
 };
 
 KRR_NAMESPACE_END

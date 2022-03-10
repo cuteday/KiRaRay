@@ -8,6 +8,11 @@ KRR_NAMESPACE_BEGIN
 class Material;
 class Light;
 
+struct Ray {
+	vec3f origin;
+	vec3f dir;
+};
+
 struct Interaction{
 	Interaction() = default;
 

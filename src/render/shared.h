@@ -28,11 +28,6 @@ namespace shader {
 		RAY_TYPE_COUNT
 	};
 
-	struct Ray {
-		vec3f origin;
-		vec3f dir;
-	};
-
 	struct ShadingFrame {
 		vec3f N;
 		vec3f T;
@@ -67,10 +62,12 @@ namespace shader {
 		vec3f specular;			// specular reflectance
 
 		vec3f transmission{ 1 };// transmission color (shared by diffuse and specular for now)
-		vec3f diffuseTransmission{ 0 };
-		vec3f specularTransmission{ 0 };
+		float diffuseTransmission{ 0 };
+		float specularTransmission{ 0 };
 
-		float roughness;		// linear roughness (alpha=roughness^2)
+		float roughness{ 1 };		// linear roughness (alpha=roughness^2)
+		float metallic{ 0 };		// 
+		float anisotropic{ 0 };		// 
 
 		Light light{ nullptr };
 		bool miss = false;		// not valid if missing, or ?

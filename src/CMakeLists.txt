@@ -106,9 +106,14 @@ SET (KRR_SOURCE
 )
 
 SET(KRR_MATERIALS
+	render/materials/bxdf.h
 	render/materials/matutils.h
+	render/materials/diffuse.h
 	render/materials/fresnel.h
 	render/materials/microfacet.h
+	render/materials/disney.h
+	render/materials/falcor.h
+	render/materials/fresnelblend.h
 )
 
 SET ( KRR_SHADERS

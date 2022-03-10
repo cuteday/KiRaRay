@@ -122,7 +122,7 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 
 		vec3f wiLocal = ls.wi;
 		vec3f wiWorld = sd.fromLocal(wiLocal);
-		//if (dot(wiWorld, sd.N) < 0) return;
+		if (dot(wiWorld, sd.N) < 0) return;
 
 		float lightPdf = ls.pdf * kSampleEnvLightPdf;
 		float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
@@ -140,7 +140,7 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 		u[0] = (u[0] - kSampleEnvLightPdf) / kSampleAreaLightPdf;
 		SampledLight sampledLight = path.lightSampler.sample(u[0]);
 		Light& light = sampledLight.light;
-		if(!light.ptr()) return;
+		assert(light);
 		LightSample ls = light.sampleLi(u, { sd.pos, sd.N });
 
 		vec3f wiWorld = normalize(ls.intr.p - sd.pos);
@@ -154,7 +154,7 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 		if (lightPdf == 0 || isnan(lightPdf) || isinf(lightPdf)) return;
 
 		vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
-		vec3f to = ls.intr.offsetRayOrigin(-wiWorld);
+		vec3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
 		Ray shadowRay = { p, to - p };
 		bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1 - kShadowEpsilon);
 	

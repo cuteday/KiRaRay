@@ -2,27 +2,35 @@
 
 #include "common.h"
 #include "math/math.h"
+#include "render/shared.h"
+
+#include "bxdf.h"
 #include "matutils.h"
+#include "fresnel.h"
 
 KRR_NAMESPACE_BEGIN
 
 using namespace bsdf;
+using namespace shader;
 
 // GGX
 class GGXMicrofacetDistribution { 
 public:
-    // GGXMicrofacetDistribution Public Methods
-    
     GGXMicrofacetDistribution() = default;
 
     __both__ inline bool isSpecular() { return max(alphax, alphay) < 1e-3f; }
 
-    __both__ static inline float RoughnessToAlpha(float roughness);
+    __both__ static inline float RoughnessToAlpha(float roughness) {
+        roughness = max(roughness, (float)1e-3);
+        float x = log(roughness);
+        return 1.62142f + 0.819955f * x + 0.1734f * x * x + 0.0171201f * x * x * x +
+            0.000640711f * x * x * x * x;
+    };
     
     __both__ void setup(float ax, float ay, bool samplevis = true){
         sampleVisibleArea = samplevis;
-        alphax = max(float(0.001), ax);
-        alphay = max(float(0.001), ay);
+        alphax = max(1e-4f, ax);
+        alphay = max(1e-4f, ay);
     }
 
     __both__ GGXMicrofacetDistribution(float alphax, float alphay,
@@ -34,48 +42,58 @@ public:
     __both__ float G1(const vec3f& w) const {
         return 1 / (1 + Lambda(w));
     }
+
     __both__ float G(const vec3f& wo, const vec3f& wi) const {
         return 1 / (1 + Lambda(wo) + Lambda(wi));
     }
-    __both__ inline float D(const vec3f& wh) const {
+
+    __both__ float D(const vec3f& wh) const {
         float tan2Theta = Tan2Theta(wh);
         if (isinf(tan2Theta)) return 0.;
         const float cos4Theta = Cos2Theta(wh) * Cos2Theta(wh);
         float e = (Cos2Phi(wh) / (alphax * alphax) + Sin2Phi(wh) / (alphay * alphay)) * tan2Theta;
-        //printf("cos2Phi: %f, sin2Phi %f, tan2Theta: %f, cos4Theta: %f\n"
-        //    "alphax: %f, alphay: %f, e : %f\n", 
-        //    Cos2Phi(wh), Sin2Phi(wh), tan2Theta, cos4Theta, alphax, alphay, e);
         return 1 / (M_PI * alphax * alphay * cos4Theta * (1 + e) * (1 + e));
     }
 
     __both__ inline vec3f Sample(const vec3f& wo, const vec2f& u) const;
-    __both__ inline float Pdf(const vec3f& wo, const vec3f& wh) const;
+    
+    __both__ float Pdf(const vec3f& wo, const vec3f& wh) const {
+        if (sampleVisibleArea)
+            return D(wh) * G1(wo) * fabs(dot(wo, wh)) / AbsCosTheta(wo);
+        else
+            return D(wh) * AbsCosTheta(wh);
+    };
 
 private:
     // GGXMicrofacetDistribution Private Methods
-    __both__ float Lambda(const vec3f& w) const;
+    __both__ inline float Lambda(const vec3f& w) const {
+        float absTanTheta = abs(TanTheta(w));
+        if (isinf(absTanTheta)) return 0.;
+        // Compute _alpha_ for direction _w_
+        float alpha =
+            sqrt(Cos2Phi(w) * alphax * alphax + Sin2Phi(w) * alphay * alphay);
+        float alpha2Tan2Theta = (alpha * absTanTheta) * (alpha * absTanTheta);
+        return (-1 + sqrt(1.f + alpha2Tan2Theta)) / 2;
+    };
 
     // GGXMicrofacetDistribution Private Data
     float alphax, alphay;
     bool sampleVisibleArea;
 };
 
-inline float GGXMicrofacetDistribution::RoughnessToAlpha(float roughness) {
-    roughness = max(roughness, (float)1e-3);
-    float x = log(roughness);
-    return 1.62142f + 0.819955f * x + 0.1734f * x * x + 0.0171201f * x * x * x +
-        0.000640711f * x * x * x * x;
-}
 
-inline float GGXMicrofacetDistribution::Lambda(const vec3f& w) const {
-    float absTanTheta = abs(TanTheta(w));
-    if (isinf(absTanTheta)) return 0.;
-    // Compute _alpha_ for direction _w_
-    float alpha =
-        sqrt(Cos2Phi(w) * alphax * alphax + Sin2Phi(w) * alphay * alphay);
-    float alpha2Tan2Theta = (alpha * absTanTheta) * (alpha * absTanTheta);
-    return (-1 + sqrt(1.f + alpha2Tan2Theta)) / 2;
-}
+class DisneyMicrofacetDistribution : public GGXMicrofacetDistribution {
+public:
+    DisneyMicrofacetDistribution() = default;
+
+    KRR_CALLABLE DisneyMicrofacetDistribution(float alphax, float alphay)
+        : GGXMicrofacetDistribution(alphax, alphay) {}
+
+    KRR_CALLABLE float G(const vec3f& wo, const vec3f& wi) const {
+        // Disney uses the separable masking-shadowing model.
+        return G1(wo) * G1(wi);
+    }
+};
 
 __both__ inline static void GGXSample11(float cosTheta, float U1, float U2,
     float* slope_x, float* slope_y) {
@@ -179,11 +197,163 @@ inline vec3f GGXMicrofacetDistribution::Sample(const vec3f& wo,
     return wh;
 }
 
-float GGXMicrofacetDistribution::Pdf(const vec3f& wo, const vec3f& wh) const {
-    if (sampleVisibleArea)
-        return D(wh) * G1(wo) * fabs(dot(wo, wh)) / AbsCosTheta(wo);
-    else
-        return D(wh) * AbsCosTheta(wh);
-}
+class MicrofacetBrdf {
+public:
+    MicrofacetBrdf() = default;
+
+    __both__ MicrofacetBrdf(const vec3f& R, float eta, float alpha_x, float alpha_y)
+        :R(R), eta(eta){
+        distribution.setup(alpha_x, alpha_y);
+    }
+
+    _DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBrdf);
+
+    __both__ void setup(const ShadingData& sd) {
+        R = sd.specular;
+        float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
+        alpha = pow2(sd.roughness);
+        eta = sd.IoR;
+        distribution.setup(alpha, alpha, true);
+    }
+
+    __both__ vec3f f(vec3f wo, vec3f wi) const {
+        float cosThetaO = AbsCosTheta(wo), cosThetaI = AbsCosTheta(wi);
+        vec3f wh = wi + wo;
+        if (cosThetaI == 0 || cosThetaO == 0) return 0;
+        if (!any(wh)) return 0;
+        wh = normalize(wh);
+
+        // fresnel is also on the microfacet (wrt to wh)
+#if KRR_USE_DISNEY
+        vec3f F = DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh));  // etaT / etaI
+#elif KRR_USE_SCHLICK_FRESNEL
+        vec3f F = FrSchlick(R, vec3f(1.f), dot(wo, wh)) / R;
+#else
+        vec3f F = FrDielectric(dot(wo, wh), eta);	// etaT / etaI
+#endif
+        return R * distribution.D(wh) * distribution.G(wo, wi) * F /
+            (4 * cosThetaI * cosThetaO);
+    }
+
+    __both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
+        BSDFSample sample = {};
+        vec3f wi, wh;
+        vec2f u = sg.get2D();
+
+        if (wo.z == 0) return sample;
+        wh = distribution.Sample(wo, u);
+        if (dot(wo, wh) < 0) return sample;
+
+        wi = Reflect(wo, wh);
+        if (!SameHemisphere(wo, wi)) return sample;
+
+        // Compute PDF of _wi_ for microfacet reflection
+        sample.f = f(wo, wi);
+        sample.wi = wi;
+        sample.pdf = distribution.Pdf(wo, wh) / (4 * dot(wo, wh));
+        return sample;
+
+    }
+
+    __both__ float pdf(vec3f wo, vec3f wi) const {
+        if (!SameHemisphere(wo, wi)) return 0;
+        vec3f wh = normalize(wo + wi);
+        return distribution.Pdf(wo, wi) / (4 * dot(wo, wh));
+    }
+
+    vec3f R{ 1 };									    // specular reflectance
+    float eta{ 1.5 };									// 
+
+#if KRR_USE_DISNEY
+    vec3f disneyR0;
+    float metallic;
+    DisneyMicrofacetDistribution distribution;          // separable masking shadow model for disney
+#else
+    GGXMicrofacetDistribution distribution;
+#endif
+};
+
+// Microfacet transmission, for dielectric only now.
+class MicrofacetBtdf {
+public:
+    MicrofacetBtdf() = default;
+
+    __both__ MicrofacetBtdf(const vec3f& T, float etaA, float etaB, float alpha_x, float alpha_y)
+        :T(T), etaA(etaA), etaB(etaB) {
+        distribution.setup(alpha_x, alpha_y, true);
+    }
+
+    _DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBtdf);
+
+    __both__ void setup(const ShadingData& sd) {
+        T = sd.transmission;
+        float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
+        alpha = pow2(sd.roughness);
+        // TODO: ETA=1 causes NaN, should switch to delta scattering
+        etaA = 1; etaB = max(1.01f, sd.IoR);
+        etaB = 1.1;
+        distribution.setup(alpha, alpha, true);
+    }
+
+    __both__ vec3f f(vec3f wo, vec3f wi) const {
+        if (SameHemisphere(wo, wi)) return 0;
+
+        float cosThetaO = wo.z, cosThetaI = wi.z;
+        if (cosThetaI == 0 || cosThetaO == 0) return 0;
+
+        // Compute $\wh$ from $\wo$ and $\wi$ for microfacet transmission
+        float eta = CosTheta(wo) > 0 ? etaB / etaA : etaA / etaB;
+        vec3f wh = normalize(wo + wi * eta);
+        if (wh.z < 0) wh = -wh;
+
+        // Same side?
+        if (dot(wo, wh) * dot(wi, wh) > 0) return 0;
+        vec3f F = FrDielectric(dot(wo, wh), etaB / etaA);
+
+        float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
+        float factor = 1.f / eta;
+
+        return (vec3f(1) - F) * T *
+            fabs(distribution.D(wh) * distribution.G(wo, wi) * eta * eta *
+                AbsDot(wi, wh) * AbsDot(wo, wh) * factor * factor /
+                (cosThetaI * cosThetaO * sqrtDenom * sqrtDenom));
+    }
+
+    __both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
+        BSDFSample sample = {};
+        if (wo.z == 0) return sample;
+
+        vec2f u = sg.get2D();
+        vec3f wh = distribution.Sample(wo, u);
+        if (dot(wo, wh) < 0)
+            return sample;  // Should be rare
+
+        float eta = CosTheta(wo) > 0 ? etaA / etaB : etaB / etaA;
+        if (!Refract(wo, wh, eta, &sample.wi)) return sample;   // etaI / etaT
+
+        sample.pdf = pdf(wo, sample.wi);
+        sample.f = f(wo, sample.wi);
+        return sample;
+    }
+
+    __both__ float pdf(vec3f wo, vec3f wi) const {
+        if (SameHemisphere(wo, wi)) return 0;
+        float eta = CosTheta(wo) > 0 ? etaB / etaA : etaA / etaB;	// wo is outside?
+        // wh = wo + eta * wi, eta = etaI / etaT
+        vec3f wh = normalize(wo + wi * eta);	// eta=etaI/etaT
+
+        if (dot(wo, wh) * dot(wi, wh) > 0) return 0;
+        // Compute change of variables _dwh\_dwi_ for microfacet transmission
+        float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
+        float dwh_dwi = fabs((eta * eta * dot(wi, wh)) / (sqrtDenom * sqrtDenom));
+        float pdf = distribution.Pdf(wo, wh);
+        //printf("wh pdf: %.6f, dwh_dwi: %.6f\n", pdf, dwh_dwi);
+        return pdf * dwh_dwi;
+    }
+
+    vec3f T{ 0 };									// specular reflectance
+    float etaA{ 1 }, etaB{ 1.5 }				/* etaA: outside IoR, etaB: inside IoR */;
+    GGXMicrofacetDistribution distribution;
+};
 
 KRR_NAMESPACE_END
