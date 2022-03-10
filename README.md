@@ -19,6 +19,7 @@
 
 If possible, more features will be added in the future, for example:
 
+- Spectrum rendering.
 - More BSDFs and light sources.
 - Mesh instancing and scene animations.
 - Importer for gltf, pbrt or mitsuba scenes.
@@ -70,6 +71,11 @@ But actually i'm like \***sleeps all the time**\*:
 </details>
 
 ### Galleries
+
+#### Cornell box
+
+<p align=center>
+<img src=common/demo/cbox.jpg width="700">
 
 #### Salle de bain
 

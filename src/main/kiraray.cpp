@@ -22,17 +22,17 @@ extern "C" int main(int argc, char* argv[]) {
 #endif
 
 	string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
-	sceneFile = "common/scenes/cbox/CornellBox-Sphere.obj";
-	sceneFile = "common/scenes/rungholt/rungholt.obj";
+	//sceneFile = "common/scenes/cbox/CornellBox-Sphere.obj";
+	//sceneFile = "common/scenes/rungholt/rungholt.obj";
 	//sceneFile = "common/scenes/sponza/sponza.obj";
 	//sceneFile = "common/scenes/living_room/living_room.obj";
 	//sceneFile = "common/scenes/fireplace_room/fireplace_room.obj";
 	//sceneFile = "common/scenes/salle_de_bain/salle_de_bain.obj";
-	//sceneFile = "common/scenes/bedroom/bedroom.obj";
+	//sceneFile = "common/scenes/bedroom/iscv2.obj";
 	//sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
 
 	//const string iblFile = "common/assets/Tropical_Beach.hdr";
-	const string iblFile = "common/assets/Playa_Sunrise.exr";
+	//const string iblFile = "common/assets/Playa_Sunrise.exr";
 	//const string iblFile = "common/assets/Mono_Lake_B.hdr";
 	//const string iblFile = "common/assets/Ridgecrest_Road.hdr";
 

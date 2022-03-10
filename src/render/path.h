@@ -45,16 +45,16 @@ struct LaunchParamsPT
 {
 	uint frameID{ 0 };
 	vec2i fbSize = 0;
-	// debugging output
+	// per pixel debugging output
 	bool debugOutput = false;
 	vec2i debugPixel = { 960, 540 };
 	// path tracing parameters
 	bool RR = true;				// enable russian roulette
 	bool NEE = false;			// enable next event estimation
 	bool MIS = false;			// enable multiple importance sample
-	int maxDepth = 20;
+	int maxDepth = 15;
 	float probRR = 0.15;
-	vec3f clampThreshold = 100;
+	vec3f clampThreshold = 100;	// clamp max radiance contrib per frame
 	int spp = 1;
 	// scene 
 	Camera camera;
