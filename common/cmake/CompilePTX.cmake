@@ -54,9 +54,7 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name)
 	target_compile_definitions ("${lib_name}" PRIVATE ${KRR_DEFINITIONS})
 	endif ()
 	target_include_directories ("${lib_name}" PRIVATE 
-		${KRR_PROJECT_ROOT}/src 
-		${KRR_PROJECT_ROOT}/src/core
-		${KRR_PROJECT_ROOT}/src/shaders
+		${KRR_INCLUDE_ALL}
 		${CMAKE_BINARY_DIR}
 	)
 	target_link_libraries("${lib_name}" PRIVATE krr_cuda_cfg)

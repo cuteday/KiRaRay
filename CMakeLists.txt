@@ -5,7 +5,7 @@ PROJECT (KiRaRay
 	LANGUAGES C CXX CUDA
 )
 SET (CMAKE_EXPORT_COMPILE_COMMANDS ON)
-SET(KRR_PROJECT_ROOT ${CMAKE_SOURCE_DIR})
+SET(KRR_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 ###############################################################################
 # Build type and C++ compiler setup
@@ -102,7 +102,7 @@ endif()
 ###############################################################################
 # other dependencies
 ###############################################################################
-INCLUDE (common/cmake/FindOptiX.cmake)
+INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/FindOptiX.cmake)
 find_package(OpenGL REQUIRED)
 
 ADD_SUBDIRECTORY (src)
