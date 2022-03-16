@@ -59,7 +59,6 @@ struct LaunchParamsPT
 	int lightSamples = 1;
 	// scene 
 	Camera camera;
-	EnvLight envLight;
 	LightSampler lightSampler;
 	Scene::SceneData sceneData;
 

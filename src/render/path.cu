@@ -11,8 +11,6 @@ KRR_NAMESPACE_BEGIN
 
 namespace path {
 	constexpr float kShadowEpsilon = 1e-4f;
-	constexpr float kSampleEnvLightPdf = 0;
-	constexpr float kSampleAreaLightPdf = 1 - kSampleEnvLightPdf;
 }
 
 using namespace path;
@@ -58,8 +56,7 @@ KRR_DEVICE_FUNCTION bool traceShadowRay(OptixTraversableHandle traversable,
 	OptixRayFlags flags = (OptixRayFlags)(OPTIX_RAY_FLAG_DISABLE_ANYHIT);
 	uint u0, u1;
 	packPointer(&sd, u0, u1);
-	traceRay(traversable, ray, tMax, (int)SHADOW_RAY_TYPE,
-		flags, u0, u1);
+	traceRay(traversable, ray, tMax, (int)SHADOW_RAY_TYPE, flags, u0, u1);
 	return sd.visible;
 }
 
@@ -80,9 +77,7 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 	if (launchParams.NEE) {
 		LightSampleContext ctx = { path.pos, };
 		float bsdfPdf = path.pdf;
-		float lightChoosePdf = path.lightSampler.pdf(light);
-		float lightSamplePdf = light.pdfLi(intr, ctx);
-		float lightPdf = lightChoosePdf * lightSamplePdf * kSampleAreaLightPdf;
+		float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(light);
 		if (launchParams.MIS) weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
 		print("NEE bsdf sampled diffuse area bsdfPdf: %.5f lightPdf: %.5f weight: %.5f\n",
 			bsdfPdf, lightPdf, weight);
@@ -93,11 +88,14 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 	vec3f wi = normalize(path.dir);
 
+	LightSampleContext ctx = { sd.pos, sd.N };
+	Interaction intr(sd.pos);
+
 	for (InfiniteLight& light : launchParams.sceneData.infiniteLights) {
 		float weight = 1.f;
 		if (path.depth&&launchParams.NEE) {
 			float bsdfPdf = path.pdf;
-			float lightPdf = launchParams.lightSampler.pdf(&light) * kSampleEnvLightPdf;
+			float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(&light);
 			if (launchParams.MIS) weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
 		}
 		path.L += path.throughput * weight * light.Li(wi);
@@ -105,64 +103,38 @@ KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 }
 
 KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path, Ray& shadowRay) {
-	
-	uint lightSpp = launchParams.lightSamples;
+
 	vec2f u = path.sampler.get2D();
 	vec3f woLocal = sd.toLocal(sd.wo);
 
-	//if (u[0] < kSampleEnvLightPdf) {
-	//	u[0] /= kSampleEnvLightPdf;
-	//	EnvLightSample ls = launchParams.envLight.sample(u);
+	SampledLight sampledLight = path.lightSampler.sample(u[0]);
+	Light& light = sampledLight.light;
+	assert(light);
+	LightSample ls = light.sampleLi(u, { sd.pos, sd.N });
 
-	//	vec3f wiLocal = ls.wi;
-	//	vec3f wiWorld = sd.fromLocal(wiLocal);
-	//	if (dot(wiWorld, sd.N) < 0) return;
+	vec3f wiWorld = normalize(ls.intr.p - sd.pos);
+	vec3f wiLocal = sd.toLocal(wiWorld);
 
-	//	float lightPdf = ls.pdf * kSampleEnvLightPdf;
-	//	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
-	//	vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
-	//	float misWeight = 1; 
-	//	if ( launchParams.MIS ) misWeight = evalMIS(lightSpp, lightPdf, 1, bsdfPdf);
+	float lightPdf = sampledLight.pdf * ls.pdf;
+	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
+	vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
+	float misWeight = 1;
 
-	//	vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
+	if (launchParams.MIS) misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
+	if (lightPdf == 0 || isnan(lightPdf) || isinf(lightPdf)) return;
 
-	//	shadowRay = { p, wiWorld * 1e9f };
-	//	bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1 - kShadowEpsilon);
-	//	if (visible) path.L += path.throughput * bsdfVal * misWeight / (lightSpp * lightPdf) * ls.L;
-	//}
-	//else {
-	//	u[0] = (u[0] - kSampleEnvLightPdf) / kSampleAreaLightPdf;
-		SampledLight sampledLight = path.lightSampler.sample(u[0]);
-		Light& light = sampledLight.light;
-		assert(light);
-		LightSample ls = light.sampleLi(u, { sd.pos, sd.N });
+	vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
+	vec3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
 
-		vec3f wiWorld = normalize(ls.intr.p - sd.pos);
-		vec3f wiLocal = sd.toLocal(wiWorld);
-
-		//float lightPdf = sampledLight.pdf * ls.pdf * kSampleAreaLightPdf;
-		float lightPdf = sampledLight.pdf * ls.pdf;
-		float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
-		vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
-		float misWeight = 1;
-
-		if (launchParams.MIS) misWeight = evalMIS(lightSpp, lightPdf, 1, bsdfPdf);
-		if (lightPdf == 0 || isnan(lightPdf) || isinf(lightPdf)) return;
-
-		vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
-		vec3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
-
-		shadowRay = { p, to - p };
-		bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1 - kShadowEpsilon);
-		if (visible) path.L += path.throughput * bsdfVal * misWeight / (lightSpp * lightPdf) * ls.L;
-	//}
+	shadowRay = { p, to - p };
+	bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1 - kShadowEpsilon);
+	if (visible) path.L += path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
 }
 
 KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 	for (int i = 0; i < launchParams.lightSamples; i++) {
 		Ray shadowRay = {};
 		generateShadowRay(sd, path, shadowRay);
-		//bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1 - kShadowEpsilon);
 	}
 }
 

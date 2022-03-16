@@ -137,7 +137,7 @@ private:
 
 };
 
-class Light :public TaggedPointer<DiffuseAreaLight> {
+class Light :public TaggedPointer<DiffuseAreaLight, InfiniteLight> {
 public:
 	using TaggedPointer::TaggedPointer;
 

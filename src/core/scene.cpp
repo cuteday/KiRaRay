@@ -9,7 +9,6 @@ KRR_NAMESPACE_BEGIN
 
 Scene::Scene() {
 	// other components
-	//mpEnvLight = EnvLight::SharedPtr(new EnvLight());
 	mpCamera = Camera::SharedPtr(new Camera());
 	mpCameraController = OrbitCameraController::SharedPtr(new OrbitCameraController(mpCamera));
 }
@@ -19,24 +18,18 @@ bool Scene::update()
 	bool hasChanges = false;
 	if (mpCameraController) hasChanges |= mpCameraController->update();
 	if (mpCamera) hasChanges |= mpCamera->update();
-	//if (mpEnvLight) hasChanges |= mpEnvLight->update();
 	return mHasChanges = hasChanges;
 }
 
 void Scene::renderUI() {
-	
 	if (ui::CollapsingHeader("Scene")) {
 		if (mpCamera && ui::CollapsingHeader("Camera")) {
 			mpCamera->renderUI();
 		}
-		//if (mpEnvLight && ui::CollapsingHeader("Environment")) {
-		//	mpEnvLight->renderUI();
-		//}
 		if (mData.infiniteLights.size() && ui::CollapsingHeader("Infinite Lights")) {
 			for (int i = 0; i < mData.infiniteLights.size(); i++) {
 				if (ui::CollapsingHeader(to_string(i).c_str())) {
 					InfiniteLight& light = mData.infiniteLights[i];
-					//InfiniteLight* light = (InfiniteLight*)(mData.lights.back().ptr());
 					light.renderUI();
 				}
 			}
@@ -80,10 +73,10 @@ void Scene::processLights()
 	}
 	for (Mesh& mesh : meshes) {
 		for (DiffuseAreaLight& light : mesh.lights)
-			mData.lights.push_back(&light);
+			mData.lights.push_back(Light(&light));
 	}
-	//for (InfiniteLight& light : mData.infiniteLights)
-	//	mData.lights.push_back(&light);
+	for (InfiniteLight& light : mData.infiniteLights)
+		mData.lights.push_back(&light);
 	logInfo("A total of " + to_string(mData.lights.size()) + " light(s) processed!");
 	mData.lightSampler = UniformLightSampler((inter::span<Light>)mData.lights);
 }
