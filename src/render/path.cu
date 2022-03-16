@@ -10,9 +10,8 @@ using namespace krr;	// this is needed or nvcc can't recognize the launchParams 
 KRR_NAMESPACE_BEGIN
 
 namespace path {
-	constexpr float kMaxDistance = 1e9f;
 	constexpr float kShadowEpsilon = 1e-4f;
-	constexpr float kSampleEnvLightPdf = 0.2f;
+	constexpr float kSampleEnvLightPdf = 0;
 	constexpr float kSampleAreaLightPdf = 1 - kSampleEnvLightPdf;
 }
 
@@ -84,7 +83,7 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 		float lightChoosePdf = path.lightSampler.pdf(light);
 		float lightSamplePdf = light.pdfLi(intr, ctx);
 		float lightPdf = lightChoosePdf * lightSamplePdf * kSampleAreaLightPdf;
-		weight = evalMIS(bsdfPdf, lightPdf);
+		if (launchParams.MIS) weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
 		print("NEE bsdf sampled diffuse area bsdfPdf: %.5f lightPdf: %.5f weight: %.5f\n",
 			bsdfPdf, lightPdf, weight);
 	}
@@ -93,51 +92,46 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 
 KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 	vec3f wi = normalize(path.dir);
-	vec3f Li = launchParams.envLight.eval(wi);
 
-	if (path.depth == 0) {
-		// emission at primary vertex
-		path.L = Li;
-		return;
+	for (InfiniteLight& light : launchParams.sceneData.infiniteLights) {
+		float weight = 1.f;
+		if (path.depth&&launchParams.NEE) {
+			float bsdfPdf = path.pdf;
+			float lightPdf = launchParams.lightSampler.pdf(&light) * kSampleEnvLightPdf;
+			if (launchParams.MIS) weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
+		}
+		path.L += path.throughput * weight * light.Li(wi);
 	}
-
-	float weight = 1.f; 
-	if (launchParams.NEE) {
-		float bsdfPdf = path.pdf;
-		float lightPdf = launchParams.envLight.pdf(wi) * kSampleEnvLightPdf;
-		weight = evalMIS(bsdfPdf, lightPdf);
-	}
-	path.L += Li * weight * path.throughput;
 }
 
-KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
-	// currently evaluate environment map only.
+KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path, Ray& shadowRay) {
 	
+	uint lightSpp = launchParams.lightSamples;
 	vec2f u = path.sampler.get2D();
 	vec3f woLocal = sd.toLocal(sd.wo);
 
-	if (u[0] < kSampleEnvLightPdf) {
-		u[0] /= kSampleEnvLightPdf;
-		EnvLightSample ls = launchParams.envLight.sample(u);
+	//if (u[0] < kSampleEnvLightPdf) {
+	//	u[0] /= kSampleEnvLightPdf;
+	//	EnvLightSample ls = launchParams.envLight.sample(u);
 
-		vec3f wiLocal = ls.wi;
-		vec3f wiWorld = sd.fromLocal(wiLocal);
-		if (dot(wiWorld, sd.N) < 0) return;
+	//	vec3f wiLocal = ls.wi;
+	//	vec3f wiWorld = sd.fromLocal(wiLocal);
+	//	if (dot(wiWorld, sd.N) < 0) return;
 
-		float lightPdf = ls.pdf * kSampleEnvLightPdf;
-		float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
-		vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
-		float misWeight = evalMIS(lightPdf, bsdfPdf);
+	//	float lightPdf = ls.pdf * kSampleEnvLightPdf;
+	//	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
+	//	vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
+	//	float misWeight = 1; 
+	//	if ( launchParams.MIS ) misWeight = evalMIS(lightSpp, lightPdf, 1, bsdfPdf);
 
-		vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
-		Ray shadowRay = { p, wiWorld };
-		bool visible = traceShadowRay(launchParams.traversable, shadowRay, kMaxDistance);
+	//	vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
 
-		if (visible)
-			path.L += path.throughput * bsdfVal * misWeight / lightPdf * ls.L;
-	}
-	else {
-		u[0] = (u[0] - kSampleEnvLightPdf) / kSampleAreaLightPdf;
+	//	shadowRay = { p, wiWorld * 1e9f };
+	//	bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1 - kShadowEpsilon);
+	//	if (visible) path.L += path.throughput * bsdfVal * misWeight / (lightSpp * lightPdf) * ls.L;
+	//}
+	//else {
+	//	u[0] = (u[0] - kSampleEnvLightPdf) / kSampleAreaLightPdf;
 		SampledLight sampledLight = path.lightSampler.sample(u[0]);
 		Light& light = sampledLight.light;
 		assert(light);
@@ -146,24 +140,33 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 		vec3f wiWorld = normalize(ls.intr.p - sd.pos);
 		vec3f wiLocal = sd.toLocal(wiWorld);
 
-		float lightPdf = sampledLight.pdf * ls.pdf * kSampleAreaLightPdf;
+		//float lightPdf = sampledLight.pdf * ls.pdf * kSampleAreaLightPdf;
+		float lightPdf = sampledLight.pdf * ls.pdf;
 		float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
 		vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
-		float misWeight = evalMIS(lightPdf, bsdfPdf);
+		float misWeight = 1;
 
+		if (launchParams.MIS) misWeight = evalMIS(lightSpp, lightPdf, 1, bsdfPdf);
 		if (lightPdf == 0 || isnan(lightPdf) || isinf(lightPdf)) return;
 
 		vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
 		vec3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
-		Ray shadowRay = { p, to - p };
+
+		shadowRay = { p, to - p };
 		bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1 - kShadowEpsilon);
-	
-		if (visible)
-			path.L += path.throughput * bsdfVal * misWeight / lightPdf * ls.L;
+		if (visible) path.L += path.throughput * bsdfVal * misWeight / (lightSpp * lightPdf) * ls.L;
+	//}
+}
+
+KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
+	for (int i = 0; i < launchParams.lightSamples; i++) {
+		Ray shadowRay = {};
+		generateShadowRay(sd, path, shadowRay);
+		//bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1 - kShadowEpsilon);
 	}
 }
 
-KRR_DEVICE_FUNCTION bool generateScatter(const ShadingData& sd, PathData& path) {
+KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& path) {
 	BSDFSample sample = {};
 
 	// how to eliminate branches here to improve performance?
@@ -243,12 +246,14 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 		if (launchParams.NEE) {
 			evalDirect(sd, path);
 		}
+
 		if (launchParams.RR) {
 			float u = path.sampler.get1D();
 			if (u < launchParams.probRR) break;
 			path.throughput /= 1 - launchParams.probRR;
 		}
-		if (!generateScatter(sd, path)) break;
+
+		if (!generateScatterRay(sd, path)) break;
 	}
 	path.L = clamp(path.L, vec3f(0), launchParams.clampThreshold);
 }

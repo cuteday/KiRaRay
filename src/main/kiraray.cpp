@@ -25,15 +25,16 @@ extern "C" int main(int argc, char* argv[]) {
 	//sceneFile = "common/scenes/cbox/CornellBox-Sphere.obj";
 	//sceneFile = "common/scenes/rungholt/rungholt.obj";
 	//sceneFile = "common/scenes/sponza/sponza.obj";
-	//sceneFile = "common/scenes/living_room/living_room.obj";
 	//sceneFile = "common/scenes/fireplace_room/fireplace_room.obj";
 	//sceneFile = "common/scenes/salle_de_bain/salle_de_bain.obj";
 	//sceneFile = "common/scenes/bedroom/iscv2.obj";
 	//sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
+	//sceneFile = "common/scenes/vokselia_spawn/vokselia_spawn.obj";
+
 
 	string iblFile = "common/assets/snowwhite.jpg";
 	//iblFile = "common/assets/Tropical_Beach.hdr";
-	//iblFile = "common/assets/Playa_Sunrise.exr";
+	iblFile = "common/assets/Playa_Sunrise.exr";
 	//iblFile = "common/assets/Mono_Lake_B.hdr";
 	//iblFile = "common/assets/Ridgecrest_Road.hdr";
 
@@ -44,7 +45,8 @@ extern "C" int main(int argc, char* argv[]) {
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 });
 
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
-		scene->getEnvLight()->setImage(iblFile);
+		//scene->getEnvLight()->setImage(iblFile);
+		scene->addInfiniteLight(InfiniteLight(iblFile));
 		AssimpImporter importer;
 		importer.import(sceneFile, scene);
 		app.setScene(scene);

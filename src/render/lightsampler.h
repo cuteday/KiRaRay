@@ -25,9 +25,12 @@ public:
 	KRR_CALLABLE SampledLight sample(float u)const {
 		SampledLight sl = {};
 		uint sampleId = u * mLights.size();
+		DCHECK(sampleId < mLights.size());
 		sl.light = mLights[sampleId];
 		sl.pdf = 1.f / mLights.size();
 		//DCHECK(0 <= sampleId && sampleId < mLights.size());
+		//printf("%lld\n", mLights[0].ptr());
+
 		DCHECK(sl.light.ptr());
 		return sl;
 	}

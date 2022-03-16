@@ -26,7 +26,7 @@
     if( res != OPTIX_SUCCESS )                                          \
       {                                                                 \
         fprintf( stderr, "Optix call (%s) failed with code %d (line %d)\n", #call, res, __LINE__ ); \
-        exit( 2 );                                                      \
+        throw std::runtime_error("OptiX check failed");                                                           \
       }                                                                 \
   }
 
@@ -37,6 +37,6 @@
     if( error != cudaSuccess )                                          \
       {                                                                 \
         fprintf( stderr, "error (%s: line %d): %s\n", __FILE__, __LINE__, cudaGetErrorString( error ) ); \
-        exit( 2 );                                                      \
+        throw std::runtime_error("CUDA synchronized check failed");                                                           \
       }                                                                 \
   }

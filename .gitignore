@@ -43,6 +43,6 @@ out
 
 # Assets and resource data
 common/scenes
-#common/assets
+common/assets
 common/images
 imgui.ini

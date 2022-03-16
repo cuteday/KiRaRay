@@ -39,7 +39,7 @@ public:
 	void setScene(Scene::SharedPtr scene) override {
 		mpScene = scene;
 		mpScene->toDevice();
-		mpScene->processMeshLights();
+		//mpScene->processMeshLights();
 		buildAS();
 		buildSBT();
 		logSuccess("Scene set...");

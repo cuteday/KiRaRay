@@ -325,14 +325,16 @@ bool PathTracer::onMouseEvent(const MouseEvent& mouseEvent)
 
 void PathTracer::renderUI() {
 	if (ui::CollapsingHeader("Path tracer")) {
-		
 		ui::Text("Path tracing parameters");
 		ui::InputInt("Sample per pixel", &launchParams.spp);
 		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
-		ui::SliderInt("Max recursion depth", &launchParams.maxDepth, 1, 100, "%d");
+		ui::SliderInt("Max recursion depth", &launchParams.maxDepth, 0, 20);
 		if (mpScene->mData.lights.size() > 0)	// only when we have light sources...
 			ui::Checkbox("Next event estimation", &launchParams.NEE);
-		
+		if (launchParams.NEE) {
+			ui::Checkbox("Multiple importance sampling", &launchParams.MIS);
+			ui::InputInt("Light sample count", &launchParams.lightSamples);
+		}
 		ui::Text("Debugging");
 		ui::Checkbox("Shader debug output", &launchParams.debugOutput);
 		ui::InputInt2("Debug pixel", (int*)&launchParams.debugPixel);
@@ -349,7 +351,7 @@ void PathTracer::render(CUDABuffer& frame)
 	launchParams.fbSize = mFrameSize;
 	launchParams.colorBuffer = (vec4f*)frame.data();
 	memcpy(&launchParams.camera, mpScene->getCamera().get(), sizeof(Camera));
-	memcpy(&launchParams.envLight, mpScene->getEnvLight().get(), sizeof(EnvLight));
+	//memcpy(&launchParams.envLight, mpScene->getEnvLight().get(), sizeof(EnvLight));
 	launchParams.sceneData = mpScene->getSceneData();
 	launchParams.frameID++;
 	launchParamsBuffer.copy_from_host(&launchParams, 1);

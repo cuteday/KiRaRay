@@ -1,3 +1,4 @@
+// This file is deprecated, EnvLight is moved to InfiniteLight, and will be deleted in the future.
 #pragma once
 
 #include "common.h"
@@ -39,7 +40,7 @@ public:
 		//ui::ColorPicker3("Tint", (float*)&mData.tint);
 		if (mData.mEnvTexture.isOnDevice())
 			ui::Checkbox("IBL", &mIBL);
-	};
+	}
 
 	bool update() {
 		bool hasChanges = false;

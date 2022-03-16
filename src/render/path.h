@@ -51,11 +51,12 @@ struct LaunchParamsPT
 	// path tracing parameters
 	bool RR = true;				// enable russian roulette
 	bool NEE = false;			// enable next event estimation
-	bool MIS = false;			// enable multiple importance sample
+	bool MIS = true;			// enable multiple importance sample. if disable but NEE enabled, "some type" of lights (i.e. area lights and env lights) will be counted twice.
 	int maxDepth = 15;
 	float probRR = 0.15;
 	vec3f clampThreshold = 100;	// clamp max radiance contrib per frame
 	int spp = 1;
+	int lightSamples = 1;
 	// scene 
 	Camera camera;
 	EnvLight envLight;

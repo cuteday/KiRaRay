@@ -32,6 +32,7 @@ public:
 		inter::vector<Material> materials;
 		inter::vector<MeshData> meshes;
 		inter::vector<Light> lights;
+		inter::vector<InfiniteLight> infiniteLights;
 
 		UniformLightSampler lightSampler;
 	};
@@ -47,15 +48,21 @@ public:
 	void renderUI();
 	void toDevice();
 
-	void processMeshLights();
+	void processLights();
 
 	Camera::SharedPtr getCamera() { return mpCamera; }
 	CameraController::SharedPtr getCameraController() { return mpCameraController; }
-	EnvLight::SharedPtr getEnvLight() { return mpEnvLight; }
+	//EnvLight::SharedPtr getEnvLight() { return mpEnvLight; }
 
 	void setCamera(Camera::SharedPtr camera) { mpCamera = camera; }
 	void setCameraController(CameraController::SharedPtr cameraController) { mpCameraController = cameraController; }
-	void setEnvLight(EnvLight::SharedPtr envLight) { mpEnvLight = envLight; }
+	//void setEnvLight(EnvLight::SharedPtr envLight) { mpEnvLight = envLight; }
+	void addInfiniteLight(const InfiniteLight& infiniteLight) { 
+		mData.infiniteLights.push_back(infiniteLight); 
+		//mData.lights.push_back(&mData.infiniteLights.back());
+		processLights();
+	}
+
 	SceneData getSceneData() { return mData; }
 
 private:
@@ -64,7 +71,7 @@ private:
 
 	std::vector<Mesh> meshes;
 	SceneData mData;
-	EnvLight::SharedPtr mpEnvLight;
+	//EnvLight::SharedPtr mpEnvLight;
 	Camera::SharedPtr mpCamera;
 	CameraController::SharedPtr mpCameraController;
 	bool mHasChanges = false;

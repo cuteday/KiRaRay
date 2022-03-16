@@ -9,7 +9,7 @@ KRR_NAMESPACE_BEGIN
 
 Scene::Scene() {
 	// other components
-	mpEnvLight = EnvLight::SharedPtr(new EnvLight());
+	//mpEnvLight = EnvLight::SharedPtr(new EnvLight());
 	mpCamera = Camera::SharedPtr(new Camera());
 	mpCameraController = OrbitCameraController::SharedPtr(new OrbitCameraController(mpCamera));
 }
@@ -17,9 +17,9 @@ Scene::Scene() {
 bool Scene::update()
 {
 	bool hasChanges = false;
-	hasChanges |= mpCameraController->update();   
-	hasChanges |= mpCamera->update();
-	hasChanges |= mpEnvLight->update();
+	if (mpCameraController) hasChanges |= mpCameraController->update();
+	if (mpCamera) hasChanges |= mpCamera->update();
+	//if (mpEnvLight) hasChanges |= mpEnvLight->update();
 	return mHasChanges = hasChanges;
 }
 
@@ -29,32 +29,40 @@ void Scene::renderUI() {
 		if (mpCamera && ui::CollapsingHeader("Camera")) {
 			mpCamera->renderUI();
 		}
-		if (mpEnvLight && ui::CollapsingHeader("Environment")) {
-			mpEnvLight->renderUI();
+		//if (mpEnvLight && ui::CollapsingHeader("Environment")) {
+		//	mpEnvLight->renderUI();
+		//}
+		if (mData.infiniteLights.size() && ui::CollapsingHeader("Infinite Lights")) {
+			for (int i = 0; i < mData.infiniteLights.size(); i++) {
+				if (ui::CollapsingHeader(to_string(i).c_str())) {
+					InfiniteLight& light = mData.infiniteLights[i];
+					//InfiniteLight* light = (InfiniteLight*)(mData.lights.back().ptr());
+					light.renderUI();
+				}
+			}
 		}
 	}
 }
 
 void Scene::toDevice()
 {
-	//for (Material& material : mData.materials)
-	//	material.toDevice();
 	mData.meshes.clear();
 	for (Mesh& mesh : meshes) {
 		mesh.toDevice();
 		mData.meshes.push_back(mesh.mData);
 	}
+	processLights();
 }
 
-void Scene::processMeshLights()
+void Scene::processLights()
 {
 	// This function should be called AFTER all scene data are moved to device
+	mData.lights.clear();
 	uint nMeshes = meshes.size();
 	for (uint meshId = 0; meshId < nMeshes; meshId++) {
 		Mesh& mesh = meshes[meshId];
 		Material& material = mData.materials[mesh.materialId];
 		if (material.hasEmission()) {
-			//if (mesh.indices.size() > 2) continue;
 			logDebug("Emissive diffuse area light detected,"
 				" number of shapes: " + to_string(mesh.indices.size()) +
 				" constant emission(?) "+ to_string(length(material.mMaterialParams.emissive)));
@@ -63,15 +71,20 @@ void Scene::processMeshLights()
 			for (Triangle& tri : mesh.emissiveTriangles) {
 				vec3f Le = material.mMaterialParams.emissive;
 				Texture& texture = material.getTexture(Material::TextureType::Emissive);
-				//DiffuseAreaLight light(Shape(&tri), texture, Le, true, 1.f);
 				mesh.lights.push_back(DiffuseAreaLight(Shape(&tri), texture, Le, true, 1.f));
-				mData.lights.push_back(&mesh.lights.back());
+				//mData.lights.push_back(&mesh.lights.back());
 			}
 			mesh.mData.lights = mesh.lights.data();
 			mData.meshes[meshId] = mesh.mData;
 		}
 	}
-	logDebug("Total " + to_string(mData.lights.size()) + " area lights processed!");
+	for (Mesh& mesh : meshes) {
+		for (DiffuseAreaLight& light : mesh.lights)
+			mData.lights.push_back(&light);
+	}
+	//for (InfiniteLight& light : mData.infiniteLights)
+	//	mData.lights.push_back(&light);
+	logInfo("A total of " + to_string(mData.lights.size()) + " light(s) processed!");
 	mData.lightSampler = UniformLightSampler((inter::span<Light>)mData.lights);
 }
 
