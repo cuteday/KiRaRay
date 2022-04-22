@@ -2,10 +2,9 @@
 
 #include "math/math.h"
 #include "sampler.h"
-#include "lightsampler.h"
+#include "render/lightsampler.h"
 #include "scene.h"
-//#include "shared.h"
-#include "bsdf.h"
+#include "render/bsdf.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -52,7 +51,7 @@ struct LaunchParamsPT
 	bool RR = true;				// enable russian roulette
 	bool NEE = false;			// enable next event estimation
 	bool MIS = true;			// enable multiple importance sample. if disable but NEE enabled, "some type" of lights (i.e. area lights and env lights) will be counted twice.
-	int maxDepth = 15;
+	int maxDepth = 10;
 	float probRR = 0.15;
 	vec3f clampThreshold = 100;	// clamp max radiance contrib per frame
 	int spp = 1;

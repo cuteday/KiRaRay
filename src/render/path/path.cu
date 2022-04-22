@@ -1,7 +1,7 @@
 #include "math/utils.h"
 #include "path.h"
-#include "shared.h"
-#include "shading.h"
+#include "render/shared.h"
+#include "render/shading.h"
 
 #include <optix_device.h>
 

@@ -1,31 +1,32 @@
 #include <optix_function_table_definition.h>
 #include <optix_types.h>
 
-#include "renderer.h"
+#include "device/cuda.h"
+#include "pathtracer.h"
 
 KRR_NAMESPACE_BEGIN
 
-extern "C" char PTX_CODE[];
+extern "C" char PATHTRACER_PTX[];
 
 PathTracer::PathTracer()
 {
-	logInfo("#krr: setting up module ...");
+	logInfo("setting up module ...");
 	createModule();
 
-	logInfo("#krr: creating raygen programs ...");
+	logInfo("creating raygen programs ...");
 	createRaygenPrograms();
-	logInfo("#krr: creating miss programs ...");
+	logInfo("creating miss programs ...");
 	createMissPrograms();
 
-	logInfo("#krr: creating hitgroup programs ...");
+	logInfo("creating hitgroup programs ...");
 	createHitgroupPrograms();
 
-	logInfo("#krr: setting up optix pipeline ...");
+	logInfo("setting up optix pipeline ...");
 	createPipeline();
 	
 	launchParamsBuffer.resize(sizeof(launchParams));
 
-	logInfo("#krr: context, module, pipeline, etc, all set up ...");
+	logInfo("context, module, pipeline, etc, all set up ...");
 	logSuccess("PathTracer::Optix 7 context fully set up");
 }
 
@@ -45,7 +46,7 @@ void PathTracer::createModule()
 
 	pipelineLinkOptions.maxTraceDepth = 5;
 
-	const std::string ptxCode = PTX_CODE;
+	const std::string ptxCode = PATHTRACER_PTX;
 
 	char log[2048];
 	size_t sizeof_log = sizeof(log);

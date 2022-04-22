@@ -10,7 +10,7 @@ KRR_NAMESPACE_BEGIN
 
 class RenderPass{
 public:
-	KRR_CLASS_DEFINE(RenderPass);
+	using SharedPtr = std::shared_ptr<RenderPass>;
 
 	virtual void resize(const vec2i& size) { mFrameSize = size; }
 	virtual void setEnable(bool enable) { mEnable = enable; }

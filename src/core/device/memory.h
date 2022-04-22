@@ -13,7 +13,7 @@
 
 #include "common.h"
 #include "interop.h"
-#include "optix7.h"
+#include "device/optix.h"
 #include "util/check.h"
 
 KRR_NAMESPACE_BEGIN

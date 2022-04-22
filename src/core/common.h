@@ -85,16 +85,16 @@ namespace krr {
 		using ::min;
 		using ::max;
 		using ::abs;
-		using ::saturate;
+		//using ::saturate;
 		using ::copysign;
 #else
 		using std::min;
 		using std::max;
 		using std::abs;
-		using std::copysign;
-		inline __both__ float saturate(const float& f) { return min(1.f, max(0.f, f)); }
+		using std::copysign;	
 #endif
 
+		inline __both__ float saturate(const float& f) { return min(1.f, max(0.f, f)); }
 		inline __both__ float rcp(float f) { return 1.f / f; }
 		inline __both__ double rcp(double d) { return 1. / d; }
 

@@ -10,9 +10,6 @@
 
 KRR_NAMESPACE_BEGIN
 
-//class Mesh;
-//class MeshData;
-
 struct ShapeSample {
 	Interaction intr;
 	float pdf;
@@ -85,6 +82,7 @@ public:
 		return ss;
 	}
 
+	// TODO: Direct sampling on the projeced area to the sphere.
 	KRR_CALLABLE ShapeSample sample(vec2f u, ShapeSampleContext& ctx) const {
 		// sample w.r.t. the reference point,
 		// also the pdf counted is in solid angle.

@@ -2,7 +2,7 @@
 #include <vector>
 #include <assert.h>
 
-#include "optix7.h"
+#include "device/optix.h"
 #include "common.h"
 #include "util/check.h"
 

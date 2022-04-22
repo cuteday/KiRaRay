@@ -83,19 +83,23 @@ SET ( KRR_CORE_HEADERS
 	core/device/memory.h
 	core/device/context.h
 	core/device/buffer.h
-	core/device/optix7.h
+	core/device/optix.h
+	core/device/cuda.h
 	# non core
-	main/renderer.h
+	render/path/pathtracer.h
+	render/wavefront/integrator.h
 	scene/importer.h
 )
 
 SET(KRR_HEADERS
+	main/renderer.h
 	util/check.h
 	util/string.h
 )
 
 SET (KRR_SOURCE
-	main/renderer.cpp
+	render/path/pathtracer.cpp
+	render/wavefront/integrator.cpp
 	scene/importer.cpp
 )
 
@@ -117,9 +121,11 @@ SET ( KRR_SHADERS
 	render/sampling.h
 	render/bsdf.h
 	render/lightsampler.h
-	render/path.h
+	render/path/path.h
+	render/wavefront/wavefront.h
 	render/postprocess.h
-	render/path.cu
+	render/path/path.cu
+	render/wavefront/wavefront.cu
 	render/postprocess.cu
 )
 
@@ -130,6 +136,11 @@ FILE ( GLOB KRR_SOURCE_ALL
 ###############################################################################
 # linking and executables
 ###############################################################################
+
+INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
+# the argument's name must match the extern variable declared in host c++ code 
+CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-shader)
+
 SET(KRR_LIBS_ALL
 	krr-cuda
 	krr_cuda_cfg
@@ -144,10 +155,6 @@ SET(KRR_LIBS_ALL
 	${optix_LIBRARY}
 )
 
-INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
-# the argument's name must match the extern variable declared in host c++ code 
-CUDA_COMPILE_EMBED(PTX_CODE render/path.cu krr-shader)
-
 ADD_LIBRARY ( krr_lib STATIC
 	${KRR_CORE_SOURCE}
 	${KRR_CORE_HEADERS}
@@ -155,7 +162,7 @@ ADD_LIBRARY ( krr_lib STATIC
 	${KRR_HEADERS}
 	${KRR_SOURCE_ALL}
 	${KRR_SHADERS}
-	${PTX_CODE}
+	${PATHTRACER_PTX}
 )
 
 TARGET_INCLUDE_DIRECTORIES (krr_lib SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE})

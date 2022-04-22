@@ -3,7 +3,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-#include "device/optix7.h"
+#include "device/optix.h"
 
 KRR_NAMESPACE_BEGIN
 

@@ -19,10 +19,11 @@
 
 If possible, more features will be added in the future, for example:
 
-- Spectrum rendering.
+- Spectral rendering.
+- Wavefront path tracer.
 - More BSDFs and light sources.
 - Mesh instancing and scene animations.
-- Importer for gltf, pbrt or mitsuba scenes.
+- Importer for pbrt or mitsuba scenes.
 
 ### Build and run
 
@@ -31,7 +32,7 @@ If possible, more features will be added in the future, for example:
 - Nvidia gpu (Turing or higher if possible).
 - OptiX 7.0+ and CUDA 11.0+ installed.
 
-This project is only tested with optix 7.3 & cuda 11.3, compiled on Windows using msvc on an ampere gpu device. But it is expected to run on platforms with support for optix 7 and cuda 11. 
+This project is tested with optix 7.3/4 and cuda 11.4/5/6, compiled on Windows using msvc on an ampere gpu device. It is expected to run on platforms with support for optix 7 and cuda 11. 
 
 #### Build
 
