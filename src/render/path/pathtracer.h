@@ -18,16 +18,13 @@ public:
 
 	PathTracer();
 
-	void createModule();
-	void createRaygenPrograms();
-	void createMissPrograms();
-	void createHitgroupPrograms();
+	void createProgramGroups();
 	void createPipeline();
 	void buildSBT();
 	void buildAS();
 
-	bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-	bool onMouseEvent(const MouseEvent& mouseEvent) override;
+	bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
+	bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
 	void renderUI() override;
 	void render(CUDABuffer& frame) override;
 	void resize(const vec2i& size) override { 
@@ -45,11 +42,7 @@ public:
 
 private:
 	OptixPipeline               pipeline;
-	OptixPipelineCompileOptions pipelineCompileOptions = {};
-	OptixPipelineLinkOptions    pipelineLinkOptions = {};
-
 	OptixModule                 module;
-	OptixModuleCompileOptions   moduleCompileOptions = {};
 
 	std::vector<OptixProgramGroup> raygenPGs;
 	CUDABuffer raygenRecordsBuffer;

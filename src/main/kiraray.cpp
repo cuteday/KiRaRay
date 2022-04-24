@@ -22,19 +22,7 @@ extern "C" int main(int argc, char* argv[]) {
 #endif
 
 	string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
-	//sceneFile = "common/scenes/cbox/CornellBox-Sphere.obj";
-	//sceneFile = "common/scenes/rungholt/rungholt.obj";
-	//sceneFile = "common/scenes/sponza/sponza.obj";
-	//sceneFile = "common/scenes/fireplace_room/fireplace_room.obj";
-	//sceneFile = "common/scenes/salle_de_bain/salle_de_bain.obj";
-	//sceneFile = "common/scenes/breakfast_room/breakfast_room.obj";
-	//sceneFile = "common/scenes/vokselia_spawn/vokselia_spawn.obj";
-
 	string iblFile = "common/assets/snowwhite.jpg";
-	//iblFile = "common/assets/Tropical_Beach.hdr";
-	//iblFile = "common/assets/Playa_Sunrise.exr";
-	//iblFile = "common/assets/Mono_Lake_B.hdr";
-	//iblFile = "common/assets/Ridgecrest_Road.hdr";
 
 #ifndef KRR_DEBUG_BUILD
 	try {

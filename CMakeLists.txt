@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED ( VERSION 3.17 )
+  CMAKE_MINIMUM_REQUIRED ( VERSION 3.17 )
 
 PROJECT (KiRaRay
 	DESCRIPTION "A simple implememtation of an optix renderer."

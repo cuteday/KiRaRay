@@ -2,6 +2,7 @@
 #include <optix_types.h>
 
 #include "device/cuda.h"
+#include "render/wavefront/backend.h"
 #include "pathtracer.h"
 
 KRR_NAMESPACE_BEGIN
@@ -11,139 +12,39 @@ extern "C" char PATHTRACER_PTX[];
 PathTracer::PathTracer()
 {
 	logInfo("setting up module ...");
-	createModule();
-
-	logInfo("creating raygen programs ...");
-	createRaygenPrograms();
-	logInfo("creating miss programs ...");
-	createMissPrograms();
-
-	logInfo("creating hitgroup programs ...");
-	createHitgroupPrograms();
-
+	module = OptiXBackend::createOptiXModule(gpContext->optixContext, PATHTRACER_PTX);
+	logInfo("creating program groups ...");
+	createProgramGroups();
 	logInfo("setting up optix pipeline ...");
 	createPipeline();
 	
 	launchParamsBuffer.resize(sizeof(launchParams));
-
-	logInfo("context, module, pipeline, etc, all set up ...");
 	logSuccess("PathTracer::Optix 7 context fully set up");
 }
 
-void PathTracer::createModule()
+void PathTracer::createProgramGroups()
 {
-	moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
-	moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
-	moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_DEFAULT;
-
-	pipelineCompileOptions = {};
-	pipelineCompileOptions.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
-	pipelineCompileOptions.usesMotionBlur = false;
-	pipelineCompileOptions.numPayloadValues = 2;
-	pipelineCompileOptions.numAttributeValues = 2;
-	pipelineCompileOptions.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
-	pipelineCompileOptions.pipelineLaunchParamsVariableName = "launchParams";
-
-	pipelineLinkOptions.maxTraceDepth = 5;
-
-	const std::string ptxCode = PATHTRACER_PTX;
-
-	char log[2048];
-	size_t sizeof_log = sizeof(log);
-	OPTIX_CHECK(optixModuleCreateFromPTX(gpContext->optixContext,
-		&moduleCompileOptions,
-		&pipelineCompileOptions,
-		ptxCode.c_str(),
-		ptxCode.size(),
-		log, &sizeof_log,
-		&module
-	));
-	if (sizeof_log > 1) PRINT(log);
-}
-
-void PathTracer::createRaygenPrograms()
-{
-	// we do a single ray gen program in this example:
-	raygenPGs.resize(1);
-
-	OptixProgramGroupOptions pgOptions = {};
-	OptixProgramGroupDesc pgDesc = {};
-	pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-	pgDesc.raygen.module = module;
-	pgDesc.raygen.entryFunctionName = "__raygen__Pathtracer";
-
-	// OptixProgramGroup raypg;
-	char log[2048];
-	size_t sizeof_log = sizeof(log);
-	OPTIX_CHECK(optixProgramGroupCreate(gpContext->optixContext,
-		&pgDesc,
-		1,
-		&pgOptions,
-		log, &sizeof_log,
-		&raygenPGs[0]
-	));
-	if (sizeof_log > 1) PRINT(log);
-}
-
-/*! does all setup for the miss program(s) we are going to use */
-void PathTracer::createMissPrograms()
-{
-	missPGs.resize(RAY_TYPE_COUNT);
-
-	OptixProgramGroupOptions pgOptions = {};
-	OptixProgramGroupDesc pgDesc = {};
-	pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
-	pgDesc.miss.module = module;
-
-	char log[2048];
-	size_t sizeof_log = sizeof(log);
-
+	// setup raygen program groups
+	raygenPGs.resize(1);;
+	raygenPGs[0] = OptiXBackend::createRaygenPG(gpContext->optixContext, module, "__raygen__Pathtracer");
+	// setup hit program groups
+	missPGs.resize(RAY_TYPE_COUNT);	
 	for (int i = 0; i < RAY_TYPE_COUNT; i++) {
 		string msFuncName = "__miss__" + shaderProgramNames[i];
-		pgDesc.miss.entryFunctionName = msFuncName.c_str();
-		OPTIX_CHECK(optixProgramGroupCreate(gpContext->optixContext,
-			&pgDesc,
-			1,
-			&pgOptions,
-			log, &sizeof_log,
-			&missPGs[i]
-		));
-		if (sizeof_log > 1) PRINT(log);
+		missPGs[i] = OptiXBackend::createMissPG(gpContext->optixContext, module, msFuncName.c_str());
 	}
-
-}
-
-/*! does all setup for the hitgroup program(s) we are going to use */
-void PathTracer::createHitgroupPrograms()
-{
+	// setup miss program groups
 	hitgroupPGs.resize(RAY_TYPE_COUNT);
-
-	OptixProgramGroupOptions pgOptions = {};
-	OptixProgramGroupDesc pgDesc = {};
-	pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-	pgDesc.hitgroup.moduleCH = module;
-	pgDesc.hitgroup.moduleAH = module;
-
-	char log[2048];
-	size_t sizeof_log = sizeof(log);
-	
 	for (int i = 0; i < RAY_TYPE_COUNT; i++) {
 		string chFuncName = "__closesthit__" + shaderProgramNames[i];
 		string ahFuncName = "__anyhit__" + shaderProgramNames[i];
-		pgDesc.hitgroup.entryFunctionNameCH = chFuncName.c_str();
-		pgDesc.hitgroup.entryFunctionNameAH = ahFuncName.c_str();
-
-		OPTIX_CHECK(optixProgramGroupCreate(gpContext->optixContext,
-			&pgDesc,
-			1,
-			&pgOptions,
-			log, &sizeof_log,
-			&hitgroupPGs[i]
-		));
-		if (sizeof_log > 1) PRINT(log);
+		hitgroupPGs[i] = OptiXBackend::createIntersectionPG(gpContext->optixContext,
+			module,
+			chFuncName.c_str(),
+			ahFuncName.c_str(),
+			nullptr);
 	}
 }
-
 
 void PathTracer::createPipeline()
 {
@@ -154,6 +55,10 @@ void PathTracer::createPipeline()
 		programGroups.push_back(pg);
 	for (auto pg : hitgroupPGs)
 		programGroups.push_back(pg);
+
+	OptixPipelineCompileOptions pipelineCompileOptions = OptiXBackend::getPipelineCompileOptions();
+	OptixPipelineLinkOptions pipelineLinkOptions = {}; 
+	pipelineLinkOptions.maxTraceDepth = 5;
 
 	char log[2048];
 	size_t sizeof_log = sizeof(log);
@@ -224,104 +129,8 @@ void PathTracer::buildSBT()
 
 void PathTracer::buildAS()
 {
-	//inter::vector<Mesh>& meshes = mpScene->meshes;
-	std::vector<Mesh>& meshes = mpScene->meshes;
-
-	std::vector<OptixBuildInput> triangleInputs(meshes.size());
-	std::vector<uint> triangleInputFlags(meshes.size());
-	std::vector<CUdeviceptr> vertexBufferPtr(meshes.size());
-	std::vector<CUdeviceptr> indexBufferPtr(meshes.size());
-
-	for (uint i = 0; i < meshes.size(); i++) {
-		Mesh& mesh = meshes[i];
-
-		//indexBufferPtr[i] = (CUdeviceptr)mesh.mData.indices;
-		//vertexBufferPtr[i] = (CUdeviceptr)mesh.mData.vertices;
-		indexBufferPtr[i] = (CUdeviceptr)mesh.indices.data();
-		vertexBufferPtr[i] = (CUdeviceptr)mesh.vertices.data();
-
-		triangleInputs[i] = {};
-		triangleInputs[i].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
-		// vertex data desc
-		triangleInputs[i].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
-		triangleInputs[i].triangleArray.vertexStrideInBytes = sizeof(vec3f);
-		triangleInputs[i].triangleArray.numVertices = mesh.vertices.size();
-		triangleInputs[i].triangleArray.vertexBuffers = &vertexBufferPtr[i];
-		// index data desc
-		triangleInputs[i].triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
-		triangleInputs[i].triangleArray.indexStrideInBytes = sizeof(vec3i);
-		triangleInputs[i].triangleArray.numIndexTriplets = mesh.indices.size();
-		triangleInputs[i].triangleArray.indexBuffer = indexBufferPtr[i];
-		triangleInputFlags[i] = 0;
-		triangleInputs[i].triangleArray.flags = &triangleInputFlags[i];
-		triangleInputs[i].triangleArray.numSbtRecords = 1;
-		triangleInputs[i].triangleArray.sbtIndexOffsetBuffer = 0;
-		triangleInputs[i].triangleArray.sbtIndexOffsetSizeInBytes = 0;
-		triangleInputs[i].triangleArray.sbtIndexOffsetStrideInBytes = 0;
-	}
-
-	OptixAccelBuildOptions accelOptions = {};
-	accelOptions.buildFlags = OPTIX_BUILD_FLAG_NONE |
-		OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
-	accelOptions.motionOptions.numKeys = 1;
-	accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
-
-	OptixAccelBufferSizes blasBufferSizes;
-	OPTIX_CHECK(optixAccelComputeMemoryUsage(gpContext->optixContext,
-		&accelOptions, triangleInputs.data(), meshes.size(), &blasBufferSizes));
-
-	// prepare for compaction
-	CUDABuffer compactedSizeBuffer;
-	compactedSizeBuffer.resize(sizeof(uint64_t));
-
-	OptixAccelEmitDesc emitDesc;
-	emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
-	emitDesc.result = compactedSizeBuffer.data();
-
-	// building process
-	CUDABuffer tempBuffer;
-	tempBuffer.resize(blasBufferSizes.tempSizeInBytes);
-	CUDABuffer outputBuffer;
-	outputBuffer.resize(blasBufferSizes.outputSizeInBytes);
-
-	OptixTraversableHandle &asHandle = launchParams.traversable;
-	
-	OPTIX_CHECK(optixAccelBuild(gpContext->optixContext,
-		gpContext->cudaStream,
-		&accelOptions,
-		triangleInputs.data(),
-		meshes.size(),
-		tempBuffer.data(),
-		tempBuffer.size(),
-		outputBuffer.data(),
-		outputBuffer.size(),
-		&asHandle,
-		&emitDesc,
-		1));
-	CUDA_SYNC_CHECK();
-
-	// perform compaction
-	uint64_t compactedSize;
-	compactedSizeBuffer.copy_to_host(&compactedSize, 1);
-	
-	accelBuffer.resize(compactedSize);
-	OPTIX_CHECK(optixAccelCompact(gpContext->optixContext,
-		gpContext->cudaStream,
-		asHandle,
-		accelBuffer.data(),
-		accelBuffer.size(),
-		&asHandle));
-	CUDA_SYNC_CHECK();
-}
-
-bool PathTracer::onKeyEvent(const KeyboardEvent& keyEvent)
-{
-	return false;
-}
-
-bool PathTracer::onMouseEvent(const MouseEvent& mouseEvent)
-{
-	return false;
+	OptixTraversableHandle& asHandle = launchParams.traversable;
+	asHandle = OptiXBackend::buildAccelStructure(*mpScene, accelBuffer);
 }
 
 void PathTracer::renderUI() {
@@ -352,7 +161,6 @@ void PathTracer::render(CUDABuffer& frame)
 	launchParams.fbSize = mFrameSize;
 	launchParams.colorBuffer = (vec4f*)frame.data();
 	memcpy(&launchParams.camera, mpScene->getCamera().get(), sizeof(Camera));
-	//memcpy(&launchParams.envLight, mpScene->getEnvLight().get(), sizeof(EnvLight));
 	launchParams.sceneData = mpScene->getSceneData();
 	launchParams.frameID++;
 	launchParamsBuffer.copy_from_host(&launchParams, 1);

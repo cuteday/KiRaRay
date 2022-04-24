@@ -88,6 +88,8 @@ SET ( KRR_CORE_HEADERS
 	# non core
 	render/path/pathtracer.h
 	render/wavefront/integrator.h
+	render/wavefront/workqueue.h
+	render/wavefront/backend.h
 	scene/importer.h
 )
 
@@ -100,6 +102,7 @@ SET(KRR_HEADERS
 SET (KRR_SOURCE
 	render/path/pathtracer.cpp
 	render/wavefront/integrator.cpp
+	render/wavefront/backend.cpp
 	scene/importer.cpp
 )
 

@@ -19,6 +19,7 @@ KRR_NAMESPACE_BEGIN
 
 class AssimpImporter;
 class PathTracer;
+class OptiXBackend;
 using namespace io;
 
 /* The scene class is in poccess of components like camera, cameracontroller, etc.
@@ -65,6 +66,7 @@ public:
 private:
 	friend class AssimpImporter;
 	friend class PathTracer;
+	friend class OptiXBackend;
 
 	std::vector<Mesh> meshes;
 	SceneData mData;

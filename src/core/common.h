@@ -62,6 +62,8 @@ typedef unsigned char uchar;
 # define __both__   __krr_host __krr_device
 # define KRR_CALLABLE __krr_host __krr_device inline
 # define KRR_DEVICE_FUNCTION __krr_device __krr_forceinline
+# define KRR_GPU_LAMBDA(...) [=, *this] KRR_CALLABLE(__VA_ARGS__) mutable
+
 
 #ifdef __GNUC__
 #define MAYBE_UNUSED __attribute__((unused))
@@ -85,7 +87,6 @@ namespace krr {
 		using ::min;
 		using ::max;
 		using ::abs;
-		//using ::saturate;
 		using ::copysign;
 #else
 		using std::min;
