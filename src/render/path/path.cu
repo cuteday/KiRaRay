@@ -160,7 +160,7 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo = {};
-	HitGroupSBTData* hitData = (HitGroupSBTData*)optixGetSbtDataPointer();
+	HitgroupSBTData* hitData = (HitgroupSBTData*)optixGetSbtDataPointer();
 	uint meshId = hitData->meshId;
 	vec2f barycentric = (vec2f)optixGetTriangleBarycentrics();
 	hitInfo.primitiveId = optixGetPrimitiveIndex();
@@ -176,20 +176,12 @@ extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	prepareShadingData(sd, hitInfo, material);
 }
 
-extern "C" __global__ void KRR_RT_AH(Radiance)() {	//skipped
-	return;
-}
-
 extern "C" __global__ void KRR_RT_MS(Radiance)() {
 	ShadingData &sd = *getPRD<ShadingData>();
 	sd.miss = true;
 }
 
 extern "C" __global__ void KRR_RT_CH(ShadowRay)() {	//skipped
-	return;
-}
-
-extern "C" __global__ void KRR_RT_AH(ShadowRay)() {	//skipped
 	return;
 }
 

@@ -37,12 +37,8 @@ void PathTracer::createProgramGroups()
 	hitgroupPGs.resize(RAY_TYPE_COUNT);
 	for (int i = 0; i < RAY_TYPE_COUNT; i++) {
 		string chFuncName = "__closesthit__" + shaderProgramNames[i];
-		string ahFuncName = "__anyhit__" + shaderProgramNames[i];
 		hitgroupPGs[i] = OptiXBackend::createIntersectionPG(gpContext->optixContext,
-			module,
-			chFuncName.c_str(),
-			ahFuncName.c_str(),
-			nullptr);
+			module, chFuncName.c_str(), nullptr, nullptr);
 	}
 }
 
@@ -86,43 +82,34 @@ void PathTracer::createPipeline()
 void PathTracer::buildSBT()
 {
 	// build raygen records
-	std::vector<RaygenRecord> raygenRecords;
 	for (int i = 0; i < raygenPGs.size(); i++) {
 		RaygenRecord rec;
 		OPTIX_CHECK(optixSbtRecordPackHeader(raygenPGs[i], &rec));
-		rec.data = nullptr; /* for now ... */
 		raygenRecords.push_back(rec);
 	}
-	raygenRecordsBuffer.alloc_and_copy_from_host(raygenRecords);
-	sbt.raygenRecord = raygenRecordsBuffer.data();
+	sbt.raygenRecord = (CUdeviceptr)raygenRecords.data();
 
 	// build miss records
-	std::vector<MissRecord> missRecords;
 	for (int i = 0; i < missPGs.size(); i++) {
 		MissRecord rec;
 		OPTIX_CHECK(optixSbtRecordPackHeader(missPGs[i], &rec));
-		rec.data = nullptr; /* for now ... */
 		missRecords.push_back(rec);
 	}
-	missRecordsBuffer.alloc_and_copy_from_host(missRecords);
-	sbt.missRecordBase = missRecordsBuffer.data();
+	sbt.missRecordBase = (CUdeviceptr)missRecords.data();
 	sbt.missRecordStrideInBytes = sizeof(MissRecord);
 	sbt.missRecordCount = (int)missRecords.size();
 
 	// build hitgroup records
 	uint numMeshes = mpScene->meshes.size();
-	//uint numMeshes = mpScene->meshes.size();
-	std::vector<HitgroupRecord> hitgroupRecords;
 	for (uint meshId = 0; meshId < numMeshes; meshId++) {
 		for (uint rayId = 0; rayId < RAY_TYPE_COUNT; rayId++) {
 			HitgroupRecord rec;
 			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayId], &rec));
-			rec.data.meshId = meshId;
+			rec.data = { meshId };
 			hitgroupRecords.push_back(rec);
 		}
 	}
-	hitgroupRecordsBuffer.alloc_and_copy_from_host(hitgroupRecords);
-	sbt.hitgroupRecordBase = hitgroupRecordsBuffer.data();
+	sbt.hitgroupRecordBase = (CUdeviceptr)hitgroupRecords.data();
 	sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
 	sbt.hitgroupRecordCount = hitgroupRecords.size();
 }
@@ -130,7 +117,7 @@ void PathTracer::buildSBT()
 void PathTracer::buildAS()
 {
 	OptixTraversableHandle& asHandle = launchParams.traversable;
-	asHandle = OptiXBackend::buildAccelStructure(*mpScene, accelBuffer);
+	asHandle = OptiXBackend::buildAccelStructure(gpContext->optixContext, gpContext->cudaStream, *mpScene);
 }
 
 void PathTracer::renderUI() {

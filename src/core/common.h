@@ -12,6 +12,8 @@
 #include <sstream>
 #include <vector>
 
+#include "config.h"
+
 using std::string;
 using std::to_string;
 
@@ -35,6 +37,7 @@ typedef unsigned char uchar;
 #endif
 
 #define KRR_INTERFACE
+#define KRR_RESTRICT	__restrict
 
 #if defined(_MSC_VER)
 #  define __PRETTY_FUNCTION__ __FUNCTION__

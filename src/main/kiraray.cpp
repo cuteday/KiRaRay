@@ -31,7 +31,6 @@ extern "C" int main(int argc, char* argv[]) {
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 });
 
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
-		//scene->getEnvLight()->setImage(iblFile);
 		scene->addInfiniteLight(InfiniteLight(iblFile));
 		AssimpImporter importer;
 		importer.import(sceneFile, scene);

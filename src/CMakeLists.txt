@@ -12,7 +12,6 @@ MESSAGE ("Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE ("Build output directory: ${CMAKE_BINARY_DIR}")
 MESSAGE ("Optix include directory: ${OptiX_INCLUDE}")
 
-
 CONFIGURE_FILE (core/config.in.h ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
 
 SET ( KRR_INCLUDE_ALL
@@ -137,12 +136,30 @@ FILE ( GLOB KRR_SOURCE_ALL
 )
 
 ###############################################################################
+# automatically creating definitions of structure of arrays (soa)
+###############################################################################
+add_executable(soac util/soac.cpp)
+add_executable (krr::soac ALIAS soac)
+
+target_compile_options(soac PUBLIC ${CMAKE_CXX_FLAGS})
+set_target_properties (soac PROPERTIES OUTPUT_NAME soac)
+
+add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/workitems_soa.h
+    COMMAND soac ${CMAKE_SOURCE_DIR}/src/render/wavefront/workitems.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/workitems_soa.h
+    DEPENDS soac ${CMAKE_SOURCE_DIR}/src/render/wavefront/workitems.soa)
+set (KRR_SOA_GENERATED ${KRR_SOA_GENERATED} ${CMAKE_CURRENT_BINARY_DIR}/workitems_soa.h)
+
+add_custom_target (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
+
+###############################################################################
 # linking and executables
 ###############################################################################
 
 INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code 
-CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-shader)
+CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-path)
+
+CUDA_COMPILE_EMBED(WAVEFRONT_PTX render/wavefront/wavefront.cu krr-wavefront)
 
 SET(KRR_LIBS_ALL
 	krr-cuda
@@ -165,7 +182,9 @@ ADD_LIBRARY ( krr_lib STATIC
 	${KRR_HEADERS}
 	${KRR_SOURCE_ALL}
 	${KRR_SHADERS}
+	# PTX 
 	${PATHTRACER_PTX}
+	${WAVEFRONT_PTX}
 )
 
 TARGET_INCLUDE_DIRECTORIES (krr_lib SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE})

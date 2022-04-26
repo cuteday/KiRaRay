@@ -1,13 +1,14 @@
 #include "common.h"
 
 #include "scene.h"
+#include "wavefront.h"
 #include "device/context.h"
 
 KRR_NAMESPACE_BEGIN
 
 class OptiXBackend {
 public:
-	OptiXBackend() = delete;
+	OptiXBackend() = default;
 
 	static OptixModule createOptiXModule(OptixDeviceContext optixContext, const char* ptx);
 	static OptixPipelineCompileOptions getPipelineCompileOptions();
@@ -17,15 +18,15 @@ public:
 	static OptixProgramGroup createIntersectionPG(OptixDeviceContext optixContext, OptixModule optixModule,
 		const char* closest, const char* any, const char* intersect);
 
-	static OptixTraversableHandle buildAccelStructure(Scene& scene, CUDABuffer& asBuffer);
+	static OptixTraversableHandle buildAccelStructure(OptixDeviceContext optixContext, CUstream cudaStream, Scene& scene);
 };
 
 class OptiXWavefrontBackend : public OptiXBackend {
 public:
-	OptiXWavefrontBackend(const Scene& scene);
+	OptiXWavefrontBackend(Scene& scene);
 
-	void IntersectClosest();
-	void IntersectShadow();
+	void traceClosest();
+	void traceShadow();
 
 protected:
 	OptixProgramGroup createRaygenPG(const char* entrypoint) const;
@@ -39,10 +40,16 @@ private:
 	OptixDeviceContext optixContext;
 	CUstream cudaStream;
 
-	OptixShaderBindingTable intersectSBT = {};
+	OptixShaderBindingTable closestSBT = {};
 	OptixShaderBindingTable shadowSBT = {};
+	OptixTraversableHandle optixTraversable = {};
 
-	//inter::vector<OptixProgramGroup>;
+	inter::vector<RaygenRecord> raygenClosestRecords;
+	inter::vector<HitgroupRecord> hitgroupClosestRecords;
+	inter::vector<MissRecord> missClosestRecords;
+	inter::vector<RaygenRecord> raygenShadowRecords;
+	inter::vector<HitgroupRecord> hitgroupShadowRecords;
+	inter::vector<MissRecord> missShadowRecords;
 };
 
 KRR_NAMESPACE_END

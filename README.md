@@ -1,6 +1,6 @@
 # KiRaRay
 
-*KiRaRay* is a simple interactive ray-tracing renderer using optix. The purpose of this project is to let me (a beginner) learn c++ and optix in a more interesting way. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer. Currently it has very limited features and potentially some bugs.
+*KiRaRay* is a simple interactive ray-tracing renderer using optix. The purpose of this project is to let me (a beginner) learn c++ and optix in a more interesting way. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer, and some parts of the coding structures are inspired by [pbrt-v4](https://github.com/mmp/pbrt-v4). Currently it has very limited features and potentially some bugs.
 
 <p align=center>
 <img src=common/demo/kirara.jpg width="750">
@@ -10,20 +10,20 @@
 > __Working in progress (?) project__  
 > This project is only for learning purpose with very limited features, and not sure if it will continue developing.
 
-- Orbit camera controlling.
-- Assimp as scene importer.
-- Image-based environment lighting.
-- Diffuse, microfacet, disney and fresnel-blended bsdfs. 
-- Next event estimation and multiple importance sampling (naive ver.)
-- Tone mapping and frame accumulating.
+- [x] Orbit camera controlling.
+- [x] Assimp as scene importer.
+- [x] Image-based environment lighting.
+- [x] Diffuse, microfacet, disney and fresnel-blended bsdfs. 
+- [x] Next event estimation and multiple importance sampling (naive ver.)
+- [x] Tone mapping and frame accumulating.
 
 If possible, more features will be added in the future, for example:
 
-- Spectral rendering.
-- Wavefront path tracer.
-- More BSDFs and light sources.
-- Mesh instancing and scene animations.
-- Importer for pbrt or mitsuba scenes.
+- [ ] Spectral rendering.
+- [ ] Wavefront path tracer.
+- [ ] More BSDFs and light sources.
+- [ ] Mesh instancing and scene animations.
+- [ ] Importer for pbrt or mitsuba scenes.
 
 ### Build and run
 

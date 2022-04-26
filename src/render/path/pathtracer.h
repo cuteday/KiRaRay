@@ -28,8 +28,7 @@ public:
 	void renderUI() override;
 	void render(CUDABuffer& frame) override;
 	void resize(const vec2i& size) override { 
-		mFrameSize = size;
-		launchParams.fbSize = size; 
+		mFrameSize = launchParams.fbSize = size; 
 	}
 
 	void setScene(Scene::SharedPtr scene) override {
@@ -45,16 +44,15 @@ private:
 	OptixModule                 module;
 
 	std::vector<OptixProgramGroup> raygenPGs;
-	CUDABuffer raygenRecordsBuffer;
 	std::vector<OptixProgramGroup> missPGs;
-	CUDABuffer missRecordsBuffer;
 	std::vector<OptixProgramGroup> hitgroupPGs;
-	CUDABuffer hitgroupRecordsBuffer;
+	inter::vector<MissRecord> missRecords;
+	inter::vector<RaygenRecord> raygenRecords;
+	inter::vector<HitgroupRecord> hitgroupRecords;
 	OptixShaderBindingTable sbt = {};
 
 	LaunchParamsPT launchParams;
 	CUDABuffer   launchParamsBuffer;
-	CUDABuffer accelBuffer;
 };
 
 KRR_NAMESPACE_END

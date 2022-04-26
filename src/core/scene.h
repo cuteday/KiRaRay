@@ -20,7 +20,28 @@ KRR_NAMESPACE_BEGIN
 class AssimpImporter;
 class PathTracer;
 class OptiXBackend;
+class OptiXWavefrontBackend;
 using namespace io;
+
+typedef struct {
+	uint meshId;
+} HitgroupSBTData;
+
+/*! SBT record for a raygen program */
+struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord {
+	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
+};
+
+/*! SBT record for a miss program */
+struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) MissRecord {
+	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
+};
+
+/*! SBT record for a hitgroup program */
+struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
+	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
+	HitgroupSBTData data;
+};
 
 /* The scene class is in poccess of components like camera, cameracontroller, etc.
  * The update(), eventHandler(), renderUI(), of them is called within this class;
@@ -67,6 +88,7 @@ private:
 	friend class AssimpImporter;
 	friend class PathTracer;
 	friend class OptiXBackend;
+	friend class OptiXWavefrontBackend;
 
 	std::vector<Mesh> meshes;
 	SceneData mData;
