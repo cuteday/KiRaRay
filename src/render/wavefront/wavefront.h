@@ -6,9 +6,14 @@
 #include "render/lightsampler.h"
 #include "render/bsdf.h"
 
+#include "workqueue.h"
+
 KRR_NAMESPACE_BEGIN
 
 using namespace shader;
 
+typedef struct {
+
+} LaunchParams;
 
 KRR_NAMESPACE_END

@@ -478,28 +478,28 @@ namespace krr
 		}
 
 		template <typename T>
-		inline __krr_host std::ostream &operator<<(std::ostream &o, const vec_t<T, 1> &v)
+		inline KRR_HOST std::ostream &operator<<(std::ostream &o, const vec_t<T, 1> &v)
 		{
 			o << "(" << v.x << ")";
 			return o;
 		}
 
 		template <typename T>
-		inline __krr_host std::ostream &operator<<(std::ostream &o, const vec_t<T, 2> &v)
+		inline KRR_HOST std::ostream &operator<<(std::ostream &o, const vec_t<T, 2> &v)
 		{
 			o << "(" << v.x << "," << v.y << ")";
 			return o;
 		}
 
 		template <typename T>
-		inline __krr_host std::ostream &operator<<(std::ostream &o, const vec_t<T, 3> &v)
+		inline KRR_HOST std::ostream &operator<<(std::ostream &o, const vec_t<T, 3> &v)
 		{
 			o << "(" << v.x << "," << v.y << "," << v.z << ")";
 			return o;
 		}
 
 		template <typename T>
-		inline __krr_host std::ostream &operator<<(std::ostream &o, const vec_t<T, 4> &v)
+		inline KRR_HOST std::ostream &operator<<(std::ostream &o, const vec_t<T, 4> &v)
 		{
 			o << "(" << v.x << "," << v.y << "," << v.z << "," << v.w << ")";
 			return o;

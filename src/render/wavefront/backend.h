@@ -1,6 +1,7 @@
 #include "common.h"
 
 #include "scene.h"
+#include "workqueue.h"
 #include "wavefront.h"
 #include "device/context.h"
 
@@ -23,9 +24,10 @@ public:
 
 class OptiXWavefrontBackend : public OptiXBackend {
 public:
+	OptiXWavefrontBackend() = default;
 	OptiXWavefrontBackend(Scene& scene);
 
-	void traceClosest();
+	void traceClosest(RayQueue* currentRayQueue, RayQueue* nextRayQueue);
 	void traceShadow();
 
 protected:

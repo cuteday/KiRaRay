@@ -16,15 +16,9 @@ KRR_NAMESPACE_BEGIN
 class RenderApp : public WindowApp{
 public:
 
-	RenderApp(const char title[], vec2i size) : WindowApp(title, size) {
-		mpPasses = {
-			PathTracer::SharedPtr(new PathTracer()),
-			AccumulatePass::SharedPtr(new AccumulatePass()),
-			ToneMappingPass::SharedPtr(new ToneMappingPass())
-		};
-	}
-
-	void initialize();
+	RenderApp(const char title[], vec2i size) : WindowApp(title, size) {}
+	RenderApp(const char title[], vec2i size, std::vector<RenderPass::SharedPtr> passes)
+		:WindowApp(title, size), mpPasses(passes) {}
 
 	void resize(const vec2i& size) override {
 		mRenderBuffer.resize(size.x * size.y * sizeof(vec4f));

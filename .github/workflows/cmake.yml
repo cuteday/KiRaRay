@@ -1,4 +1,4 @@
-name: CMake
+name: Building
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
+  BUILD_TYPE: Release           # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  OptiX_INSTALL_DIR: ${{github.workspace}}/optix
 
 jobs:
   build:
@@ -19,8 +19,24 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      
+    - name: Cache optix include
+      uses: actions/cache@v3
+      with:
+        path: optix
+        key: optix7
+
+    - name: Download optix include
+      uses: actions/checkout@v3
+      with:
+        ssh-key: ${{ secrets.SSH_KEY }}
+        repository: cuteday/optix-headers
+        path: optix
+      
+    - name: Install OpenGL
+      run: sudo apt-get install -y --no-install-recommends libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libxext-dev libxfixes-dev libgl1-mesa-dev
     
-    - name: cuda-toolkit
+    - name: Install cuda-toolkit
       uses: Jimver/cuda-toolkit@v0.2.5
       with:
         # Cuda version
@@ -30,10 +46,13 @@ jobs:
         # Installation method, can be either 'local' or 'network'. 'local' downloads the entire installer with all packages and runs that (you can still only install certain packages with sub-packages on Windows). 'network' downloads a smaller executable which only downloads necessary packages which you can define in subPackages
         method: "local"
         # (Linux and 'local' method only) override arguments for the linux .run installer. For example if you don't want samples use ["--toolkit"] double quotes required!
-        linux-local-args: '["--toolkit", "--samples"]'
+        linux-local-args: '["--toolkit"]'
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DOptiX_INSTALL_DIR=${{env.OptiX_INSTALL_DIR}}
       
+    - name: Build
+      run:
+        cmake --build ${{}}/build --parallel 4 --config ${{env.BUILD_TYPE}}

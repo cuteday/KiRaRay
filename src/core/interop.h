@@ -576,8 +576,6 @@ namespace inter {
 			p->~T();
 		}
 
-		// polymorphic_allocator select_on_container_copy_construction() const;
-
 		memory_resource* resource() const { return memoryResource; }
 
 	private:

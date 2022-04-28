@@ -36,7 +36,7 @@ This project is tested with optix 7.3/4 and cuda 11.4/5/6, compiled on Windows u
 
 #### Build
 
-This project uses cmake to build, no additional setting is needed. 
+This project uses cmake to build, no additional setting is needed. While it tries to guess the optix installation path, you may specify the `OptiX_INSTALL_DIR` environment variable manually incase it failed.
 
 ### Common Issues
 

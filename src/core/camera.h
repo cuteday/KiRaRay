@@ -28,19 +28,10 @@ public:
 		vec2f jitter = { 0, 0 };		// within [-0.5, 0.5]^2
 	};
 
-	Camera(){
-		mpJitterSampler = new LCGSampler();
-		mpJitterSampler.setPixelSample({ 114, 514 }, 1919810);
-	}
+	Camera() = default;
 
-	KRR_CALLABLE vec3f getRayDir(vec2i pixel, vec2i frameSize, vec2f jitter) const {
+	KRR_CALLABLE vec3f getRayDir(vec2i pixel, vec2i frameSize, vec2f jitter = {}) const {
 		vec2f p = vec2f(pixel) + vec2f(0.5) + jitter;
-		vec2f ndc = vec2f(2, 2) * (p) / vec2f(frameSize) + vec2f(-1, -1);
-		return	normalize(ndc.x * mData.u + ndc.y * mData.v + mData.w);
-	}
-
-	KRR_CALLABLE vec3f getRayDir(vec2i pixel, vec2i frameSize) const {
-		vec2f p = vec2f(pixel) + vec2f(0.5) + mData.jitter;
 		vec2f ndc = vec2f(2, 2) * (p) / vec2f(frameSize) + vec2f(-1, -1);
 		return	normalize(ndc.x * mData.u + ndc.y * mData.v + mData.w);
 	}
@@ -58,10 +49,11 @@ public:
 	__both__ float getFocalLength() { return mData.focalLength; }
 
 	__both__ void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; }
-	__both__ void setFrameSize(vec2f size) { mData.frameSize = size; }
+	__both__ void setFrameSize(vec2f& size) { mData.frameSize = size; }
 	__both__ void setPosition(vec3f& pos) { mData.pos = pos; }
 	__both__ void setTarget(vec3f& target) { mData.target = target; }
 	__both__ void setUp(vec3f& up) { mData.up = up; }
+	__both__ void setJitter(vec2f& jitter) { mData.jitter = jitter; }
 
 protected:
 
@@ -69,7 +61,6 @@ protected:
 
 	bool mHasChanges = false;
 	bool mPreserveHeight = true;	// preserve sensor height on aspect ratio changes.
-	Sampler mpJitterSampler;
 };
 
 class CameraController{

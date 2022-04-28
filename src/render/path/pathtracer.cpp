@@ -54,7 +54,7 @@ void PathTracer::createPipeline()
 
 	OptixPipelineCompileOptions pipelineCompileOptions = OptiXBackend::getPipelineCompileOptions();
 	OptixPipelineLinkOptions pipelineLinkOptions = {}; 
-	pipelineLinkOptions.maxTraceDepth = 5;
+	pipelineLinkOptions.maxTraceDepth = 3;
 
 	char log[2048];
 	size_t sizeof_log = sizeof(log);
@@ -123,9 +123,9 @@ void PathTracer::buildAS()
 void PathTracer::renderUI() {
 	if (ui::CollapsingHeader("Path tracer")) {
 		ui::Text("Path tracing parameters");
-		ui::InputInt("Sample per pixel", &launchParams.spp);
+		ui::InputInt("Samples per pixel", &launchParams.spp);
 		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
-		ui::SliderInt("Max recursion depth", &launchParams.maxDepth, 0, 20);
+		ui::SliderInt("Max recursion depth", &launchParams.maxDepth, 0, 30);
 		if (mpScene->mData.lights.size() > 0)	// only when we have light sources...
 			ui::Checkbox("Next event estimation", &launchParams.NEE);
 		if (launchParams.NEE) {
@@ -161,7 +161,6 @@ void PathTracer::render(CUDABuffer& frame)
 		launchParams.fbSize.y,
 		1
 	));
-
 	CUDA_SYNC_CHECK();
 }
 

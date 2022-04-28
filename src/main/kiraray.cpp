@@ -28,8 +28,11 @@ extern "C" int main(int argc, char* argv[]) {
 	try {
 #endif
 		gpContext = Context::SharedPtr(new Context());
-		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 });
-
+		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 }, {
+				PathTracer::SharedPtr(new PathTracer()),
+				AccumulatePass::SharedPtr(new AccumulatePass()),
+				ToneMappingPass::SharedPtr(new ToneMappingPass())
+			});
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
 		scene->addInfiniteLight(InfiniteLight(iblFile));
 		AssimpImporter importer;

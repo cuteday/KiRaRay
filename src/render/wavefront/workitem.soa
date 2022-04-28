@@ -1,0 +1,31 @@
+flat int;
+flat uint;
+flat float;
+flat bool;
+flat double;
+flat Light;
+
+soa vec2f { float x, y; };
+soa vec3f { float x, y, z; };
+soa vec2i { int x, y; };
+
+soa Ray{ vec3f origin, dir; };
+
+soa RayWorkItem {
+    Ray ray;
+    uint depth;
+    uint pixelId;
+};
+
+soa MissRayWorkItem {
+    Ray ray;
+    uint depth;
+    uint pixelId;
+    vec3f thp;
+};
+
+soa HitLightWorkItem {
+    Light light;
+    vec3f thp;
+    uint pixelId;
+};
