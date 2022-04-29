@@ -175,7 +175,6 @@ ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 ###############################################################################
 SET(KRR_LIBS_ALL
 	krr-cuda
-	krr_cuda_cfg
 	assimp
 	OpenGL::GL
 	libglew_static
@@ -185,7 +184,8 @@ SET(KRR_LIBS_ALL
 	${OPENGL_gl_LIBRARY}
 	${CUDA_LIBRARIES}
 	${KRR_PTX}
-	${krr_cuda_cfg}
+	krr_cuda_cfg
+	krr_cuda_warning
 )
 
 ADD_LIBRARY ( krr_lib STATIC

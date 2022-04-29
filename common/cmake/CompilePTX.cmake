@@ -66,7 +66,7 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name)
 		${CUDA_INCLUDE_DIRS}
 		${CMAKE_BINARY_DIR}
 	)
-	target_link_libraries("${lib_name}" PRIVATE krr_cuda_cfg krr_opt)
+	target_link_libraries("${lib_name}" PRIVATE krr_cuda_cfg krr_cuda_warning krr_opt)
 	add_dependencies ("${lib_name}" krr_soa_generated)
 	
 	set (c_var_name ${output_var})
