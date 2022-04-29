@@ -4,6 +4,7 @@
 
 if (DEFINED ENV{OptiX_INSTALL_DIR})
   set (OptiX_INSTALL_DIR $ENV{OptiX_INSTALL_DIR})
+  set (searched_OptiX_INSTALL_DIR ${OptiX_INSTALL_DIR})
 elseif(NOT OptiX_INSTALL_DIR)
   if (WIN32)
 	find_path(searched_OptiX_INSTALL_DIR

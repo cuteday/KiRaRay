@@ -1,4 +1,4 @@
-  CMAKE_MINIMUM_REQUIRED ( VERSION 3.17 )
+  CMAKE_MINIMUM_REQUIRED ( VERSION 3.19 )
 
 PROJECT (KiRaRay
 	DESCRIPTION "A simple implememtation of an optix renderer."
@@ -32,6 +32,8 @@ add_compile_definitions ("$<$<CONFIG:Debug>:KRR_DEBUG_BUILD>")
 # CUDA compiler setup
 ###############################################################################
 
+find_package(CUDA REQUIRED)
+enable_language (CUDA)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_EXTENSIONS OFF)
@@ -55,17 +57,20 @@ if (NOT CUDA_INCLUDE_DIRS)
 endif()
 
 # auto detect compute arch, from https://stackoverflow.com/a/69353718
-if (NOT CMAKE_CUDA_ARCHITECTURES)
+if (NOT DEFINED ENV{CUDA_ARCH})
 	include(FindCUDA/select_compute_arch)
 	CUDA_DETECT_INSTALLED_GPUS(INSTALLED_GPU_CCS_1)
 	string(STRIP "${INSTALLED_GPU_CCS_1}" INSTALLED_GPU_CCS_2)
 	string(REPLACE " " ";" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
 	string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
-	# resolve the "multiple target" compiling error (ref: https://stackoverflow.com/q/65990215/15115395)
-	# though i don't know why (*/ω＼*)
-	string(APPEND CUDA_ARCH_LIST "-virtual" )
-	set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
-	message(STATUS "Automatically detected GPU architectures: ${CUDA_ARCH_LIST}")
+	list(REMOVE_ITEM CUDA_ARCH_LIST "86+PTX")
+	list(SORT CUDA_ARCH_LIST)
+	message(STATUS "Automatically detected GPU architecture: ${CUDA_ARCH_LIST}")
+	list(POP_BACK CUDA_ARCH_LIST CMAKE_CUDA_ARCHITECTURES)
+	string(APPEND CMAKE_CUDA_ARCHITECTURES "-virtual")
+	message(STATUS "Adopted GPU architecture: ${CMAKE_CUDA_ARCHITECTURES}")
+else()
+  	message(STATUS "Specified GPU architecture: ${CMAKE_CUDA_ARCHITECTURES}")
 endif()
 
 if (MSVC)

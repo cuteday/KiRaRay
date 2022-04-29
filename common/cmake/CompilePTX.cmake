@@ -12,6 +12,14 @@ if (NOT BIN2C)
 	)
 endif ()
 
+include (CheckCXXCompilerFlag)
+
+check_cxx_compiler_flag ("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
+if (COMPILER_SUPPORTS_MARCH_NATIVE AND PBRT_BUILD_NATIVE_EXECUTABLE)
+    target_compile_options (krr_opt INTERFACE
+          "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler >-march=native")
+endif ()
+
 # this macro defines cmake rules that execute the following four steps:
 # 1) compile the given cuda file ${cuda_file} to an intermediary PTX file
 # 2) use the 'bin2c' tool (that comes with CUDA) to
@@ -55,9 +63,11 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name)
 	endif ()
 	target_include_directories ("${lib_name}" PRIVATE 
 		${KRR_INCLUDE_ALL}
+		${CUDA_INCLUDE_DIRS}
 		${CMAKE_BINARY_DIR}
 	)
-	target_link_libraries("${lib_name}" PRIVATE krr_cuda_cfg)
+	target_link_libraries("${lib_name}" PRIVATE krr_cuda_cfg krr_opt)
+	add_dependencies ("${lib_name}" krr_soa_generated)
 	
 	set (c_var_name ${output_var})
 	set (embedded_file ${cuda_file}.ptx_embedded.c)

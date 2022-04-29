@@ -1,8 +1,9 @@
 #pragma once
 #include "common.h"
+#include <atomic>
 
-#ifdef KRR_DEVICE_CODE
-#include "cuda/atomic"
+#ifdef __CUDACC__
+#include <cuda/atomic>
 #endif
 
 #include "math/math.h"

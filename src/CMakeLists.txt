@@ -10,6 +10,7 @@ ADD_SUBDIRECTORY(cuda)
 
 MESSAGE ("Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE ("Build output directory: ${CMAKE_BINARY_DIR}")
+MESSAGE ("CUDA include directory: ${CUDA_INCLUDE_DIRS}")
 MESSAGE ("Optix include directory: ${OptiX_INCLUDE}")
 
 CONFIGURE_FILE (core/config.in.h ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
@@ -127,8 +128,8 @@ SET ( KRR_SHADERS
 	render/path/path.h
 	render/wavefront/wavefront.h
 	render/postprocess.h
-	render/path/path.cu
-	render/wavefront/wavefront.cu
+	#render/path/path.cu
+	#render/wavefront/wavefront.cu
 	render/postprocess.cu
 )
 
@@ -145,22 +146,33 @@ add_executable (krr::soac ALIAS soac)
 target_compile_options(soac PUBLIC ${CMAKE_CXX_FLAGS})
 set_target_properties (soac PROPERTIES OUTPUT_NAME soac)
 
-add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/workitem_soa.h
+add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/workitem_soa.h
     COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/workitem_soa.h
     DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa)
-set (KRR_SOA_GENERATED ${KRR_SOA_GENERATED} ${CMAKE_CURRENT_BINARY_DIR}/workitem_soa.h)
+set (KRR_SOA_GENERATED ${CMAKE_CURRENT_BINARY_DIR}/include/workitem_soa.h)
 
 add_custom_target (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
 
 ###############################################################################
-# linking and executables
+# generating PTX code from optix shader routines
 ###############################################################################
 
+INCLUDE_DIRECTORIES (${KRR_INCLUDE_ALL})
 INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code 
 CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-path)
 CUDA_COMPILE_EMBED(WAVEFRONT_PTX render/wavefront/wavefront.cu krr-wavefront)
 
+ADD_LIBRARY (KRR_PTX STATIC
+	# PTX 
+	${PATHTRACER_PTX}
+	${WAVEFRONT_PTX}
+)
+ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
+
+###############################################################################
+# linking and executables
+###############################################################################
 SET(KRR_LIBS_ALL
 	krr-cuda
 	krr_cuda_cfg
@@ -172,6 +184,8 @@ SET(KRR_LIBS_ALL
 	zlibstatic
 	${OPENGL_gl_LIBRARY}
 	${CUDA_LIBRARIES}
+	${KRR_PTX}
+	${krr_cuda_cfg}
 )
 
 ADD_LIBRARY ( krr_lib STATIC
@@ -181,12 +195,14 @@ ADD_LIBRARY ( krr_lib STATIC
 	${KRR_HEADERS}
 	${KRR_SOURCE_ALL}
 	${KRR_SHADERS}
-	# PTX 
-	${PATHTRACER_PTX}
-	${WAVEFRONT_PTX}
 	# SOA
 	${KRR_SOA_GENERATED}
+	# PTX
+	${PATHTRACER_PTX}
+	${WAVEFRONT_PTX}
 )
+
+#SET_PROPERTY (TARGET krr_lib PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 ADD_DEPENDENCIES (krr_lib krr_soa_generated)
 
 TARGET_INCLUDE_DIRECTORIES (krr_lib SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE})
@@ -194,5 +210,5 @@ TARGET_LINK_LIBRARIES(krr_lib PUBLIC ${KRR_LIBS_ALL})
 
 ADD_EXECUTABLE ( kiraray main/kiraray.cpp )
 
-TARGET_LINK_OPTIONS (kiraray PUBLIC "/FORCE:MULTIPLE" "/IGNORE:4006")
-TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib )
+TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
+TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib)
