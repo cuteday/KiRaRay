@@ -35,14 +35,14 @@ public:
 	Format getFormat() const { return mFormat; }
 	inline size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
 	int getChannels() const { return mChannels; }
-	uchar* data() { return mData.data(); }
+	uchar* data() { return mData; }
 	
 private:
 	bool mSrgb = false;
 	vec2i mSize = {0, 0};
 	int mChannels = 4;
 	Format mFormat = Format::NONE;
-	std::vector<uchar> mData;
+	uchar* mData{ };
 };
 
 class Texture {
@@ -50,12 +50,10 @@ public:
 	using SharedPtr = std::shared_ptr<Texture>;
 	using Format = Image::Format;
 
-	Texture() {
-		mImage = Image::SharedPtr(new Image());
-	};
+	Texture() = default;
 
 	void loadImage(const string& filepath, bool srgb = false) {
-		mValid = mImage->loadImage(filepath);
+		mValid = mImage.loadImage(filepath);
 
 	}
 	__both__ bool isValid() const { return mValid; }
@@ -76,9 +74,8 @@ public:
 
 	static Texture::SharedPtr createFromFile(const string& filepath, bool srgb = false);
 
-//private:
 	bool mValid = false;
-	Image::SharedPtr mImage;
+	Image mImage;
 	cudaTextureObject_t mCudaTexture = 0;
 	cudaArray_t mCudaArray = 0;
 };

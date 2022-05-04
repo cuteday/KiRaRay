@@ -91,7 +91,7 @@ KRR_NAMESPACE_BEGIN
 
 Image::Image(vec2i size, Format format, bool srgb):
 	mSrgb(srgb), mFormat(format), mSize(size){
-	mData.resize(size.x * size.y * 4 * getElementSize());
+	mData = new uchar[size.x * size.y * 4 * getElementSize()];
 }
 
 bool Image::loadImage(const fs::path& filepath, bool srgb)
@@ -129,8 +129,8 @@ bool Image::loadImage(const fs::path& filepath, bool srgb)
 	}
 	int elementSize = getElementSize();
 	mSrgb = mFormat == Format::RGBAuchar;
-	mData = std::vector<uchar>(data, data + size.x * size.y * 4 * elementSize);
-	free(data);
+	if (mData) delete[] mData;
+	mData = data;
 
 	mSize = size;
 	logDebug("Loaded image " + to_string(size.x) + "*" + to_string(size.y));
@@ -144,11 +144,11 @@ bool Image::saveImage(const fs::path& filepath)
 	if (extension == ".png") {
 		stbi_flip_vertically_on_write(true);
 		if (mFormat == Format::RGBAuchar) {
-			stbi_write_png(filepath.string().c_str(), mSize.x, mSize.y, 4, mData.data(), 0);
+			stbi_write_png(filepath.string().c_str(), mSize.x, mSize.y, 4, mData, 0);
 		}
 		else if (mFormat == Format::RGBAfloat) {
 			uchar* data = new uchar[nElements];
-			float* internalData = reinterpret_cast<float*>(mData.data());
+			float* internalData = reinterpret_cast<float*>(mData);
 			std::transform(internalData, internalData + nElements, data,
 				[](float v) -> uchar { return math::clamp((int)(v * 255), 0, 255); });
 			stbi_write_png(filepath.string().c_str(), mSize.x, mSize.y, 4, data, 0);
@@ -161,7 +161,7 @@ bool Image::saveImage(const fs::path& filepath)
 			logError("Image::saveImage Saving non-hdr image as hdr file...");
 			return false;
 		}
-		tinyexr::save_exr(reinterpret_cast<float*>(mData.data()), mSize.x, mSize.y, 4, 4, filepath.string().c_str());
+		tinyexr::save_exr(reinterpret_cast<float*>(mData), mSize.x, mSize.y, 4, 4, filepath.string().c_str());
 	}
 	else {
 		logError("Image::saveImage Unknown image extension: " + extension);
@@ -186,17 +186,17 @@ Texture::SharedPtr Texture::createFromFile(const string& filepath, bool srgb)
 }
 
 void Texture::toDevice() {
-	if (!mImage->isValid()) return;
+	if (!mImage.isValid()) return;
 
 	// we transfer our texture data to a cuda array, then make the array a cuda texture object.
-	vec2i size = mImage->getSize();
-	uint numComponents = mImage->getChannels();
+	vec2i size = mImage.getSize();
+	uint numComponents = mImage.getChannels();
 	if (numComponents != 4)
 		logError("Incorrect texture image channels (not 4)");
 	// we have no padding so pitch == width
 	uint pitch;
 	cudaChannelFormatDesc channelDesc = {};
-	Format textureFormat = mImage->getFormat();
+	Format textureFormat = mImage.getFormat();
 
 	if (textureFormat == Format::RGBAfloat) {
 		pitch = size.x * numComponents * sizeof(float);
@@ -210,7 +210,7 @@ void Texture::toDevice() {
 	// create internal cuda array for texture object
 	CUDA_CHECK(cudaMallocArray(&mCudaArray, &channelDesc, size.x, size.y));
 	// transfer data to cuda array
-	CUDA_CHECK(cudaMemcpy2DToArray(mCudaArray, 0, 0, mImage->data(), pitch, pitch, size.y, cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy2DToArray(mCudaArray, 0, 0, mImage.data(), pitch, pitch, size.y, cudaMemcpyHostToDevice));
 
 	cudaResourceDesc resDesc = {};
 	resDesc.resType = cudaResourceTypeArray;
@@ -227,7 +227,7 @@ void Texture::toDevice() {
 	texDesc.minMipmapLevelClamp = 0;
 	texDesc.mipmapFilterMode = cudaFilterModePoint;
 	*(vec4f*)texDesc.borderColor = vec4f(1.0f);
-	texDesc.sRGB = (int)mImage->isSrgb();
+	texDesc.sRGB = (int)mImage.isSrgb();
 
 	cudaTextureObject_t cudaTexture;
 	CUDA_CHECK(cudaCreateTextureObject(&cudaTexture, &resDesc, &texDesc, nullptr));
