@@ -114,7 +114,7 @@ public:
 	};
 
 	Material() {};
-	Material(const string& name) { mName = name; }
+	Material(const string& name) {}
 
 	void setTexture(TextureType type, Texture& texture);
 
@@ -145,7 +145,6 @@ public:
 #endif
 	ShadingModel mShadingModel = ShadingModel::MetallicRoughness;
 	bool mDoubleSided = false;
-	string mName;
 };
 
 KRR_NAMESPACE_END
