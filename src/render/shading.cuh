@@ -4,6 +4,8 @@
 #include "common.h"
 #include "bsdf.h"
 
+#include <optix_device.h>
+
 KRR_NAMESPACE_BEGIN
 
 namespace {
@@ -31,13 +33,24 @@ KRR_DEVICE_FUNCTION T sampleTexture(Texture& texture, vec2f uv, T fallback) {
 	return fallback;
 }
 
+KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
+	HitInfo hitInfo = {};
+	HitgroupSBTData* hitData = (HitgroupSBTData*)optixGetSbtDataPointer();
+	vec2f barycentric = (vec2f)optixGetTriangleBarycentrics();
+	hitInfo.primitiveId = optixGetPrimitiveIndex();
+	hitInfo.mesh = hitData->mesh;
+	hitInfo.wo = -normalize((vec3f)optixGetWorldRayDirection());
+	hitInfo.hitKind = optixGetHitKind();
+	hitInfo.barycentric = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y };
+	return hitInfo;
+}
+
 KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitInfo, Material& material) {
 	// [NOTE] about local shading frame (tangent space, TBN, etc.)
 	// The shading normal sd.N and face normal sd.geoN is always points towards the outside of the object,
 	// we can use this convention to determine whether an incident ray is coming from outside of the object.
 	
 	vec3f b = hitInfo.barycentric;
-	//Mesh& mesh = *hitInfo.mesh;
 	MeshData& mesh = *hitInfo.mesh;
 	vec3i v = mesh.indices[hitInfo.primitiveId];
 

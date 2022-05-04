@@ -18,8 +18,13 @@ PathTracer::PathTracer()
 	logInfo("setting up optix pipeline ...");
 	createPipeline();
 	
-	launchParamsBuffer.resize(sizeof(launchParams));
+	launchParams = gpContext->alloc->new_object<LaunchParamsPT>();
 	logSuccess("PathTracer::Optix 7 context fully set up");
+}
+
+PathTracer::~PathTracer()
+{
+	gpContext->alloc->deallocate_object(launchParams);
 }
 
 void PathTracer::createProgramGroups()
@@ -104,8 +109,9 @@ void PathTracer::buildSBT()
 	for (uint meshId = 0; meshId < numMeshes; meshId++) {
 		for (uint rayId = 0; rayId < RAY_TYPE_COUNT; rayId++) {
 			HitgroupRecord rec;
+			MeshData* mesh = &mpScene->mData.meshes[meshId];
 			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayId], &rec));
-			rec.data = { meshId };
+			rec.data = { mesh };
 			hitgroupRecords.push_back(rec);
 		}
 	}
@@ -116,49 +122,47 @@ void PathTracer::buildSBT()
 
 void PathTracer::buildAS()
 {
-	OptixTraversableHandle& asHandle = launchParams.traversable;
+	OptixTraversableHandle& asHandle = launchParams->traversable;
 	asHandle = OptiXBackend::buildAccelStructure(gpContext->optixContext, gpContext->cudaStream, *mpScene);
 }
 
 void PathTracer::renderUI() {
 	if (ui::CollapsingHeader("Path tracer")) {
 		ui::Text("Path tracing parameters");
-		ui::InputInt("Samples per pixel", &launchParams.spp);
-		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
-		ui::SliderInt("Max recursion depth", &launchParams.maxDepth, 0, 30);
+		ui::InputInt("Samples per pixel", &launchParams->spp);
+		ui::SliderFloat("RR absorption probability", &launchParams->probRR, 0.f, 1.f, "%.3f");
+		ui::SliderInt("Max recursion depth", &launchParams->maxDepth, 0, 30);
 		if (mpScene->mData.lights.size() > 0)	// only when we have light sources...
-			ui::Checkbox("Next event estimation", &launchParams.NEE);
-		if (launchParams.NEE) {
-			ui::Checkbox("Multiple importance sampling", &launchParams.MIS);
-			ui::InputInt("Light sample count", &launchParams.lightSamples);
+			ui::Checkbox("Next event estimation", &launchParams->NEE);
+		if (launchParams->NEE) {
+			ui::Checkbox("Multiple importance sampling", &launchParams->MIS);
+			ui::InputInt("Light sample count", &launchParams->lightSamples);
 		}
 		ui::Text("Debugging");
-		ui::Checkbox("Shader debug output", &launchParams.debugOutput);
-		ui::InputInt2("Debug pixel", (int*)&launchParams.debugPixel);
+		ui::Checkbox("Shader debug output", &launchParams->debugOutput);
+		ui::InputInt2("Debug pixel", (int*)&launchParams->debugPixel);
 	}
 }
 
 void PathTracer::render(CUDABuffer& frame)
 {
-	if (launchParams.fbSize.x * launchParams.fbSize.y == 0) return;
+	if (launchParams->fbSize.x * launchParams->fbSize.y == 0) return;
 
 	// prefetch memory resource
 	CUDATrackedMemory::singleton.PrefetchToGPU();
-
-	launchParams.fbSize = mFrameSize;
-	launchParams.colorBuffer = (vec4f*)frame.data();
-	memcpy(&launchParams.camera, mpScene->getCamera().get(), sizeof(Camera));
-	launchParams.sceneData = mpScene->getSceneData();
-	launchParams.frameID++;
-	launchParamsBuffer.copy_from_host(&launchParams, 1);
+	launchParams->fbSize = mFrameSize;
+	launchParams->colorBuffer = (vec4f*)frame.data();
+	launchParams->camera = *mpScene->getCamera();
+	launchParams->sceneData = mpScene->getSceneData();
+	launchParams->frameID++;
 
 	OPTIX_CHECK(optixLaunch(
 		pipeline, gpContext->cudaStream,
-		launchParamsBuffer.data(),
-		launchParamsBuffer.size(),
+		(CUdeviceptr)launchParams,
+		sizeof(LaunchParamsPT),
 		&sbt,
-		launchParams.fbSize.x,
-		launchParams.fbSize.y,
+		launchParams->fbSize.x,
+		launchParams->fbSize.y,
 		1
 	));
 	CUDA_SYNC_CHECK();

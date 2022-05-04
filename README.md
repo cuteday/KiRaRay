@@ -32,11 +32,11 @@ If possible, more features will be added in the future, for example:
 - Nvidia gpu (Turing or higher if possible).
 - OptiX 7.0+ and CUDA 11.0+ installed.
 
-This project is tested with optix 7.3/4 and cuda 11.4/5/6, compiled on Windows using msvc on an ampere gpu device. It is expected to run on platforms with support for optix 7 and cuda 11. 
+This project is tested with optix 7.3/4 and cuda 11.4/5/6. It may not compile successfully on Linux, since it is only tested on Windows (MSVC) currently. 
 
 #### Build
 
-This project uses cmake to build, no additional setting is needed. While it tries to guess the optix installation path, you may specify the `OptiX_INSTALL_DIR` environment variable manually incase it failed.
+This project uses cmake to build, no additional setting is needed. Make sure cuda is installed and added to PATH. While it tries to guess the optix installation path, you may specify the `OptiX_INSTALL_DIR` environment variable manually in case it failed.
 
 ### Common Issues
 

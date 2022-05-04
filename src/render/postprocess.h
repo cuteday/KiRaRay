@@ -58,7 +58,17 @@ public:
 
 	ToneMappingPass() = default;
 
-	void renderUI() override;
+	void renderUI() override {
+		static const char* operators[] = { "Linear", "Reinhard", "Aces", "Uncharted2", "HejiHable" };
+		if (ui::CollapsingHeader("Tone mapping pass")) {
+			ui::Checkbox("Enabled", &mEnable);
+			if (mEnable) {
+				ui::SliderFloat("Exposure compensation",
+					&mExposureCompensation, 0.001, 50, "%.3f");
+				ui::ListBox("Tonemap operator", (int*)&mOperator, operators, (int)Operator::NumsOperators);
+			}
+		}
+	}
 
 	void setOperator(Operator toneMappingOperator)
 		{mOperator = toneMappingOperator; }

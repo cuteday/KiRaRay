@@ -56,8 +56,11 @@ inline int GetBlockSize(F kernel) {
 	return blockSize;
 }
 
-//#ifdef KRR_DEVICE_CODE
-#if 1
+#ifdef __NVCC__
+
+template <typename F>
+void GPUParallelFor(int nElements, F func);
+
 template <typename F>
 __global__ void Kernel(F func, int nElements) {
 	int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -66,23 +69,20 @@ __global__ void Kernel(F func, int nElements) {
 }
 
 template <typename F>
-void GPUParrallelFor(int nElements, F func) {
-#ifdef KRR_DEVICE_CODE
+void GPUParallelFor(int nElements, F func) {
+	printf("Invoking GPU parallel for with %d threads BEFORE device code...\n", nElements);
+	printf("Invoking GPU parallel for with %d threads ENTERED device code...\n", nElements);
 	auto kernel = &Kernel<F>;
 	int blockSize = GetBlockSize(kernel);
 	int gridSize = (nElements + blockSize - 1) / blockSize;
-	kernel <<<gridSize, blockSize >>> (func, nElements);
-#endif
+	kernel <<<gridSize, blockSize>>> (func, nElements);
 #ifdef KRR_DEBUG_BUILD
 	CUDA_SYNC_CHECK();
 #endif
 }
 
-template <typename F>
-void GPUCall(F&& func) {
-	GPUParrallelFor(1, [=] KRR_DEVICE(int) mutable { func(); });
-}
-
 #endif
+
+
 
 KRR_NAMESPACE_END

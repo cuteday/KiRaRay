@@ -1,7 +1,8 @@
 #include "math/utils.h"
 #include "path.h"
 #include "render/shared.h"
-#include "render/shading.h"
+#include "render/shading.cuh"
+#include "render/raytracing.cuh"
 
 #include <optix_device.h>
 
@@ -9,11 +10,6 @@ using namespace krr;	// this is needed or nvcc can't recognize the launchParams 
 
 KRR_NAMESPACE_BEGIN
 
-namespace path {
-	constexpr float kShadowEpsilon = 1e-4f;
-}
-
-using namespace path;
 using namespace math;
 using namespace math::utils;
 using namespace shader;
@@ -27,37 +23,6 @@ KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 	vec2i pixel = (vec2i)optixGetLaunchIndex();
 	if (pixel == launchParams.debugPixel)
 		printf(fmt, std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
-	float tMax, int rayType, OptixRayFlags flags, Args &&... payload) {
-
-	optixTrace(traversable, ray.origin, ray.dir,
-		0.f, tMax, 0.f,						/* ray time val min max */
-		OptixVisibilityMask(255),			/* all visible */
-		flags,
-		rayType, RAY_TYPE_COUNT,			/* ray type and number of types */
-		rayType,							/* miss SBT index */
-		std::forward<Args>(payload)...);	/* (unpacked pointers to) payloads */
-}
-
-KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
-	float tMax, int rayType, OptixRayFlags flags, void* payload) {
-	uint u0, u1;
-	packPointer(payload, u0, u1);
-	traceRay(traversable, ray, tMax, rayType, flags, u0, u1);
-}
-
-template <typename... Args>
-KRR_DEVICE_FUNCTION bool traceShadowRay(OptixTraversableHandle traversable, 
-	Ray ray, float tMax) {
-	ShadowRayData sd = { false };
-	OptixRayFlags flags = (OptixRayFlags)(OPTIX_RAY_FLAG_DISABLE_ANYHIT);
-	uint u0, u1;
-	packPointer(&sd, u0, u1);
-	traceRay(traversable, ray, tMax, (int)SHADOW_RAY_TYPE, flags, u0, u1);
-	return sd.visible;
 }
 
 KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
@@ -127,7 +92,7 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 	vec3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
 
 	shadowRay = { p, to - p };
-	bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1 - kShadowEpsilon);
+	bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1);
 	if (visible) path.L += path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
 }
 
@@ -159,20 +124,10 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 }
 
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
-	HitInfo hitInfo = {};
-	HitgroupSBTData* hitData = (HitgroupSBTData*)optixGetSbtDataPointer();
-	uint meshId = hitData->meshId;
-	vec2f barycentric = (vec2f)optixGetTriangleBarycentrics();
-	hitInfo.primitiveId = optixGetPrimitiveIndex();
-	hitInfo.mesh = &launchParams.sceneData.meshes[meshId];
-	hitInfo.wo = -normalize((vec3f)optixGetWorldRayDirection());
-	hitInfo.hitKind = optixGetHitKind();
-	hitInfo.barycentric = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y };
-
+	HitInfo hitInfo = getHitInfo();
 	ShadingData& sd = *getPRD<ShadingData>();
 	sd.miss = false;
 	Material& material = launchParams.sceneData.materials[hitInfo.mesh->materialId];
-
 	prepareShadingData(sd, hitInfo, material);
 }
 
@@ -196,7 +151,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	// an alternate version of main loop
 	for (int &depth = path.depth; depth < launchParams.maxDepth; depth++) {
 		// ShadingData is updated in CH shader
-		traceRay(launchParams.traversable, { path.pos, path.dir }, 1e20f,
+		traceRay(launchParams.traversable, { path.pos, path.dir }, KRR_RAY_TMAX,
 			RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_DISABLE_ANYHIT, (void*)&sd);
 
 		if (sd.miss) {			// incorporate emission from envmap, by escaped rays

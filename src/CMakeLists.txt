@@ -36,6 +36,7 @@ SET ( KRR_CORE_SOURCE
 	# host-device side
 	core/interop.cpp
 	core/device/context.cpp
+	#core/device/cuda.cu
 	# components
 	core/window.cpp
 	core/logger.cpp
@@ -67,6 +68,7 @@ SET ( KRR_CORE_HEADERS
 	core/sampler.h
 	# maths
 	core/math/math.h
+	core/math/complex.h
 	core/math/constants.h
 	core/math/vec.h
 	core/math/mat.h
@@ -121,16 +123,29 @@ SET(KRR_SHADER_MATERIALS
 SET ( KRR_SHADERS
 	${KRR_SHADER_MATERIALS}
 	render/shared.h
-	render/shading.h
+	render/shading.cuh
 	render/sampling.h
 	render/bsdf.h
 	render/lightsampler.h
 	render/path/path.h
 	render/wavefront/wavefront.h
 	render/postprocess.h
+	render/raytracing.cuh
 	#render/path/path.cu
 	#render/wavefront/wavefront.cu
 	render/postprocess.cu
+)
+
+SET_SOURCE_FILES_PROPERTIES (
+	# core/device/cuda.h
+	# core/camera.h
+	# core/light.h
+	# core/texture.h
+	# core/interop.h
+	render/wavefront/integrator.cpp
+	render/wavefront/backend.cpp
+	#${KRR_SHADER_MATERIALS}
+	PROPERTIES LANGUAGE CUDA
 )
 
 FILE ( GLOB KRR_SOURCE_ALL
@@ -171,6 +186,16 @@ ADD_LIBRARY (KRR_PTX STATIC
 ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 
 ###############################################################################
+# some of the cuda code
+###############################################################################
+# ADD_LIBRARY (KRR_CUDA_CODE STATIC
+# 	core/device/cuda.h
+# 	core/device/cuda.cu
+# )
+# SET_PROPERTY(TARGET KRR_CUDA_CODE PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+# SET_PROPERTY(TARGET KRR_CUDA_CODE PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+
+###############################################################################
 # linking and executables
 ###############################################################################
 SET(KRR_LIBS_ALL
@@ -183,7 +208,8 @@ SET(KRR_LIBS_ALL
 	zlibstatic
 	${OPENGL_gl_LIBRARY}
 	${CUDA_LIBRARIES}
-	${KRR_PTX}
+	KRR_PTX
+	#KRR_CUDA_CODE
 	krr_cuda_cfg
 	krr_cuda_warning
 )
@@ -202,13 +228,14 @@ ADD_LIBRARY ( krr_lib STATIC
 	${WAVEFRONT_PTX}
 )
 
-#SET_PROPERTY (TARGET krr_lib PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 ADD_DEPENDENCIES (krr_lib krr_soa_generated)
-
+SET_PROPERTY(TARGET krr_lib PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+SET_PROPERTY(TARGET krr_lib PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+TARGET_COMPILE_DEFINITIONS (krr_lib PUBLIC ${KRR_DEFINITIONS})
 TARGET_INCLUDE_DIRECTORIES (krr_lib SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE})
 TARGET_LINK_LIBRARIES(krr_lib PUBLIC ${KRR_LIBS_ALL})
 
-ADD_EXECUTABLE ( kiraray main/kiraray.cpp )
+ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
 
 TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
 TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib)

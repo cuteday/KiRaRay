@@ -17,6 +17,7 @@ public:
 	using SharedPtr = std::shared_ptr<PathTracer>;
 
 	PathTracer();
+	~PathTracer();
 
 	void createProgramGroups();
 	void createPipeline();
@@ -28,7 +29,7 @@ public:
 	void renderUI() override;
 	void render(CUDABuffer& frame) override;
 	void resize(const vec2i& size) override { 
-		mFrameSize = launchParams.fbSize = size; 
+		mFrameSize = launchParams->fbSize = size; 
 	}
 
 	void setScene(Scene::SharedPtr scene) override {
@@ -51,8 +52,7 @@ private:
 	inter::vector<HitgroupRecord> hitgroupRecords;
 	OptixShaderBindingTable sbt = {};
 
-	LaunchParamsPT launchParams;
-	CUDABuffer   launchParamsBuffer;
+	LaunchParamsPT* launchParams;
 };
 
 KRR_NAMESPACE_END

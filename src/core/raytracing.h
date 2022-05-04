@@ -3,6 +3,9 @@
 #include "common.h"
 #include "math/math.h"
 
+#define KRR_RAY_TMAX	(1e20f)
+#define KRR_RAY_EPS		(1e-4f)
+
 KRR_NAMESPACE_BEGIN
 
 class Material;
@@ -12,6 +15,13 @@ struct Ray {
 	vec3f origin;
 	vec3f dir;
 };
+
+KRR_CALLABLE vec3f offsetRayOrigin(vec3f p, vec3f n, vec3f w) {
+	vec3f offset = n * KRR_RAY_EPS;
+	if (dot(n, w) < 0.f)
+		offset = -offset;
+	return p + offset;
+}
 
 struct Interaction{
 	Interaction() = default;
@@ -25,7 +35,7 @@ struct Interaction{
 	__both__ Interaction(vec3f p, vec3f wo, vec3f n, vec2f uv): p(p), wo(wo), n(n), uv(uv) {}
 
 	KRR_CALLABLE vec3f offsetRayOrigin(const vec3f& w) const {
-		return utils::offsetRayOrigin(p, n, w);
+		return krr::offsetRayOrigin(p, n, w);
 	}
 
 	KRR_CALLABLE vec3f offsetRayOrigin() {

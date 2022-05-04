@@ -1,5 +1,6 @@
 #include "backend.h"
 #include "device/optix.h"
+#include "device/cuda.h"
 #include "render/shared.h"
 
 KRR_NAMESPACE_BEGIN
@@ -22,7 +23,6 @@ OptixPipelineCompileOptions OptiXBackend::getPipelineCompileOptions() {
 
 OptixModule OptiXBackend::createOptiXModule(OptixDeviceContext optixContext, const char* ptx) {
     OptixModuleCompileOptions moduleCompileOptions = {};
-    // TODO: REVIEW THIS
     moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 #ifndef NDEBUG
     moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
@@ -30,7 +30,7 @@ OptixModule OptiXBackend::createOptiXModule(OptixDeviceContext optixContext, con
     moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_MODERATE;
 #else
     moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
-#endif // OPTIX_VERSION
+#endif
 #else
     moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
     moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
@@ -222,7 +222,7 @@ OptiXWavefrontBackend::OptiXWavefrontBackend(Scene& scene)
     OptixProgramGroup missClosestPG = createMissPG("__miss__Closest");
     OptixProgramGroup missShadowPG = createMissPG("__miss__Shadow");
     OptixProgramGroup hitClosestPG = createIntersectionPG(
-        "__closesthit__Closest", "__anyhit__Closest", nullptr);
+        "__closesthit__Closest", nullptr, nullptr);
     OptixProgramGroup hitShadowPG = createIntersectionPG(
         nullptr, "__anyhit__Shadow", nullptr);
 
@@ -260,9 +260,9 @@ OptiXWavefrontBackend::OptiXWavefrontBackend(Scene& scene)
     OPTIX_CHECK(optixSbtRecordPackHeader(missClosestPG, &missRecord));
     missClosestRecords.push_back(missRecord);
     OPTIX_CHECK(optixSbtRecordPackHeader(missShadowPG, &missRecord));
-    missClosestRecords.push_back(missRecord);
+    missShadowRecords.push_back(missRecord);
     for (uint meshId = 0; meshId < scene.meshes.size(); meshId++) {
-        hitgroupRecord.data = { meshId };
+        hitgroupRecord.data = { &scene.mData.meshes[meshId] };
         OPTIX_CHECK(optixSbtRecordPackHeader(hitClosestPG, &hitgroupRecord));
         hitgroupClosestRecords.push_back(hitgroupRecord);
         OPTIX_CHECK(optixSbtRecordPackHeader(hitShadowPG, &hitgroupRecord));
@@ -286,6 +286,50 @@ OptiXWavefrontBackend::OptiXWavefrontBackend(Scene& scene)
     shadowSBT.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
 
     optixTraversable = buildAccelStructure(optixContext, cudaStream, scene);
+
+    if (!launchParams)launchParams = gpContext->alloc->new_object<LaunchParams>();
+    launchParams->sceneData = scene.mData;
+}
+
+void OptiXWavefrontBackend::setScene(Scene& scene){
+
+}
+
+void OptiXWavefrontBackend::traceClosest(int numRays, 
+    RayQueue* currentRayQueue, 
+    MissRayQueue* missRayQueue, 
+    HitLightRayQueue* hitLightRayQueue, 
+    RayQueue* nextRayQueue){
+    if (optixTraversable) {
+        launchParams->currentRayQueue = currentRayQueue;
+        launchParams->missRayQueue = missRayQueue;
+        launchParams->hitLightRayQueue = hitLightRayQueue;
+        launchParams->nextRayQueue = nextRayQueue;
+        
+        OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream,
+            (CUdeviceptr)launchParams,
+            sizeof(LaunchParams),
+            &closestSBT,
+            numRays, 1, 1));
+#ifdef KRR_DEBUG_BUILD
+        CUDA_SYNC_CHECK();
+#endif
+    }
+}
+
+void OptiXWavefrontBackend::traceShadow(int numRays, 
+    ShadowRayQueue* shadowRayQueue){
+    if (optixTraversable) {
+        launchParams->shadowRayQueue = shadowRayQueue;
+        OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream,
+            (CUdeviceptr)launchParams,
+            sizeof(LaunchParams),
+            &shadowSBT,
+            numRays, 1, 1));
+#ifdef KRR_DEBUG_BUILD
+        CUDA_SYNC_CHECK();
+#endif
+    }
 }
 
 OptixProgramGroup OptiXWavefrontBackend::createRaygenPG(const char* entrypoint) const{

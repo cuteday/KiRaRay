@@ -2,7 +2,7 @@
 #include "common.h"
 #include <atomic>
 
-#ifdef __CUDACC__
+#ifdef KRR_DEVICE_CODE
 #include <cuda/atomic>
 #endif
 
@@ -66,22 +66,23 @@ private:
 #endif 
 };
 
+// func: void F(WorkItem)
 template <typename F, typename WorkItem>
-void ForAllQueued(const char* desc, const WorkQueue<WorkItem>* q, int maxQueued,
+void ForAllQueued(const WorkQueue<WorkItem>* q, int nElements,
     F&& func) {
-        // Launch GPU threads to process _q_ using _func_
-#ifdef KRR_DEVICE_CODE
-    //GPUParallelFor(desc, maxQueued, [=] PBRT_GPU(int index) mutable {
-    //    if (index >= q->Size())
-    //        return;
-    //    func((*q)[index]);
-    //});
+#ifdef KRR_ON_GPU
+    GPUParallelFor(nElements, [=] KRR_DEVICE(int index) mutable {
+        if (index >= q->size())
+            return;
+        func((*q)[index]);
+    });
 #endif
 }
 
 class RayQueue : public WorkQueue<RayWorkItem> {
 public:
     using WorkQueue::WorkQueue;     // use parent constructor
+    using WorkQueue::push;
 
     KRR_CALLABLE int pushCameraRay(Ray ray, uint pixelId) {
         int index = allocateEntry();
@@ -91,10 +92,31 @@ public:
         return index;
     }
 
-    KRR_CALLABLE int pushIndirectRay() {
-        int index = allocateEntry();
-        return index;
+};
+
+class MissRayQueue : public WorkQueue<MissRayWorkItem> {
+public:
+    using WorkQueue::WorkQueue;
+    using WorkQueue::push;
+
+    KRR_CALLABLE int push(RayWorkItem w) {
+        return push(MissRayWorkItem{ w.ray, w.depth, w.thp, w.pixelId });
     }
+};
+
+class HitLightRayQueue : public WorkQueue<HitLightWorkItem> {
+public:
+    using WorkQueue::WorkQueue;
+    using WorkQueue::push;
+
+
+};
+
+class ShadowRayQueue : public WorkQueue<ShadowRayWorkItem> {
+public:
+    using WorkQueue::WorkQueue;
+    using WorkQueue::push;
+
 };
 
 KRR_NAMESPACE_END

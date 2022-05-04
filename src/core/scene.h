@@ -19,12 +19,13 @@ KRR_NAMESPACE_BEGIN
 
 class AssimpImporter;
 class PathTracer;
+class WavefrontPathTracer;
 class OptiXBackend;
 class OptiXWavefrontBackend;
 using namespace io;
 
 typedef struct {
-	uint meshId;
+	MeshData* mesh;
 } HitgroupSBTData;
 
 /*! SBT record for a raygen program */
@@ -89,6 +90,7 @@ private:
 	friend class PathTracer;
 	friend class OptiXBackend;
 	friend class OptiXWavefrontBackend;
+	friend class WavefrontPathTracer;
 
 	std::vector<Mesh> meshes;
 	SceneData mData;

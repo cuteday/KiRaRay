@@ -5,27 +5,35 @@ flat bool;
 flat double;
 flat Light;
 
-soa vec2f { float x, y; };
-soa vec3f { float x, y, z; };
-soa vec2i { int x, y; };
+struct vec2f { float x, y; };
+struct vec3f { float x, y, z; };
+struct vec2i { int x, y; };
 
-soa Ray{ vec3f origin, dir; };
+struct Ray{ vec3f origin, dir; };
 
-soa RayWorkItem {
-    Ray ray;
-    uint depth;
-    uint pixelId;
+struct RayWorkItem {
+	Ray ray;
+	uint depth;
+	vec3f thp;
+	uint pixelId;
 };
 
-soa MissRayWorkItem {
-    Ray ray;
-    uint depth;
-    uint pixelId;
-    vec3f thp;
+struct MissRayWorkItem {
+	Ray ray;
+	uint depth;
+	vec3f thp;
+	uint pixelId;
 };
 
-soa HitLightWorkItem {
-    Light light;
-    vec3f thp;
-    uint pixelId;
+struct HitLightWorkItem {
+	Light light;
+	vec3f thp;
+	uint pixelId;
+};
+
+struct ShadowRayWorkItem {
+	Ray ray;
+	float tMax;
+	vec3f Li;
+	uint pixelId;
 };

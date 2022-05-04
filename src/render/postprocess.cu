@@ -1,5 +1,6 @@
 #include "postprocess.h"
 #include "math/utils.h"
+
 #include "device/context.h"
 
 KRR_NAMESPACE_BEGIN
@@ -113,19 +114,6 @@ namespace shader {
 			break;
 		}
 		frame[i] = vec4f(color, 1.f);
-	}
-}
-
-void ToneMappingPass::renderUI()
-{
-	static const char* operators[] = {"Linear", "Reinhard", "Aces", "Uncharted2", "HejiHable"};
-	if (ui::CollapsingHeader("Tone mapping pass")) {
-		ui::Checkbox("Enabled", &mEnable);
-		if (mEnable) {
-			ui::SliderFloat("Exposure compensation",
-				&mExposureCompensation, 0.001, 50, "%.3f");
-			ui::ListBox("Tonemap operator", (int*)&mOperator, operators, (int)Operator::NumsOperators);
-		}
 	}
 }
 

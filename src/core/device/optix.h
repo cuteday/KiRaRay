@@ -5,6 +5,7 @@
 #include <optix_stubs.h>
 #include <sstream>
 #include <stdexcept>
+
 #include "logger.h"
 #include "device/cuda.h"
 

@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
             flatTypes.insert(type);
 
             expect(";");
-        } else if (tok == "soa") {
+        } else if (tok == "struct") {
             SOA soa;
 
             OptionalString typeTok = getToken(false);

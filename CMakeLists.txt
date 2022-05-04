@@ -56,6 +56,7 @@ if (NOT CUDA_INCLUDE_DIRS)
     set(CUDA_INCLUDE_DIRS ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 endif()
 
+list (APPEND KRR_DEFINITIONS "KRR_ON_GPU")
 # auto detect compute arch, from https://stackoverflow.com/a/69353718
 if (NOT DEFINED ENV{CUDA_ARCH})
 	include(FindCUDA/select_compute_arch)

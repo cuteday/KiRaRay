@@ -1,7 +1,6 @@
-#include <cuda.h>
-#include <cuda_runtime.h>
-
 #include "integrator.h"
+
+#include "device/cuda.h"
 #include "workqueue.h"
 
 KRR_NAMESPACE_BEGIN
@@ -36,11 +35,10 @@ void WavefrontPathTracer::handleHit(vec4f* frameBuffer){
 }
 
 void WavefrontPathTracer::handleMiss(vec4f* frameBuffer){
-	Scene::SceneData& sceneData = scene->mData;
 	ForAllQueued(missRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const MissRayWorkItem& w) {
 		color Li = {};
-		for (const InfiniteLight& light : sceneData.infiniteLights) {
+		for (const InfiniteLight& light : scene->mData.infiniteLights) {
 			Li += light.Li(w.ray.dir);
 		}
 		frameBuffer[w.pixelId] += vec4f(Li, 1.0);
@@ -59,7 +57,7 @@ void WavefrontPathTracer::generateCameraRays(int sampleId)
 			camera->getRayDir(pixelCoord, frameSize, sampler.get2D())
 		};
 		cameraRayQueue->pushCameraRay(cameraRay, pixelId);
-		//printf("current pixel id: %d, current total camera rays: %d\n", pixelId, cameraRayQueue->size());
+		printf("current pixel id: %d, current total camera rays: %d\n", pixelId, cameraRayQueue->size());
 	});
 }
 
@@ -90,9 +88,8 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 		generateCameraRays(sampleId);
 		// [STEP#2] do radiance estimation recursively
 		for (int depth = 0; depth < maxDepth; depth++) {
-			RayQueue* nextQueue = nextRayQueue(depth);
 			Call(KRR_DEVICE_LAMBDA() {
-				nextQueue->reset();
+				nextRayQueue(depth)->reset();
 				hitLightRayQueue->reset();
 				missRayQueue->reset();
 				shadowRayQueue->reset();

@@ -2,6 +2,8 @@
 
 #include "file.h"
 #include "kiraray.h"
+
+#include "render/path/pathtracer.h"
 #include "main/renderer.h"
 #include "scene/importer.h"
 

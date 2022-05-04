@@ -8,7 +8,6 @@
 
 #include "device/buffer.h"
 #include "device/context.h"
-#include "render/path/pathtracer.h"
 #include "render/postprocess.h"
 
 KRR_NAMESPACE_BEGIN

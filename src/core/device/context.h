@@ -24,6 +24,7 @@ public:
 	CUstream cudaStream;
 	cudaDeviceProp deviceProps;
 	OptixDeviceContext optixContext;
+	Allocator* alloc;
 };
 
 extern Context::SharedPtr gpContext;

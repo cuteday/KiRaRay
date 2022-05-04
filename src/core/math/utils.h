@@ -175,12 +175,12 @@ namespace math{
 			return (p < 0) ? (p + 2 * M_PI) : p;
 		}
 
-		KRR_CALLABLE vec3f offsetRayOrigin(vec3f p, vec3f n, vec3f w) {
-			vec3f offset = n * 1e-4f;
-			if (dot(n, w) < 0.f)
-				offset = -offset;
-			return p + offset;
-		}
+		//KRR_CALLABLE vec3f offsetRayOrigin(vec3f p, vec3f n, vec3f w) {
+		//	vec3f offset = n * 1e-4f;
+		//	if (dot(n, w) < 0.f)
+		//		offset = -offset;
+		//	return p + offset;
+		//}
 
 		/*******************************************************
 		* hashing utils

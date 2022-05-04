@@ -53,10 +53,12 @@ void Context::initialize() {
 	// tracked cuda device memory management
 	logInfo("Setting default memory manager to CUDA memory");
 	set_default_resource(&CUDATrackedMemory::singleton);
+	alloc = new Allocator(&CUDATrackedMemory::singleton);
 }
 
 void Context::finalize(){
 	optixDeviceContextDestroy(optixContext);
+	delete alloc;
 	cuCtxDestroy(cudaContext);
 }
 

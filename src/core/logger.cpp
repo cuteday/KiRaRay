@@ -78,6 +78,8 @@ void Logger::log(Level level, const string& msg, bool terminate) {
         sInitialized = true;
     }
 
+    if (!msg.length()) return;
+
     if (level <= sVerbosity) {
         std::string s = "";
 

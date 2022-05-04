@@ -24,11 +24,19 @@ public:
 
 class OptiXWavefrontBackend : public OptiXBackend {
 public:
-	OptiXWavefrontBackend() = default;
+	//OptiXWavefrontBackend() = default;
+	//~OptiXWavefrontBackend() = default;
 	OptiXWavefrontBackend(Scene& scene);
+	void setScene(Scene& scene);
 
-	void traceClosest(RayQueue* currentRayQueue, RayQueue* nextRayQueue);
-	void traceShadow();
+	void traceClosest(int numRays,
+		RayQueue* currentRayQueue,
+		MissRayQueue* missRayQueue,
+		HitLightRayQueue* hitLightRayQueue,
+		RayQueue* nextRayQueue);
+
+	void traceShadow(int numRays,
+		ShadowRayQueue* shadowRayQueue);
 
 protected:
 	OptixProgramGroup createRaygenPG(const char* entrypoint) const;
@@ -45,6 +53,8 @@ private:
 	OptixShaderBindingTable closestSBT = {};
 	OptixShaderBindingTable shadowSBT = {};
 	OptixTraversableHandle optixTraversable = {};
+
+	LaunchParams* launchParams{nullptr};
 
 	inter::vector<RaygenRecord> raygenClosestRecords;
 	inter::vector<HitgroupRecord> hitgroupClosestRecords;

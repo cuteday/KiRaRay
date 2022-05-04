@@ -6,22 +6,30 @@
 KRR_NAMESPACE_BEGIN
 
 struct RayWorkItem {
-    Ray ray;
-    uint depth;
-    uint pixelId;
+	Ray ray;
+	uint depth;
+	vec3f thp;
+	uint pixelId;
 };
 
 struct MissRayWorkItem {
-    Ray ray;
-    uint depth;
-    uint pixelId;
-    vec3f thp;
+	Ray ray;
+	uint depth;
+	vec3f thp;
+	uint pixelId;
 };
 
 struct HitLightWorkItem {
-    Light light;
-    vec3f thp;
-    uint pixelId;
+	Light light;
+	vec3f thp;
+	uint pixelId;
+};
+
+struct ShadowRayWorkItem {
+	Ray ray;
+	float tMax;
+	vec3f Li;
+	uint pixelId;
 };
 
 #include "workitem_soa.h"

@@ -9,6 +9,7 @@
 
 #include "device/buffer.h"
 #include "device/context.h"
+#include "device/cuda.h"
 #include "backend.h"
 #include "workqueue.h"
 
@@ -20,34 +21,58 @@ public:
 
 	WavefrontPathTracer() = default;
 	WavefrontPathTracer(Scene& scene);
-	
+	~WavefrontPathTracer();
+
 	void resize(const vec2i& size) override;
 	void setScene(Scene::SharedPtr scene) override;
 	void render(CUDABuffer& frame) override;
-	void renderUI() override;
+	void renderUI() override {
+		if (ui::CollapsingHeader("Wavefront path tracer")) {
+			ui::Text("Hello from wavefront path tracer!");
+			ui::InputInt("Samples per pixel", &samplesPerPixel);
+			ui::SliderInt("Max recursion depth", &maxDepth, 0, 30);
+		}
+	};
 
-protected:
 	void initialize();
 
-	void handleHit();
-	void handleMiss();
-	void evalDirect();
+	// cuda utility functions
+	template <typename F>
+	void Call(F&& func) {
+#ifdef KRR_ON_GPU
+		GPUParallelFor(1, [=] KRR_DEVICE(int) mutable { func(); });
+#else 
+		assert(!"should not go here");
+#endif
+	}
 
-private:
-	// utility functions
-	RayQueue* currentRayQueue(int depth) { return rayQueue[depth & 1]; }
-	RayQueue* nextRayQueue(int depth) { return rayQueue[(depth + 1) & 1]; }
-	
+	template <typename F>
+	void ParallelFor(int nElements, F&& func) {
+#ifdef KRR_ON_GPU
+		GPUParallelFor(nElements, func);
+#else 
+		assert(!"should not go here");
+#endif
+	}
+
+//private: // extended lambda cannot have private or protected access within its class
+	void handleHit(vec4f* frameBuffer);
+	void handleMiss(vec4f* frameBuffer);
+	void evalDirect(vec4f* frameBuffer);
 	void generateCameraRays(int sampleId);
 
-	OptiXWavefrontBackend backend;
+	RayQueue* currentRayQueue(int depth) { return rayQueue[depth & 1]; }
+	RayQueue* nextRayQueue(int depth) { return rayQueue[(depth + 1) & 1]; }
 
+	OptiXWavefrontBackend* backend;
 	Scene::SharedPtr scene;
-	Camera* camera;
-
+	Camera* camera{ };
 
 	// work queues
-	RayQueue* rayQueue[2];	// switching bewteen current and next queue
+	RayQueue* rayQueue[2]{ };	// switching bewteen current and next queue
+	MissRayQueue* missRayQueue{ };
+	HitLightRayQueue* hitLightRayQueue{ };
+	ShadowRayQueue* shadowRayQueue{ };
 
 	// path tracing parameters
 	int frameId{ 0 };
