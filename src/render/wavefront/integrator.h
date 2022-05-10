@@ -21,18 +21,12 @@ public:
 
 	WavefrontPathTracer() = default;
 	WavefrontPathTracer(Scene& scene);
-	~WavefrontPathTracer();
+	~WavefrontPathTracer() = default;
 
 	void resize(const vec2i& size) override;
 	void setScene(Scene::SharedPtr scene) override;
 	void render(CUDABuffer& frame) override;
-	void renderUI() override {
-		if (ui::CollapsingHeader("Wavefront path tracer")) {
-			ui::Text("Hello from wavefront path tracer!");
-			ui::InputInt("Samples per pixel", &samplesPerPixel);
-			ui::SliderInt("Max recursion depth", &maxDepth, 0, 30);
-		}
-	};
+	void renderUI() override;
 
 	void initialize();
 
@@ -65,7 +59,6 @@ public:
 	RayQueue* nextRayQueue(int depth) { return rayQueue[(depth + 1) & 1]; }
 
 	OptiXWavefrontBackend* backend;
-	Scene::SharedPtr scene;
 	Camera* camera{ };
 
 	// work queues

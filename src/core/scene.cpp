@@ -4,17 +4,22 @@
 #include "window.h"
 #include "scene.h"
 #include "math/math.h"
+#include "device/context.h"
 
 KRR_NAMESPACE_BEGIN
 
 Scene::Scene() {
-	// other components
 	mpCamera = Camera::SharedPtr(new Camera());
 	mpCameraController = OrbitCameraController::SharedPtr(new OrbitCameraController(mpCamera));
+	assert(mData.materials == nullptr);
+	mData.materials = gpContext->alloc->new_object<inter::vector<Material>>();
+	mData.meshes = gpContext->alloc->new_object<inter::vector<MeshData>>();
+	mData.lights = gpContext->alloc->new_object<inter::vector<Light>>();
+	mData.infiniteLights = gpContext->alloc->new_object<inter::vector<InfiniteLight>>();
+	mData.lightSampler = gpContext->alloc->new_object<UniformLightSampler>((inter::span<Light>)*mData.lights);
 }
 
-bool Scene::update()
-{
+bool Scene::update(){
 	bool hasChanges = false;
 	if (mpCameraController) hasChanges |= mpCameraController->update();
 	if (mpCamera) hasChanges |= mpCamera->update();
@@ -26,10 +31,10 @@ void Scene::renderUI() {
 		if (mpCamera && ui::CollapsingHeader("Camera")) {
 			mpCamera->renderUI();
 		}
-		if (mData.infiniteLights.size() && ui::CollapsingHeader("Infinite Lights")) {
-			for (int i = 0; i < mData.infiniteLights.size(); i++) {
+		if (mData.infiniteLights->size() && ui::CollapsingHeader("Infinite Lights")) {
+			for (int i = 0; i < mData.infiniteLights->size(); i++) {
 				if (ui::CollapsingHeader(to_string(i).c_str())) {
-					InfiniteLight& light = mData.infiniteLights[i];
+					InfiniteLight& light = (*mData.infiniteLights)[i];
 					light.renderUI();
 				}
 			}
@@ -37,59 +42,62 @@ void Scene::renderUI() {
 	}
 }
 
-void Scene::toDevice()
-{
-	mData.meshes.clear();
+void Scene::toDevice(){
+	mData.meshes->clear();
 	for (Mesh& mesh : meshes) {
 		mesh.toDevice();
-		mData.meshes.push_back(mesh.mData);
+		mData.meshes->push_back(mesh.mData);
 	}
 	processLights();
 }
 
-void Scene::processLights()
-{
+void Scene::processLights(){
 	// This function should be called AFTER all scene data are moved to device
-	mData.lights.clear();
+	mData.lights->clear();
 	uint nMeshes = meshes.size();
 	for (uint meshId = 0; meshId < nMeshes; meshId++) {
 		Mesh& mesh = meshes[meshId];
-		Material& material = mData.materials[mesh.materialId];
+		Material& material = (*mData.materials)[mesh.materialId];
 		if (material.hasEmission()) {
 			logDebug("Emissive diffuse area light detected,"
 				" number of shapes: " + to_string(mesh.indices.size()) +
 				" constant emission(?) "+ to_string(length(material.mMaterialParams.emissive)));
-			std::vector<Triangle> triangles = mesh.createTriangles(&mData.meshes[meshId]);
+			std::vector<Triangle> triangles = mesh.createTriangles(&(*mData.meshes)[meshId]);
 			mesh.emissiveTriangles.assign(triangles.begin(), triangles.end());
 			for (Triangle& tri : mesh.emissiveTriangles) {
 				vec3f Le = material.mMaterialParams.emissive;
 				Texture& texture = material.getTexture(Material::TextureType::Emissive);
 				mesh.lights.push_back(DiffuseAreaLight(Shape(&tri), texture, Le, true, 1.f));
-				//mData.lights.push_back(&mesh.lights.back());
 			}
 			mesh.mData.lights = mesh.lights.data();
-			mData.meshes[meshId] = mesh.mData;
+			(*mData.meshes)[meshId] = mesh.mData;
 		}
 	}
 	for (Mesh& mesh : meshes) {
 		for (DiffuseAreaLight& light : mesh.lights)
-			mData.lights.push_back(Light(&light));
+			mData.lights->push_back(Light(&light));
 	}
-	for (InfiniteLight& light : mData.infiniteLights)
-		mData.lights.push_back(&light);
-	logInfo("A total of " + to_string(mData.lights.size()) + " light(s) processed!");
-	mData.lightSampler = UniformLightSampler((inter::span<Light>)mData.lights);
+	for (InfiniteLight& light : *mData.infiniteLights)
+		mData.lights->push_back(&light);
+	logInfo("A total of " + to_string(mData.lights->size()) + " light(s) processed!");
+	if (mData.lightSampler.ptr()) {
+		gpContext->alloc->deallocate_object((UniformLightSampler*)mData.lightSampler.ptr());
+	}
+	mData.lightSampler = gpContext->alloc->new_object<UniformLightSampler>((inter::span<Light>) * mData.lights);
 }
 
-bool Scene::onMouseEvent(const MouseEvent& mouseEvent)
-{
+void Scene::addInfiniteLight(const InfiniteLight& infiniteLight){
+	mData.infiniteLights->push_back(infiniteLight);
+	processLights();
+}
+
+bool Scene::onMouseEvent(const MouseEvent& mouseEvent){
 	if(mpCameraController && mpCameraController->onMouseEvent(mouseEvent))
 		return true;
 	return false;
 }
 
-bool Scene::onKeyEvent(const KeyboardEvent& keyEvent)
-{
+bool Scene::onKeyEvent(const KeyboardEvent& keyEvent){
 	if(mpCameraController && mpCameraController->onKeyEvent(keyEvent))
 		return true;
 	return false;

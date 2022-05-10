@@ -50,11 +50,11 @@ private:
 	OptixDeviceContext optixContext;
 	CUstream cudaStream;
 
-	OptixShaderBindingTable closestSBT = {};
-	OptixShaderBindingTable shadowSBT = {};
-	OptixTraversableHandle optixTraversable = {};
+	OptixShaderBindingTable closestSBT{};
+	OptixShaderBindingTable shadowSBT{};
+	OptixTraversableHandle optixTraversable{};
 
-	LaunchParams* launchParams{nullptr};
+	LaunchParams* launchParams{};
 
 	inter::vector<RaygenRecord> raygenClosestRecords;
 	inter::vector<HitgroupRecord> hitgroupClosestRecords;

@@ -82,6 +82,7 @@ SET ( KRR_CORE_HEADERS
 	# cuda device backend and host-device interops
 	core/interop.h
 	core/host/memory.h
+	core/host/synchronize.h
 	core/device/memory.h
 	core/device/context.h
 	core/device/buffer.h
@@ -131,20 +132,12 @@ SET ( KRR_SHADERS
 	render/wavefront/wavefront.h
 	render/postprocess.h
 	render/raytracing.cuh
-	#render/path/path.cu
-	#render/wavefront/wavefront.cu
 	render/postprocess.cu
 )
 
 SET_SOURCE_FILES_PROPERTIES (
-	# core/device/cuda.h
-	# core/camera.h
-	# core/light.h
-	# core/texture.h
-	# core/interop.h
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
-	#${KRR_SHADER_MATERIALS}
 	PROPERTIES LANGUAGE CUDA
 )
 
@@ -189,7 +182,6 @@ ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 # some of the cuda code
 ###############################################################################
 # ADD_LIBRARY (KRR_CUDA_CODE STATIC
-# 	core/device/cuda.h
 # 	core/device/cuda.cu
 # )
 # SET_PROPERTY(TARGET KRR_CUDA_CODE PROPERTY CUDA_SEPARABLE_COMPILATION ON)

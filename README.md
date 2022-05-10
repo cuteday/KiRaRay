@@ -20,7 +20,7 @@
 If possible, more features will be added in the future, for example:
 
 - [ ] Spectral rendering.
-- [ ] Wavefront path tracer.
+- [ ] Wavefront path tracer(WIP).
 - [ ] More BSDFs and light sources.
 - [ ] Mesh instancing and scene animations.
 - [ ] Importer for pbrt or mitsuba scenes.
@@ -50,7 +50,7 @@ For testing, HDR environment images can be downloaded at [sIBL Archive](http://w
 
 #### Performance
 
-Currently the renderer should run at 30+ fps for rendering an 1 spp 1920*1080 image on an RTX 3060 or similar GPU, if the average path length is less than 5 and NEE disabled.
+Currently the megakernel pathtracer should run at 30+ fps for rendering an 1 spp 1920*1080 image on an RTX 3060 or similar GPU, if the average path length is less than 5 and NEE disabled.
 
 ### Epilogue
 

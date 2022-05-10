@@ -23,7 +23,6 @@ public:
 	virtual bool onKeyEvent(const io::KeyboardEvent& keyEvent) { return false; }
 
 protected:
-	string mName = "";
 	bool mEnable = true;
 	vec2i mFrameSize;
 	Scene::SharedPtr mpScene = nullptr;

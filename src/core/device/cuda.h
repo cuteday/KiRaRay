@@ -31,7 +31,7 @@
 	  {                                                                 \
 		fprintf( stderr, "error (%s: line %d): %s\n",                   \
 			__FILE__, __LINE__, cudaGetErrorString( error ) );          \
-		throw std::runtime_error("CUDA synchronized check failed");                                                           \
+		throw std::runtime_error("CUDA synchronized check failed");		\
 	  }                                                                 \
   }
 
@@ -70,8 +70,6 @@ __global__ void Kernel(F func, int nElements) {
 
 template <typename F>
 void GPUParallelFor(int nElements, F func) {
-	printf("Invoking GPU parallel for with %d threads BEFORE device code...\n", nElements);
-	printf("Invoking GPU parallel for with %d threads ENTERED device code...\n", nElements);
 	auto kernel = &Kernel<F>;
 	int blockSize = GetBlockSize(kernel);
 	int gridSize = (nElements + blockSize - 1) / blockSize;

@@ -14,8 +14,6 @@ using namespace math;
 
 class LCGSampler {
 public:
-	using SharedPtr = std::shared_ptr<LCGSampler>;
-
 	LCGSampler() = default;
 
 	__both__ void setSeed(uint seed) { mState = seed; }
@@ -46,7 +44,6 @@ private:
 
 class Sampler :public TaggedPointer<LCGSampler>{
 public:
-	using SharedPtr = std::shared_ptr<Sampler>;
 	using TaggedPointer::TaggedPointer;
 
 	KRR_CALLABLE void setPixelSample(vec2i samplePixel, uint sampleIndex){

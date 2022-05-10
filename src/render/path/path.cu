@@ -56,7 +56,7 @@ KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 	LightSampleContext ctx = { sd.pos, sd.N };
 	Interaction intr(sd.pos);
 
-	for (InfiniteLight& light : launchParams.sceneData.infiniteLights) {
+	for (InfiniteLight& light : *launchParams.sceneData.infiniteLights) {
 		float weight = 1.f;
 		if (path.depth&&launchParams.NEE) {
 			float bsdfPdf = path.pdf;
@@ -127,7 +127,7 @@ extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo = getHitInfo();
 	ShadingData& sd = *getPRD<ShadingData>();
 	sd.miss = false;
-	Material& material = launchParams.sceneData.materials[hitInfo.mesh->materialId];
+	Material& material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
 	prepareShadingData(sd, hitInfo, material);
 }
 
@@ -193,7 +193,7 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	vec3f rayDir = camera.getRayDir(pixel, launchParams.fbSize, sampler.get2D());
 	
 	PathData path = {};
-	path.lightSampler = &launchParams.sceneData.lightSampler;
+	path.lightSampler = launchParams.sceneData.lightSampler;
 	path.sampler = &sampler;
 
 	vec3f color = 0;

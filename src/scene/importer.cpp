@@ -283,7 +283,7 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
 		mesh.indices.push_back(indices);
 	}
 
-	if (pAiMesh->mMaterialIndex >= 0 && pAiMesh->mMaterialIndex < mpScene->mData.materials.size()) {
+	if (pAiMesh->mMaterialIndex >= 0 && pAiMesh->mMaterialIndex < mpScene->mData.materials->size()) {
 		mesh.materialId = pAiMesh->mMaterialIndex + 1;
 	}
 
@@ -308,8 +308,8 @@ void AssimpImporter::traverseNode(aiNode* node, aiMatrix4x4 transform)
 
 void AssimpImporter::loadMaterials(const string &modelFolder)
 {
-	mpScene->mData.materials.reserve(mpAiScene->mNumMaterials + 1LL);
-	mpScene->mData.materials.push_back(Material());
+	mpScene->mData.materials->reserve(mpAiScene->mNumMaterials + 1LL);
+	mpScene->mData.materials->push_back(Material());
 	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
 		const aiMaterial* aiMaterial = mpAiScene->mMaterials[i];
 		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);
@@ -318,7 +318,7 @@ void AssimpImporter::loadMaterials(const string &modelFolder)
 			return;
 		}
 		pMaterial->toDevice();
-		mpScene->mData.materials.push_back(*pMaterial);
+		mpScene->mData.materials->push_back(*pMaterial);
 	}
 
 }

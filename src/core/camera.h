@@ -12,6 +12,7 @@ using namespace math;
 class Camera {
 public:
 	using SharedPtr = std::shared_ptr<Camera>;
+
 	struct CameraData {
 		vec2f frameSize = { 42.666667f, 24.0f };	// sensor size in mm [width, height]
 		float focalLength = 20;			// the distance from lens (pin hole) to sensor, in mm

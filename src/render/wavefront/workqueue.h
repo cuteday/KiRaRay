@@ -108,8 +108,6 @@ class HitLightRayQueue : public WorkQueue<HitLightWorkItem> {
 public:
     using WorkQueue::WorkQueue;
     using WorkQueue::push;
-
-
 };
 
 class ShadowRayQueue : public WorkQueue<ShadowRayWorkItem> {

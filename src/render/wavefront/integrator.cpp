@@ -11,8 +11,6 @@ WavefrontPathTracer::WavefrontPathTracer(Scene& scene){
 	initialize();
 }
 
-WavefrontPathTracer::~WavefrontPathTracer(){}
-
 void WavefrontPathTracer::initialize(){
 	Allocator& alloc = *gpContext->alloc;
 	maxQueueSize = frameSize.x * frameSize.y;
@@ -36,11 +34,11 @@ void WavefrontPathTracer::handleHit(vec4f* frameBuffer){
 }
 
 void WavefrontPathTracer::handleMiss(vec4f* frameBuffer){
-	Scene::SceneData& sceneData = scene->mData;
+	Scene::SceneData& sceneData = mpScene->mData;
 	ForAllQueued(missRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const MissRayWorkItem& w) {
 		color Li = {};
-		for (const InfiniteLight& light : sceneData.infiniteLights) {
+		for (const InfiniteLight& light : *sceneData.infiniteLights) {
 			Li += light.Li(w.ray.dir);
 		}
 		frameBuffer[w.pixelId] += vec4f(Li, 1.0);
@@ -71,15 +69,15 @@ void WavefrontPathTracer::resize(const vec2i& size){
 
 void WavefrontPathTracer::setScene(Scene::SharedPtr scene){
 	scene->toDevice();
-	this->scene = scene;
+	mpScene = scene;
 	backend = new OptiXWavefrontBackend(*scene);
 }
 
 void WavefrontPathTracer::render(CUDABuffer& frame){
 	// beginFrame()
-	if (!scene) return;
+	if (!mpScene) return;
 
-	*camera = *scene->getCamera();
+	*camera = *mpScene->getCamera();
 
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
@@ -126,13 +124,13 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 	frameId++;
 }
 
-//void WavefrontPathTracer::renderUI()
-//{
-//	if (ui::CollapsingHeader("Wavefront path tracer")) {
-//		ui::Text("Hello from wavefront path tracer!");
-//		ui::InputInt("Samples per pixel", &samplesPerPixel);
-//		ui::SliderInt("Max recursion depth", &maxDepth, 0, 30);
-//	}
-//}
+void WavefrontPathTracer::renderUI()
+{
+	if (ui::CollapsingHeader("Wavefront path tracer")) {
+		ui::Text("Hello from wavefront path tracer!");
+		ui::InputInt("Samples per pixel", &samplesPerPixel);
+		ui::SliderInt("Max recursion depth", &maxDepth, 0, 30);
+	}
+}
 
 KRR_NAMESPACE_END

@@ -24,7 +24,7 @@ OptixPipelineCompileOptions OptiXBackend::getPipelineCompileOptions() {
 OptixModule OptiXBackend::createOptiXModule(OptixDeviceContext optixContext, const char* ptx) {
     OptixModuleCompileOptions moduleCompileOptions = {};
     moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
-#ifndef NDEBUG
+#ifdef KRR_DEBUG_BUILD
     moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
 #if (OPTIX_VERSION >= 70400)
     moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_MODERATE;
@@ -35,8 +35,6 @@ OptixModule OptiXBackend::createOptiXModule(OptixDeviceContext optixContext, con
     moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
     moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
-
-    moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
     OptixPipelineCompileOptions pipelineCompileOptions = getPipelineCompileOptions();
 
     char log[OPTIX_LOG_SIZE];
@@ -205,8 +203,11 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
     return asHandle;
 }
 
-OptiXWavefrontBackend::OptiXWavefrontBackend(Scene& scene)
-{
+OptiXWavefrontBackend::OptiXWavefrontBackend(Scene& scene){
+    setScene(scene);
+}
+
+void OptiXWavefrontBackend::setScene(Scene& scene){
     char log[OPTIX_LOG_SIZE];
     size_t logSize = sizeof(log);
 
@@ -234,7 +235,7 @@ OptiXWavefrontBackend::OptiXWavefrontBackend(Scene& scene)
         hitClosestPG,
         hitShadowPG
     };
-    
+
     // creating optix pipeline from all program groups
     OptixPipelineCompileOptions pipelineCompileOptions = getPipelineCompileOptions();
     OptixPipelineLinkOptions pipelineLinkOptions = {};
@@ -262,7 +263,7 @@ OptiXWavefrontBackend::OptiXWavefrontBackend(Scene& scene)
     OPTIX_CHECK(optixSbtRecordPackHeader(missShadowPG, &missRecord));
     missShadowRecords.push_back(missRecord);
     for (uint meshId = 0; meshId < scene.meshes.size(); meshId++) {
-        hitgroupRecord.data = { &scene.mData.meshes[meshId] };
+        hitgroupRecord.data = { &(*scene.mData.meshes)[meshId] };
         OPTIX_CHECK(optixSbtRecordPackHeader(hitClosestPG, &hitgroupRecord));
         hitgroupClosestRecords.push_back(hitgroupRecord);
         OPTIX_CHECK(optixSbtRecordPackHeader(hitShadowPG, &hitgroupRecord));
@@ -289,10 +290,6 @@ OptiXWavefrontBackend::OptiXWavefrontBackend(Scene& scene)
 
     if (!launchParams)launchParams = gpContext->alloc->new_object<LaunchParams>();
     launchParams->sceneData = scene.mData;
-}
-
-void OptiXWavefrontBackend::setScene(Scene& scene){
-
 }
 
 void OptiXWavefrontBackend::traceClosest(int numRays, 

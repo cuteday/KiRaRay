@@ -109,7 +109,7 @@ void PathTracer::buildSBT()
 	for (uint meshId = 0; meshId < numMeshes; meshId++) {
 		for (uint rayId = 0; rayId < RAY_TYPE_COUNT; rayId++) {
 			HitgroupRecord rec;
-			MeshData* mesh = &mpScene->mData.meshes[meshId];
+			MeshData* mesh = &(*mpScene->mData.meshes)[meshId];
 			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayId], &rec));
 			rec.data = { mesh };
 			hitgroupRecords.push_back(rec);
@@ -132,7 +132,7 @@ void PathTracer::renderUI() {
 		ui::InputInt("Samples per pixel", &launchParams->spp);
 		ui::SliderFloat("RR absorption probability", &launchParams->probRR, 0.f, 1.f, "%.3f");
 		ui::SliderInt("Max recursion depth", &launchParams->maxDepth, 0, 30);
-		if (mpScene->mData.lights.size() > 0)	// only when we have light sources...
+		if (mpScene->mData.lights->size() > 0)	// only when we have light sources...
 			ui::Checkbox("Next event estimation", &launchParams->NEE);
 		if (launchParams->NEE) {
 			ui::Checkbox("Multiple importance sampling", &launchParams->MIS);

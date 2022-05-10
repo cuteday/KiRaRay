@@ -52,12 +52,11 @@ public:
 	using SharedPtr = std::shared_ptr<Scene>;
 
 	struct SceneData {
-		inter::vector<Material> materials;
-		inter::vector<MeshData> meshes;
-		inter::vector<Light> lights;
-		inter::vector<InfiniteLight> infiniteLights;
-
-		UniformLightSampler lightSampler;
+		inter::vector<Material>* materials{ };
+		inter::vector<MeshData>* meshes{ };
+		inter::vector<Light>* lights{ };
+		inter::vector<InfiniteLight>* infiniteLights{ };
+		LightSampler lightSampler;
 	};
 
 	Scene();
@@ -78,10 +77,7 @@ public:
 
 	void setCamera(Camera::SharedPtr camera) { mpCamera = camera; }
 	void setCameraController(CameraController::SharedPtr cameraController) { mpCameraController = cameraController; }
-	void addInfiniteLight(const InfiniteLight& infiniteLight) { 
-		mData.infiniteLights.push_back(infiniteLight); 
-		processLights();
-	}
+	void addInfiniteLight(const InfiniteLight& infiniteLight);
 
 	SceneData getSceneData() { return mData; }
 
