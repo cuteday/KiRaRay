@@ -222,10 +222,8 @@ void OptiXWavefrontBackend::setScene(Scene& scene){
     OptixProgramGroup raygenShadowPG = createRaygenPG("__raygen__Shadow");
     OptixProgramGroup missClosestPG = createMissPG("__miss__Closest");
     OptixProgramGroup missShadowPG = createMissPG("__miss__Shadow");
-    OptixProgramGroup hitClosestPG = createIntersectionPG(
-        "__closesthit__Closest", nullptr, nullptr);
-    OptixProgramGroup hitShadowPG = createIntersectionPG(
-        nullptr, "__anyhit__Shadow", nullptr);
+    OptixProgramGroup hitClosestPG = createIntersectionPG("__closesthit__Closest", nullptr, nullptr);
+    OptixProgramGroup hitShadowPG = createIntersectionPG(nullptr, "__anyhit__Shadow", nullptr);
 
     std::vector<OptixProgramGroup> allPGs = {
         raygenClosestPG,
@@ -239,14 +237,17 @@ void OptiXWavefrontBackend::setScene(Scene& scene){
     // creating optix pipeline from all program groups
     OptixPipelineCompileOptions pipelineCompileOptions = getPipelineCompileOptions();
     OptixPipelineLinkOptions pipelineLinkOptions = {};
-    pipelineLinkOptions.maxTraceDepth = 2;
-    pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
+    pipelineLinkOptions.maxTraceDepth = 3;
 #ifdef KRR_DEBUG_BUILD
     pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
 #endif
     OPTIX_CHECK_WITH_LOG(
         optixPipelineCreate(optixContext, &pipelineCompileOptions, &pipelineLinkOptions,
             allPGs.data(), allPGs.size(), log, &logSize, &optixPipeline), log);
+    logDebug(log);
+
+    OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the stack size for */
+        optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024, 1));
     logDebug(log);
 
     // creating shader binding table...
@@ -262,8 +263,8 @@ void OptiXWavefrontBackend::setScene(Scene& scene){
     missClosestRecords.push_back(missRecord);
     OPTIX_CHECK(optixSbtRecordPackHeader(missShadowPG, &missRecord));
     missShadowRecords.push_back(missRecord);
-    for (uint meshId = 0; meshId < scene.meshes.size(); meshId++) {
-        hitgroupRecord.data = { &(*scene.mData.meshes)[meshId] };
+    for (MeshData& meshData : *scene.mData.meshes) {
+        hitgroupRecord.data = { &meshData };
         OPTIX_CHECK(optixSbtRecordPackHeader(hitClosestPG, &hitgroupRecord));
         hitgroupClosestRecords.push_back(hitgroupRecord);
         OPTIX_CHECK(optixSbtRecordPackHeader(hitShadowPG, &hitgroupRecord));
@@ -290,18 +291,27 @@ void OptiXWavefrontBackend::setScene(Scene& scene){
 
     if (!launchParams)launchParams = gpContext->alloc->new_object<LaunchParams>();
     launchParams->sceneData = scene.mData;
+    launchParams->traversable = optixTraversable;
+    sceneData = scene.mData;
 }
 
 void OptiXWavefrontBackend::traceClosest(int numRays, 
     RayQueue* currentRayQueue, 
     MissRayQueue* missRayQueue, 
     HitLightRayQueue* hitLightRayQueue, 
+    ScatterRayQueue* scatterRayQueue,
     RayQueue* nextRayQueue){
     if (optixTraversable) {
-        launchParams->currentRayQueue = currentRayQueue;
-        launchParams->missRayQueue = missRayQueue;
-        launchParams->hitLightRayQueue = hitLightRayQueue;
-        launchParams->nextRayQueue = nextRayQueue;
+        static LaunchParams params = {};
+        params.traversable = optixTraversable;
+        params.sceneData = sceneData;
+        params.currentRayQueue = currentRayQueue;
+        params.missRayQueue = missRayQueue;
+        params.hitLightRayQueue = hitLightRayQueue;
+        params.scatterRayQueue = scatterRayQueue;
+        params.nextRayQueue = nextRayQueue;
+
+        cudaMemcpy(launchParams, &params, sizeof(LaunchParams), cudaMemcpyHostToDevice);
         
         OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream,
             (CUdeviceptr)launchParams,
@@ -317,7 +327,12 @@ void OptiXWavefrontBackend::traceClosest(int numRays,
 void OptiXWavefrontBackend::traceShadow(int numRays, 
     ShadowRayQueue* shadowRayQueue){
     if (optixTraversable) {
-        launchParams->shadowRayQueue = shadowRayQueue;
+        static LaunchParams params = {};
+        params.traversable = optixTraversable;
+        params.sceneData = sceneData;
+        params.shadowRayQueue = shadowRayQueue;
+        cudaMemcpy(launchParams, &params, sizeof(LaunchParams), cudaMemcpyHostToDevice);
+
         OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream,
             (CUdeviceptr)launchParams,
             sizeof(LaunchParams),

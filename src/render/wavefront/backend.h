@@ -24,8 +24,7 @@ public:
 
 class OptiXWavefrontBackend : public OptiXBackend {
 public:
-	//OptiXWavefrontBackend() = default;
-	//~OptiXWavefrontBackend() = default;
+	OptiXWavefrontBackend() = default;
 	OptiXWavefrontBackend(Scene& scene);
 	void setScene(Scene& scene);
 
@@ -33,6 +32,7 @@ public:
 		RayQueue* currentRayQueue,
 		MissRayQueue* missRayQueue,
 		HitLightRayQueue* hitLightRayQueue,
+		ScatterRayQueue* scatterRayQueue,
 		RayQueue* nextRayQueue);
 
 	void traceShadow(int numRays,
@@ -54,6 +54,7 @@ private:
 	OptixShaderBindingTable shadowSBT{};
 	OptixTraversableHandle optixTraversable{};
 
+	Scene::SceneData sceneData{};
 	LaunchParams* launchParams{};
 
 	inter::vector<RaygenRecord> raygenClosestRecords;

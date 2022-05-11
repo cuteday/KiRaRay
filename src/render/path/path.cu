@@ -104,11 +104,9 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 }
 
 KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& path) {
-	BSDFSample sample = {};
-
 	// how to eliminate branches here to improve performance?
 	vec3f woLocal = sd.toLocal(sd.wo);
-	sample = BxDF::sample(sd, woLocal, path.sampler, (int)sd.bsdfType);
+	BSDFSample sample = BxDF::sample(sd, woLocal, path.sampler, (int)sd.bsdfType);
 	if (woLocal.z < 0) {
 		print("wi.z: %f\n", sample.wi.z);
 		print("Transmit out! F: %f, PDF: %f\n", sample.f, sample.pdf);
@@ -119,7 +117,7 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 	path.pos = offsetRayOrigin(sd.pos, sd.N, wiWorld);
 	path.dir = wiWorld;
 	path.pdf = max(sample.pdf, 1e-7f);
-	path.throughput *= sample.f * fabs(dot(wiWorld, sd.N)) / path.pdf;
+	path.throughput *= sample.f * fabs(sample.wi.z) / path.pdf;
 	return true;
 }
 

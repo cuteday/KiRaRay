@@ -87,11 +87,11 @@ public:
     KRR_CALLABLE int pushCameraRay(Ray ray, uint pixelId) {
         int index = allocateEntry();
         this->depth[index] = 0;
+        this->thp[index] = 1;
         this->pixelId[index] = pixelId;
         this->ray[index] = ray;
         return index;
     }
-
 };
 
 class MissRayQueue : public WorkQueue<MissRayWorkItem> {
@@ -100,7 +100,7 @@ public:
     using WorkQueue::push;
 
     KRR_CALLABLE int push(RayWorkItem w) {
-        return push(MissRayWorkItem{ w.ray, w.depth, w.thp, w.pixelId });
+        return push(MissRayWorkItem{ w.ray, w.thp, w.depth, w.pixelId });
     }
 };
 
@@ -114,7 +114,12 @@ class ShadowRayQueue : public WorkQueue<ShadowRayWorkItem> {
 public:
     using WorkQueue::WorkQueue;
     using WorkQueue::push;
+};
 
+class ScatterRayQueue : public WorkQueue<ScatterRayWorkItem> {
+public:
+    using WorkQueue::WorkQueue;
+    using WorkQueue::push;
 };
 
 KRR_NAMESPACE_END

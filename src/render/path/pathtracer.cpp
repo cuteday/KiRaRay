@@ -71,16 +71,11 @@ void PathTracer::createPipeline()
 		log, &sizeof_log,
 		&pipeline
 	));
-	if (sizeof_log > 1) PRINT(log);
+	logDebug(log);
 
-	OPTIX_CHECK(optixPipelineSetStackSize
-	(/* [in] The pipeline to configure the stack size for */
-		pipeline,
-		2 * 1024,
-		2 * 1024,
-		2 * 1024,
-		1));
-	if (sizeof_log > 1) PRINT(log);
+	OPTIX_CHECK(optixPipelineSetStackSize (/* [in] The pipeline to configure the stack size for */
+		pipeline, 2 * 1024, 2 * 1024, 2 * 1024, 1));
+	logDebug(log);
 }
 
 
@@ -152,7 +147,7 @@ void PathTracer::render(CUDABuffer& frame)
 	CUDATrackedMemory::singleton.PrefetchToGPU();
 	launchParams->fbSize = mFrameSize;
 	launchParams->colorBuffer = (vec4f*)frame.data();
-	launchParams->camera = *mpScene->getCamera();
+	launchParams->camera = mpScene->getCamera();
 	launchParams->sceneData = mpScene->getSceneData();
 	launchParams->frameID++;
 

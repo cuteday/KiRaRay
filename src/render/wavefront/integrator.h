@@ -25,6 +25,7 @@ public:
 
 	void resize(const vec2i& size) override;
 	void setScene(Scene::SharedPtr scene) override;
+	void beginFrame(CUDABuffer& frame) override;
 	void render(CUDABuffer& frame) override;
 	void renderUI() override;
 
@@ -53,10 +54,12 @@ public:
 	void handleHit(vec4f* frameBuffer);
 	void handleMiss(vec4f* frameBuffer);
 	void evalDirect(vec4f* frameBuffer);
+	void generateScatterRays();
 	void generateCameraRays(int sampleId);
+	void startPixelSamples();
 
-	RayQueue* currentRayQueue(int depth) { return rayQueue[depth & 1]; }
-	RayQueue* nextRayQueue(int depth) { return rayQueue[(depth + 1) & 1]; }
+	KRR_CALLABLE RayQueue* currentRayQueue(int depth) { return rayQueue[depth & 1]; }
+	KRR_CALLABLE RayQueue* nextRayQueue(int depth) { return rayQueue[(depth + 1) & 1]; }
 
 	OptiXWavefrontBackend* backend;
 	Camera* camera{ };
@@ -66,6 +69,8 @@ public:
 	MissRayQueue* missRayQueue{ };
 	HitLightRayQueue* hitLightRayQueue{ };
 	ShadowRayQueue* shadowRayQueue{ };
+	ScatterRayQueue* scatterRayQueue{ };
+	SOA<PixelState> pixelState;
 
 	// path tracing parameters
 	int frameId{ 0 };
@@ -73,6 +78,7 @@ public:
 	vec2i frameSize{ };
 	int samplesPerPixel{ 1 };
 	int maxDepth{ 10 };
+	float probRR{ 0.8 };
 };
 
 KRR_NAMESPACE_END

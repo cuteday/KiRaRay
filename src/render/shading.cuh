@@ -68,19 +68,11 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		b[1] * mesh.normals[v[1]] +
 		b[2] * mesh.normals[v[2]]);
 
-	sd.frontFacing = dot(sd.wo, sd.N) > 0.f;
-//	if (!sd.frontFacing) sd.N *= -1;
-
-//	if (mesh.tangents.data() && mesh.bitangents.data()) {
 	if (mesh.tangents && mesh.bitangents) {
 		sd.T = normalize(
 			b[0] * mesh.tangents[v[0]] +
 			b[1] * mesh.tangents[v[1]] +
 			b[2] * mesh.tangents[v[2]]);
-		//sd.B = normalize(
-		//	b[0] * mesh.bitangents[v[0]] +
-		//	b[1] * mesh.bitangents[v[1]] +
-		//	b[2] * mesh.bitangents[v[2]]);
 		
 		// re-orthogonize the tangent space 
 		// since tbn may become not orthogonal after the interpolation process.

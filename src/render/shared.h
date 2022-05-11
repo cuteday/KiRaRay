@@ -44,9 +44,6 @@ namespace shader {
 	};
 
 	struct ShadingData {		// for use as per ray data, generated from ch
-		using ShadingModel = Material::ShadingModel;
-		using BsdfType = Material::BsdfType;
-			
 		vec3f pos;
 		vec3f wo;				// view direction
 		vec2f uv;				// texture coords
@@ -70,9 +67,7 @@ namespace shader {
 
 		Light light{ nullptr };
 		bool miss = false;		// not valid if missing, or ?
-		bool frontFacing;		// shading normal and geo normal same dir?
 			
-		//ShadingModel shadingModel = ShadingModel::MetallicRoughness;
 		BsdfType bsdfType = BsdfType::Diffuse;
 		uint flags = 0;			// user custom flags?
 
@@ -94,8 +89,7 @@ namespace shader {
 		return ptr;
 	}
 
-	static KRR_DEVICE_FUNCTION
-		void  packPointer(void* ptr, uint& i0, uint& i1)
+	static KRR_DEVICE_FUNCTION void packPointer(void* ptr, uint& i0, uint& i1)
 	{
 		const uint64_t uptr = reinterpret_cast<uint64_t>(ptr);
 		i0 = uptr >> 32;

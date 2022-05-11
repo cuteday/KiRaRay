@@ -7,6 +7,7 @@
 #include "common.h"
 #include "math/math.h"
 #include "file.h"
+#include "raytracing.h"
 #include "render/materials/bxdf.h"
 
 KRR_NAMESPACE_BEGIN
@@ -91,12 +92,6 @@ public:
 		Normal		,
 		Transmission,
 		Count
-	};
-
-	enum class BsdfType {
-		Diffuse		= 0,
-		FresnelBlend,
-		Disney,
 	};
 
 	enum class ShadingModel {

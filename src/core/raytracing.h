@@ -11,6 +11,12 @@ KRR_NAMESPACE_BEGIN
 class Material;
 class Light;
 
+enum class BsdfType {
+	Diffuse = 0,
+	FresnelBlend,
+	Disney,
+};
+
 struct Ray {
 	vec3f origin;
 	vec3f dir;

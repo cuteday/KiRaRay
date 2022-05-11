@@ -15,16 +15,17 @@ KRR_NAMESPACE_BEGIN
 class RenderApp : public WindowApp{
 public:
 
-	RenderApp(const char title[], vec2i size) : WindowApp(title, size) {}
+	RenderApp(const char title[], vec2i size) : WindowApp(title, size) { }
 	RenderApp(const char title[], vec2i size, std::vector<RenderPass::SharedPtr> passes)
-		:WindowApp(title, size), mpPasses(passes) {}
+		:WindowApp(title, size), mpPasses(passes) { }
 
 	void resize(const vec2i& size) override {
+		if (!mpScene) return;
 		mRenderBuffer.resize(size.x * size.y * sizeof(vec4f));
 		WindowApp::resize(size);
 		for (auto p : mpPasses)
 			p->resize(size);
-		mpScene->getCamera()->setAspectRatio((float)size.x / size.y);
+		mpScene->getCamera().setAspectRatio((float)size.x / size.y);
 	}
 
 	virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {
@@ -47,15 +48,18 @@ public:
 	}
 
 	void render() override {
+		if (!mpScene) return;
 		mpScene->update();	// maybe this should be put into beginFrame() or sth...
 		for (auto p : mpPasses)
-			if (p) p->render(mRenderBuffer);
+			if (p) { 
+				p->beginFrame(mRenderBuffer);
+				p->render(mRenderBuffer); 
+			}
 	}
 
 	void renderUI() override{
 		static bool saveHdr = false;
 		ui::Begin(KRR_PROJECT_NAME);
-
 		if (ui::Button("Screen shot"))
 			captureFrame(saveHdr);
 		ui::SameLine();

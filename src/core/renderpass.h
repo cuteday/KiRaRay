@@ -16,8 +16,10 @@ public:
 	virtual void setEnable(bool enable) { mEnable = enable; }
 	virtual void setScene(Scene::SharedPtr scene) { mpScene = scene; }
 	virtual Scene::SharedPtr getScene() { return mpScene; }
-	virtual void renderUI(){}
-	virtual void render(CUDABuffer& frame) {};
+	virtual void renderUI() {}
+	virtual void beginFrame(CUDABuffer& frame) {}
+	virtual void render(CUDABuffer& frame) {}
+	virtual void endFrame(CUDABuffer& frame) {}
 
 	virtual bool onMouseEvent(const io::MouseEvent& mouseEvent) { return false; }
 	virtual bool onKeyEvent(const io::KeyboardEvent& keyEvent) { return false; }

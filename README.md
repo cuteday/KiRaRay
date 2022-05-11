@@ -13,14 +13,14 @@
 - [x] Orbit camera controlling.
 - [x] Assimp as scene importer.
 - [x] Image-based environment lighting.
-- [x] Diffuse, microfacet, disney and fresnel-blended bsdfs. 
+- [x] Diffuse, microfacet, disney and fresnel-blended bsdfs.
+- [x] GPU path tracing (a megakernel version and a [wavefront](https://research.nvidia.com/publication/2013-07_megakernels-considered-harmful-wavefront-path-tracing-gpus) version).
 - [x] Next event estimation and multiple importance sampling (naive ver.)
 - [x] Tone mapping and frame accumulating.
 
 If possible, more features will be added in the future, for example:
 
 - [ ] Spectral rendering.
-- [ ] Wavefront path tracer(WIP).
 - [ ] More BSDFs and light sources.
 - [ ] Mesh instancing and scene animations.
 - [ ] Importer for pbrt or mitsuba scenes.
@@ -50,7 +50,7 @@ For testing, HDR environment images can be downloaded at [sIBL Archive](http://w
 
 #### Performance
 
-Currently the megakernel pathtracer should run at 30+ fps for rendering an 1 spp 1920*1080 image on an RTX 3060 or similar GPU, if the average path length is less than 5 and NEE disabled.
+Currently the megakernel pathtracer should run at 30+ fps for rendering an 1 spp 1920*1080 image on an RTX 3060 or similar GPU, if the average path length is less than 5 and NEE disabled. 
 
 ### Epilogue
 
@@ -64,7 +64,7 @@ I wish i was like:
 <p align=center>
 <img src=https://cutesail.com/wp-content/uploads/2022/02/aris-meme.jpg width="500">
 
-But actually i'm like \***sleeps all the time**\*:
+But actually i'm like **sleeps all the time**:
 
 <p align=center>
 <img src=https://cutesail.com/wp-content/uploads/2022/02/hoshino-meme.png width="320">

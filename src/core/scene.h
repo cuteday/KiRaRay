@@ -72,8 +72,8 @@ public:
 
 	void processLights();
 
-	Camera::SharedPtr getCamera() { return mpCamera; }
-	CameraController::SharedPtr getCameraController() { return mpCameraController; }
+	Camera& getCamera() { return *mpCamera; }
+	CameraController& getCameraController() { return *mpCameraController; }
 
 	void setCamera(Camera::SharedPtr camera) { mpCamera = camera; }
 	void setCameraController(CameraController::SharedPtr cameraController) { mpCameraController = cameraController; }

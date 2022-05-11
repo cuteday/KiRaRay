@@ -18,8 +18,8 @@ typedef struct {
 	ShadowRayQueue* shadowRayQueue;
 	MissRayQueue* missRayQueue;
 	HitLightRayQueue* hitLightRayQueue;
+	ScatterRayQueue* scatterRayQueue;
 	
-	//vec4f* frameBuffer;
 	Scene::SceneData sceneData;
 	OptixTraversableHandle traversable;
 } LaunchParams;
