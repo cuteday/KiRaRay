@@ -1,12 +1,9 @@
 #pragma once
-
 #include "math/math.h"
 #include "math/utils.h"
+#include "util/lowdiscrepancy.h"
 #include "common.h"
 #include "taggedptr.h"
-
-// optix kernels does not support virtual functions...
-// considering use tagged pointer like pbrt instead.
 
 KRR_NAMESPACE_BEGIN
 
@@ -15,6 +12,8 @@ using namespace math;
 class LCGSampler {
 public:
 	LCGSampler() = default;
+
+	__both__ void initialize() {};
 
 	__both__ void setSeed(uint seed) { mState = seed; }
 
@@ -40,9 +39,95 @@ private:
 	uint mState = 0;
 };
 
+class HaltonSampler {
+public:
+	HaltonSampler() = default;
 
+	__both__ void initialize(RandomizeStrategy randomize = RandomizeStrategy::None) {
+		this->randomize = randomize;
+		for (int i = 0; i < 2; ++i) {
+			int base = (i == 0) ? 2 : 3;
+			int scale = 1, exp = 0;
+			while (scale < maxHaltonResolution) {
+				scale *= base;
+				++exp;
+			}
+			baseScales[i] = scale;
+			baseExponents[i] = exp;
+		}
+		// Compute multiplicative inverses for _baseScales_
+		multInverse[0] = multiplicativeInverse(baseScales[1], baseScales[0]);
+		multInverse[1] = multiplicativeInverse(baseScales[0], baseScales[1]);
+	}
 
-class Sampler :public TaggedPointer<LCGSampler>{
+	__both__ RandomizeStrategy getRandomizeStrategy() const { return randomize; }
+
+	__both__ void setPixelSample(vec2i p, int sampleIndex) {
+		return setPixelSample(p, sampleIndex, 0);
+	}
+
+	__both__ void setPixelSample(vec2i p, int sampleIndex, int dim) {
+		haltonIndex = 0;
+		int sampleStride = baseScales[0] * baseScales[1];
+		// Compute Halton sample index for first sample in pixel _p_
+		if (sampleStride > 1) {
+			vec2i pm(p[0] % maxHaltonResolution, p[1] % maxHaltonResolution);
+			for (int i = 0; i < 2; ++i) {
+				uint64_t dimOffset =
+					(i == 0) ? InverseRadicalInverse(pm[i], 2, baseExponents[i])
+					: InverseRadicalInverse(pm[i], 3, baseExponents[i]);
+				haltonIndex +=
+					dimOffset * (sampleStride / baseScales[i]) * multInverse[i];
+			}
+			haltonIndex %= sampleStride;
+		}
+		haltonIndex += sampleIndex * sampleStride;
+		dimension = max(2, dim);
+	}
+
+	__both__ float get1D() {
+		if (dimension >= PrimeTableSize)
+			dimension = 0;
+		return sampleDimension(dimension++);
+	}
+
+	__both__ vec2f get2D() {
+		if (dimension + 1 >= PrimeTableSize)
+			dimension = 0;
+		int dim = dimension;
+		dimension += 2;
+		return { sampleDimension(dim), sampleDimension(dim + 1) };
+	}
+
+private:
+	// HaltonSampler Private Methods
+	__both__ static uint64_t multiplicativeInverse(int64_t a, int64_t n) {
+		int64_t x, y;
+		utils::extendedGCD(a, n, &x, &y);
+		return mod(x, n);
+	}
+
+	__both__ float sampleDimension(int dimension) const {
+		DCHECK_LE(dimension, maxHaltonResolution);
+		DCHECK_LE(maxHaltonResolution, PrimeTableSize);
+		if (randomize == RandomizeStrategy::None)
+			return RadicalInverse(dimension, haltonIndex);
+		else {
+			DCHECK_EQ(randomize, RandomizeStrategy::Owen);
+			return OwenScrambledRadicalInverse(dimension, haltonIndex,
+				MixBits(1 + (dimension << 4)));
+		}
+	}
+
+	RandomizeStrategy randomize;
+	static constexpr int maxHaltonResolution = 256;
+	vec2i baseScales, baseExponents;
+	int multInverse[2];
+	int64_t haltonIndex = 0;
+	int dimension = 0;
+};
+
+class Sampler :public TaggedPointer<LCGSampler, HaltonSampler>{
 public:
 	using TaggedPointer::TaggedPointer;
 

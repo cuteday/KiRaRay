@@ -75,8 +75,12 @@ namespace shader {
 			return T * v.x + B * v.y + N * v.z;
 		}
 
-		__both__ vec3f  toLocal(vec3f v) const {
+		__both__ vec3f toLocal(vec3f v) const {
 			return { dot(T, v), dot(B, v), dot(N, v) };
+		}
+
+		__both__ Interaction getInteraction() const {
+			return Interaction(pos, wo, N, uv);
 		}
 	};
 

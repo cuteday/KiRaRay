@@ -14,4 +14,10 @@ KRR_NAMESPACE_BEGIN
 
 using color = vec3f;
 
+template <typename T>
+KRR_CALLABLE T mod(T a, T b) {
+    T result = a - (a / b) * b;
+    return (T)((result < 0) ? result + b : result);
+}
+
 KRR_NAMESPACE_END

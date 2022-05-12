@@ -20,6 +20,7 @@ typedef struct {
 	HitLightRayQueue* hitLightRayQueue;
 	ScatterRayQueue* scatterRayQueue;
 	
+	SOA<PixelState>* pixelState;
 	Scene::SceneData sceneData;
 	OptixTraversableHandle traversable;
 } LaunchParams;

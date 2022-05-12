@@ -325,14 +325,14 @@ void OptiXWavefrontBackend::traceClosest(int numRays,
 }
 
 void OptiXWavefrontBackend::traceShadow(int numRays, 
-    ShadowRayQueue* shadowRayQueue){
+    ShadowRayQueue* shadowRayQueue,
+    SOA<PixelState>* pixelState){
     if (optixTraversable) {
         static LaunchParams params = {};
         params.traversable = optixTraversable;
         params.sceneData = sceneData;
         params.shadowRayQueue = shadowRayQueue;
         cudaMemcpy(launchParams, &params, sizeof(LaunchParams), cudaMemcpyHostToDevice);
-
         OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream,
             (CUdeviceptr)launchParams,
             sizeof(LaunchParams),

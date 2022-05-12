@@ -45,7 +45,7 @@ struct Interaction{
 	}
 
 	KRR_CALLABLE vec3f offsetRayOrigin() {
-		return offsetRayOrigin(wo);
+		return Interaction::offsetRayOrigin(wo);
 	}
 
 	// spawn a ray from and to 2 slightly offseted points, length of direction is the distance

@@ -7,9 +7,7 @@ flat Light;
 flat BsdfType;
 flat ShadingData;
 flat LCGSampler;
-//flat vec2f;
-//flat vec3f;
-//flat vec2i;
+flat HaltonSampler;
 
 struct vec2f { float x, y; };
 struct vec3f { float x, y, z; };
@@ -20,6 +18,7 @@ struct Ray{ vec3f origin, dir; };
 struct PixelState {
 	vec3f L;
 	LCGSampler sampler;
+	//HaltonSampler sampler;
 };
 
 struct RayWorkItem {

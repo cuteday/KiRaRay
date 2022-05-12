@@ -1,12 +1,12 @@
 #pragma once
 
-#include "math/math.h"
 #include "common.h"
+#include "math/math.h"
+#include "util/check.h"
 
 KRR_NAMESPACE_BEGIN
 
 namespace math{
-
 	namespace utils{
 		/*******************************************************
 		* colors
@@ -175,13 +175,6 @@ namespace math{
 			return (p < 0) ? (p + 2 * M_PI) : p;
 		}
 
-		//KRR_CALLABLE vec3f offsetRayOrigin(vec3f p, vec3f n, vec3f w) {
-		//	vec3f offset = n * 1e-4f;
-		//	if (dot(n, w) < 0.f)
-		//		offset = -offset;
-		//	return p + offset;
-		//}
-
 		/*******************************************************
 		* hashing utils
 		********************************************************/
@@ -199,23 +192,184 @@ namespace math{
 			return vec2ui(v0, v1);
 		}
 
+		KRR_CALLABLE uint64_t MixBits(uint64_t v) {
+			v ^= (v >> 31);
+			v *= 0x7fb5d329728ea185;
+			v ^= (v >> 27);
+			v *= 0x81dadef4bc2dd44d;
+			v ^= (v >> 33);
+			return v;
+		}
+
+		KRR_CALLABLE uint64_t MurmurHash64A(const unsigned char* key, size_t len,
+			uint64_t seed) {
+			const uint64_t m = 0xc6a4a7935bd1e995ull;
+			const int r = 47;
+
+			uint64_t h = seed ^ (len * m);
+
+			const unsigned char* end = key + 8 * (len / 8);
+
+			while (key != end) {
+				uint64_t k;
+				std::memcpy(&k, key, sizeof(uint64_t));
+				key += 8;
+
+				k *= m;
+				k ^= k >> r;
+				k *= m;
+
+				h ^= k;
+				h *= m;
+			}
+
+			switch (len & 7) {
+			case 7:
+				h ^= uint64_t(key[6]) << 48;
+			case 6:
+				h ^= uint64_t(key[5]) << 40;
+			case 5:
+				h ^= uint64_t(key[4]) << 32;
+			case 4:
+				h ^= uint64_t(key[3]) << 24;
+			case 3:
+				h ^= uint64_t(key[2]) << 16;
+			case 2:
+				h ^= uint64_t(key[1]) << 8;
+			case 1:
+				h ^= uint64_t(key[0]);
+				h *= m;
+			};
+
+			h ^= h >> r;
+			h *= m;
+			h ^= h >> r;
+
+			return h;
+		}
+
+		template <typename... Args>
+		KRR_CALLABLE void hashRecursiveCopy(char* buf, Args...);
+
+		template <>
+		KRR_CALLABLE void hashRecursiveCopy(char* buf) {}
+
+		template <typename T, typename... Args>
+		KRR_CALLABLE void hashRecursiveCopy(char* buf, T v, Args... args) {
+			memcpy(buf, &v, sizeof(T));
+			hashRecursiveCopy(buf + sizeof(T), args...);
+		}
+
+		template <typename... Args>
+		KRR_CALLABLE uint64_t Hash(Args... args) {
+			// C++, you never cease to amaze: https://stackoverflow.com/a/57246704
+			constexpr size_t sz = (sizeof(Args) + ... + 0);
+			constexpr size_t n = (sz + 7) / 8;
+			uint64_t buf[n];
+			hashRecursiveCopy((char*)buf, args...);
+			return MurmurHash64A((const unsigned char*)buf, sz, 0);
+		}
+
+		template <typename... Args>
+		KRR_CALLABLE float HashFloat(Args... args) {
+			return uint32_t(Hash(args...)) * 0x1p-32f;
+		}
+
 		/*******************************************************
-		* low discrepancy
+		* bitmask operations
 		********************************************************/
-		//KRR_CALLABLE float RadicalInverse(int baseIndex, uint64_t a) {
-		//	int base = Primes[baseIndex];
-		//	float invBase = (float)1 / (float)base, invBaseN = 1;
-		//	uint64_t reversedDigits = 0;
-		//	while (a) {
-		//		// Extract least significant digit from _a_ and update _reversedDigits_
-		//		uint64_t next = a / base;
-		//		uint64_t digit = a - next * base;
-		//		reversedDigits = reversedDigits * base + digit;
-		//		invBaseN *= invBase;
-		//		a = next;
-		//	}
-		//	return min(reversedDigits * invBaseN, OneMinusEpsilon);
-		//}
+		KRR_CALLABLE uint32_t ReverseBits32(uint32_t n) {
+#ifdef __CUDA_ARCH__
+			return __brev(n);
+#else
+			n = (n << 16) | (n >> 16);
+			n = ((n & 0x00ff00ff) << 8) | ((n & 0xff00ff00) >> 8);
+			n = ((n & 0x0f0f0f0f) << 4) | ((n & 0xf0f0f0f0) >> 4);
+			n = ((n & 0x33333333) << 2) | ((n & 0xcccccccc) >> 2);
+			n = ((n & 0x55555555) << 1) | ((n & 0xaaaaaaaa) >> 1);
+			return n;
+#endif
+		}
+
+		KRR_CALLABLE uint64_t ReverseBits64(uint64_t n) {
+#ifdef __CUDA_ARCH__
+			return __brevll(n);
+#else
+			uint64_t n0 = ReverseBits32((uint32_t)n);
+			uint64_t n1 = ReverseBits32((uint32_t)(n >> 32));
+			return (n0 << 32) | n1;
+#endif
+		}
+
+		// https://fgiesen.wordpress.com/2009/12/13/decoding-morton-codes/
+		// updated to 64 bits.
+		KRR_CALLABLE uint64_t LeftShift2(uint64_t x) {
+			x &= 0xffffffff;
+			x = (x ^ (x << 16)) & 0x0000ffff0000ffff;
+			x = (x ^ (x << 8)) & 0x00ff00ff00ff00ff;
+			x = (x ^ (x << 4)) & 0x0f0f0f0f0f0f0f0f;
+			x = (x ^ (x << 2)) & 0x3333333333333333;
+			x = (x ^ (x << 1)) & 0x5555555555555555;
+			return x;
+		}
+
+		KRR_CALLABLE uint64_t EncodeMorton2(uint32_t x, uint32_t y) {
+			return (LeftShift2(y) << 1) | LeftShift2(x);
+		}
+
+		KRR_CALLABLE uint32_t LeftShift3(uint32_t x) {
+			DCHECK_LE(x, (1u << 10));
+			if (x == (1 << 10))
+				--x;
+			x = (x | (x << 16)) & 0b00000011000000000000000011111111;
+			// x = ---- --98 ---- ---- ---- ---- 7654 3210
+			x = (x | (x << 8)) & 0b00000011000000001111000000001111;
+			// x = ---- --98 ---- ---- 7654 ---- ---- 3210
+			x = (x | (x << 4)) & 0b00000011000011000011000011000011;
+			// x = ---- --98 ---- 76-- --54 ---- 32-- --10
+			x = (x | (x << 2)) & 0b00001001001001001001001001001001;
+			// x = ---- 9--8 --7- -6-- 5--4 --3- -2-- 1--0
+			return x;
+		}
+
+		KRR_CALLABLE uint32_t EncodeMorton3(float x, float y, float z) {
+			DCHECK_GE(x, 0);
+			DCHECK_GE(y, 0);
+			DCHECK_GE(z, 0);
+			return (LeftShift3(z) << 2) | (LeftShift3(y) << 1) | LeftShift3(x);
+		}
+
+		KRR_CALLABLE uint32_t Compact1By1(uint64_t x) {
+			// TODO: as of Haswell, the PEXT instruction could do all this in a
+			// single instruction.
+			// x = -f-e -d-c -b-a -9-8 -7-6 -5-4 -3-2 -1-0
+			x &= 0x5555555555555555;
+			// x = --fe --dc --ba --98 --76 --54 --32 --10
+			x = (x ^ (x >> 1)) & 0x3333333333333333;
+			// x = ---- fedc ---- ba98 ---- 7654 ---- 3210
+			x = (x ^ (x >> 2)) & 0x0f0f0f0f0f0f0f0f;
+			// x = ---- ---- fedc ba98 ---- ---- 7654 3210
+			x = (x ^ (x >> 4)) & 0x00ff00ff00ff00ff;
+			// x = ---- ---- ---- ---- fedc ba98 7654 3210
+			x = (x ^ (x >> 8)) & 0x0000ffff0000ffff;
+			// ...
+			x = (x ^ (x >> 16)) & 0xffffffff;
+			return x;
+		}
+
+		KRR_CALLABLE void DecodeMorton2(uint64_t v, uint32_t* x, uint32_t* y) {
+			*x = Compact1By1(v);
+			*y = Compact1By1(v >> 1);
+		}
+
+		KRR_CALLABLE uint32_t Compact1By2(uint32_t x) {
+			x &= 0x09249249;                   // x = ---- 9--8 --7- -6-- 5--4 --3- -2-- 1--0
+			x = (x ^ (x >> 2)) & 0x030c30c3;   // x = ---- --98 ---- 76-- --54 ---- 32-- --10
+			x = (x ^ (x >> 4)) & 0x0300f00f;   // x = ---- --98 ---- ---- 7654 ---- ---- 3210
+			x = (x ^ (x >> 8)) & 0xff0000ff;   // x = ---- --98 ---- ---- ---- ---- 7654 3210
+			x = (x ^ (x >> 16)) & 0x000003ff;  // x = ---- ---- ---- ---- ---- --98 7654 3210
+			return x;
+		}
 	}
 }
 

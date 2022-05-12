@@ -74,7 +74,6 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 
 	SampledLight sampledLight = path.lightSampler.sample(u[0]);
 	Light& light = sampledLight.light;
-	assert(light);
 	LightSample ls = light.sampleLi(u, { sd.pos, sd.N });
 
 	vec3f wiWorld = normalize(ls.intr.p - sd.pos);
@@ -205,7 +204,6 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 		color += path.L;
 	}
 	color /= launchParams.spp;
-	//print("Final radiance: %.4f %.4f %.4f\n", color.x, color.y, color.z);
 	assert(!isnan(luminance(color)));
 	launchParams.colorBuffer[fbIndex] = vec4f(color, 1.0f);
 }

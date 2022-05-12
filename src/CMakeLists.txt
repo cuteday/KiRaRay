@@ -101,6 +101,8 @@ SET(KRR_HEADERS
 	main/renderer.h
 	util/check.h
 	util/string.h
+	util/lowdiscrepancy.h
+	util/tables.h
 )
 
 SET (KRR_SOURCE
@@ -108,6 +110,7 @@ SET (KRR_SOURCE
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
 	scene/importer.cpp
+	util/tables.cpp
 )
 
 SET(KRR_SHADER_MATERIALS
@@ -138,6 +141,7 @@ SET ( KRR_SHADERS
 SET_SOURCE_FILES_PROPERTIES (
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
+	util/tables.cpp
 	PROPERTIES LANGUAGE CUDA
 )
 

@@ -58,10 +58,12 @@ typedef unsigned char uchar;
 # define KRR_DEVICE   __device__
 # define KRR_HOST     __host__
 # define KRR_FORCEINLINE __forceinline__
+# define KRR_CONST	__device__ const 
 #else
 # define KRR_DEVICE       /* ignore */
 # define KRR_HOST         /* ignore */
 # define KRR_FORCEINLINE  /* ignore */
+# define KRR_CONST	const
 #endif
 
 # define __both__   KRR_HOST KRR_DEVICE
@@ -100,11 +102,13 @@ namespace math {
 	using ::min;
 	using ::max;
 	using ::abs;
+	using ::fmod;
 	using ::copysign;
 #else
 	using std::min;
 	using std::max;
 	using std::abs;
+	using std::fmod;
 	using std::copysign;	
 #endif
 

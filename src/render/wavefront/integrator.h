@@ -51,18 +51,17 @@ public:
 	}
 
 //private: // extended lambda cannot have private or protected access within its class
-	void handleHit(vec4f* frameBuffer);
-	void handleMiss(vec4f* frameBuffer);
-	void evalDirect(vec4f* frameBuffer);
+	void handleHit();
+	void handleMiss();
 	void generateScatterRays();
 	void generateCameraRays(int sampleId);
-	void startPixelSamples();
 
 	KRR_CALLABLE RayQueue* currentRayQueue(int depth) { return rayQueue[depth & 1]; }
-	KRR_CALLABLE RayQueue* nextRayQueue(int depth) { return rayQueue[(depth + 1) & 1]; }
+	KRR_CALLABLE RayQueue* nextRayQueue(int depth) { return rayQueue[(depth & 1) ^ 1]; }
 
 	OptiXWavefrontBackend* backend;
 	Camera* camera{ };
+	LightSampler lightSampler;
 
 	// work queues
 	RayQueue* rayQueue[2]{ };	// switching bewteen current and next queue
@@ -79,6 +78,7 @@ public:
 	int samplesPerPixel{ 1 };
 	int maxDepth{ 10 };
 	float probRR{ 0.8 };
+	bool enableNEE{ };
 };
 
 KRR_NAMESPACE_END

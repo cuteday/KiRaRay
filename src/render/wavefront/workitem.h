@@ -13,6 +13,7 @@ using namespace shader;
 struct PixelState {
 	vec3f L;
 	LCGSampler sampler;
+	//HaltonSampler sampler;
 };
 
 struct RayWorkItem {
