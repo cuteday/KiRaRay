@@ -13,6 +13,20 @@
 
 KRR_NAMESPACE_BEGIN
 
+class PixelStateBuffer : public SOA<PixelState> {
+public:
+    PixelStateBuffer() = default;
+    PixelStateBuffer(int n, Allocator alloc) : SOA<PixelState>(n, alloc) {}
+
+    KRR_CALLABLE void setRadiance(int pixelId, color L_val){
+        L[pixelId] = L_val;
+    }
+    KRR_CALLABLE void addRadiance(int pixelId, color L_val) {
+        L_val = L_val + color(L[pixelId]);
+        L[pixelId] = L_val;
+    }
+};
+
 template <typename WorkItem>
 class WorkQueue : public SOA<WorkItem> {
 public:
@@ -66,17 +80,14 @@ private:
 #endif 
 };
 
-// func: void F(WorkItem)
 template <typename F, typename WorkItem>
 void ForAllQueued(const WorkQueue<WorkItem>* q, int nElements,
     F&& func) {
-#ifdef KRR_ON_GPU
     GPUParallelFor(nElements, [=] KRR_DEVICE(int index) mutable {
         if (index >= q->size())
             return;
         func((*q)[index]);
     });
-#endif
 }
 
 class RayQueue : public WorkQueue<RayWorkItem> {
@@ -100,7 +111,7 @@ public:
     using WorkQueue::push;
 
     KRR_CALLABLE int push(RayWorkItem w) {
-        return push(MissRayWorkItem{ w.ray, w.thp, w.depth, w.pixelId });
+        return push(MissRayWorkItem{ w.ray, w.ctx, w.pdf, w.thp, w.depth, w.pixelId });
     }
 };
 

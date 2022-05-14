@@ -12,14 +12,6 @@ if (NOT BIN2C)
 	)
 endif ()
 
-include (CheckCXXCompilerFlag)
-
-check_cxx_compiler_flag ("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
-if (COMPILER_SUPPORTS_MARCH_NATIVE AND PBRT_BUILD_NATIVE_EXECUTABLE)
-    target_compile_options (krr_opt INTERFACE
-          "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler >-march=native")
-endif ()
-
 # this macro defines cmake rules that execute the following four steps:
 # 1) compile the given cuda file ${cuda_file} to an intermediary PTX file
 # 2) use the 'bin2c' tool (that comes with CUDA) to
@@ -34,15 +26,11 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name)
 	
 	add_library ("${lib_name}" OBJECT "${cuda_file}")
 	set_property (TARGET "${lib_name}" PROPERTY CUDA_PTX_COMPILATION ON)
-
-	# disable "extern declaration... is treated as a static definition" warning
-	if (CUDA_VERSION_MAJOR EQUAL 11 AND CUDA_VERSION_MINOR LESS 2)
-		target_compile_options ("${lib_name}" PRIVATE
-								-Xcudafe=--display_error_number -Xcudafe=--diag_suppress=3089)
-	else ()
-		target_compile_options ("${lib_name}" PRIVATE
-								-Xcudafe=--display_error_number -Xcudafe=--diag_suppress=20044)
-	endif ()
+	target_compile_options ("${lib_name}" PRIVATE
+							-Xcudafe=--display_error_number 
+							-Xcudafe=--diag_suppress=3089
+							-Xcudafe=--diag_suppress=1290		# disable "passing arguments... " warning
+							-Xcudafe=--diag_suppress=20044)		# disable "extern declaration... is treated as a static definition" warning
 	target_compile_options("${lib_name}" PRIVATE ${CUDA_NVCC_FLAGS})
 	# CUDA integration in Visual Studio seems broken as even if "Use
 	# Host Preprocessor Definitions" is checked, the host preprocessor

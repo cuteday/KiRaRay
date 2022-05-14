@@ -80,10 +80,10 @@ void Scene::processLights(){
 	for (InfiniteLight& light : *mData.infiniteLights)
 		mData.lights->push_back(&light);
 	logInfo("A total of " + to_string(mData.lights->size()) + " light(s) processed!");
-	if (mData.lightSampler.ptr()) {
+	if (mData.lightSampler.ptr()) 
 		gpContext->alloc->deallocate_object((UniformLightSampler*)mData.lightSampler.ptr());
-	}
 	mData.lightSampler = gpContext->alloc->new_object<UniformLightSampler>((inter::span<Light>) * mData.lights);
+	CUDA_SYNC_CHECK();
 }
 
 void Scene::addInfiniteLight(const InfiniteLight& infiniteLight){

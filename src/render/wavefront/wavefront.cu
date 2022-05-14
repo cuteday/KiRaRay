@@ -18,7 +18,7 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 		0.f, tMax, 0.f,						/* ray time val min max */
 		OptixVisibilityMask(255),			/* all visible */
 		flags,
-		rayType, 1,			/* ray type and number of types */
+		rayType, 1,							/* ray type and number of types */
 		rayType,							/* miss SBT index */
 		std::forward<Args>(payload)...);	/* (unpacked pointers to) payloads */
 }
@@ -52,12 +52,15 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	if (sd.light) {		// push to hit ray queue if mesh has light
 		HitLightWorkItem w = {};
 		w.light = sd.light;
+		w.ctx = r.ctx;
 		w.p = sd.pos;
 		w.n = sd.N;
 		w.wo = sd.wo;
 		w.uv = sd.uv;
+		w.depth = r.depth;
 		w.pixelId = r.pixelId;
 		w.thp = r.thp;
+		w.pdf = r.pdf;
 		launchParams.hitLightRayQueue->push(w);
 	}
 	// process material and push to material evaluation queue (if eligible)
@@ -72,8 +75,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_MS(Closest)() {
-	ShadingData* sd = getPRD<ShadingData>();
-	sd->miss = true;
+	getPRD<ShadingData>()->miss = true;
 }
 
 extern "C" __global__ void KRR_RT_RG(Closest)() {
@@ -88,22 +90,21 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 	}
 }
 
-extern "C" __global__ void KRR_RT_AH(Shadow)() {
-	ShadingData* sd = getPRD<ShadingData>();
-	sd->miss = false;
-}
+extern "C" __global__ void KRR_RT_AH(Shadow)() { optixSetPayload_0(0); }
 
-extern "C" __global__ void KRR_RT_MS(Shadow)() {
-	return;
-}
+extern "C" __global__ void KRR_RT_MS(Shadow)() {}
 
 extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	int rayIndex(optixGetLaunchIndex().x);
 	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
 	ShadowRayWorkItem r = getShadowRayWorkItem();
-	ShadingData sd = {};
-	traceRay(launchParams.traversable, r.ray, KRR_RAY_TMAX,
-		0, OPTIX_RAY_FLAG_DISABLE_ANYHIT, (void*)&sd);
+	uint32_t miss{1};
+	traceRay(launchParams.traversable, r.ray, r.tMax, 0,
+		OptixRayFlags(OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
+		miss);
+	if (miss) {
+		launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
+	}
 }
 
 KRR_NAMESPACE_END

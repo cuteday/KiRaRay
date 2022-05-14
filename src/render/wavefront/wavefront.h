@@ -10,6 +10,8 @@
 
 KRR_NAMESPACE_BEGIN
 
+class PixelStateBuffer;
+
 using namespace shader;
 
 typedef struct {
@@ -20,7 +22,7 @@ typedef struct {
 	HitLightRayQueue* hitLightRayQueue;
 	ScatterRayQueue* scatterRayQueue;
 	
-	SOA<PixelState>* pixelState;
+	PixelStateBuffer* pixelState;
 	Scene::SceneData sceneData;
 	OptixTraversableHandle traversable;
 } LaunchParams;

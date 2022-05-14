@@ -98,8 +98,7 @@ private:
 
 // NoRandomizer Definition
 struct NoRandomizer {
-    KRR_CALLABLE
-        uint32_t operator()(uint32_t v) const { return v; }
+    KRR_CALLABLE uint32_t operator()(uint32_t v) const { return v; }
 };
 
 // Low Discrepancy Inline Functions

@@ -40,7 +40,7 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 
 	float weight = 1.f;
 	if (launchParams.NEE) {
-		LightSampleContext ctx = { path.pos, };
+		LightSampleContext ctx = { path.pos, };	// should use pos of prev interaction
 		float bsdfPdf = path.pdf;
 		float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(light);
 		if (launchParams.MIS) weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
@@ -85,7 +85,7 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 	float misWeight = 1;
 
 	if (launchParams.MIS) misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
-	if (lightPdf == 0 || isnan(lightPdf) || isinf(lightPdf)) return;
+	if (isnan(misWeight)) printf("invalid misWeight\n");
 
 	vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
 	vec3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
@@ -171,6 +171,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 
 		if (!generateScatterRay(sd, path)) break;
 	}
+	// note that clamping also eliminates NaN and INF. 
 	path.L = clamp(path.L, vec3f(0), launchParams.clampThreshold);
 }
 

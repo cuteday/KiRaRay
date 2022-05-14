@@ -18,6 +18,8 @@ struct PixelState {
 
 struct RayWorkItem {
 	Ray ray;
+	LightSampleContext ctx;
+	float pdf;
 	vec3f thp;
 	uint depth;
 	uint pixelId;
@@ -25,6 +27,8 @@ struct RayWorkItem {
 
 struct MissRayWorkItem {
 	Ray ray;
+	LightSampleContext ctx;
+	float pdf;
 	vec3f thp;
 	uint depth;
 	uint pixelId;
@@ -32,11 +36,14 @@ struct MissRayWorkItem {
 
 struct HitLightWorkItem {
 	Light light;
+	LightSampleContext ctx;
+	float pdf;
 	vec3f p;
+	vec3f wo;
 	vec3f n;
 	vec2f uv;
-	vec3f wo;
 	vec3f thp;
+	uint depth;
 	uint pixelId;
 };
 
@@ -44,6 +51,7 @@ struct ShadowRayWorkItem {
 	Ray ray;
 	float tMax;
 	vec3f Li;
+	vec3f a;
 	uint pixelId;
 };
 

@@ -1,5 +1,4 @@
 #pragma once
-
 #include "kiraray.h"
 #include "window.h"
 #include "scene.h"
@@ -34,23 +33,16 @@ public:
 	// cuda utility functions
 	template <typename F>
 	void Call(F&& func) {
-#ifdef KRR_ON_GPU
 		GPUParallelFor(1, [=] KRR_DEVICE(int) mutable { func(); });
-#else 
-		assert(!"should not go here");
-#endif
 	}
 
 	template <typename F>
 	void ParallelFor(int nElements, F&& func) {
-#ifdef KRR_ON_GPU
+		DCHECK_GT(nElements, 0);
 		GPUParallelFor(nElements, func);
-#else 
-		assert(!"should not go here");
-#endif
 	}
 
-//private: // extended lambda cannot have private or protected access within its class
+	// extended lambda cannot have private or protected access within its class
 	void handleHit();
 	void handleMiss();
 	void generateScatterRays();
@@ -69,7 +61,7 @@ public:
 	HitLightRayQueue* hitLightRayQueue{ };
 	ShadowRayQueue* shadowRayQueue{ };
 	ScatterRayQueue* scatterRayQueue{ };
-	SOA<PixelState> pixelState;
+	PixelStateBuffer* pixelState;
 
 	// path tracing parameters
 	int frameId{ 0 };
@@ -79,6 +71,8 @@ public:
 	int maxDepth{ 10 };
 	float probRR{ 0.8 };
 	bool enableNEE{ };
+	bool debugOutput{ };
+	vec2i debugPixel{ };
 };
 
 KRR_NAMESPACE_END

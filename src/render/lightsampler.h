@@ -36,8 +36,8 @@ public:
 		return 1.f / mLights.size();
 	}
 
-	__both__ inter::vector<Light> getLights() {
-		return mLights;
+	__both__ inter::vector<Light>* getLights() {
+		return &mLights;
 	}
 
 private:

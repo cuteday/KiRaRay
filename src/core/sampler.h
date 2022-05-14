@@ -120,7 +120,7 @@ private:
 	}
 
 	RandomizeStrategy randomize;
-	static constexpr int maxHaltonResolution = 256;
+	static constexpr int maxHaltonResolution = 128;
 	vec2i baseScales, baseExponents;
 	int multInverse[2];
 	int64_t haltonIndex = 0;

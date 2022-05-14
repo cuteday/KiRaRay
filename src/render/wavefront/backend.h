@@ -3,6 +3,7 @@
 #include "scene.h"
 #include "workqueue.h"
 #include "wavefront.h"
+#include "math/math.h"
 #include "device/context.h"
 
 KRR_NAMESPACE_BEGIN
@@ -37,7 +38,7 @@ public:
 
 	void traceShadow(int numRays,
 		ShadowRayQueue* shadowRayQueue,
-		SOA<PixelState>* pixelState);
+		PixelStateBuffer* pixelState);
 
 protected:
 	OptixProgramGroup createRaygenPG(const char* entrypoint) const;
