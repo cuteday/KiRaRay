@@ -31,11 +31,17 @@ void Scene::renderUI() {
 		if (mpCamera && ui::CollapsingHeader("Camera")) {
 			mpCamera->renderUI();
 		}
-		if (mData.infiniteLights->size() && ui::CollapsingHeader("Infinite Lights")) {
+		if (ui::CollapsingHeader("Environment lights")) {
 			for (int i = 0; i < mData.infiniteLights->size(); i++) {
 				if (ui::CollapsingHeader(to_string(i).c_str())) {
-					InfiniteLight& light = (*mData.infiniteLights)[i];
-					light.renderUI();
+					(*mData.infiniteLights)[i].renderUI();
+				}
+			}
+		}
+		if (ui::CollapsingHeader("Materials")) {
+			for (int i = 0; i < mData.materials->size(); i++) {
+				if (ui::CollapsingHeader((*mData.materials)[i].getName().c_str())) {
+					(*mData.materials)[i].renderUI();
 				}
 			}
 		}

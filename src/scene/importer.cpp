@@ -15,6 +15,11 @@ KRR_NAMESPACE_BEGIN
 
 namespace fs = std::filesystem;
 
+namespace {
+	static uint textureIdAllocator = 0;
+	static uint materialIdAllocator = 0;
+}
+
 namespace assimp {
 
 	using ImportMode = AssimpImporter::ImportMode;
@@ -81,7 +86,7 @@ namespace assimp {
 			logWarning("Material with no name found -> renaming to 'unnamed'");
 			nameStr = "unnamed";
 		}
-		Material::SharedPtr pMaterial = Material::SharedPtr(new Material(nameStr));
+		Material::SharedPtr pMaterial = Material::SharedPtr(new Material(++materialIdAllocator, nameStr));
 
 		logDebug("Importing material: " + nameStr);
 		// Load textures. Note that loading is affected by the current shading model.
@@ -162,8 +167,9 @@ namespace assimp {
 	}
 }
 
-void MaterialLoader::loadTexture(const Material::SharedPtr& pMaterial, TextureType type, const std::string& filename)
-{
+using namespace texture;
+
+void MaterialLoader::loadTexture(const Material::SharedPtr& pMaterial, TextureType type, const std::string& filename){
 	assert(pMaterial);
 	bool srgb = mUseSrgb;
 	if (!fs::exists(filename)) {
@@ -172,7 +178,7 @@ void MaterialLoader::loadTexture(const Material::SharedPtr& pMaterial, TextureTy
 	}
 	TextureKey textureKey{ filename, srgb };
 	if (!mTextureCache.count(textureKey)) {
-		mTextureCache[textureKey] = *Texture::createFromFile(filename, srgb);
+		mTextureCache[textureKey] = Texture(filename, srgb, ++textureIdAllocator);
 	}
 	pMaterial->setTexture(type, mTextureCache[textureKey]);
 }
@@ -229,10 +235,7 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 	traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
 	logDebug("Total imported meshes: " + std::to_string(mpScene->meshes.size()));
 
-	//loadMeshLights();
-
 	Assimp::DefaultLogger::kill();
-	//mpScene->toDevice();
 	return true;
 }
 

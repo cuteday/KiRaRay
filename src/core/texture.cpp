@@ -11,6 +11,7 @@
 #include <filesystem>
 
 #include "texture.h"
+#include "window.h"
 #include "logger.h"
 #include "device/optix.h"
 
@@ -88,6 +89,13 @@ namespace tinyexr {
 }
 
 KRR_NAMESPACE_BEGIN
+
+namespace texture {
+	std::map<uint, TextureProp> textureProps;
+	std::map<uint, MaterialProp> materialProps;
+}
+
+using namespace texture;
 
 Image::Image(vec2i size, Format format, bool srgb):
 	mSrgb(srgb), mFormat(format), mSize(size){
@@ -185,6 +193,13 @@ Texture::SharedPtr Texture::createFromFile(const string& filepath, bool srgb)
 	return pTexture;
 }
 
+Texture::Texture(const string& filepath, bool srgb, uint id)
+	:mTextureId{id} {
+	logDebug("Attempting to load texture from " + filepath);
+	loadImage(filepath);
+	textureProps[id] = TextureProp{ filepath };
+}
+
 void Texture::toDevice() {
 	if (!mImage.isValid()) return;
 
@@ -235,6 +250,10 @@ void Texture::toDevice() {
 	mCudaTexture = cudaTexture;
 }
 
+Material::Material(uint id, const string& name) :mMaterialId(id) {
+	materialProps[id] = MaterialProp{ name };
+}
+
 void Material::setTexture(TextureType type, Texture& texture) {
 	mTextures[(uint)type] = texture;
 }
@@ -242,6 +261,31 @@ void Material::setTexture(TextureType type, Texture& texture) {
 void Material::toDevice() {
 	for (uint i = 0; i < (uint)TextureType::Count; i++) {
 		mTextures[i].toDevice();
+	}
+}
+
+void Texture::renderUI() {
+	ui::Text(getFilemame().c_str());
+}
+
+void Material::renderUI() {
+	static const char* shadingModels[] = { "MetallicRoughness", "SpecularGlossiness"};
+	static const char* textureTypes[] = { "Diffuse", "Specular", "Emissive", "Normal", "Transmission" };
+	static const char* bsdfTypes[] = {"Diffuse", "FresnelBlend", "Disney"};
+	ui::ListBox("Shading model", (int*)&mShadingModel, shadingModels, 2);
+	ui::ListBox("BSDF", (int*)&mBsdfType, bsdfTypes, (int)BsdfType::Count);
+	ui::InputFloat4("Diffuse", (float*)&mMaterialParams.diffuse);
+	ui::InputFloat4("Specular", (float*)&mMaterialParams.specular);
+	ui::InputFloat3("Emissive", (float*)&mMaterialParams.emissive);
+	ui::InputFloat("Diffuse transmission", &mMaterialParams.diffuseTransmission);
+	ui::InputFloat("Specular transmission", &mMaterialParams.specularTransmission);
+	ui::Checkbox("Double sided", &mDoubleSided);
+	if (ui::CollapsingHeader("Texture slots")) {
+		for (int i = 0; i < (int)TextureType::Count; i++) {
+			if (mTextures[i].isValid() && ui::CollapsingHeader(textureTypes[i])) {
+				mTextures[i].renderUI();
+			}
+		}
 	}
 }
 

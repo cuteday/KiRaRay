@@ -57,7 +57,7 @@ namespace shader {
 		vec3f diffuse;			// diffuse reflectance
 		vec3f specular;			// specular reflectance
 
-		vec3f transmission{ 1 };// transmission color (shared by diffuse and specular for now)
+		vec3f transmission{ 1 };	// transmission color (shared by diffuse and specular for now)
 		float diffuseTransmission{ 0 };
 		float specularTransmission{ 0 };
 
@@ -66,10 +66,10 @@ namespace shader {
 		float anisotropic{ 0 };		// 
 
 		Light light{ nullptr };
-		bool miss = false;		// not valid if missing, or ?
+		bool miss = false;			// not valid if missing, or ?
 			
-		BsdfType bsdfType = BsdfType::Diffuse;
-		uint flags = 0;			// user custom flags?
+		BsdfType bsdfType;
+		uint flags;					// user custom flags?
 
 		__both__ vec3f fromLocal(vec3f v) const {
 			return T * v.x + B * v.y + N * v.z;

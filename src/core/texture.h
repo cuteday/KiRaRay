@@ -1,16 +1,30 @@
 // we want a image->texture->material class 
 // a gpu buffer should be a member of texture class, a texture cache may also needed
 
+// TODO: reorganize and clean up constructors (and "createFromFile" methods)
 #pragma once
+#include <map>
 #include <cuda_runtime.h>
 
 #include "common.h"
 #include "math/math.h"
 #include "file.h"
+#include "window.h"
 #include "raytracing.h"
 #include "render/materials/bxdf.h"
 
 KRR_NAMESPACE_BEGIN
+
+namespace texture {
+	typedef struct{
+		string path;
+	} TextureProp;
+	typedef struct {
+		string name;
+	} MaterialProp;
+	extern std::map<uint, TextureProp> textureProps;
+	extern std::map<uint, MaterialProp> materialProps;
+}
  
 class Image {	// Not available on GPU
 public:
@@ -51,7 +65,8 @@ public:
 	using SharedPtr = std::shared_ptr<Texture>;
 	using Format = Image::Format;
 
-	Texture() = default;
+	Texture() = default; 
+	Texture(const string& filepath, bool srgb = false, uint id = 0);
 
 	void loadImage(const string& filepath, bool srgb = false) {
 		mValid = mImage.loadImage(filepath);
@@ -73,12 +88,19 @@ public:
 
 	void toDevice();
 
+	void renderUI();
+	string getFilemame() {
+		if (mTextureId)
+			return texture::textureProps[mTextureId].path;
+		return "unknown filepath";
+	}
 	static Texture::SharedPtr createFromFile(const string& filepath, bool srgb = false);
 
 	bool mValid = false;
 	Image mImage;
 	cudaTextureObject_t mCudaTexture = 0;
 	cudaArray_t mCudaArray = 0;
+	uint mTextureId;
 };
 
 class Material {
@@ -109,13 +131,12 @@ public:
 	};
 
 	Material() {};
-	Material(const string& name) {}
+	Material(uint id, const string& name);
 
 	void setTexture(TextureType type, Texture& texture);
 
 	bool hasEmission() { 
-		return any(mMaterialParams.emissive) || 
-			mTextures[(int)TextureType::Emissive].isValid(); 
+		return any(mMaterialParams.emissive) || mTextures[(int)TextureType::Emissive].isValid(); 
 	}
 
 	__both__ Texture getTexture(TextureType type) {
@@ -127,6 +148,12 @@ public:
 	}
 
 	void toDevice();
+	void renderUI();
+	string getName() {
+		if (mMaterialId) 
+			return texture::materialProps[mMaterialId].name;
+		return "unknown";
+	}
 
 	friend class AssimpImporter;
 	MaterialParams mMaterialParams;
@@ -140,6 +167,7 @@ public:
 #endif
 	ShadingModel mShadingModel = ShadingModel::MetallicRoughness;
 	bool mDoubleSided = false;
+	uint mMaterialId;
 };
 
 KRR_NAMESPACE_END

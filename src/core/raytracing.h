@@ -15,6 +15,7 @@ enum class BsdfType {
 	Diffuse = 0,
 	FresnelBlend,
 	Disney,
+	Count
 };
 
 struct Ray {
