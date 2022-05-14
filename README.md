@@ -83,7 +83,7 @@ But actually i'm like **sleeps all the time**:
 > Importer for gltf and fbx models may not work as expected.
 
 <p align=center>
-<img src=common/demo/Higokumaru.jpg width="700">
+<img src=common/demo/higokumaru.jpg width="700">
 
 #### Breakfast room
 
