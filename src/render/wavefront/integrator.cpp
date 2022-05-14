@@ -32,7 +32,7 @@ void WavefrontPathTracer::initialize(){
 	CUDA_SYNC_CHECK();	// necessary
 	if (maxQueueSize > 0) {
 		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
-			pixelState->sampler[pixelId].initialize();
+			pixelState->sampler[pixelId].initialize(RandomizeStrategy::Owen);
 		});
 	}
 	if (!camera) camera = alloc.new_object<Camera>();
@@ -95,7 +95,7 @@ void WavefrontPathTracer::generateScatterRays(){
 			vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
 
 			float misWeight = evalMIS(lightPdf, bsdfPdf);
-			if (!isnan(misWeight) & !isinf(misWeight)) {
+			if (!isnan(misWeight) && !isinf(misWeight)) {
 				//if(isnan(misWeight))
 				//	printf("nee misWeight %f lightPdf %f bsdfPdf %f lightSelect %f lightSample %f\n",
 				//		misWeight, lightPdf, bsdfPdf, sampledLight.pdf, ls.pdf);
@@ -206,7 +206,9 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 		}
 	}
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
-		frameBuffer[pixelId] = vec4f(vec3f(pixelState->L[pixelId]) / samplesPerPixel, 1);
+		vec3f L = vec3f(pixelState->L[pixelId]) / samplesPerPixel; 
+		if(enableClamp) L = clamp(L, vec3f(0), vec3f(clampMax));
+		frameBuffer[pixelId] = vec4f(L, 1);
 	});
 	CUDA_SYNC_CHECK();
 	frameId++;
@@ -220,7 +222,15 @@ void WavefrontPathTracer::renderUI(){
 		ui::Checkbox("Enable NEE", &enableNEE);
 		ui::Text("Debugging");
 		ui::Checkbox("Debug output", &debugOutput);
-		ui::InputInt2("Debug pixel", (int*)&debugPixel);
+		if (debugOutput) {
+			ui::SameLine();
+			ui::InputInt2("Debug pixel:", (int*)&debugPixel);
+		}
+		ui::Checkbox("Clamping pixel value", &enableClamp);
+		if (enableClamp) {
+			ui::SameLine();
+			ui::InputFloat("Max:", &clampMax);
+		}
 	}
 }
 

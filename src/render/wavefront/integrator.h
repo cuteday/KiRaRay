@@ -73,6 +73,8 @@ public:
 	bool enableNEE{ };
 	bool debugOutput{ };
 	vec2i debugPixel{ };
+	bool enableClamp{ };
+	float clampMax{ 500 };
 };
 
 KRR_NAMESPACE_END

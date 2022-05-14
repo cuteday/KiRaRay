@@ -100,7 +100,6 @@ public:
 	}
 
 private:
-	// HaltonSampler Private Methods
 	__both__ static uint64_t multiplicativeInverse(int64_t a, int64_t n) {
 		int64_t x, y;
 		utils::extendedGCD(a, n, &x, &y);

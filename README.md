@@ -1,6 +1,6 @@
 # KiRaRay
 
-*KiRaRay* is a simple interactive ray-tracing renderer using optix. The purpose of this project is to let me (a beginner) learn c++ and optix in a more interesting way. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer, and some parts of the coding structures are inspired by [pbrt-v4](https://github.com/mmp/pbrt-v4). Currently it has very limited features and potentially some bugs.
+*KiRaRay* is a simple interactive ray-tracing renderer using optix. The purpose of this project is to let me (a beginner) learn c++ and optix in a more interesting way. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer, and many parts of the coding structures are inspired by [pbrt-v4](https://github.com/mmp/pbrt-v4). Currently it has very limited features and potentially some bugs. Any suggestion, advice and question is welcome!
 
 <p align=center>
 <img src=common/demo/kirara.jpg width="750">
@@ -50,7 +50,7 @@ For testing, HDR environment images can be downloaded at [sIBL Archive](http://w
 
 #### Performance
 
-Currently the megakernel pathtracer should run at 30+ fps for rendering an 1 spp 1920*1080 image on an RTX 3060 or similar GPU, if the average path length is less than 5 and NEE disabled. 
+The megakernel pathtracer should run at 30+ fps for rendering an 1 spp 1920*1080 image on an RTX 3060 or similar GPU, if the average path length is less than 5 and NEE disabled. The wavefront pathtracer however, expected to be faster than the megakernel version, is currently slightly slower however due to my poor implementation (it does runs significantly faster when next event estimation is enabled though). 
 
 ### Epilogue
 
@@ -73,15 +73,17 @@ But actually i'm like **sleeps all the time**:
 
 ### Galleries
 
-#### Cornell box
-
-<p align=center>
-<img src=common/demo/cbox.jpg width="700">
-
 #### Salle de bain
 
 <p align=center>
 <img src=common/demo/salle_de_bain.jpg width="700">
+
+#### Higokumaru by [MooKorea](https://sketchfab.com/MooKorea)
+
+> Importer for gltf and fbx models may not work as expected.
+
+<p align=center>
+<img src=common/demo/Higokumaru.jpg width="700">
 
 #### Breakfast room
 

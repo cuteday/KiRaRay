@@ -57,7 +57,6 @@ SET ( KRR_CORE_HEADERS
 	# rendering
 	core/raytracing.h
 	core/mesh.h
-	core/envmap.h
 	core/shape.h
 	core/light.h
 	core/renderpass.h
