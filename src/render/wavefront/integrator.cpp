@@ -195,7 +195,7 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 				nextRayQueue(depth));
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
 			handleHit();
-			handleMiss();
+			if (depth || !transparentBackground) handleMiss();
 			// [STEP#2.3] evaluate materials & bsdfs
 			generateScatterRays();
 			// [STEP#2.4] trace shadow rays (next event estimation)
@@ -208,7 +208,7 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		vec3f L = vec3f(pixelState->L[pixelId]) / samplesPerPixel; 
 		if(enableClamp) L = clamp(L, vec3f(0), vec3f(clampMax));
-		frameBuffer[pixelId] = vec4f(L, 1);
+		frameBuffer[pixelId] = vec4f(L, any(L) ? 1 : 0);
 	});
 	CUDA_SYNC_CHECK();
 	frameId++;
@@ -231,6 +231,8 @@ void WavefrontPathTracer::renderUI(){
 			ui::SameLine();
 			ui::DragFloat("Max:", &clampMax, 1, 1, 500);
 		}
+		ui::Text("Misc");
+		ui::Checkbox("Transparent background", &transparentBackground);
 	}
 }
 

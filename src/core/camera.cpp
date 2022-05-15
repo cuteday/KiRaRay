@@ -4,8 +4,7 @@
 KRR_NAMESPACE_BEGIN
 
 
-bool Camera::update()
-{
+bool Camera::update(){
 	if (mPreserveHeight)
 		mData.frameSize.x = mData.aspectRatio * mData.frameSize.y;
 	else mData.frameSize.y = mData.frameSize.x / mData.aspectRatio;
@@ -22,8 +21,7 @@ bool Camera::update()
 	return hasChanges;
 }
 
-void Camera::renderUI()
-{
+void Camera::renderUI(){
 	ui::Text("Position: %f, %f, %f", mData.pos.x, mData.pos.y, mData.pos.z);
 	ui::Text("Target: %f, %f, %f", mData.target.x, mData.target.y, mData.target.z);
 	ui::Text("Focal vector: %f, %f, %f", mData.w.x, mData.w.y, mData.w.z);
@@ -31,8 +29,7 @@ void Camera::renderUI()
 	ui::Text("Sensor up: %f, %f, %f", mData.v.x, mData.v.y, mData.v.z);
 }
 
-bool OrbitCameraController::update()
-{	
+bool OrbitCameraController::update(){	
 	quat rotate = normalize(quat(mData.yaw, mData.pitch, 0));
 	vec3f forward = rotate * vec3f(0, 0, -1);
 	vec3f pos = mData.target - forward * mData.radius;
@@ -46,12 +43,10 @@ bool OrbitCameraController::update()
 	return hasChanges;
 }
 
-bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent)
-{
-
+bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent){
 	switch (mouseEvent.type) {
 	case io::MouseEvent::Type::Wheel:
-		mData.radius -= mouseEvent.wheelDelta.y * mZoomSpeed;
+		mData.radius -= mouseEvent.wheelDelta.y * clamp(mZoomSpeed * mData.radius, 1e-2f, 1e1f);
 		mData.radius = clamp(mData.radius, 0.1f, 1e5f);
 		return true;
 	case io::MouseEvent::Type::LeftButtonDown:
@@ -85,8 +80,7 @@ bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent)
 	return false;
 }
 
-bool OrbitCameraController::onKeyEvent(const KeyboardEvent& keyEvent)
-{
+bool OrbitCameraController::onKeyEvent(const KeyboardEvent& keyEvent){
 	if (keyEvent.key == KeyboardEvent::Key::LeftShift) {
 		if (keyEvent.type == KeyboardEvent::Type::KeyPressed)
 			mPanning = true;

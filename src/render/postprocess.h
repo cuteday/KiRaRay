@@ -64,7 +64,7 @@ public:
 			ui::Checkbox("Enabled", &mEnable);
 			if (mEnable) {
 				ui::SliderFloat("Exposure compensation",
-					&mExposureCompensation, 0.001, 50, "%.3f");
+					&mExposureCompensation, 0.001, 100, "%.3f");
 				ui::ListBox("Tonemap operator", (int*)&mOperator, operators, (int)Operator::NumsOperators);
 			}
 		}
