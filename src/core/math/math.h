@@ -13,6 +13,11 @@
 KRR_NAMESPACE_BEGIN
 
 using color = vec3f;
+using color3f = vec3f;
+using point = vec3f;
+using point3f = vec3f;
+using point2f = vec2f;
+using AABB = aabb3f;
 
 template <typename T>
 KRR_CALLABLE T mod(T a, T b) {

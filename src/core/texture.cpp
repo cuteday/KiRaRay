@@ -102,8 +102,7 @@ Image::Image(vec2i size, Format format, bool srgb):
 	mData = new uchar[size.x * size.y * 4 * getElementSize()];
 }
 
-bool Image::loadImage(const fs::path& filepath, bool srgb)
-{
+bool Image::loadImage(const fs::path& filepath, bool srgb){
 	vec2i size;
 	int channels;
 	string filename = filepath.string();
@@ -145,8 +144,7 @@ bool Image::loadImage(const fs::path& filepath, bool srgb)
 	return true;
 }
 
-bool Image::saveImage(const fs::path& filepath)
-{
+bool Image::saveImage(const fs::path& filepath){
 	string extension = filepath.extension().string();
 	uint nElements = mSize.x * mSize.y * 4;
 	if (extension == ".png") {
@@ -178,21 +176,18 @@ bool Image::saveImage(const fs::path& filepath)
 	return false;
 }
 
-bool Image::isHdr(const string& filepath)
-{
+bool Image::isHdr(const string& filepath){
 	return (IsEXR(filepath.c_str()) == TINYEXR_SUCCESS) ||
 		stbi_is_hdr(filepath.c_str());
 }
 
-Image::SharedPtr Image::createFromFile(const string& filepath, bool srgb)
-{
+Image::SharedPtr Image::createFromFile(const string& filepath, bool srgb){
 	Image::SharedPtr pImage = Image::SharedPtr(new Image());
 	pImage->loadImage(filepath);
 	return pImage;
 }
 
-Texture::SharedPtr Texture::createFromFile(const string& filepath, bool srgb)
-{
+Texture::SharedPtr Texture::createFromFile(const string& filepath, bool srgb){
 	Texture::SharedPtr pTexture = Texture::SharedPtr(new Texture());
 	logDebug("Attempting to load texture from " + filepath);
 	pTexture->loadImage(filepath);
