@@ -46,7 +46,7 @@ Ninja is recommended as generator when build with Visual Studio, otherwise some 
 
 #### Test scenes and assets
 
-For testing, HDR environment images can be downloaded at [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), OBJ scenes can be obtained at [McGuire's Archive](https://casual-effects.com/data/).
+For testing, HDR environment images can be downloaded at [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), OBJ scenes can be obtained at [McGuire's Archive](https://casual-effects.com/data/). Also gltf models can usually be loaded and rendered. 
 
 #### Performance
 
@@ -79,8 +79,6 @@ But actually i'm like **sleeps all the time**:
 <img src=common/demo/salle_de_bain.jpg width="700">
 
 #### Higokumaru by [MooKorea](https://skfb.ly/ourA9)
-
-> Importer for gltf and fbx models may not work as expected.
 
 <p align=center>
 <img src=common/demo/higokumaru.jpg width="700">

@@ -136,7 +136,7 @@ bool Image::loadImage(const fs::path& filepath, bool srgb)
 		mFormat = Format::RGBAuchar;
 	}
 	int elementSize = getElementSize();
-	mSrgb = mFormat == Format::RGBAuchar;
+	mSrgb = srgb;
 	if (mData) delete[] mData;
 	mData = data;
 
@@ -178,6 +178,12 @@ bool Image::saveImage(const fs::path& filepath)
 	return false;
 }
 
+bool Image::isHdr(const string& filepath)
+{
+	return (IsEXR(filepath.c_str()) == TINYEXR_SUCCESS) ||
+		stbi_is_hdr(filepath.c_str());
+}
+
 Image::SharedPtr Image::createFromFile(const string& filepath, bool srgb)
 {
 	Image::SharedPtr pImage = Image::SharedPtr(new Image());
@@ -196,7 +202,7 @@ Texture::SharedPtr Texture::createFromFile(const string& filepath, bool srgb)
 Texture::Texture(const string& filepath, bool srgb, uint id)
 	:mTextureId{id} {
 	logDebug("Attempting to load texture from " + filepath);
-	loadImage(filepath);
+	loadImage(filepath, srgb);
 	textureProps[id] = TextureProp{ filepath };
 }
 
@@ -258,6 +264,20 @@ void Material::setTexture(TextureType type, Texture& texture) {
 	mTextures[(uint)type] = texture;
 }
 
+bool Material::determineSrgb(string filename, TextureType type) {
+	if (Image::isHdr(filename)) return false;
+	switch (type) {
+	case TextureType::Specular:
+		return (mShadingModel == ShadingModel::SpecularGlossiness);
+	case TextureType::Diffuse:
+	case TextureType::Emissive:
+	case TextureType::Transmission:
+		return true;
+	case TextureType::Normal:
+		return false;
+	}
+	return false;
+}
 void Material::toDevice() {
 	for (uint i = 0; i < (uint)TextureType::Count; i++) {
 		mTextures[i].toDevice();

@@ -9,6 +9,7 @@
 #include "math/math.h"
 #include "light.h"
 #include "scene/importer.h"
+#include "util/string.h"
 #include "logger.h"
 
 KRR_NAMESPACE_BEGIN
@@ -45,6 +46,8 @@ namespace assimp {
 		{ aiTextureType_NORMALS, 0, Material::TextureType::Normal },
 		{ aiTextureType_HEIGHT, 0, Material::TextureType::Normal },
 		{ aiTextureType_DISPLACEMENT, 0, Material::TextureType::Normal },
+		// for GLTF2
+		{ AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, Material::TextureType::Specular }
 	};
 
 	float convertSpecPowerToRoughness(float specPower){
@@ -81,8 +84,7 @@ namespace assimp {
 
 		// Parse the name
 		std::string nameStr = std::string(name.C_Str());
-		if (nameStr.empty())
-		{
+		if (nameStr.empty()){
 			logWarning("Material with no name found -> renaming to 'unnamed'");
 			nameStr = "unnamed";
 		}
@@ -94,8 +96,7 @@ namespace assimp {
 
 		// Opacity
 		float opacity = 1;
-		if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS)
-		{
+		if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS){
 			pMaterial->mMaterialParams.diffuse.a = opacity;
 			if (opacity < 1.f) 
 				pMaterial->mMaterialParams.specularTransmission = 1 - opacity;
@@ -104,11 +105,9 @@ namespace assimp {
 
 		// Shininess
 		float shininess;
-		if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS)
-		{
+		if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS){
 			// Convert OBJ/MTL Phong exponent to glossiness.
-			if (importMode == ImportMode::OBJ)
-			{
+			if (importMode == ImportMode::OBJ){
 				float roughness = convertSpecPowerToRoughness(shininess);
 				shininess = 1.f - roughness;
 			}
@@ -125,39 +124,52 @@ namespace assimp {
 		// Diffuse color
 		aiColor3D color;
 
-		if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS)
-		{
+		if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS){
 			vec3f transmission = 1.f - vec3f( color.r,color.g,color.b );
 			pMaterial->mMaterialParams.specularTransmission = luminance(transmission);
 			logDebug("transmission: " + to_string(luminance(transmission)));
 		}
 
-		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
-		{
+		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS){
 			vec4f diffuse = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.diffuse.a);
 			pMaterial->mMaterialParams.diffuse = diffuse;
 		}
 
 		// Specular color
-		if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS)
-		{
+		if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS){
 			vec4f specular = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.specular.a);
 			pMaterial->mMaterialParams.specular = specular;
 			logDebug("specular : " + to_string(specular.r) + " " + to_string(specular.g) + " " + to_string(specular.b) + " ");
 		}
 
 		// Emissive color
-		if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS)
-		{
+		if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS){
 			vec3f emissive = vec3f(color.r, color.g, color.b);
 			pMaterial->mMaterialParams.emissive = emissive;
 		}
 
 		// Double-Sided
 		int isDoubleSided;
-		if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS)
-		{
+		if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS){
 			pMaterial->mDoubleSided = true;
+		}
+
+		if (importMode == ImportMode::GLTF2){
+			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS){
+				vec4f baseColor = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.diffuse.a);
+				pMaterial->mMaterialParams.diffuse = baseColor;
+			}
+			vec4f specularParams = pMaterial->mMaterialParams.specular;
+			float metallic;
+			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic) == AI_SUCCESS){
+				specularParams.b = metallic;
+			}
+			float roughness;
+			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS){
+				specularParams.g = roughness;
+			}
+
+			pMaterial->mMaterialParams.specular = specularParams;
 		}
 
 		pMaterial->mShadingModel = importMode == ImportMode::OBJ ? 
@@ -171,7 +183,7 @@ using namespace texture;
 
 void MaterialLoader::loadTexture(const Material::SharedPtr& pMaterial, TextureType type, const std::string& filename){
 	assert(pMaterial);
-	bool srgb = mUseSrgb;
+	bool srgb = mUseSrgb && pMaterial->determineSrgb(filename, type);
 	if (!fs::exists(filename)) {
 		logWarning("Can't find texture image file '" + filename + "'");
 		return;
@@ -223,11 +235,15 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 
 	logDebug("Start loading materials");
 
-	string modelFolder = std::filesystem::path(filepath).parent_path().string();
-	string modelSuffix = std::filesystem::path(filepath).extension().string();
+	string modelFolder = getFileDir(filepath);
+	string modelSuffix = getFileExt(filepath);
 	if (modelSuffix == ".obj") {
 		mImportMode = ImportMode::OBJ;
-		logDebug("Importing OBJ model, using Specular Glossiness shading method.");
+		logInfo("Importing OBJ model, using Specular Glossiness shading method.");
+	}
+	else if (modelSuffix == ".gltf" || modelSuffix == ".glb") {
+		mImportMode = ImportMode::GLTF2;
+		logInfo("Importing GLTF2 model.");
 	}
 	loadMaterials(modelFolder);
 
@@ -239,8 +255,7 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 	return true;
 }
 
-void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform)
-{
+void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform){
 	Mesh mesh;
 	mesh.vertices.reserve(pAiMesh->mNumVertices);
 	mesh.normals.reserve(pAiMesh->mNumVertices);

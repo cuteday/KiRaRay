@@ -229,7 +229,7 @@ void WavefrontPathTracer::renderUI(){
 		ui::Checkbox("Clamping pixel value", &enableClamp);
 		if (enableClamp) {
 			ui::SameLine();
-			ui::InputFloat("Max:", &clampMax);
+			ui::DragFloat("Max:", &clampMax, 1, 1, 500);
 		}
 	}
 }

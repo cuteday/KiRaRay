@@ -17,17 +17,11 @@ public:
 
 	MaterialLoader(bool useSrgb = true) { mUseSrgb = useSrgb; };
 	~MaterialLoader() {};
-
-	/** Request loading a material texture.
-		\param[in] pMaterial Material to load texture into.
-		\param[in] slot Slot to load texture into.
-		\param[in] filename Texture filename.
-	*/
 	void loadTexture(const Material::SharedPtr& pMaterial, TextureType type, const std::string& filename);
 	void setSrgb(bool useSrgb) { mUseSrgb = useSrgb; }
 
 private:
-	bool mUseSrgb;
+	bool mUseSrgb{};
 	using TextureKey = std::pair<std::string, bool>; // filename, srgb
 	std::map<TextureKey, Texture> mTextureCache;
 };
@@ -39,17 +33,13 @@ public:
 		OBJ,
 		GLTF2,
 	};
-
 	AssimpImporter() = default;
 	bool import(const string& filepath, Scene::SharedPtr pScene);
 
 private:
-
 	void processMesh(aiMesh* mesh, aiMatrix4x4 transform);
-	
 	void traverseNode(aiNode* node, aiMatrix4x4 transform);
 	void loadMaterials(const string& modelFolder);
-	//void loadMeshLights();
 
 	AssimpImporter(const AssimpImporter&) = delete;
 	void operator=(const AssimpImporter&) = delete;

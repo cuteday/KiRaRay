@@ -43,6 +43,7 @@ public:
 	bool loadImage(const fs::path& filepath, bool srgb = false);
 	bool saveImage(const fs::path& filepath);
 
+	static bool isHdr(const string& filepath);
 	static Image::SharedPtr createFromFile(const string& filepath, bool srgb = false);
 	bool isValid() const { return mFormat != Format::NONE && mSize.x * mSize.y; }
 	bool isSrgb() const { return mSrgb; }
@@ -53,10 +54,10 @@ public:
 	uchar* data() { return mData; }
 	
 private:
-	bool mSrgb = false;
-	vec2i mSize = {0, 0};
-	int mChannels = 4;
-	Format mFormat = Format::NONE;
+	bool mSrgb{ };
+	vec2i mSize = { 0, 0 };
+	int mChannels{ 4 };
+	Format mFormat{ };
 	uchar* mData{ };
 };
 
@@ -69,7 +70,7 @@ public:
 	Texture(const string& filepath, bool srgb = false, uint id = 0);
 
 	void loadImage(const string& filepath, bool srgb = false) {
-		mValid = mImage.loadImage(filepath);
+		mValid = mImage.loadImage(filepath, srgb);
 
 	}
 	__both__ bool isValid() const { return mValid; }
@@ -134,6 +135,7 @@ public:
 	Material(uint id, const string& name);
 
 	void setTexture(TextureType type, Texture& texture);
+	bool determineSrgb(string filename, TextureType type);
 
 	bool hasEmission() { 
 		return any(mMaterialParams.emissive) || mTextures[(int)TextureType::Emissive].isValid(); 
@@ -150,12 +152,9 @@ public:
 	void toDevice();
 	void renderUI();
 	string getName() {
-		if (mMaterialId) 
-			return texture::materialProps[mMaterialId].name;
-		return "unknown";
+		return mMaterialId ? texture::materialProps[mMaterialId].name : "unknown";
 	}
 
-	friend class AssimpImporter;
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
 #if KRR_USE_DISNEY

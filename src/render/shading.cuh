@@ -22,6 +22,19 @@ namespace {
 		float m = (root - b) * 12.5;
 		return max(0.f, m);
 	}
+
+	KRR_DEVICE_FUNCTION vec3f rgbToNormal(vec3f rgb){
+		return rgb * 2.f - 1.f;
+	}
+
+	KRR_DEVICE_FUNCTION vec3f rgToNormal(vec2f rg){
+		vec3f n;
+		*((vec2f*)&n) = 2.f * rg - 1.f;
+		// Saturate because error from BC5 can break the sqrt
+		n.z = saturate(dot(rg, rg)); // z = r*r + g*g
+		n.z = sqrt(1 - n.z);
+		return n;
+	}
 }
 
 template <typename T>
@@ -110,11 +123,20 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 
 	Texture& diffuseTexture = material.mTextures[(uint)Material::TextureType::Diffuse];
 	Texture& specularTexture = material.mTextures[(uint)Material::TextureType::Specular];
+	Texture& normalTexture = material.mTextures[(uint)Material::TextureType::Normal];
 
 	vec4f diff = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
 	vec4f spec = sampleTexture(specularTexture, sd.uv, materialParams.specular);
-
 	vec3f baseColor = (vec3f)diff;
+
+	if (normalTexture.isValid() && mesh.tangents && mesh.bitangents) {	// be cautious if we have the tangent space TBN
+		vec3f normal = sampleTexture(normalTexture, sd.uv, vec3f{});
+		normal = rgbToNormal(normal);
+
+		sd.N = normalize(sd.T * normal.x + sd.B * normal.y + sd.N * normal.z);
+		sd.T = normalize(sd.T - sd.N * dot(sd.T, sd.N));
+		sd.B = normalize(cross(sd.N, sd.T));
+	}
 
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// this is the default except for OBJ or when user specified 
