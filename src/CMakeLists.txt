@@ -89,10 +89,12 @@ SET ( KRR_CORE_HEADERS
 	core/device/cuda.h
 	# non core
 	render/path/pathtracer.h
-	render/wavefront/integrator.h
+	render/wavefront/integrator.h		
 	render/wavefront/workitem.h
 	render/wavefront/workqueue.h
 	render/wavefront/backend.h
+	render/guide/sdtree.h				#### ppg
+	render/guide/guided_pt.h			#### ppg
 	scene/importer.h
 )
 
@@ -107,6 +109,7 @@ SET(KRR_HEADERS
 SET (KRR_SOURCE
 	render/path/pathtracer.cpp
 	render/wavefront/integrator.cpp
+	render/guide/guided_pt.cpp			#### ppg
 	render/wavefront/backend.cpp
 	scene/importer.cpp
 	util/tables.cpp
@@ -138,6 +141,7 @@ SET ( KRR_SHADERS
 )
 
 SET_SOURCE_FILES_PROPERTIES (
+	render/guide/guided_pt.cpp			#### ppg
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
 	util/tables.cpp
