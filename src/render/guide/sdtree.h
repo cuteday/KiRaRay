@@ -9,6 +9,7 @@
 #include "common.h"
 #include "sampler.h"
 #include "logger.h"
+#include "interop.h"
 #include "host/synchronize.h"
 #include "math/math.h"
 #include "util/check.h"
@@ -17,81 +18,49 @@ KRR_NAMESPACE_BEGIN
 
 using namespace math;
 
+#ifdef KRR_DEVICE_CODE
+static void addToAtomicfloat(cuda::atomic<float, cuda::thread_scope_device>& var, float val) {
+#else
 static void addToAtomicfloat(std::atomic<float>& var, float val) {
-	auto current = var.load();
+#endif
+	float current = var.load();
 	while (!var.compare_exchange_weak(current, current + val));
 } 
 
-inline float logistic(float x) {
-	return 1 / (1 + std::exp(-x));
+
+template <typename T>
+#ifdef KRR_DEVICE_CODE
+KRR_CALLABLE void storeAtomic(cuda::atomic<T, cuda::thread_scope_device>& var, T val) {
+	var.store(val, cuda::std::memory_order_relaxed);
 }
+#else
+KRR_CALLABLE void storeAtomic(std::atomic<T>&var, T val) {
+	var.store(val, std::memory_order_relaxed);
+}
+#endif
 
-// Implements the stochastic-gradient-based Adam optimizer [Kingma and Ba 2014]
-class AdamOptimizer {
-public:
-	AdamOptimizer(float learningRate, int batchSize = 1, float epsilon = 1e-08f, float beta1 = 0.9f, float beta2 = 0.999f) {
-		m_hparams = { learningRate, batchSize, epsilon, beta1, beta2 };
-	}
 
-	AdamOptimizer& operator=(const AdamOptimizer& arg) {
-		m_state = arg.m_state;
-		m_hparams = arg.m_hparams;
-		return *this;
-	}
+template <typename T>
+#ifdef KRR_DEVICE_CODE
+KRR_CALLABLE T loadAtomic(const cuda::atomic<T, cuda::thread_scope_device>& var) {
+	return var.load(cuda::std::memory_order_relaxed);
+}
+#else
+KRR_CALLABLE T loadAtomic(const std::atomic<T>&var) {
+	return var.load(std::memory_order_relaxed);
+}
+#endif
 
-	AdamOptimizer(const AdamOptimizer& arg) {
-		*this = arg;
-	}
-
-	void append(float gradient, float statisticalWeight) {
-		m_state.batchGradient += gradient * statisticalWeight;
-		m_state.batchAccumulation += statisticalWeight;
-
-		if (m_state.batchAccumulation > m_hparams.batchSize) {
-			step(m_state.batchGradient / m_state.batchAccumulation);
-
-			m_state.batchGradient = 0;
-			m_state.batchAccumulation = 0;
-		}
-	}
-
-	void step(float gradient) {
-		++m_state.iter;
-
-		float actualLearningRate = m_hparams.learningRate * std::sqrt(1 - pow(m_hparams.beta2, m_state.iter)) / (1 - pow(m_hparams.beta1, m_state.iter));
-		m_state.firstMoment = m_hparams.beta1 * m_state.firstMoment + (1 - m_hparams.beta1) * gradient;
-		m_state.secondMoment = m_hparams.beta2 * m_state.secondMoment + (1 - m_hparams.beta2) * gradient * gradient;
-		m_state.variable -= actualLearningRate * m_state.firstMoment / (std::sqrt(m_state.secondMoment) + m_hparams.epsilon);
-
-		// Clamp the variable to the range [-20, 20] as a safeguard to avoid numerical instability:
-		// since the sigmoid involves the exponential of the variable, value of -20 or 20 already yield
-		// in *extremely* small and large results that are pretty much never necessary in practice.
-		m_state.variable = clamp(m_state.variable, -20.0f, 20.0f);
-	}
-
-	float variable() const {
-		return m_state.variable;
-	}
-
-private:
-	struct State {
-		int iter = 0;
-		float firstMoment = 0;
-		float secondMoment = 0;
-		float variable = 0;
-
-		float batchAccumulation = 0;
-		float batchGradient = 0;
-	} m_state;
-
-	struct Hyperparameters {
-		float learningRate;
-		int batchSize;
-		float epsilon;
-		float beta1;
-		float beta2;
-	} m_hparams;
-};
+template <typename T>
+#ifdef KRR_DEVICE_CODE
+KRR_CALLABLE void copyAtomic(cuda::atomic<T, cuda::thread_scope_device>& dst, const cuda::atomic<T, cuda::thread_scope_device>& src) {
+	dst.store(src.load(cuda::std::memory_order_relaxed), cuda::std::memory_order_relaxed);
+}
+#else 
+KRR_CALLABLE void copyAtomic(std::atomic<T>&dst, const std::atomic<T>&src) {
+	dst.store(src.load(std::memory_order_relaxed), std::memory_order_relaxed);
+}
+#endif
 
 enum class ESampleCombination {
 	EDiscard,
@@ -118,19 +87,21 @@ enum class EDirectionalFilter {
 
 class QuadTreeNode {
 public:
-	QuadTreeNode() {
-		m_children = {};
-		for (size_t i = 0; i < m_sum.size(); ++i) {
-			m_sum[i].store(0, std::memory_order_relaxed);
+	QuadTreeNode() = default;
+	
+	QuadTreeNode(float v) {
+		for (size_t i = 0; i < 4/*m_sum.size()*/; ++i) {
+			m_children[i] = v;
+			storeAtomic(m_sum[i], v);
 		}
 	}
 
 	KRR_CALLABLE void setSum(int index, float val) {
-		m_sum[index].store(val, std::memory_order_relaxed);
+		storeAtomic(m_sum[index], val);
 	}
 
 	KRR_CALLABLE float sum(int index) const {
-		return m_sum[index].load(std::memory_order_relaxed);
+		return loadAtomic(m_sum[index]);
 	}
 
 	void copyFrom(const QuadTreeNode& arg) {
@@ -181,18 +152,18 @@ public:
 	// Evaluates the directional irradiance *sum density* (i.e. sum / area) at a given location p.
 	// To obtain radiance, the sum density (result of this function) must be divided
 	// by the total statistical weight of the estimates that were summed up.
-	KRR_CALLABLE float eval(vec2f& p, const std::vector<QuadTreeNode>& nodes) const {
+	KRR_CALLABLE float eval(vec2f& p, const inter::vector<QuadTreeNode>* nodes) const {
 		CHECK(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
 		const int index = childIndex(p);
 		if (isLeaf(index)) {
 			return 4 * sum(index);
 		}
 		else {
-			return 4 * nodes[child(index)].eval(p, nodes);
+			return 4 * (*nodes)[child(index)].eval(p, nodes);
 		}
 	}
 
-	KRR_CALLABLE float pdf(vec2f& p, const std::vector<QuadTreeNode>& nodes) const {
+	KRR_CALLABLE float pdf(vec2f& p, const inter::vector<QuadTreeNode>* nodes) const {
 		CHECK(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
 		const int index = childIndex(p);
 		if (!(sum(index) > 0)) {
@@ -204,22 +175,22 @@ public:
 			return factor;
 		}
 		else {
-			return factor * nodes[child(index)].pdf(p, nodes);
+			return factor * (*nodes)[child(index)].pdf(p, nodes);
 		}
 	}
 
-	KRR_CALLABLE int depthAt(vec2f& p, const std::vector<QuadTreeNode>& nodes) const {
+	KRR_CALLABLE int depthAt(vec2f& p, const inter::vector<QuadTreeNode>* nodes) const {
 		CHECK(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
 		const int index = childIndex(p);
 		if (isLeaf(index)) {
 			return 1;
 		}
 		else {
-			return 1 + nodes[child(index)].depthAt(p, nodes);
+			return 1 + (*nodes)[child(index)].depthAt(p, nodes);
 		}
 	}
 
-	KRR_CALLABLE vec2f sample(Sampler sampler, const std::vector<QuadTreeNode>& nodes) const {
+	KRR_CALLABLE vec2f sample(Sampler sampler, const inter::vector<QuadTreeNode>* nodes) const {
 		int index = 0;
 
 		float topLeft = sum(0);
@@ -264,11 +235,11 @@ public:
 			return origin + 0.5f * sampler.get2D();
 		}
 		else {
-			return origin + 0.5f * nodes[child(index)].sample(sampler, nodes);
+			return origin + 0.5f * (*nodes)[child(index)].sample(sampler, nodes);
 		}
 	}
 
-	KRR_CALLABLE void record(vec2f& p, float irradiance, std::vector<QuadTreeNode>& nodes) {
+	KRR_CALLABLE void record(vec2f& p, float irradiance, inter::vector<QuadTreeNode>* nodes) {
 		CHECK(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
 		int index = childIndex(p);
 
@@ -276,7 +247,7 @@ public:
 			addToAtomicfloat(m_sum[index], irradiance);
 		}
 		else {
-			nodes[child(index)].record(p, irradiance, nodes);
+			(*nodes)[child(index)].record(p, irradiance, nodes);
 		}
 	}
 
@@ -288,7 +259,7 @@ public:
 		return lengths[0] * lengths[1];
 	}
 
-	KRR_CALLABLE void record(const vec2f& origin, float size, vec2f nodeOrigin, float nodeSize, float value, std::vector<QuadTreeNode>& nodes) {
+	KRR_CALLABLE void record(const vec2f& origin, float size, vec2f nodeOrigin, float nodeSize, float value, inter::vector<QuadTreeNode>* nodes) {
 		float childSize = nodeSize / 2;
 		for (int i = 0; i < 4; ++i) {
 			vec2f childOrigin = nodeOrigin;
@@ -301,7 +272,7 @@ public:
 					addToAtomicfloat(m_sum[i], value * w);
 				}
 				else {
-					nodes[child(i)].record(origin, size, childOrigin, childSize, value, nodes);
+					(*nodes)[child(i)].record(origin, size, childOrigin, childSize, value, nodes);
 				}
 			}
 		}
@@ -313,7 +284,7 @@ public:
 
 	// Ensure that each quadtree node's sum of irradiance estimates
 	// equals that of all its children.
-	void build(std::vector<QuadTreeNode>& nodes) {
+	void build(inter::vector<QuadTreeNode>* nodes) {
 		for (int i = 0; i < 4; ++i) {
 			// During sampling, all irradiance estimates are accumulated in
 			// the leaves, so the leaves are built by definition.
@@ -321,7 +292,7 @@ public:
 				continue;
 			}
 
-			QuadTreeNode& c = nodes[child(i)];
+			QuadTreeNode& c = (*nodes)[child(i)];
 
 			// Recursively build each child such that their sum becomes valid...
 			c.build(nodes);
@@ -336,22 +307,28 @@ public:
 	}
 
 private:
-	std::array<std::atomic<float>, 4> m_sum;
-	std::array<uint16_t, 4> m_children;
+#ifdef KRR_DEVICE_CODE
+	cuda::atomic<float, cuda::thread_scope_device> m_sum[4]{0};
+#else 
+	std::atomic<float> m_sum[4]{0};
+#endif
+	uint16_t m_children[4]{};
 };
 
 
 class DTree {
 public:
-	DTree() {
-		m_atomic.sum.store(0, std::memory_order_relaxed);
+	DTree() = default;
+	
+	DTree(float v){
+		storeAtomic(m_atomic.sum, 0.f);
 		m_maxDepth = 0;
-		m_nodes.emplace_back();
-		m_nodes.front().setSum(0.0f);
+		m_nodes->emplace_back();
+		m_nodes->front().setSum(0.0f);
 	}
 
 	KRR_CALLABLE const QuadTreeNode& node(size_t i) const {
-		return m_nodes[i];
+		return (*m_nodes)[i];
 	}
 
 	KRR_CALLABLE float mean() const {
@@ -368,7 +345,7 @@ public:
 
 			if (std::isfinite(irradiance) && irradiance > 0) {
 				if (directionalFilter == EDirectionalFilter::ENearest) {
-					m_nodes[0].record(p, irradiance * statisticalWeight, m_nodes);
+					(*m_nodes)[0].record(p, irradiance * statisticalWeight, m_nodes);
 				}
 				else {
 					int depth = depthAt(p);
@@ -377,7 +354,7 @@ public:
 					vec2f origin = p;
 					origin.x -= size / 2;
 					origin.y -= size / 2;
-					m_nodes[0].record(origin, size, vec2f(0.0f), 1.0f, irradiance * statisticalWeight / (size * size), m_nodes);
+					(*m_nodes)[0].record(origin, size, vec2f(0.0f), 1.0f, irradiance * statisticalWeight / (size * size), m_nodes);
 				}
 			}
 		}
@@ -388,11 +365,11 @@ public:
 			return 1 / (4 * M_PI);
 		}
 
-		return m_nodes[0].pdf(p, m_nodes) / (4 * M_PI);
+		return (*m_nodes)[0].pdf(p, m_nodes) / (4 * M_PI);
 	}
 
 	KRR_CALLABLE int depthAt(vec2f p) const {
-		return m_nodes[0].depthAt(p, m_nodes);
+		return (*m_nodes)[0].depthAt(p, m_nodes);
 	}
 
 	KRR_CALLABLE int depth() const {
@@ -404,7 +381,7 @@ public:
 			return sampler.get2D();
 		}
 
-		vec2f res = m_nodes[0].sample(sampler, m_nodes);
+		vec2f res = (*m_nodes)[0].sample(sampler, m_nodes);
 
 		res.x = clamp(res.x, 0.0f, 1.0f);
 		res.y = clamp(res.y, 0.0f, 1.0f);
@@ -413,7 +390,7 @@ public:
 	}
 
 	KRR_CALLABLE size_t numNodes() const {
-		return m_nodes.size();
+		return m_nodes->size();
 	}
 
 	KRR_CALLABLE float statisticalWeight() const {
@@ -425,10 +402,10 @@ public:
 	}
 
 	void reset(const DTree& previousDTree, int newMaxDepth, float subdivisionThreshold) {
-		m_atomic = Atomic{};
+		m_atomic = Atomic();
 		m_maxDepth = 0;
-		m_nodes.clear();
-		m_nodes.emplace_back();
+		m_nodes->clear();
+		m_nodes->emplace_back();
 
 		struct StackNode {
 			size_t nodeIndex;
@@ -451,24 +428,24 @@ public:
 			m_maxDepth = max(m_maxDepth, sNode.depth);
 
 			for (int i = 0; i < 4; ++i) {
-				const QuadTreeNode& otherNode = sNode.otherDTree->m_nodes[sNode.otherNodeIndex];
+				const QuadTreeNode& otherNode = (*sNode.otherDTree->m_nodes)[sNode.otherNodeIndex];
 				const float fraction = total > 0 ? (otherNode.sum(i) / total) : pow(0.25f, sNode.depth);
 				CHECK(fraction <= 1.0f + M_EPSILON);
 
 				if (sNode.depth < newMaxDepth && fraction > subdivisionThreshold) {
 					if (!otherNode.isLeaf(i)) {
 						CHECK(sNode.otherDTree == &previousDTree);
-						nodeIndices.push({ m_nodes.size(), otherNode.child(i), &previousDTree, sNode.depth + 1 });
+						nodeIndices.push({ m_nodes->size(), otherNode.child(i), &previousDTree, sNode.depth + 1 });
 					}
 					else {
-						nodeIndices.push({ m_nodes.size(), m_nodes.size(), this, sNode.depth + 1 });
+						nodeIndices.push({ m_nodes->size(), m_nodes->size(), this, sNode.depth + 1 });
 					}
 
-					m_nodes[sNode.nodeIndex].setChild(i, static_cast<uint16_t>(m_nodes.size()));
-					m_nodes.emplace_back();
-					m_nodes.back().setSum(otherNode.sum(i) / 4);
+					(*m_nodes)[sNode.nodeIndex].setChild(i, static_cast<uint16_t>(m_nodes->size()));
+					m_nodes->emplace_back();
+					m_nodes->back().setSum(otherNode.sum(i) / 4);
 
-					if (m_nodes.size() > std::numeric_limits<uint16_t>::max()) {
+					if (m_nodes->size() > std::numeric_limits<uint16_t>::max()) {
 						logWarning("DTreeWrapper hit maximum children count.");
 						nodeIndices = std::stack<StackNode>();
 						break;
@@ -480,17 +457,17 @@ public:
 		// Uncomment once memory becomes an issue.
 		//m_nodes.shrink_to_fit();
 
-		for (auto& node : m_nodes) {
+		for (auto& node : *m_nodes) {
 			node.setSum(0);
 		}
 	}
 
 	KRR_CALLABLE size_t approxMemoryFootprint() const {
-		return m_nodes.capacity() * sizeof(QuadTreeNode) + sizeof(*this);
+		return m_nodes->capacity() * sizeof(QuadTreeNode) + sizeof(*this);
 	}
 
 	void build() {
-		auto& root = m_nodes[0];
+		auto& root = (*m_nodes)[0];
 
 		// Build the quadtree recursively, starting from its root.
 		root.build(m_nodes);
@@ -501,34 +478,35 @@ public:
 		for (int i = 0; i < 4; ++i) {
 			sum += root.sum(i);
 		}
-		m_atomic.sum.store(sum);
+		storeAtomic(m_atomic.sum, sum);
 	}
 
 private:
-	std::vector<QuadTreeNode> m_nodes;
+	inter::vector<QuadTreeNode> *m_nodes;
 
 	struct Atomic {
-		Atomic() {
-			sum.store(0, std::memory_order_relaxed);
-			statisticalWeight.store(0, std::memory_order_relaxed);
-		}
+		Atomic() = default;
 
 		Atomic(const Atomic& arg) {
 			*this = arg;
 		}
 
 		Atomic& operator=(const Atomic& arg) {
-			sum.store(arg.sum.load(std::memory_order_relaxed), std::memory_order_relaxed);
-			statisticalWeight.store(arg.statisticalWeight.load(std::memory_order_relaxed), std::memory_order_relaxed);
+			copyAtomic(sum, arg.sum);
+			copyAtomic(statisticalWeight, arg.statisticalWeight);
 			return *this;
 		}
 
-		std::atomic<float> sum;
-		std::atomic<float> statisticalWeight;
-
+#ifdef KRR_DEVICE_CODE
+		cuda::atomic<float, cuda::thread_scope_device> sum;
+		cuda::atomic<float, cuda::thread_scope_device> statisticalWeight;
+#else
+		std::atomic<float> sum{0};
+		std::atomic<float> statisticalWeight{0};
+#endif
 	} m_atomic;
 
-	int m_maxDepth;
+	int m_maxDepth{ 0 };
 };
 
 struct DTreeRecord {
@@ -541,16 +519,12 @@ struct DTreeRecord {
 
 struct DTreeWrapper {
 public:
-	DTreeWrapper() {}
+	DTreeWrapper() = default;
 
 	KRR_CALLABLE void record(const DTreeRecord& rec, EDirectionalFilter directionalFilter, EBsdfSamplingFractionLoss bsdfSamplingFractionLoss) {
 		if (!rec.isDelta) {
 			float irradiance = rec.radiance / rec.woPdf;
 			building.recordIrradiance(dirToCanonical(rec.d), irradiance, rec.statisticalWeight, directionalFilter);
-		}
-
-		if (bsdfSamplingFractionLoss != EBsdfSamplingFractionLoss::ENone && rec.product > 0) {
-			optimizeBsdfSamplingFraction(rec, bsdfSamplingFractionLoss == EBsdfSamplingFractionLoss::EKL ? 1.0f : 2.0f);
 		}
 	}
 
@@ -626,61 +600,13 @@ public:
 		return building.approxMemoryFootprint() + sampling.approxMemoryFootprint();
 	}
 
-	KRR_CALLABLE float bsdfSamplingFraction(float variable) const {
-		return logistic(variable);
-	}
-
-	KRR_CALLABLE float dBsdfSamplingFraction_dVariable(float variable) const {
-		float fraction = bsdfSamplingFraction(variable);
-		return fraction * (1 - fraction);
-	}
-
-	KRR_CALLABLE float bsdfSamplingFraction() const {
-		return bsdfSamplingFraction(bsdfSamplingFractionOptimizer.variable());
-	}
-
-	void optimizeBsdfSamplingFraction(const DTreeRecord& rec, float ratioPower) {
-		m_lock.lock();
-
-		// GRADIENT COMPUTATION
-		float variable = bsdfSamplingFractionOptimizer.variable();
-		float samplingFraction = bsdfSamplingFraction(variable);
-
-		// Loss gradient w.r.t. sampling fraction
-		float mixPdf = samplingFraction * rec.bsdfPdf + (1 - samplingFraction) * rec.dTreePdf;
-		float ratio = pow(rec.product / mixPdf, ratioPower);
-		float dLoss_dSamplingFraction = -ratio / rec.woPdf * (rec.bsdfPdf - rec.dTreePdf);
-
-		// Chain rule to get loss gradient w.r.t. trainable variable
-		float dLoss_dVariable = dLoss_dSamplingFraction * dBsdfSamplingFraction_dVariable(variable);
-
-		// We want some regularization such that our parameter does not become too big.
-		// We use l2 regularization, resulting in the following linear gradient.
-		float l2RegGradient = 0.01f * variable;
-
-		float lossGradient = l2RegGradient + dLoss_dVariable;
-
-		// ADAM GRADIENT DESCENT
-		bsdfSamplingFractionOptimizer.append(lossGradient, rec.statisticalWeight);
-
-		m_lock.unlock();
-	}
-
 private:
 	DTree building;
 	DTree sampling;
-
-	AdamOptimizer bsdfSamplingFractionOptimizer{ 0.01f };
-
-	SpinLock m_lock;
 };
 
 struct STreeNode {
-	STreeNode() {
-		//children = {};
-		isLeaf = true;
-		axis = 0;
-	}
+	STreeNode() = default;
 
 	KRR_CALLABLE int childIndex(vec3f& p) const {
 		if (p[axis] < 0.5f) {
@@ -697,14 +623,14 @@ struct STreeNode {
 		return children[childIndex(p)];
 	}
 
-	KRR_CALLABLE DTreeWrapper* dTreeWrapper(vec3f& p, vec3f& size, std::vector<STreeNode>& nodes) {
+	KRR_CALLABLE DTreeWrapper* dTreeWrapper(vec3f& p, vec3f& size, inter::vector<STreeNode>* nodes) {
 		CHECK(p[axis] >= 0 && p[axis] <= 1);
 		if (isLeaf) {
 			return &dTree;
 		}
 		else {
 			size[axis] /= 2;
-			return nodes[nodeIndex(p)].dTreeWrapper(p, size, nodes);
+			return (*nodes)[nodeIndex(p)].dTreeWrapper(p, size, nodes);
 		}
 	}
 
@@ -712,22 +638,22 @@ struct STreeNode {
 		return &dTree;
 	}
 
-	KRR_CALLABLE int depth(vec3f& p, const std::vector<STreeNode>& nodes) const {
+	KRR_CALLABLE int depth(vec3f& p, const inter::vector<STreeNode>* nodes) const {
 		CHECK(p[axis] >= 0 && p[axis] <= 1);
 		if (isLeaf) {
 			return 1;
 		}
 		else {
-			return 1 + nodes[nodeIndex(p)].depth(p, nodes);
+			return 1 + (*nodes)[nodeIndex(p)].depth(p, nodes);
 		}
 	}
 
-	KRR_CALLABLE int depth(const std::vector<STreeNode>& nodes) const {
+	KRR_CALLABLE int depth(const inter::vector<STreeNode>* nodes) const {
 		int result = 1;
 
 		if (!isLeaf) {
 			for (auto c : children) {
-				result = max(result, 1 + nodes[c].depth(nodes));
+				result = max(result, 1 + (*nodes)[c].depth(nodes));
 			}
 		}
 
@@ -736,7 +662,7 @@ struct STreeNode {
 
 	void forEachLeaf(
 		std::function<void(const DTreeWrapper*, const vec3f&, const vec3f&)> func,
-		vec3f p, vec3f size, const std::vector<STreeNode>& nodes) const {
+		vec3f p, vec3f size, const inter::vector<STreeNode>* nodes) const {
 
 		if (isLeaf) {
 			func(&dTree, p, size);
@@ -749,7 +675,7 @@ struct STreeNode {
 					childP[axis] += size[axis];
 				}
 
-				nodes[children[i]].forEachLeaf(func, childP, size, nodes);
+				(*nodes)[children[i]].forEachLeaf(func, childP, size, nodes);
 			}
 		}
 	}
@@ -762,7 +688,7 @@ struct STreeNode {
 		return lengths[0] * lengths[1] * lengths[2];
 	}
 
-	KRR_CALLABLE void record(const vec3f& min1, const vec3f& max1, vec3f min2, vec3f size2, const DTreeRecord& rec, EDirectionalFilter directionalFilter, EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, std::vector<STreeNode>& nodes) {
+	KRR_CALLABLE void record(const vec3f& min1, const vec3f& max1, vec3f min2, vec3f size2, const DTreeRecord& rec, EDirectionalFilter directionalFilter, EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, inter::vector<STreeNode>* nodes) {
 		float w = computeOverlappingVolume(min1, max1, min2, min2 + size2);
 		if (w > 0) {
 			if (isLeaf) {
@@ -775,17 +701,16 @@ struct STreeNode {
 						min2[axis] += size2[axis];
 					}
 
-					nodes[children[i]].record(min1, max1, min2, size2, rec, directionalFilter, bsdfSamplingFractionLoss, nodes);
+					(*nodes)[children[i]].record(min1, max1, min2, size2, rec, directionalFilter, bsdfSamplingFractionLoss, nodes);
 				}
 			}
 		}
 	}
 
-	bool isLeaf;
+	bool isLeaf{true};
 	DTreeWrapper dTree;
-	int axis;
+	int axis{ 0 };
 	uint32_t children[2];
-	//std::array<uint32_t, 2> children;
 };
 
 
@@ -793,9 +718,9 @@ class STree {
 public:
 	STree() = default;
 
-	STree(const AABB& aabb) {
+	STree(const AABB& aabb, Allocator alloc) {
+		m_nodes = alloc.new_object<inter::vector<STreeNode>>();
 		clear();
-
 		m_aabb = aabb;
 
 		// Enlarge AABB to turn it into a cube. This has the effect
@@ -806,35 +731,35 @@ public:
 	}
 
 	void clear() {
-		m_nodes.clear();
-		m_nodes.emplace_back();
+		m_nodes->clear();
+		m_nodes->emplace_back();
 	}
 
 	void subdivideAll() {
-		int nNodes = (int)m_nodes.size();
+		int nNodes = (int)m_nodes->size();
 		for (int i = 0; i < nNodes; ++i) {
-			if (m_nodes[i].isLeaf) {
+			if ((*m_nodes)[i].isLeaf) {
 				subdivide(i, m_nodes);
 			}
 		}
 	}
 
-	void subdivide(int nodeIdx, std::vector<STreeNode>& nodes) {
+	void subdivide(int nodeIdx, inter::vector<STreeNode>* nodes) {
 		// Add 2 child nodes
-		nodes.resize(nodes.size() + 2);
+		nodes->resize(nodes->size() + 2);
 
-		if (nodes.size() > std::numeric_limits<uint32_t>::max()) {
+		if (nodes->size() > std::numeric_limits<uint32_t>::max()) {
 			logWarning("DTreeWrapper hit maximum children count.");
 			return;
 		}
 
-		STreeNode& cur = nodes[nodeIdx];
+		STreeNode& cur = (*nodes)[nodeIdx];
 		for (int i = 0; i < 2; ++i) {
-			uint32_t idx = (uint32_t)nodes.size() - 2 + i;
+			uint32_t idx = (uint32_t)nodes->size() - 2 + i;
 			cur.children[i] = idx;
-			nodes[idx].axis = (cur.axis + 1) % 3;
-			nodes[idx].dTree = cur.dTree;
-			nodes[idx].dTree.setStatisticalWeightBuilding(nodes[idx].dTree.statisticalWeightBuilding() / 2);
+			(*nodes)[idx].axis = (cur.axis + 1) % 3;
+			(*nodes)[idx].dTree = cur.dTree;
+			(*nodes)[idx].dTree.setStatisticalWeightBuilding((*nodes)[idx].dTree.statisticalWeightBuilding() / 2);
 		}
 		cur.isLeaf = false;
 		cur.dTree = {}; // Reset to an empty dtree to save memory.
@@ -847,7 +772,7 @@ public:
 		p.y /= size.y;
 		p.z /= size.z;
 
-		return m_nodes[0].dTreeWrapper(p, size, m_nodes);
+		return (*m_nodes)[0].dTreeWrapper(p, size, m_nodes);
 	}
 
 	DTreeWrapper* dTreeWrapper(vec3f p) {
@@ -856,7 +781,7 @@ public:
 	}
 
 	void forEachDTreeWrapperConst(std::function<void(const DTreeWrapper*)> func) const {
-		for (auto& node : m_nodes) {
+		for (auto& node : *m_nodes) {
 			if (node.isLeaf) {
 				func(&node.dTree);
 			}
@@ -864,16 +789,16 @@ public:
 	}
 
 	void forEachDTreeWrapperConstP(std::function<void(const DTreeWrapper*, const vec3f&, const vec3f&)> func) const {
-		m_nodes[0].forEachLeaf(func, m_aabb.lower, m_aabb.upper - m_aabb.lower, m_nodes);
+		(*m_nodes)[0].forEachLeaf(func, m_aabb.lower, m_aabb.upper - m_aabb.lower, m_nodes);
 	}
 
 	void forEachDTreeWrapperParallel(std::function<void(DTreeWrapper*)> func) {
-		int nDTreeWrappers = static_cast<int>(m_nodes.size());
+		int nDTreeWrappers = static_cast<int>(m_nodes->size());
 
 		// TODO: cuda-parallelize this
 		for (int i = 0; i < nDTreeWrappers; ++i) {
-			if (m_nodes[i].isLeaf) {
-				func(&m_nodes[i].dTree);
+			if ((*m_nodes)[i].isLeaf) {
+				func(&(*m_nodes)[i].dTree);
 			}
 		}
 	}
@@ -885,17 +810,17 @@ public:
 		}
 
 		rec.statisticalWeight /= volume;
-		m_nodes[0].record(p - dTreeVoxelSize * 0.5f, p + dTreeVoxelSize * 0.5f, m_aabb.lower, m_aabb.extent(), rec, directionalFilter, bsdfSamplingFractionLoss, m_nodes);
+		(*m_nodes)[0].record(p - dTreeVoxelSize * 0.5f, p + dTreeVoxelSize * 0.5f, m_aabb.lower, m_aabb.extent(), rec, directionalFilter, bsdfSamplingFractionLoss, m_nodes);
 	}
 
 	KRR_CALLABLE bool shallSplit(const STreeNode& node, int depth, size_t samplesRequired) {
-		return m_nodes.size() < std::numeric_limits<uint32_t>::max() - 1 && node.dTree.statisticalWeightBuilding() > samplesRequired;
+		return m_nodes->size() < std::numeric_limits<uint32_t>::max() - 1 && node.dTree.statisticalWeightBuilding() > samplesRequired;
 	}
 
 	void refine(size_t sTreeThreshold, int maxMB) {
 		if (maxMB >= 0) {
 			size_t approxMemoryFootprint = 0;
-			for (const auto& node : m_nodes) {
+			for (const auto& node : *m_nodes) {
 				approxMemoryFootprint += node.dTreeWrapper()->approxMemoryFootprint();
 			}
 
@@ -916,15 +841,15 @@ public:
 			nodeIndices.pop();
 
 			// Subdivide if needed and leaf
-			if (m_nodes[sNode.index].isLeaf) {
-				if (shallSplit(m_nodes[sNode.index], sNode.depth, sTreeThreshold)) {
+			if ((*m_nodes)[sNode.index].isLeaf) {
+				if (shallSplit((*m_nodes)[sNode.index], sNode.depth, sTreeThreshold)) {
 					subdivide((int)sNode.index, m_nodes);
 				}
 			}
 
 			// Add children to stack if we're not
-			if (!m_nodes[sNode.index].isLeaf) {
-				const STreeNode& node = m_nodes[sNode.index];
+			if (!(*m_nodes)[sNode.index].isLeaf) {
+				const STreeNode& node = (*m_nodes)[sNode.index];
 				for (int i = 0; i < 2; ++i) {
 					nodeIndices.push({ node.children[i], sNode.depth + 1 });
 				}
@@ -940,7 +865,7 @@ public:
 	}
 
 private:
-	std::vector<STreeNode> m_nodes;
+	inter::vector<STreeNode>* m_nodes;
 	AABB m_aabb;
 };
 

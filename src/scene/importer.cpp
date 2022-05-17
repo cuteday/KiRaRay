@@ -31,6 +31,7 @@ namespace assimp {
 	vec3f aiCast(const aiColor3D& ai) { return vec3f(ai.r, ai.g, ai.b); }
 	vec3f aiCast(const aiVector3D& val) { return vec3f(val.x, val.y, val.z); }
 	quat aiCast(const aiQuaternion& q) { return quat(q.w, q.x, q.y, q.z); }
+	aabb3f aiCast(const aiAABB& aabb) { return aabb3f(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
 
 	struct TextureMapping
 	{
@@ -219,6 +220,7 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 		| aiProcess_FlipUVs
 		//| aiProcess_FlipWindingOrder
 		| aiProcess_PreTransformVertices
+		| aiProcess_GenBoundingBoxes
 		;
 	int removeFlags = aiComponent_COLORS;
 	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS; uvLayer++) 
@@ -308,13 +310,13 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform){
 
 	// finalizing creating a mesh
 	mpScene->meshes.push_back(mesh);
+	mpScene->mAABB.extend(aiCast(pAiMesh->mAABB));
 	//mpScene->mData.meshes.push_back(mesh.mData);
 }
 
 void AssimpImporter::traverseNode(aiNode* node, aiMatrix4x4 transform)
 {
 	transform = transform * node->mTransformation;
-
 	for (int i = 0; i < node->mNumMeshes; i++) {
 		aiMesh* mesh = mpAiScene->mMeshes[node->mMeshes[i]];
 		processMesh(mesh, transform);

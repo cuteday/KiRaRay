@@ -66,7 +66,7 @@ public:
 	bool onKeyEvent(const KeyboardEvent& keyEvent);
 
 	bool update();
-	bool getChanges() { return mHasChanges; };
+	bool getChanges() const { return mHasChanges; };
 	void renderUI();
 	void toDevice();
 
@@ -79,7 +79,8 @@ public:
 	void setCameraController(CameraController::SharedPtr cameraController) { mpCameraController = cameraController; }
 	void addInfiniteLight(const InfiniteLight& infiniteLight);
 
-	SceneData getSceneData() { return mData; }
+	SceneData getSceneData() const { return mData; }
+	AABB getAABB() const { return mAABB; }
 
 private:
 	friend class AssimpImporter;
@@ -93,6 +94,7 @@ private:
 	SceneData mData;
 	Camera::SharedPtr mpCamera;
 	CameraController::SharedPtr mpCameraController;
+	AABB mAABB;
 	bool mHasChanges = false;
 };
 

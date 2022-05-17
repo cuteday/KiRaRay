@@ -1,4 +1,5 @@
 #pragma once
+
 #include "common.h"
 #include "sdtree.h"
 #include "render/wavefront/integrator.h"
@@ -15,7 +16,6 @@ KRR_NAMESPACE_BEGIN
 */
 class GuidedPathTracer : public WavefrontPathTracer {
 public:
-	static constexpr int MAX_DEPTH = 9;
 	GuidedPathTracer() = default;
 	~GuidedPathTracer() = default;
 	void initialize();
@@ -43,11 +43,11 @@ public:
 	STree* m_sdTree{};
 	bool m_isBuilt{};
 	int m_iter{};
-	int m_sppPerPass{};
-	int m_sTreeThreshold{};
-	int m_dTreeThreshold{};
+	int m_sppPerPass{10};
 	int m_sdTreeMaxMemory{};
-	float m_bsdfSamplingFraction{ 0.5 };
+	float m_bsdfSamplingFraction{ 0.5 };	
+	int m_sTreeThreshold{ 12000 };
+	float m_dTreeThreshold{ 0.01 };
 	EDirectionalFilter m_directionalFilter{ EDirectionalFilter::ENearest };
 	ESpatialFilter m_spatialFilter{ ESpatialFilter::ENearest };
 	EBsdfSamplingFractionLoss m_bsdfSamplingFractionLoss{ EBsdfSamplingFractionLoss::ENone };
