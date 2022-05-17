@@ -29,7 +29,7 @@ void WavefrontPathTracer::initialize(){
 	else scatterRayQueue = alloc.new_object<ScatterRayQueue>(maxQueueSize, alloc);
 	if (pixelState) pixelState->resize(maxQueueSize, alloc);
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
-	CUDA_SYNC_CHECK();	// necessary
+	CUDA_SYNC_CHECK();	// necessary for every resize() call!
 	if (maxQueueSize > 0) {
 		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 			pixelState->sampler[pixelId].initialize(RandomizeStrategy::Owen);
@@ -157,6 +157,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene){
 
 void WavefrontPathTracer::beginFrame(CUDABuffer& frame){
 	if (!mpScene || !maxQueueSize) return;
+	CUDA_SYNC_CHECK();
 	vec4f* frameBuffer = (vec4f*)frame.data();
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){	// reset per-pixel radiance
 		pixelState->L[pixelId] = 0;

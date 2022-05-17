@@ -95,6 +95,7 @@ SET ( KRR_CORE_HEADERS
 	render/wavefront/backend.h
 	render/guide/sdtree.h				#### ppg
 	render/guide/guided_pt.h			#### ppg
+	render/guide/guideditem.h			#### ppg
 	scene/importer.h
 )
 
@@ -164,7 +165,15 @@ set_target_properties (soac PROPERTIES OUTPUT_NAME soac)
 add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/workitem_soa.h
     COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/workitem_soa.h
     DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa)
-set (KRR_SOA_GENERATED ${CMAKE_CURRENT_BINARY_DIR}/include/workitem_soa.h)
+
+add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/guideditem_soa.h
+    COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/render/guide/guideditem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/guideditem_soa.h
+    DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/render/guide/guideditem.soa)
+
+set (KRR_SOA_GENERATED 
+	${CMAKE_CURRENT_BINARY_DIR}/include/workitem_soa.h
+	${CMAKE_CURRENT_BINARY_DIR}/include/guideditem_soa.h
+)
 
 add_custom_target (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
 

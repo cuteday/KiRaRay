@@ -5,6 +5,7 @@
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
 #include "assimp/pbrmaterial.h"
+//#include "assimp/GltfMaterial.h"
 
 #include "math/math.h"
 #include "light.h"

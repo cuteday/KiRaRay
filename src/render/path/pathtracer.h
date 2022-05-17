@@ -14,8 +14,6 @@ KRR_NAMESPACE_BEGIN
 
 class PathTracer: public RenderPass{
 public:
-	using SharedPtr = std::shared_ptr<PathTracer>;
-
 	PathTracer();
 	~PathTracer();
 

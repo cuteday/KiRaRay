@@ -87,6 +87,7 @@ private:
 	friend class OptiXBackend;
 	friend class OptiXWavefrontBackend;
 	friend class WavefrontPathTracer;
+	friend class GuidedPathTracer;
 
 	std::vector<Mesh> meshes;
 	SceneData mData;

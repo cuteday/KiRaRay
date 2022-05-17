@@ -16,8 +16,6 @@ KRR_NAMESPACE_BEGIN
 
 class WavefrontPathTracer : public RenderPass {
 public:
-	using SharedPtr = std::shared_ptr<WavefrontPathTracer>;
-
 	WavefrontPathTracer() = default;
 	WavefrontPathTracer(Scene& scene);
 	~WavefrontPathTracer() = default;

@@ -22,4 +22,4 @@ private:
 	std::atomic_flag m_mutex;
 };
 
-KRR_NAMESPACE_BEGIN
+KRR_NAMESPACE_END

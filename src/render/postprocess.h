@@ -11,8 +11,6 @@ KRR_NAMESPACE_BEGIN
 
 class AccumulatePass: public RenderPass {
 public:
-	using SharedPtr = std::shared_ptr<AccumulatePass>;
-
 	AccumulatePass() = default;
 
 	void renderUI() override {
@@ -45,8 +43,6 @@ private:
 
 class ToneMappingPass: public RenderPass {
 public:
-	using SharedPtr = std::shared_ptr<ToneMappingPass>;
-
 	enum class Operator {
 		Linear = 0,
 		Reinhard,

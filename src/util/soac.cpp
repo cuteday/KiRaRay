@@ -265,11 +265,14 @@ int main(int argc, char *argv[]) {
 
 					tok = getToken(false);
 					if (tok == "[") {
-						tok = getToken(false);
+						std::string arraySize = "";
+						while ((tok = getToken(false)) != "]") {
+							arraySize += tok;
+						}
 						// just pass it through without interpretation
-						member.arraySizes[member.arraySizes.size() - 1] =
-							(std::string)tok;
-						expect("]");
+						member.arraySizes[member.arraySizes.size() - 1] = 
+							arraySize;
+						//expect("]");
 						tok = getToken(false);
 					}
 

@@ -12,6 +12,8 @@
 #define M_1_PI      0.318309886183790671538f    // 1/pi
 #endif
 
+#define M_EPSILON     1e-4f
+
 #ifdef min
 #undef max
 #undef min

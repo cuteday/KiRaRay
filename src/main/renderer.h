@@ -54,6 +54,7 @@ public:
 			if (p) { 
 				p->beginFrame(mRenderBuffer);
 				p->render(mRenderBuffer); 
+				p->endFrame(mRenderBuffer);
 			}
 	}
 
