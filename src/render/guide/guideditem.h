@@ -19,11 +19,11 @@ struct Vertex {
 		radiance += r;
 	}
 
-	KRR_CALLABLE void commit(STree& sdTree, float statisticalWeight,
+	KRR_CALLABLE void commit(STree* sdTree, float statisticalWeight,
 		ESpatialFilter spatialFilter, EDirectionalFilter directionalFilter,
 		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler sampler) {
 		// TODO check valid radiance and bsdfVal here...
-		//if (woPdf <= 0 || !isnan(radiance) || !isnan(bsdfVal)) {
+		// if (woPdf <= 0 || !isnan(radiance) || !isnan(bsdfVal)) {
 		if (woPdf <= 0) {
 			return;
 		}
@@ -49,21 +49,20 @@ struct Vertex {
 			offset.y *= sampler.get1D() - 0.5f;
 			offset.z *= sampler.get1D() - 0.5f;
 
-			//vec3f origin = sdTree.aabb().clip(ray.o + offset);    // corrputed for unknown reasons
-			const AABB& sdAabb = sdTree.aabb();
+			const AABB& sdAabb = sdTree->aabb();
 			vec3f origin = ray.origin + offset;
 			for (int i = 0; i < vec3f::dims; i++) {
 				origin[i] = max(sdAabb.lower[i], min(sdAabb.upper[i], origin[i]));
 			}
 
-			splatDTree = sdTree.dTreeWrapper(origin);
+			splatDTree = sdTree->dTreeWrapper(origin);
 			if (splatDTree) {
 				splatDTree->record(rec, directionalFilter, bsdfSamplingFractionLoss);
 			}
 			break;
 		}
 		case ESpatialFilter::EBox:
-			sdTree.record(ray.origin, dTreeVoxelSize, rec, directionalFilter, bsdfSamplingFractionLoss);
+			sdTree->record(ray.origin, dTreeVoxelSize, rec, directionalFilter, bsdfSamplingFractionLoss);
 			break;
 		}
 	}
@@ -82,13 +81,22 @@ public:
 	GuidedPathStateBuffer(int n, Allocator alloc) : SOA<GuidedPathState>(n, alloc) {}
 
 	KRR_CALLABLE void incrementDepth(int pixelId, 
+		Ray& ray,
+		DTreeWrapper* dTree,
+		vec3f dTreeVoxelSize,
 		vec3f thp,
-		vec3f bsdfVal) {
-		int cur_depth = n_vertices[pixelId];
-		vertices[cur_depth].throughput[pixelId] = thp;
-		vertices[cur_depth].bsdfVal[pixelId] = bsdfVal;
-		n_vertices[pixelId] = 1 + cur_depth;
-		assert(depth < MAX_GUIDED_DEPTH);
+		vec3f bsdfVal, 
+		float woPdf, float bsdfPdf, float dTreePdf) {
+		int depth = n_vertices[pixelId];
+		vertices[depth].ray[pixelId] = ray;
+		vertices[depth].dTree[pixelId] = dTree;
+		vertices[depth].dTreeVoxelSize[pixelId] = dTreeVoxelSize;
+		vertices[depth].throughput[pixelId] = thp;
+		vertices[depth].bsdfVal[pixelId] = bsdfVal;
+		vertices[depth].woPdf[pixelId] = woPdf;
+		vertices[depth].bsdfPdf[pixelId] = bsdfPdf;
+		vertices[depth].dTreePdf[pixelId] = dTreePdf;
+		n_vertices[pixelId] = 1 + depth;
 	}
 
 	KRR_CALLABLE void recordRadiance(int pixelId, color L) {
@@ -100,7 +108,7 @@ public:
 	}
 
 	KRR_CALLABLE void commitAll(int pixelId, 
-		STree& sdTree, float statisticalWeight,
+		STree* sdTree, float statisticalWeight,
 		ESpatialFilter spatialFilter, EDirectionalFilter directionalFilter,
 		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler sampler) {
 		for (int i = 0; i < n_vertices[pixelId]; i++) {

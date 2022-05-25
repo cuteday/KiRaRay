@@ -25,14 +25,7 @@ public:
 	void beginFrame(CUDABuffer& frame) override;
 	void render(CUDABuffer& frame) override;
 	void renderUI() override;
-
 	void initialize();
-
-	// cuda utility functions
-	template <typename F>
-	void Call(F&& func) {
-		GPUParallelFor(1, [=] KRR_DEVICE(int) mutable { func(); });
-	}
 
 	template <typename F>
 	void ParallelFor(int nElements, F&& func) {

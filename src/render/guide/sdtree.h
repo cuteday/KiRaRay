@@ -10,23 +10,14 @@
 #include "sampler.h"
 #include "logger.h"
 #include "interop.h"
+#include "device/context.h"
+#include "device/cuda.h"
 #include "host/synchronize.h"
 #include "math/math.h"
 #include "util/check.h"
 
 KRR_NAMESPACE_BEGIN
-
 using namespace math;
-
-#ifdef KRR_DEVICE_CODE
-static void addToAtomicfloat(cuda::atomic<float, cuda::thread_scope_device>& var, float val) {
-#else
-static void addToAtomicfloat(std::atomic<float>& var, float val) {
-#endif
-	float current = var.load();
-	while (!var.compare_exchange_weak(current, current + val));
-} 
-
 
 template <typename T>
 #ifdef KRR_DEVICE_CODE
@@ -34,11 +25,10 @@ KRR_CALLABLE void storeAtomic(cuda::atomic<T, cuda::thread_scope_device>& var, T
 	var.store(val, cuda::std::memory_order_relaxed);
 }
 #else
-KRR_CALLABLE void storeAtomic(std::atomic<T>&var, T val) {
+KRR_CALLABLE void storeAtomic(std::atomic<T>& var, T val) {
 	var.store(val, std::memory_order_relaxed);
 }
 #endif
-
 
 template <typename T>
 #ifdef KRR_DEVICE_CODE
@@ -46,10 +36,54 @@ KRR_CALLABLE T loadAtomic(const cuda::atomic<T, cuda::thread_scope_device>& var)
 	return var.load(cuda::std::memory_order_relaxed);
 }
 #else
-KRR_CALLABLE T loadAtomic(const std::atomic<T>&var) {
+KRR_CALLABLE T loadAtomic(const std::atomic<T>& var) {
 	return var.load(std::memory_order_relaxed);
 }
 #endif
+
+
+template <typename T>
+#ifdef __NVCC__
+T loadDeviceAtomic(const cuda::atomic<T, cuda::thread_scope_device>* var) {
+	T* value;
+	T value_copy;
+	cudaMalloc(&value, sizeof(T));
+	Call([=] KRR_DEVICE() mutable {
+		*value = loadAtomic(*var);
+	});
+	cudaMemcpy(&value_copy, value, sizeof(T), cudaMemcpyDeviceToHost);
+	cudaFree(value);
+	return value_copy;
+#else
+T loadDeviceAtomic(const std::atomic<T>* var) {
+	return loadAtomic(*var);
+#endif
+	cudaDeviceSynchronize();
+}
+
+template <typename T>
+#ifdef __NVCC__
+void storeDeviceAtomic(cuda::atomic<T, cuda::thread_scope_device>* var, T value) {
+	Call([=] KRR_DEVICE() mutable {
+		storeAtomic(*var, value);
+	});
+#else
+void storeDeviceAtomic(std::atomic<T>* var, T value) {
+	storeAtomic(*var, value);
+#endif
+	cudaDeviceSynchronize();
+}
+
+
+
+#ifdef KRR_DEVICE_CODE
+KRR_CALLABLE static void addToAtomicfloat(cuda::atomic<float, cuda::thread_scope_device>& var, float val) {
+#else
+KRR_CALLABLE static void addToAtomicfloat(std::atomic<float>& var, float val) {
+#endif
+	float current = var.load();
+	while (!var.compare_exchange_weak(current, current + val));
+} 
 
 template <typename T>
 #ifdef KRR_DEVICE_CODE
@@ -88,23 +122,25 @@ enum class EDirectionalFilter {
 class QuadTreeNode {
 public:
 	QuadTreeNode() = default;
-	
-	QuadTreeNode(float v) {
+
+	void initialize() {
 		for (size_t i = 0; i < 4/*m_sum.size()*/; ++i) {
-			m_children[i] = v;
-			storeAtomic(m_sum[i], v);
+			m_children[i] = 0;
+			storeDeviceAtomic(&m_sum[i], 0.f);
 		}
 	}
-
-	KRR_CALLABLE void setSum(int index, float val) {
+	
+	KRR_CALLABLE void setSum(int index, float val, bool host) {
+		if (host) storeDeviceAtomic(&m_sum[index], val);
 		storeAtomic(m_sum[index], val);
 	}
 
-	KRR_CALLABLE float sum(int index) const {
+	KRR_CALLABLE float sum(int index, bool host=false) const {
+		if (host) return loadDeviceAtomic(&m_sum[index]);
 		return loadAtomic(m_sum[index]);
 	}
 
-	void copyFrom(const QuadTreeNode& arg) {
+	KRR_CALLABLE void copyFrom(const QuadTreeNode& arg) {
 		for (int i = 0; i < 4; ++i) {
 			setSum(i, arg.sum(i));
 			m_children[i] = arg.m_children[i];
@@ -128,9 +164,9 @@ public:
 		return m_children[idx];
 	}
 
-	KRR_CALLABLE void setSum(float val) {
+	KRR_CALLABLE void setSum(float val, bool host=false) {
 		for (int i = 0; i < 4; ++i) {
-			setSum(i, val);
+			setSum(i, val, host);
 		}
 	}
 
@@ -284,7 +320,7 @@ public:
 
 	// Ensure that each quadtree node's sum of irradiance estimates
 	// equals that of all its children.
-	void build(inter::vector<QuadTreeNode>* nodes) {
+	void build(inter::vector<QuadTreeNode>* nodes) {		// [called by host]
 		for (int i = 0; i < 4; ++i) {
 			// During sampling, all irradiance estimates are accumulated in
 			// the leaves, so the leaves are built by definition.
@@ -300,9 +336,9 @@ public:
 			// ...then sum up the children's sums.
 			float sum = 0;
 			for (int j = 0; j < 4; ++j) {
-				sum += c.sum(j);
+				sum += c.sum(j, true);
 			}
-			setSum(i, sum);
+			setSum(i, sum, true);
 		}
 	}
 
@@ -319,11 +355,15 @@ private:
 class DTree {
 public:
 	DTree() = default;
-	
-	DTree(float v){
-		storeAtomic(m_atomic.sum, 0.f);
+
+	void initialize() {
+		m_atomic.setSum(0, true);
+		m_atomic.setStatisticalWeight(0, true);
 		m_maxDepth = 0;
+		assert(!m_nodes);
+		m_nodes = gpContext->alloc->new_object<inter::vector<QuadTreeNode>>();
 		m_nodes->emplace_back();
+		m_nodes->front().initialize();
 		m_nodes->front().setSum(0.0f);
 	}
 
@@ -331,19 +371,19 @@ public:
 		return (*m_nodes)[i];
 	}
 
-	KRR_CALLABLE float mean() const {
-		if (m_atomic.statisticalWeight == 0) {
+	KRR_CALLABLE float mean(bool host = false) const {
+		if (m_atomic.getStatisticalWeight(host) == 0) {
 			return 0;
 		}
-		const float factor = 1 / (M_PI * 4 * m_atomic.statisticalWeight);
-		return factor * m_atomic.sum;
+		const float factor = 1 / (M_PI * 4 * m_atomic.getStatisticalWeight(host));
+		return factor * m_atomic.getSum(host);
 	}
 
 	KRR_CALLABLE void recordIrradiance(vec2f p, float irradiance, float statisticalWeight, EDirectionalFilter directionalFilter) {
-		if (std::isfinite(statisticalWeight) && statisticalWeight > 0) {
-			addToAtomicfloat(m_atomic.statisticalWeight, statisticalWeight);
+		if (!isinf(statisticalWeight) && statisticalWeight > 0) {
+			m_atomic.setStatisticalWeight(m_atomic.getStatisticalWeight() + statisticalWeight);
 
-			if (std::isfinite(irradiance) && irradiance > 0) {
+			if (!isinf(irradiance) && irradiance > 0) {
 				if (directionalFilter == EDirectionalFilter::ENearest) {
 					(*m_nodes)[0].record(p, irradiance * statisticalWeight, m_nodes);
 				}
@@ -393,16 +433,17 @@ public:
 		return m_nodes->size();
 	}
 
-	KRR_CALLABLE float statisticalWeight() const {
-		return m_atomic.statisticalWeight;
+	KRR_CALLABLE float statisticalWeight(bool host=false) const {
+		return m_atomic.getStatisticalWeight(host);
 	}
 
-	KRR_CALLABLE void setStatisticalWeight(float statisticalWeight) {
-		m_atomic.statisticalWeight = statisticalWeight;
+	KRR_CALLABLE void setStatisticalWeight(float statisticalWeight, bool host = false) {
+		m_atomic.setStatisticalWeight(statisticalWeight, host);
 	}
 
 	void reset(const DTree& previousDTree, int newMaxDepth, float subdivisionThreshold) {
-		m_atomic = Atomic();
+		m_atomic.setStatisticalWeight(0, true);
+		m_atomic.setSum(0, true);
 		m_maxDepth = 0;
 		m_nodes->clear();
 		m_nodes->emplace_back();
@@ -417,7 +458,7 @@ public:
 		std::stack<StackNode> nodeIndices;
 		nodeIndices.push({ 0, 0, &previousDTree, 1 });
 
-		const float total = previousDTree.m_atomic.sum;
+		const float total = previousDTree.m_atomic.getSum(true);
 
 		// Create the topology of the new DTree to be the refined version
 		// of the previous DTree. Subdivision is recursive if enough energy is there.
@@ -429,7 +470,7 @@ public:
 
 			for (int i = 0; i < 4; ++i) {
 				const QuadTreeNode& otherNode = (*sNode.otherDTree->m_nodes)[sNode.otherNodeIndex];
-				const float fraction = total > 0 ? (otherNode.sum(i) / total) : pow(0.25f, sNode.depth);
+				const float fraction = total > 0 ? (otherNode.sum(i, true) / total) : pow(0.25f, sNode.depth);
 				CHECK(fraction <= 1.0f + M_EPSILON);
 
 				if (sNode.depth < newMaxDepth && fraction > subdivisionThreshold) {
@@ -443,7 +484,7 @@ public:
 
 					(*m_nodes)[sNode.nodeIndex].setChild(i, static_cast<uint16_t>(m_nodes->size()));
 					m_nodes->emplace_back();
-					m_nodes->back().setSum(otherNode.sum(i) / 4);
+					m_nodes->back().setSum(otherNode.sum(i, true) / 4, true);
 
 					if (m_nodes->size() > std::numeric_limits<uint16_t>::max()) {
 						logWarning("DTreeWrapper hit maximum children count.");
@@ -458,7 +499,7 @@ public:
 		//m_nodes.shrink_to_fit();
 
 		for (auto& node : *m_nodes) {
-			node.setSum(0);
+			node.setSum(0, true);
 		}
 	}
 
@@ -478,7 +519,7 @@ public:
 		for (int i = 0; i < 4; ++i) {
 			sum += root.sum(i);
 		}
-		storeAtomic(m_atomic.sum, sum);
+		m_atomic.setSum(sum, true);
 	}
 
 private:
@@ -497,6 +538,27 @@ private:
 			return *this;
 		}
 
+		KRR_CALLABLE float getSum(bool host = false) const {
+			if (host) return loadDeviceAtomic(&sum);
+			else return loadAtomic(sum);
+		}
+
+		KRR_CALLABLE float getStatisticalWeight(bool host = false) const {
+			if (host) return loadDeviceAtomic(&statisticalWeight);
+			else return loadAtomic(statisticalWeight);
+		}
+
+		KRR_CALLABLE void setSum(float val, bool host = false) {
+			if (host) storeDeviceAtomic(&sum, val);
+			else storeAtomic(sum, val);
+		}
+
+		KRR_CALLABLE void setStatisticalWeight(float val, bool host = false) {
+			if (host) storeDeviceAtomic(&statisticalWeight, val);
+			else storeAtomic(statisticalWeight, val);
+		}
+
+	private:
 #ifdef KRR_DEVICE_CODE
 		cuda::atomic<float, cuda::thread_scope_device> sum;
 		cuda::atomic<float, cuda::thread_scope_device> statisticalWeight;
@@ -521,6 +583,12 @@ struct DTreeWrapper {
 public:
 	DTreeWrapper() = default;
 
+	void initialize() {
+		CUDA_SYNC_CHECK();
+		sampling.initialize();
+		building.initialize();
+	}
+
 	KRR_CALLABLE void record(const DTreeRecord& rec, EDirectionalFilter directionalFilter, EBsdfSamplingFractionLoss bsdfSamplingFractionLoss) {
 		if (!rec.isDelta) {
 			float irradiance = rec.radiance / rec.woPdf;
@@ -539,7 +607,7 @@ public:
 	}
 
 	KRR_CALLABLE static vec2f dirToCanonical(const vec3f& d) {
-		if (!std::isfinite(d.x) || !std::isfinite(d.y) || !std::isfinite(d.z)) {
+		if (isinf(d.x) || isinf(d.y) || isinf(d.z)) {
 			return { 0, 0 };
 		}
 
@@ -580,20 +648,20 @@ public:
 		return sampling.numNodes();
 	}
 
-	KRR_CALLABLE float meanRadiance() const {
-		return sampling.mean();
+	KRR_CALLABLE float meanRadiance(bool host = false) const {
+		return sampling.mean(host);
 	}
 
-	KRR_CALLABLE float statisticalWeight() const {
-		return sampling.statisticalWeight();
+	KRR_CALLABLE float statisticalWeight(bool host = false) const {
+		return sampling.statisticalWeight(host);
 	}
 
-	KRR_CALLABLE float statisticalWeightBuilding() const {
-		return building.statisticalWeight();
+	KRR_CALLABLE float statisticalWeightBuilding(bool host=false) const {
+		return building.statisticalWeight(host);
 	}
 
-	KRR_CALLABLE void setStatisticalWeightBuilding(float statisticalWeight) {
-		building.setStatisticalWeight(statisticalWeight);
+	KRR_CALLABLE void setStatisticalWeightBuilding(float statisticalWeight, bool host=false) {
+		building.setStatisticalWeight(statisticalWeight, host);
 	}
 
 	KRR_CALLABLE size_t approxMemoryFootprint() const {
@@ -607,6 +675,11 @@ private:
 
 struct STreeNode {
 	STreeNode() = default;
+
+	void initialize() {
+		CUDA_SYNC_CHECK();
+		dTree.initialize();
+	}
 
 	KRR_CALLABLE int childIndex(vec3f& p) const {
 		if (p[axis] < 0.5f) {
@@ -720,9 +793,8 @@ public:
 
 	STree(const AABB& aabb, Allocator alloc) {
 		m_nodes = alloc.new_object<inter::vector<STreeNode>>();
-		clear();
+		clear();	
 		m_aabb = aabb;
-
 		// Enlarge AABB to turn it into a cube. This has the effect
 		// of nicer hierarchical subdivisions.
 		vec3f size = m_aabb.upper - m_aabb.lower;
@@ -733,6 +805,7 @@ public:
 	void clear() {
 		m_nodes->clear();
 		m_nodes->emplace_back();
+		m_nodes->front().initialize();	// initialize the super root tree node
 	}
 
 	void subdivideAll() {
@@ -742,7 +815,7 @@ public:
 				subdivide(i, m_nodes);
 			}
 		}
-	}
+	} 
 
 	void subdivide(int nodeIdx, inter::vector<STreeNode>* nodes) {
 		// Add 2 child nodes
@@ -756,16 +829,18 @@ public:
 		STreeNode& cur = (*nodes)[nodeIdx];
 		for (int i = 0; i < 2; ++i) {
 			uint32_t idx = (uint32_t)nodes->size() - 2 + i;
+			STreeNode& child = (*nodes)[idx];
 			cur.children[i] = idx;
-			(*nodes)[idx].axis = (cur.axis + 1) % 3;
-			(*nodes)[idx].dTree = cur.dTree;
-			(*nodes)[idx].dTree.setStatisticalWeightBuilding((*nodes)[idx].dTree.statisticalWeightBuilding() / 2);
+			child.initialize();
+			child.axis = (cur.axis + 1) % 3;
+			child.dTree = cur.dTree;
+			child.dTree.setStatisticalWeightBuilding((*nodes)[idx].dTree.statisticalWeightBuilding() / 2);
 		}
 		cur.isLeaf = false;
 		cur.dTree = {}; // Reset to an empty dtree to save memory.
 	}
 
-	DTreeWrapper* dTreeWrapper(vec3f p, vec3f& size) {
+	KRR_CALLABLE DTreeWrapper* dTreeWrapper(vec3f p, vec3f& size) {
 		size = m_aabb.extent();
 		p = vec3f(p - m_aabb.lower);
 		p.x /= size.x;
@@ -775,7 +850,7 @@ public:
 		return (*m_nodes)[0].dTreeWrapper(p, size, m_nodes);
 	}
 
-	DTreeWrapper* dTreeWrapper(vec3f p) {
+	KRR_CALLABLE DTreeWrapper* dTreeWrapper(vec3f p) {
 		vec3f size;
 		return dTreeWrapper(p, size);
 	}
@@ -817,6 +892,7 @@ public:
 		return m_nodes->size() < std::numeric_limits<uint32_t>::max() - 1 && node.dTree.statisticalWeightBuilding() > samplesRequired;
 	}
 
+	/* To adaptively subdivision, should be run on hostcode? */
 	void refine(size_t sTreeThreshold, int maxMB) {
 		if (maxMB >= 0) {
 			size_t approxMemoryFootprint = 0;

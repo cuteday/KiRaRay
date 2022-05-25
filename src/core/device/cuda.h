@@ -4,6 +4,10 @@
 #include <map>
 #include <typeinfo>
 #include <typeindex>
+#include <atomic>
+#ifdef KRR_DEVICE_CODE
+#include <cuda/atomic>
+#endif
 
 #include "device/optix.h"
 #include "common.h"
@@ -56,10 +60,13 @@ inline int GetBlockSize(F kernel) {
 	return blockSize;
 }
 
-#ifdef __NVCC__
-
 template <typename F>
 void GPUParallelFor(int nElements, F func);
+
+template <typename F>
+void Call(F&& func);
+
+#ifdef __NVCC__
 
 template <typename F>
 __global__ void Kernel(F func, int nElements) {
@@ -79,8 +86,11 @@ void GPUParallelFor(int nElements, F func) {
 #endif
 }
 
+template <typename F>
+void Call(F&& func) {
+	GPUParallelFor(1, [=] KRR_DEVICE(int) mutable { func(); });
+}
+
 #endif
-
-
 
 KRR_NAMESPACE_END

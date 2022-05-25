@@ -120,7 +120,16 @@ void GuidedPathTracer::generateScatterRays() {
 			r.depth = w.depth + 1;
 			r.thp = w.thp * sample.f * fabs(sample.wi.z) / sample.pdf / probRR;
 			nextRayQueue(w.depth)->push(r);
-			guidedPathState->incrementDepth(r.pixelId, r.thp, sample.f);
+			/* guidance... */
+			vec3f dTreeVoxelSize{};
+			DTreeWrapper* dTree = m_sdTree->dTreeWrapper(p, dTreeVoxelSize);
+			guidedPathState->incrementDepth(r.pixelId,
+				r.ray,
+				dTree,
+				dTreeVoxelSize,
+				r.thp,
+				sample.f,
+				r.pdf, r.pdf, 0);
 		}
 	});
 }
@@ -174,7 +183,7 @@ void GuidedPathTracer::beginFrame(CUDABuffer& frame) {
 	CUDA_SYNC_CHECK();
 }
 
-void GuidedPathTracer::endFrame(CUDABuffer& frame){
+void GuidedPathTracer::endFrame(CUDABuffer& frame) {
 	vec4f* frameBuffer = (vec4f*)frame.data();
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		vec3f L = vec3f(pixelState->L[pixelId]) / samplesPerPixel;
@@ -183,8 +192,9 @@ void GuidedPathTracer::endFrame(CUDABuffer& frame){
 	});
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		Sampler sampler = &pixelState->sampler[pixelId];
-		guidedPathState->commitAll(pixelId, *m_sdTree, 0.5f, m_spatialFilter, m_directionalFilter,
+		guidedPathState->commitAll(pixelId, m_sdTree, 0.5f, m_spatialFilter, m_directionalFilter,
 			m_bsdfSamplingFractionLoss, sampler);
+		guidedPathState->n_vertices[pixelId] = 0;
 	});
 	CUDA_SYNC_CHECK();
 }
@@ -195,6 +205,13 @@ void GuidedPathTracer::renderUI() {
 		ui::InputInt("Samples per pixel", &samplesPerPixel);
 		ui::SliderInt("Max recursion depth", &maxDepth, 0, MAX_GUIDED_DEPTH);
 		ui::Checkbox("Enable NEE", &enableNEE);
+		ui::Text("Path guiding");
+		if (ui::Button("Subdivide S")) {
+			resetSDTree();
+		}
+		if (ui::Button("Subdivide D")) {
+			buildSDTree();
+		}
 		ui::Text("Debugging");
 		ui::Checkbox("Debug output", &debugOutput);
 		if (debugOutput) {
@@ -206,6 +223,7 @@ void GuidedPathTracer::renderUI() {
 			ui::SameLine();
 			ui::SliderFloat("Max:", &clampMax, 1, 500);
 		}
+
 		ui::Text("Misc");
 		ui::Checkbox("Transparent background", &transparentBackground);
 	}
@@ -262,16 +280,19 @@ KRR_CALLABLE float GuidedPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf,
 	return alpha * bsdfPdf + (1 - alpha) * dTreePdf;
 }
 
+/* [At the begining of each iteration] Adaptively subdivide the S-Tree, and resets the distribution within the D-Tree */
 void GuidedPathTracer::resetSDTree() {
 	logInfo("Resetting distributions for sampling.");
-
+	CUDA_SYNC_CHECK();
 	m_sdTree->refine((size_t)(std::sqrt(std::pow(2, m_iter) * m_sppPerPass / 4) * m_sTreeThreshold), m_sdTreeMaxMemory);
 	m_sdTree->forEachDTreeWrapperParallel([this](DTreeWrapper* dTree) { dTree->reset(20, m_dTreeThreshold); });
+	CUDA_SYNC_CHECK();
 }
 
+/* [At the end of each iteration] Adaptively subdivide the D-Tree */
 void GuidedPathTracer::buildSDTree() {
 	logInfo("Building distributions for sampling.");
-
+	CUDA_SYNC_CHECK();
 	// Build distributions
 	m_sdTree->forEachDTreeWrapperParallel([](DTreeWrapper* dTree) { dTree->build(); });
 
@@ -294,26 +315,26 @@ void GuidedPathTracer::buildSDTree() {
 
 	m_sdTree->forEachDTreeWrapperConst([&](const DTreeWrapper* dTree) {
 		const int depth = dTree->depth();
-		maxDepth = std::max(maxDepth, depth);
-		minDepth = std::min(minDepth, depth);
+		maxDepth = max(maxDepth, depth);
+		minDepth = min(minDepth, depth);
 		avgDepth += depth;
 
 		const float avgRadiance = dTree->meanRadiance();
-		maxAvgRadiance = std::max(maxAvgRadiance, avgRadiance);
-		minAvgRadiance = std::min(minAvgRadiance, avgRadiance);
+		maxAvgRadiance = max(maxAvgRadiance, avgRadiance);
+		minAvgRadiance = min(minAvgRadiance, avgRadiance);
 		avgAvgRadiance += avgRadiance;
 
 		if (dTree->numNodes() > 1) {
 			const size_t nodes = dTree->numNodes();
-			maxNodes = std::max(maxNodes, nodes);
-			minNodes = std::min(minNodes, nodes);
+			maxNodes = max(maxNodes, nodes);
+			minNodes = min(minNodes, nodes);
 			avgNodes += nodes;
 			++nvec3fsNodes;
 		}
 
 		const float statisticalWeight = dTree->statisticalWeight();
-		maxStatisticalWeight = std::max(maxStatisticalWeight, statisticalWeight);
-		minStatisticalWeight = std::min(minStatisticalWeight, statisticalWeight);
+		maxStatisticalWeight = max(maxStatisticalWeight, statisticalWeight);
+		minStatisticalWeight = min(minStatisticalWeight, statisticalWeight);
 		avgStatisticalWeight += statisticalWeight;
 
 		++nvec3fs;
@@ -327,7 +348,19 @@ void GuidedPathTracer::buildSDTree() {
 		}
 		avgStatisticalWeight /= nvec3fs;
 	}
-}
 
+	CUDA_SYNC_CHECK();
+	Log(Info,
+		"Distribution statistics:\n"
+		"  Depth         = [%d, %f, %d]\n"
+		"  Mean radiance = [%f, %f, %f]\n"
+		"  Node count    = [%zu, %f, %zu]\n"
+		"  Stat. weight  = [%f, %f, %f]\n",
+		minDepth, avgDepth, maxDepth,
+		minAvgRadiance, avgAvgRadiance, maxAvgRadiance,
+		minNodes, avgNodes, maxNodes,
+		minStatisticalWeight, avgStatisticalWeight, maxStatisticalWeight
+	);
+}
 
 KRR_NAMESPACE_END
