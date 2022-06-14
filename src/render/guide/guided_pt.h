@@ -44,14 +44,17 @@ public:
 	bool m_isBuilt{0};
 	int m_iter{0};
 	int m_sppPerPass{10};
-	int m_sdTreeMaxMemory{-1};
+	int m_sdTreeMaxMemory{64};
 	float m_bsdfSamplingFraction{ 0.5 };	
 	int m_sTreeThreshold{ 12000 };
 	float m_dTreeThreshold{ 0.01 };
 	EDirectionalFilter m_directionalFilter{ EDirectionalFilter::ENearest };
 	ESpatialFilter m_spatialFilter{ ESpatialFilter::ENearest };
 	EBsdfSamplingFractionLoss m_bsdfSamplingFractionLoss{ EBsdfSamplingFractionLoss::ENone };
-	GuidedPathStateBuffer* guidedPathState;
+	
+	bool enableLearning{true};
+	bool enableGuiding{true};
+	GuidedPathStateBuffer* guidedPathState{};
 };
 
 KRR_NAMESPACE_END

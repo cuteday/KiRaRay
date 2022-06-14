@@ -14,7 +14,7 @@
 #include "taggedptr.h"
 
 #define CUDA_CHECK(call)							                    \
-	{									                                \
+	do{									                                \
 	  cudaError_t rc = call;                                            \
 	  if (rc != cudaSuccess) {                                          \
 		std::stringstream ss;                                           \
@@ -24,11 +24,17 @@
 		logError(ss.str());                                             \
 		throw std::runtime_error(ss.str());                             \
 	  }                                                                 \
-	}
+	}while(0)
 
+#define CUDA_SYNC(call)													\
+	do{																	\
+		cudaDeviceSynchronize();										\
+		call;															\
+		cudaDeviceSynchronize();										\
+	}while(0)											
 
 #define CUDA_SYNC_CHECK()                                               \
-  {																		\
+  do{																	\
 	cudaDeviceSynchronize();                                            \
 	cudaError_t error = cudaGetLastError();                             \
 	if( error != cudaSuccess )                                          \
@@ -37,7 +43,7 @@
 			__FILE__, __LINE__, cudaGetErrorString( error ) );          \
 		throw std::runtime_error("CUDA synchronized check failed");		\
 	  }                                                                 \
-  }
+  }while(0)																
 
 
 KRR_NAMESPACE_BEGIN

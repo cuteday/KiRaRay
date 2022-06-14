@@ -29,7 +29,7 @@ void GuidedPathTracer::setScene(Scene::SharedPtr scene) {
 void GuidedPathTracer::initialize(){
 	Allocator& alloc = *gpContext->alloc;
 	WavefrontPathTracer::initialize();
-	CUDA_SYNC_CHECK();
+	cudaDeviceSynchronize();
 	if (guidedPathState) guidedPathState->resize(maxQueueSize, alloc);
 	else guidedPathState = alloc.new_object<GuidedPathStateBuffer>(maxQueueSize, alloc);
 	CUDA_SYNC_CHECK();
@@ -194,7 +194,6 @@ void GuidedPathTracer::endFrame(CUDABuffer& frame) {
 		Sampler sampler = &pixelState->sampler[pixelId];
 		guidedPathState->commitAll(pixelId, m_sdTree, 0.5f, m_spatialFilter, m_directionalFilter,
 			m_bsdfSamplingFractionLoss, sampler);
-		guidedPathState->n_vertices[pixelId] = 0;
 	});
 	CUDA_SYNC_CHECK();
 }
@@ -206,11 +205,11 @@ void GuidedPathTracer::renderUI() {
 		ui::SliderInt("Max recursion depth", &maxDepth, 0, MAX_GUIDED_DEPTH);
 		ui::Checkbox("Enable NEE", &enableNEE);
 		ui::Text("Path guiding");
-		if (ui::Button("Subdivide S")) {
-			resetSDTree();
-		}
-		if (ui::Button("Subdivide D")) {
-			buildSDTree();
+		ui::Checkbox("Enable learning", &enableLearning);
+		ui::Checkbox("Enable guiding", &enableGuiding);
+		if (ui::Button("Next guiding iteration")) {
+			resetSDTree();		// spatially adaptive
+			buildSDTree();		// directional adaptive
 		}
 		ui::Text("Debugging");
 		ui::Checkbox("Debug output", &debugOutput);
@@ -283,18 +282,19 @@ KRR_CALLABLE float GuidedPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf,
 /* [At the begining of each iteration] Adaptively subdivide the S-Tree, and resets the distribution within the D-Tree */
 void GuidedPathTracer::resetSDTree() {
 	logInfo("Resetting distributions for sampling.");
-	CUDA_SYNC_CHECK();
-	m_sdTree->refine((size_t)(std::sqrt(std::pow(2, m_iter) * m_sppPerPass / 4) * m_sTreeThreshold), m_sdTreeMaxMemory);
+	cudaDeviceSynchronize();
+	m_sdTree->refine((size_t)(sqrt(pow(2, m_iter) * m_sppPerPass / 4) * m_sTreeThreshold), m_sdTreeMaxMemory);
 	m_sdTree->forEachDTreeWrapperParallel([this](DTreeWrapper* dTree) { dTree->reset(20, m_dTreeThreshold); });
 	CUDA_SYNC_CHECK();
 }
 
-/* [At the end of each iteration] Adaptively subdivide the D-Tree */
+/* [At the end of eac h iteration] Adaptively subdivide the D-Tree */
 void GuidedPathTracer::buildSDTree() {
 	logInfo("Building distributions for sampling.");
-	CUDA_SYNC_CHECK();
+	cudaDeviceSynchronize();
 	// Build distributions
 	m_sdTree->forEachDTreeWrapperParallel([](DTreeWrapper* dTree) { dTree->build(); });
+	cudaDeviceSynchronize();
 
 	// Gather statistics
 	int maxDepth = 0;
@@ -319,7 +319,7 @@ void GuidedPathTracer::buildSDTree() {
 		minDepth = min(minDepth, depth);
 		avgDepth += depth;
 
-		const float avgRadiance = dTree->meanRadiance();
+		const float avgRadiance = dTree->meanRadiance(true);
 		maxAvgRadiance = max(maxAvgRadiance, avgRadiance);
 		minAvgRadiance = min(minAvgRadiance, avgRadiance);
 		avgAvgRadiance += avgRadiance;
@@ -332,7 +332,7 @@ void GuidedPathTracer::buildSDTree() {
 			++nvec3fsNodes;
 		}
 
-		const float statisticalWeight = dTree->statisticalWeight();
+		const float statisticalWeight = dTree->statisticalWeight(true);
 		maxStatisticalWeight = max(maxStatisticalWeight, statisticalWeight);
 		minStatisticalWeight = min(minStatisticalWeight, statisticalWeight);
 		avgStatisticalWeight += statisticalWeight;

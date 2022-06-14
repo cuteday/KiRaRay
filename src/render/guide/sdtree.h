@@ -53,12 +53,12 @@ T loadDeviceAtomic(const cuda::atomic<T, cuda::thread_scope_device>* var) {
 	});
 	cudaMemcpy(&value_copy, value, sizeof(T), cudaMemcpyDeviceToHost);
 	cudaFree(value);
+	cudaDeviceSynchronize();
 	return value_copy;
 #else
 T loadDeviceAtomic(const std::atomic<T>* var) {
 	return loadAtomic(*var);
 #endif
-	cudaDeviceSynchronize();
 }
 
 template <typename T>
@@ -67,22 +67,19 @@ void storeDeviceAtomic(cuda::atomic<T, cuda::thread_scope_device>* var, T value)
 	Call([=] KRR_DEVICE() mutable {
 		storeAtomic(*var, value);
 	});
+	cudaDeviceSynchronize();
 #else
 void storeDeviceAtomic(std::atomic<T>* var, T value) {
 	storeAtomic(*var, value);
 #endif
-	cudaDeviceSynchronize();
 }
-
-
 
 #ifdef KRR_DEVICE_CODE
 KRR_CALLABLE static void addToAtomicfloat(cuda::atomic<float, cuda::thread_scope_device>& var, float val) {
 #else
 KRR_CALLABLE static void addToAtomicfloat(std::atomic<float>& var, float val) {
 #endif
-	float current = var.load();
-	while (!var.compare_exchange_weak(current, current + val));
+	storeAtomic(var, loadAtomic(var) + val);
 } 
 
 template <typename T>
@@ -123,7 +120,7 @@ class QuadTreeNode {
 public:
 	QuadTreeNode() = default;
 
-	void initialize() {
+	KRR_HOST void initialize() {
 		for (size_t i = 0; i < 4/*m_sum.size()*/; ++i) {
 			m_children[i] = 0;
 			storeDeviceAtomic(&m_sum[i], 0.f);
@@ -140,18 +137,18 @@ public:
 		return loadAtomic(m_sum[index]);
 	}
 
-	KRR_CALLABLE void copyFrom(const QuadTreeNode& arg) {
+	KRR_HOST void copyFrom(const QuadTreeNode& arg) {
 		for (int i = 0; i < 4; ++i) {
-			setSum(i, arg.sum(i));
+			setSum(i, arg.sum(i, true), true);
 			m_children[i] = arg.m_children[i];
 		}
 	}
 
-	QuadTreeNode(const QuadTreeNode& arg) {
+	KRR_HOST QuadTreeNode(const QuadTreeNode& arg) {
 		copyFrom(arg);
 	}
 
-	KRR_CALLABLE QuadTreeNode& operator=(const QuadTreeNode& arg) {
+	KRR_HOST QuadTreeNode& operator=(const QuadTreeNode& arg) {
 		copyFrom(arg);
 		return *this;
 	}
@@ -320,7 +317,7 @@ public:
 
 	// Ensure that each quadtree node's sum of irradiance estimates
 	// equals that of all its children.
-	void build(inter::vector<QuadTreeNode>* nodes) {		// [called by host]
+	KRR_HOST void build(inter::vector<QuadTreeNode>* nodes) {		// [called by host]
 		for (int i = 0; i < 4; ++i) {
 			// During sampling, all irradiance estimates are accumulated in
 			// the leaves, so the leaves are built by definition.
@@ -356,15 +353,34 @@ class DTree {
 public:
 	DTree() = default;
 
-	void initialize() {
+	KRR_HOST void initialize() {
 		m_atomic.setSum(0, true);
 		m_atomic.setStatisticalWeight(0, true);
 		m_maxDepth = 0;
 		assert(!m_nodes);
 		m_nodes = gpContext->alloc->new_object<inter::vector<QuadTreeNode>>();
-		m_nodes->emplace_back();
+		cudaDeviceSynchronize();
+		CUDA_SYNC(m_nodes->emplace_back());
 		m_nodes->front().initialize();
-		m_nodes->front().setSum(0.0f);
+		m_nodes->front().setSum(0, true);
+		CUDA_SYNC_CHECK();
+	}
+
+	KRR_HOST void release() {
+		if (m_nodes) CUDA_SYNC(m_nodes->resize(0));
+	}
+
+	KRR_HOST DTree& operator = (const DTree& other) {
+		if (!m_nodes) m_nodes = gpContext->alloc->new_object<inter::vector<QuadTreeNode>>();
+		if (other.m_nodes) CUDA_SYNC(*m_nodes = *other.m_nodes);
+		else if (!other.m_nodes) release();
+		m_atomic = other.m_atomic;
+		m_maxDepth = other.m_maxDepth;
+		return *this;
+	}
+
+	KRR_HOST DTree(const DTree& other) {
+		*this = other;
 	}
 
 	KRR_CALLABLE const QuadTreeNode& node(size_t i) const {
@@ -388,6 +404,7 @@ public:
 					(*m_nodes)[0].record(p, irradiance * statisticalWeight, m_nodes);
 				}
 				else {
+					CHECK(false);
 					int depth = depthAt(p);
 					float size = pow(0.5f, depth);
 
@@ -441,12 +458,13 @@ public:
 		m_atomic.setStatisticalWeight(statisticalWeight, host);
 	}
 
-	void reset(const DTree& previousDTree, int newMaxDepth, float subdivisionThreshold) {
+	KRR_HOST void reset(const DTree& previousDTree, int newMaxDepth, float subdivisionThreshold) {
 		m_atomic.setStatisticalWeight(0, true);
 		m_atomic.setSum(0, true);
 		m_maxDepth = 0;
-		m_nodes->clear();
-		m_nodes->emplace_back();
+		CUDA_SYNC(m_nodes->clear());
+		CUDA_SYNC(m_nodes->emplace_back());
+		m_nodes->back().initialize();
 
 		struct StackNode {
 			size_t nodeIndex;
@@ -483,7 +501,8 @@ public:
 					}
 
 					(*m_nodes)[sNode.nodeIndex].setChild(i, static_cast<uint16_t>(m_nodes->size()));
-					m_nodes->emplace_back();
+					CUDA_SYNC(m_nodes->emplace_back());
+					m_nodes->back().initialize();
 					m_nodes->back().setSum(otherNode.sum(i, true) / 4, true);
 
 					if (m_nodes->size() > std::numeric_limits<uint16_t>::max()) {
@@ -495,19 +514,17 @@ public:
 			}
 		}
 
-		// Uncomment once memory becomes an issue.
-		//m_nodes.shrink_to_fit();
-
 		for (auto& node : *m_nodes) {
 			node.setSum(0, true);
 		}
+		CUDA_SYNC_CHECK();
 	}
 
 	KRR_CALLABLE size_t approxMemoryFootprint() const {
 		return m_nodes->capacity() * sizeof(QuadTreeNode) + sizeof(*this);
 	}
 
-	void build() {
+	KRR_HOST void build() {
 		auto& root = (*m_nodes)[0];
 
 		// Build the quadtree recursively, starting from its root.
@@ -517,24 +534,24 @@ public:
 		// the sum of irradiance estimates found in the quadtree.
 		float sum = 0;
 		for (int i = 0; i < 4; ++i) {
-			sum += root.sum(i);
+			sum += root.sum(i, true);
 		}
 		m_atomic.setSum(sum, true);
 	}
 
 private:
-	inter::vector<QuadTreeNode> *m_nodes;
+	inter::vector<QuadTreeNode>* m_nodes{};
 
 	struct Atomic {
 		Atomic() = default;
 
-		Atomic(const Atomic& arg) {
+		KRR_HOST Atomic(const Atomic& arg) {
 			*this = arg;
 		}
 
-		Atomic& operator=(const Atomic& arg) {
-			copyAtomic(sum, arg.sum);
-			copyAtomic(statisticalWeight, arg.statisticalWeight);
+		KRR_HOST Atomic& operator=(const Atomic& arg) {
+			storeDeviceAtomic(&sum, loadDeviceAtomic(&arg.sum));
+			storeDeviceAtomic(&statisticalWeight, loadDeviceAtomic(&arg.statisticalWeight));
 			return *this;
 		}
 
@@ -560,8 +577,8 @@ private:
 
 	private:
 #ifdef KRR_DEVICE_CODE
-		cuda::atomic<float, cuda::thread_scope_device> sum;
-		cuda::atomic<float, cuda::thread_scope_device> statisticalWeight;
+		cuda::atomic<float, cuda::thread_scope_device> sum{ 0 };
+		cuda::atomic<float, cuda::thread_scope_device> statisticalWeight{ 0 };
 #else
 		std::atomic<float> sum{0};
 		std::atomic<float> statisticalWeight{0};
@@ -583,10 +600,20 @@ struct DTreeWrapper {
 public:
 	DTreeWrapper() = default;
 
-	void initialize() {
-		CUDA_SYNC_CHECK();
-		sampling.initialize();
-		building.initialize();
+	KRR_HOST void initialize() {
+		CUDA_SYNC(sampling.initialize());
+		CUDA_SYNC(building.initialize());
+	}
+
+	KRR_HOST void release() {
+		CUDA_SYNC(sampling.release());
+		CUDA_SYNC(building.release());
+	}
+
+	KRR_HOST DTreeWrapper& operator = (const DTreeWrapper& other) {
+		building = other.building;
+		sampling = other.sampling;
+		return *this;
 	}
 
 	KRR_CALLABLE void record(const DTreeRecord& rec, EDirectionalFilter directionalFilter, EBsdfSamplingFractionLoss bsdfSamplingFractionLoss) {
@@ -619,12 +646,12 @@ public:
 		return { (cosTheta + 1) / 2, phi / (2 * M_PI) };
 	}
 
-	void build() {
+	KRR_HOST void build() {
 		building.build();
 		sampling = building;
 	}
 
-	void reset(int maxDepth, float subdivisionThreshold) {
+	KRR_HOST void reset(int maxDepth, float subdivisionThreshold) {
 		building.reset(sampling, maxDepth, subdivisionThreshold);
 	}
 
@@ -648,11 +675,11 @@ public:
 		return sampling.numNodes();
 	}
 
-	KRR_CALLABLE float meanRadiance(bool host = false) const {
+	KRR_CALLABLE float meanRadiance(bool host=false) const {
 		return sampling.mean(host);
 	}
 
-	KRR_CALLABLE float statisticalWeight(bool host = false) const {
+	KRR_CALLABLE float statisticalWeight(bool host=false) const {
 		return sampling.statisticalWeight(host);
 	}
 
@@ -676,9 +703,10 @@ private:
 struct STreeNode {
 	STreeNode() = default;
 
-	void initialize() {
-		CUDA_SYNC_CHECK();
+	KRR_HOST void initialize() {
+		isLeaf = true;
 		dTree.initialize();
+		CUDA_SYNC_CHECK();
 	}
 
 	KRR_CALLABLE int childIndex(vec3f& p) const {
@@ -733,7 +761,7 @@ struct STreeNode {
 		return result;
 	}
 
-	void forEachLeaf(
+	KRR_HOST void forEachLeaf(
 		std::function<void(const DTreeWrapper*, const vec3f&, const vec3f&)> func,
 		vec3f p, vec3f size, const inter::vector<STreeNode>* nodes) const {
 
@@ -791,7 +819,7 @@ class STree {
 public:
 	STree() = default;
 
-	STree(const AABB& aabb, Allocator alloc) {
+	KRR_HOST STree(const AABB& aabb, Allocator alloc) {
 		m_nodes = alloc.new_object<inter::vector<STreeNode>>();
 		clear();	
 		m_aabb = aabb;
@@ -802,13 +830,13 @@ public:
 		m_aabb.upper = m_aabb.lower + vec3f(maxSize);
 	}
 
-	void clear() {
-		m_nodes->clear();
-		m_nodes->emplace_back();
+	KRR_HOST void clear() {
+		CUDA_SYNC(m_nodes->clear());
+		CUDA_SYNC(m_nodes->emplace_back());
 		m_nodes->front().initialize();	// initialize the super root tree node
 	}
 
-	void subdivideAll() {
+	KRR_HOST void subdivideAll() {
 		int nNodes = (int)m_nodes->size();
 		for (int i = 0; i < nNodes; ++i) {
 			if ((*m_nodes)[i].isLeaf) {
@@ -817,9 +845,9 @@ public:
 		}
 	} 
 
-	void subdivide(int nodeIdx, inter::vector<STreeNode>* nodes) {
+	KRR_HOST void subdivide(int nodeIdx, inter::vector<STreeNode>* nodes) {
 		// Add 2 child nodes
-		nodes->resize(nodes->size() + 2);
+		CUDA_SYNC(nodes->resize(nodes->size() + 2));
 
 		if (nodes->size() > std::numeric_limits<uint32_t>::max()) {
 			logWarning("DTreeWrapper hit maximum children count.");
@@ -834,10 +862,11 @@ public:
 			child.initialize();
 			child.axis = (cur.axis + 1) % 3;
 			child.dTree = cur.dTree;
-			child.dTree.setStatisticalWeightBuilding((*nodes)[idx].dTree.statisticalWeightBuilding() / 2);
+			child.dTree.setStatisticalWeightBuilding((*nodes)[idx].dTree.statisticalWeightBuilding(true) / 2, true);
 		}
 		cur.isLeaf = false;
-		cur.dTree = {}; // Reset to an empty dtree to save memory.
+		CUDA_SYNC(cur.dTree.release()); // Reset to an empty dtree to save memory.
+		CUDA_SYNC_CHECK();
 	}
 
 	KRR_CALLABLE DTreeWrapper* dTreeWrapper(vec3f p, vec3f& size) {
@@ -855,7 +884,7 @@ public:
 		return dTreeWrapper(p, size);
 	}
 
-	void forEachDTreeWrapperConst(std::function<void(const DTreeWrapper*)> func) const {
+	KRR_HOST void forEachDTreeWrapperConst(std::function<void(const DTreeWrapper*)> func) const {
 		for (auto& node : *m_nodes) {
 			if (node.isLeaf) {
 				func(&node.dTree);
@@ -863,11 +892,11 @@ public:
 		}
 	}
 
-	void forEachDTreeWrapperConstP(std::function<void(const DTreeWrapper*, const vec3f&, const vec3f&)> func) const {
+	KRR_HOST void forEachDTreeWrapperConstP(std::function<void(const DTreeWrapper*, const vec3f&, const vec3f&)> func) const {
 		(*m_nodes)[0].forEachLeaf(func, m_aabb.lower, m_aabb.upper - m_aabb.lower, m_nodes);
 	}
 
-	void forEachDTreeWrapperParallel(std::function<void(DTreeWrapper*)> func) {
+	KRR_HOST void forEachDTreeWrapperParallel(std::function<void(DTreeWrapper*)> func) {
 		int nDTreeWrappers = static_cast<int>(m_nodes->size());
 
 		// TODO: cuda-parallelize this
@@ -883,17 +912,16 @@ public:
 		for (int i = 0; i < 3; ++i) {
 			volume *= dTreeVoxelSize[i];
 		}
-
 		rec.statisticalWeight /= volume;
 		(*m_nodes)[0].record(p - dTreeVoxelSize * 0.5f, p + dTreeVoxelSize * 0.5f, m_aabb.lower, m_aabb.extent(), rec, directionalFilter, bsdfSamplingFractionLoss, m_nodes);
 	}
 
-	KRR_CALLABLE bool shallSplit(const STreeNode& node, int depth, size_t samplesRequired) {
-		return m_nodes->size() < std::numeric_limits<uint32_t>::max() - 1 && node.dTree.statisticalWeightBuilding() > samplesRequired;
+	KRR_HOST bool shallSplit(const STreeNode& node, int depth, size_t samplesRequired) {
+		return m_nodes->size() < std::numeric_limits<uint32_t>::max() - 1 && node.dTree.statisticalWeightBuilding(true) > samplesRequired;
 	}
 
 	/* To adaptively subdivision, should be run on hostcode? */
-	void refine(size_t sTreeThreshold, int maxMB) {
+	KRR_HOST void refine(size_t sTreeThreshold, int maxMB) {
 		if (maxMB >= 0) {
 			size_t approxMemoryFootprint = 0;
 			for (const auto& node : *m_nodes) {
@@ -931,9 +959,7 @@ public:
 				}
 			}
 		}
-
-		// Uncomment once memory becomes an issue.
-		//m_nodes.shrink_to_fit();
+		CUDA_SYNC_CHECK();
 	}
 
 	KRR_CALLABLE const AABB& aabb() const {
