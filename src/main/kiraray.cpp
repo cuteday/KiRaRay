@@ -3,6 +3,8 @@
 #include "file.h"
 #include "kiraray.h"
 
+#include "render/passes/accumulate.h"
+#include "render/passes/tonemapping.h"
 #include "render/path/pathtracer.h"
 #include "main/renderer.h"
 #include "scene/importer.h"
@@ -23,8 +25,8 @@ extern "C" int main(int argc, char* argv[]) {
 	logError("Kiraray::Running on unsupported platform!");
 #endif
 
-	string sceneFile = "common/scenes/cbox/CornellBox-Original.obj";
-	string iblFile = "common/assets/snowwhite.jpg";
+	string sceneFile = "common/assets/scenes/cbox/CornellBox-Original.obj";
+	string iblFile = "common/assets/textures/snowwhite.jpg";
 
 #ifndef KRR_DEBUG_BUILD
 	try {

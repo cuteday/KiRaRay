@@ -9,31 +9,30 @@
 #include "common.h"
 #include "taggedptr.h"
 
-#define CUDA_CHECK(call)							                    \
-	{									                                \
-	  cudaError_t rc = call;                                            \
-	  if (rc != cudaSuccess) {                                          \
-		std::stringstream ss;                                           \
-		cudaError_t err =  rc; /*cudaGetLastError();*/                  \
-		ss << "CUDA Error " << cudaGetErrorName(err)                    \
-			<< " (" << cudaGetErrorString(err) << ")";                  \
-		logError(ss.str());                                             \
-		throw std::runtime_error(ss.str());                             \
-	  }                                                                 \
+#define CUDA_CHECK(call)													\
+	{																		\
+		cudaError_t rc = call;												\
+		if (rc != cudaSuccess) {											\
+			std::stringstream ss;                                           \
+			cudaError_t err =  rc; /*cudaGetLastError();*/                  \
+			ss << "CUDA Error " << cudaGetErrorName(err)                    \
+				<< " (" << cudaGetErrorString(err) << ")";                  \
+			logError(ss.str());                                             \
+			throw std::runtime_error(ss.str());                             \
+		}																	\
 	}
 
 
-#define CUDA_SYNC_CHECK()                                               \
-  {																		\
-	cudaDeviceSynchronize();                                            \
-	cudaError_t error = cudaGetLastError();                             \
-	if( error != cudaSuccess )                                          \
-	  {                                                                 \
-		fprintf( stderr, "error (%s: line %d): %s\n",                   \
-			__FILE__, __LINE__, cudaGetErrorString( error ) );          \
-		throw std::runtime_error("CUDA synchronized check failed");		\
-	  }                                                                 \
-  }
+#define CUDA_SYNC_CHECK()													\
+	{																		\
+		cudaDeviceSynchronize();                                            \
+		cudaError_t error = cudaGetLastError();                             \
+		if( error != cudaSuccess ){											\
+		fprintf( stderr, "error (%s: line %d): %s\n",						\
+			__FILE__, __LINE__, cudaGetErrorString( error ) );				\
+		throw std::runtime_error("CUDA synchronized check failed");			\
+		}																	\
+	}
 
 
 KRR_NAMESPACE_BEGIN
@@ -56,11 +55,10 @@ inline int GetBlockSize(F kernel) {
 	return blockSize;
 }
 
-#ifdef __NVCC__
-
 template <typename F>
-void GPUParallelFor(int nElements, F func);
+void GPUParallelFor(int nElements, F func, CUstream stream = 0);
 
+#ifdef __NVCC__
 template <typename F>
 __global__ void Kernel(F func, int nElements) {
 	int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -69,7 +67,7 @@ __global__ void Kernel(F func, int nElements) {
 }
 
 template <typename F>
-void GPUParallelFor(int nElements, F func) {
+void GPUParallelFor(int nElements, F func, CUstream stream) {
 	auto kernel = &Kernel<F>;
 	int blockSize = GetBlockSize(kernel);
 	int gridSize = (nElements + blockSize - 1) / blockSize;
@@ -78,9 +76,6 @@ void GPUParallelFor(int nElements, F func) {
 	CUDA_SYNC_CHECK();
 #endif
 }
-
 #endif
-
-
 
 KRR_NAMESPACE_END

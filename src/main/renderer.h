@@ -8,7 +8,6 @@
 
 #include "device/buffer.h"
 #include "device/context.h"
-#include "render/postprocess.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -49,7 +48,7 @@ public:
 
 	void render() override {
 		if (!mpScene) return;
-		mpScene->update();	// maybe this should be put into beginFrame() or sth...
+		mpScene->update();
 		for (auto p : mpPasses)
 			if (p) { 
 				p->beginFrame(mRenderBuffer);
@@ -64,7 +63,6 @@ public:
 			captureFrame(saveHdr);
 		ui::SameLine();
 		ui::Checkbox("Save HDR", &saveHdr);
-		//ui::SetTooltip("Disable tone mapping (render to linear color space) if you want to save HDR");
 		if(ui::InputInt2("Frame size", (int*)&fbSize))
 			resize(fbSize);
 		if (mpScene) mpScene->renderUI();

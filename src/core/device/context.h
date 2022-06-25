@@ -16,7 +16,6 @@ public:
 	Context() { initialize(); }
 	~Context() { finalize(); }
 
-//private:
 	void initialize();
 	void finalize();
 

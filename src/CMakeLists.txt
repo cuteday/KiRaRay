@@ -1,17 +1,14 @@
-# a useful blog (for me) about cmake variables and scopes!
-# https://www.mgaudet.ca/technical/2017/8/31/some-notes-on-cmake-variables-and-scopes
-
 ADD_SUBDIRECTORY(ext)
 ADD_SUBDIRECTORY(cuda)
 
 ###############################################################################
 # include files
 ###############################################################################
-
 MESSAGE ("Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE ("Build output directory: ${CMAKE_BINARY_DIR}")
 MESSAGE ("CUDA include directory: ${CUDA_INCLUDE_DIRS}")
 MESSAGE ("Optix include directory: ${OptiX_INCLUDE}")
+MESSAGE ("OpenGL libs: ${OPENGL_gl_LIBRARY}")
 
 CONFIGURE_FILE (core/config.in.h ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
 
@@ -36,12 +33,10 @@ SET ( KRR_CORE_SOURCE
 	# host-device side
 	core/interop.cpp
 	core/device/context.cpp
-	#core/device/cuda.cu
 	# components
 	core/window.cpp
 	core/logger.cpp
 	core/file.cpp
-	# non core
 	core/texture.cpp
 )
 
@@ -105,6 +100,8 @@ SET(KRR_HEADERS
 )
 
 SET (KRR_SOURCE
+	render/passes/accumulate.cu
+	render/passes/tonemapping.cu
 	render/path/pathtracer.cpp
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
@@ -132,9 +129,9 @@ SET ( KRR_SHADERS
 	render/lightsampler.h
 	render/path/path.h
 	render/wavefront/wavefront.h
-	render/postprocess.h
+	render/passes/accumulate.h
+	render/passes/tonemapping.h
 	render/raytracing.cuh
-	render/postprocess.cu
 )
 
 SET_SOURCE_FILES_PROPERTIES (
@@ -232,5 +229,5 @@ TARGET_LINK_LIBRARIES(krr_lib PUBLIC ${KRR_LIBS_ALL})
 
 ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
 
-TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
+#TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
 TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib)

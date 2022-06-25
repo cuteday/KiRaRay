@@ -14,6 +14,10 @@
 
 #include "config.h"
 
+#ifdef __INTELLISENSE__
+#pragma diag_suppress 40		// suppress lambda error for visual studio
+#endif
+
 using std::string;
 using std::to_string;
 
@@ -70,7 +74,7 @@ typedef unsigned char uchar;
 # define KRR_CALLABLE inline KRR_HOST KRR_DEVICE
 # define KRR_HOST_DEVICE KRR_HOST KRR_DEVICE
 # define KRR_DEVICE_FUNCTION KRR_DEVICE KRR_FORCEINLINE
-# define KRR_DEVICE_LAMBDA(...) [ =, *this ] KRR_DEVICE(__VA_ARGS__) mutable
+# define KRR_DEVICE_LAMBDA(...) [ =, *this ] KRR_DEVICE(__VA_ARGS__) mutable 
 
 
 #ifdef __GNUC__

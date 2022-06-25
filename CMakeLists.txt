@@ -73,17 +73,6 @@ else()
   	message(STATUS "Specified GPU architecture: ${CMAKE_CUDA_ARCHITECTURES}")
 endif()
 
-if (MSVC)
-else()
-	list(APPEND CUDA_NVCC_FLAGS "-Xcompiler=-mf16c")
-	list(APPEND CUDA_NVCC_FLAGS "-Xcompiler=-Wno-float-conversion")
-	list(APPEND CUDA_NVCC_FLAGS "-Xcompiler=-fno-strict-aliasing")
-endif()
-list(APPEND CUDA_NVCC_FLAGS "--std=c++17")
-list(APPEND CUDA_NVCC_FLAGS "--extended-lambda")
-list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
-list(APPEND CUDA_NVCC_FLAGS "--forward-unknown-to-host-compiler")
-
 add_library (krr_cuda_cfg INTERFACE)
 target_compile_options (
 	krr_cuda_cfg
@@ -97,7 +86,7 @@ add_library (krr_cuda_warning INTERFACE)
 target_compile_options (
     krr_cuda_warning
     INTERFACE
-        "$<$<CXX_COMPILER_ID:MSVC>:$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler >/wd4244>" # int -> float conversion
+		"$<$<CXX_COMPILER_ID:MSVC>:$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler >/wd4244>" # int -> float conversion
         #"$<$<CXX_COMPILER_ID:MSVC>:$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler >/wd1290>"
 		"$<$<CXX_COMPILER_ID:MSVC>:$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler >/wd4267>" # size_t -> int conversion
         "$<$<CXX_COMPILER_ID:MSVC>:$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler >/wd4305>" # double constant assigned to float

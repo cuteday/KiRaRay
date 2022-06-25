@@ -31,7 +31,7 @@ void WavefrontPathTracer::initialize(){
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
 	CUDA_SYNC_CHECK();	// necessary
 	if (maxQueueSize > 0) {
-		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
+		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 			pixelState->sampler[pixelId].initialize(RandomizeStrategy::Owen);
 		});
 	}
@@ -216,7 +216,6 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 
 void WavefrontPathTracer::renderUI(){
 	if (ui::CollapsingHeader("Wavefront path tracer")) {
-		ui::Text("Hello from wavefront path tracer!");
 		ui::InputInt("Samples per pixel", &samplesPerPixel);
 		ui::SliderInt("Max recursion depth", &maxDepth, 0, 30);
 		ui::Checkbox("Enable NEE", &enableNEE);
