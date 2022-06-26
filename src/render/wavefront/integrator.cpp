@@ -206,10 +206,11 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 			// [STEP#2.3] evaluate materials & bsdfs
 			generateScatterRays();
 			// [STEP#2.4] trace shadow rays (next event estimation)
-			backend->traceShadow(
-				maxQueueSize,
-				shadowRayQueue,
-				pixelState);
+			if (enableNEE)
+				backend->traceShadow(
+					maxQueueSize,
+					shadowRayQueue,
+					pixelState);
 		}
 	}
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){

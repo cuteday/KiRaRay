@@ -187,9 +187,6 @@ void ProfilerUI::renderOptions() {
 		ui::SameLine();
 		if (ui::Button("Start Capture")) mpProfiler->startCapture();
 	}
-	
-	ui::SameLine();
-	if (ui::Button("Close")) mpProfiler->setEnabled(false);
 
 	ui::Separator();
 }

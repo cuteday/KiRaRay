@@ -12,10 +12,8 @@ namespace api{
 	using namespace krr::io;
 	inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey);
 
-	inline const char* getGLErrorString(GLenum error)
-	{
-		switch (error)
-		{
+	inline const char* getGLErrorString(GLenum error) {
+		switch (error) {
 			case GL_NO_ERROR:            return "No error";
 			case GL_INVALID_ENUM:        return "Invalid enum";
 			case GL_INVALID_VALUE:       return "Invalid value";
@@ -27,8 +25,7 @@ namespace api{
 		}
 	}
 
-	void initGLFW()
-	{
+	void initGLFW() {
 		static bool initialized = false;
 		if (initialized) return;
 		if (!glfwInit())
@@ -167,10 +164,9 @@ namespace api{
 		}
 
 		static inline bool prepareKeyboardEvent(int key, int action, int modifiers, KeyboardEvent& event){
-			if (action == GLFW_REPEAT || key == GLFW_KEY_UNKNOWN){
+			if (action == GLFW_REPEAT || key == GLFW_KEY_UNKNOWN)
 				return false;
-			}
-
+			
 			event.type = (action == GLFW_RELEASE ? KeyboardEvent::Type::KeyReleased : KeyboardEvent::Type::KeyPressed);
 			event.key = glfwToFalcorKey(key);
 			event.mods = getInputModifiers(modifiers);
@@ -186,14 +182,12 @@ WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVs
 	glfwSetErrorCallback(ApiCallbacks::errorCallback);
 
 	initGLFW();
-
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	glfwWindowHint(GLFW_VISIBLE, visible);
 
 	handle = glfwCreateWindow(size.x, size.y, title, NULL, NULL);
-	if (!handle)
-	{
+	if (!handle) {
 		glfwTerminate();
 		exit(EXIT_FAILURE);
 	}

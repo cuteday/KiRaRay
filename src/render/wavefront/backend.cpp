@@ -2,6 +2,7 @@
 #include "device/optix.h"
 #include "device/cuda.h"
 #include "render/shared.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -302,6 +303,7 @@ void OptiXWavefrontBackend::traceClosest(int numRays,
 	ScatterRayQueue* scatterRayQueue,
 	RayQueue* nextRayQueue){
 	if (optixTraversable) {
+		PROFILE("Trace intersect rays");
 		static LaunchParams params = {};
 		params.traversable = optixTraversable;
 		params.sceneData = sceneData;
@@ -326,6 +328,7 @@ void OptiXWavefrontBackend::traceShadow(int numRays,
 	ShadowRayQueue* shadowRayQueue,
 	PixelStateBuffer* pixelState){
 	if (optixTraversable) {
+		PROFILE("Trace shadow rays");
 		static LaunchParams params = {};
 		params.traversable = optixTraversable;
 		params.sceneData = sceneData;

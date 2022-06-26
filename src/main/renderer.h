@@ -64,7 +64,6 @@ public:
 				p->beginFrame(mRenderBuffer);
 				p->render(mRenderBuffer); 
 			}
-		CUDA_SYNC_CHECK();
 		if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
 	}
 
