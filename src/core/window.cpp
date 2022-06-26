@@ -36,7 +36,7 @@ namespace api{
 		initialized = true;
 	}
 
-	void initUI(GLFWwindow* window){
+	void initUI(GLFWwindow* window) {
 		static bool initialized = false;
 		if(initialized) return;
 		ui::CreateContext();
@@ -47,8 +47,7 @@ namespace api{
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 	}
 
-	class ApiCallbacks
-	{
+	class ApiCallbacks {
 	public:
 		static void windowSizeCallback(GLFWwindow* pGlfwWindow, int width, int height){
 			// We also get here in case the window was minimized, so we need to ignore it

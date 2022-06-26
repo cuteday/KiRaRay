@@ -17,6 +17,7 @@
 - [x] GPU path tracing (a megakernel version and a [wavefront](https://research.nvidia.com/publication/2013-07_megakernels-considered-harmful-wavefront-path-tracing-gpus) version).
 - [x] Next event estimation and multiple importance sampling (naive ver.)
 - [x] Tone mapping and frame accumulating.
+- [x] Simple CPU/GPU profiling.
 
 If possible, more features will be added in the future, for example:
 
@@ -37,6 +38,12 @@ This project is tested with optix 7.3/4 and cuda 11.4/5/6. It may not compile su
 #### Build
 
 This project uses cmake to build, no additional setting is needed. Make sure cuda is installed and added to PATH. While it tries to guess the optix installation path, you may specify the `OptiX_INSTALL_DIR` environment variable manually in case it failed.
+
+#### Usage
+
+**Camera Controlling** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
+
+**Hot Keys** `F1` for screen shots, `F2` for showing/hiding the profiler.
 
 ### Common Issues
 

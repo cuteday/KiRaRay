@@ -8,12 +8,12 @@
 
 #include "device/buffer.h"
 #include "device/context.h"
+#include "render/profiler/ui.h"
 
 KRR_NAMESPACE_BEGIN
 
 class RenderApp : public WindowApp{
 public:
-
 	RenderApp(const char title[], vec2i size) : WindowApp(title, size) { }
 	RenderApp(const char title[], vec2i size, std::vector<RenderPass::SharedPtr> passes)
 		:WindowApp(title, size), mpPasses(passes) { }
@@ -34,7 +34,18 @@ public:
 	}
 	
 	virtual void onKeyEvent(io::KeyboardEvent &keyEvent) override {
-		if (mpScene && mpScene->onKeyEvent(keyEvent)) return;
+		if (keyEvent.type == io::KeyboardEvent::Type::KeyPressed) {
+			switch (keyEvent.key) {		// top-prior operations captured by application
+			case io::KeyboardEvent::Key::F1:
+				captureFrame();
+				return;
+			case io::KeyboardEvent::Key::F2:
+				Profiler::instance().setEnabled(!Profiler::instance().isEnabled());
+				return;
+			}
+		}
+		// passing down signals...
+		if (mpScene && mpScene->onKeyEvent(keyEvent)) return;	
 		for (auto p : mpPasses)
 			if(p->onKeyEvent(keyEvent)) return;
 	}
@@ -43,7 +54,6 @@ public:
 		mpScene = scene;
 		for (auto p : mpPasses)
 			if(p) p->setScene(scene);
-
 	}
 
 	void render() override {
@@ -54,21 +64,41 @@ public:
 				p->beginFrame(mRenderBuffer);
 				p->render(mRenderBuffer); 
 			}
+		CUDA_SYNC_CHECK();
+		if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
 	}
 
 	void renderUI() override{
+		PROFILE("Draw UI");
 		static bool saveHdr = false;
 		ui::Begin(KRR_PROJECT_NAME);
 		if (ui::Button("Screen shot"))
 			captureFrame(saveHdr);
 		ui::SameLine();
 		ui::Checkbox("Save HDR", &saveHdr);
+		
+		Profiler::instance().endEvent("Draw UI");	// enable/disable profiler between events causes crashing
+		if (Profiler::instance().isEnabled()) {
+			if (ui::Button("Hide profiler")) 
+				Profiler::instance().setEnabled(false);
+		}
+		else if (ui::Button("Show profiler"))
+			Profiler::instance().setEnabled(true);
+		Profiler::instance().startEvent("Draw UI");
+		
 		if(ui::InputInt2("Frame size", (int*)&fbSize))
 			resize(fbSize);
 		if (mpScene) mpScene->renderUI();
 		for (auto p : mpPasses)
 			if (p) p->renderUI();
 		ui::End();
+
+		if (Profiler::instance().isEnabled()) {
+			if (!mpProfilerUI) mpProfilerUI = ProfilerUI::create(Profiler::instancePtr());
+			ui::Begin("Profiler");
+			mpProfilerUI->render();
+			ui::End();
+		}	
 	}
 
 	void draw() override {
@@ -88,6 +118,7 @@ private:
 
 	std::vector<RenderPass::SharedPtr> mpPasses;
 	Scene::SharedPtr mpScene;
+	ProfilerUI::UniquePtr mpProfilerUI;
 	CUDABuffer mRenderBuffer;
 };
 

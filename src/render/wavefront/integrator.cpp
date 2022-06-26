@@ -3,6 +3,7 @@
 
 #include "integrator.h"
 #include "workqueue.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -40,6 +41,7 @@ void WavefrontPathTracer::initialize(){
 }
 
 void WavefrontPathTracer::handleHit(){
+	PROFILE("Process intersected rays");
 	ForAllQueued(hitLightRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const HitLightWorkItem & w){
 		color Le = w.light.L(w.p, w.n, w.uv, w.wo);
@@ -56,6 +58,7 @@ void WavefrontPathTracer::handleHit(){
 }
 
 void WavefrontPathTracer::handleMiss(){
+	PROFILE("Process missed rays");
 	Scene::SceneData& sceneData = mpScene->mData;
 	ForAllQueued(missRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const MissRayWorkItem& w) {
@@ -75,6 +78,7 @@ void WavefrontPathTracer::handleMiss(){
 }
 
 void WavefrontPathTracer::generateScatterRays(){
+	PROFILE("Generate scatter rays");
 	ForAllQueued(scatterRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const ScatterRayWorkItem & w) {
 		Sampler sampler = &pixelState->sampler[w.pixelId];
@@ -130,6 +134,7 @@ void WavefrontPathTracer::generateScatterRays(){
 }
 
 void WavefrontPathTracer::generateCameraRays(int sampleId){
+	PROFILE("Generate camera rays");
 	RayQueue* cameraRayQueue = currentRayQueue(0);
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		Sampler sampler = &pixelState->sampler[pixelId];
@@ -171,6 +176,8 @@ void WavefrontPathTracer::beginFrame(CUDABuffer& frame){
 
 void WavefrontPathTracer::render(CUDABuffer& frame){
 	if (!mpScene || !maxQueueSize) return;
+	PROFILE("Wavefront Path Tracer");
+	
 	vec4f* frameBuffer = (vec4f*)frame.data();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays

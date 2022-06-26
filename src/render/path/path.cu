@@ -6,7 +6,7 @@
 
 #include <optix_device.h>
 
-using namespace krr;	// this is needed or nvcc can't recognize the launchParams extern "C"al var.
+using namespace krr;	// this is needed or nvcc can't recognize the launchParams extern "C" var.
 
 KRR_NAMESPACE_BEGIN
 

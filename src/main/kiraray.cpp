@@ -24,7 +24,6 @@ extern "C" int main(int argc, char* argv[]) {
 #if KRR_PLATFORM_UNKNOWN
 	logError("Kiraray::Running on unsupported platform!");
 #endif
-
 	string sceneFile = "common/assets/scenes/cbox/CornellBox-Original.obj";
 	string iblFile = "common/assets/textures/snowwhite.jpg";
 

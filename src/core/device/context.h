@@ -20,7 +20,7 @@ public:
 	void finalize();
 
 	CUcontext cudaContext;
-	CUstream cudaStream;
+	CUstream cudaStream{ 0 };
 	cudaDeviceProp deviceProps;
 	OptixDeviceContext optixContext;
 	Allocator* alloc;

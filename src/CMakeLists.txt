@@ -77,21 +77,26 @@ SET ( KRR_CORE_HEADERS
 	core/interop.h
 	core/host/memory.h
 	core/host/synchronize.h
+	core/host/timer.h
 	core/device/memory.h
 	core/device/context.h
 	core/device/buffer.h
 	core/device/optix.h
 	core/device/cuda.h
-	# non core
+	core/device/timer.h
+)
+
+SET(KRR_HEADERS
+	# render
 	render/path/pathtracer.h
 	render/wavefront/integrator.h
 	render/wavefront/workitem.h
 	render/wavefront/workqueue.h
 	render/wavefront/backend.h
+	render/profiler/profiler.h
+	render/profiler/ui.h
 	scene/importer.h
-)
-
-SET(KRR_HEADERS
+	# others
 	main/renderer.h
 	util/check.h
 	util/string.h
@@ -105,6 +110,8 @@ SET (KRR_SOURCE
 	render/path/pathtracer.cpp
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
+	render/profiler/profiler.cpp
+	render/profiler/ui.cpp
 	scene/importer.cpp
 	util/tables.cpp
 )

@@ -3,6 +3,7 @@
 #include "device/cuda.h"
 #include "device/context.h"
 #include "math/utils.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -45,6 +46,7 @@ namespace {
 
 void ToneMappingPass::render(CUDABuffer& frame){
 	if (!mEnable) return;
+	PROFILE("Tong mapping pass");
 	CUstream &stream = gpContext->cudaStream;
 	vec3f colorTransform = vec3f(mExposureCompensation);
 	vec4f* frameBuffer = (vec4f*)frame.data();

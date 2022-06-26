@@ -7,3 +7,5 @@
 #cmakedefine01  KRR_PLATFORM_WINDOWS 
 #cmakedefine01  KRR_PLATFORM_LINUX 
 #cmakedefine01	KRR_PLATFORM_UNKNOWN
+
+#define KRR_ENABLE_PROFILE	1

@@ -1,6 +1,7 @@
 #include "accumulate.h"
 
 #include "math/utils.h"
+#include "render/profiler/profiler.h"
 #include "device/cuda.h"
 #include "device/context.h"
 
@@ -8,6 +9,7 @@ KRR_NAMESPACE_BEGIN
 
 void AccumulatePass::render(CUDABuffer& frame) {
 	if (!mEnable) return;
+	PROFILE("Accumulate pass");
 	if (mpScene->getChanges()) reset();
 	vec4f* accumBuffer = (vec4f*)mAccumBuffer->data();
 	vec4f* currentBuffer = (vec4f*)frame.data();
