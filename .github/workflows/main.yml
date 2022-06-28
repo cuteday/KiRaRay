@@ -78,8 +78,8 @@ jobs:
       env:
         CUDA_ARCH: ${{matrix.cuda_arch}}
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_CUDA_ARCHITECTURES=${{matrix.cuda_arch}}-virtual -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DOptiX_INSTALL_DIR=${{env.OptiX_INSTALL_DIR}}
+        cmake -G "Visual Studio 16 2019" -A x64 -B ${{github.workspace}}/build -DCMAKE_CUDA_ARCHITECTURES=${{matrix.cuda_arch}}-virtual -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DOptiX_INSTALL_DIR=${{env.OptiX_INSTALL_DIR}}
       
-    # - name: Build
-    #   run: | 
-    #     cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 4
+    - name: Build
+      run: | 
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 4
