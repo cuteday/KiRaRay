@@ -76,7 +76,7 @@ public:
 	bool enableNEE{ };
 	bool debugOutput{ };
 	vec2i debugPixel{ };
-	bool enableClamp{ };
+	bool enableClamp{ true };
 	float clampMax{ 100 };
 };
 

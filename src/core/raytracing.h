@@ -18,9 +18,17 @@ enum class BsdfType {
 	Count
 };
 
-struct Ray {
+class Ray {
+public:
 	vec3f origin;
 	vec3f dir;
+};
+
+class RayDifferential : public Ray {
+public:
+	bool hasDifferentials{ false };
+	vec3f rxOrigin, ryOrigin;
+	vec3f rxDir, ryDir;
 };
 
 KRR_CALLABLE vec3f offsetRayOrigin(vec3f p, vec3f n, vec3f w) {
@@ -33,13 +41,10 @@ KRR_CALLABLE vec3f offsetRayOrigin(vec3f p, vec3f n, vec3f w) {
 struct Interaction{
 	Interaction() = default;
 
-	__both__ Interaction(vec3f p) : p(p){}
-
-	__both__ Interaction(vec3f p, vec2f uv): p(p), uv(uv) {}
-
-	__both__ Interaction(vec3f p, vec3f n, vec2f uv) : p(p), n(n), uv(uv) {}
-
-	__both__ Interaction(vec3f p, vec3f wo, vec3f n, vec2f uv): p(p), wo(wo), n(n), uv(uv) {}
+	KRR_CALLABLE Interaction(vec3f p) : p(p){}
+	KRR_CALLABLE Interaction(vec3f p, vec2f uv): p(p), uv(uv) {}
+	KRR_CALLABLE Interaction(vec3f p, vec3f n, vec2f uv) : p(p), n(n), uv(uv) {}
+	KRR_CALLABLE Interaction(vec3f p, vec3f wo, vec3f n, vec2f uv): p(p), wo(wo), n(n), uv(uv) {}
 
 	KRR_CALLABLE vec3f offsetRayOrigin(const vec3f& w) const {
 		return krr::offsetRayOrigin(p, n, w);

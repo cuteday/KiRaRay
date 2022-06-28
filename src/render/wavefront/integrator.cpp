@@ -58,7 +58,7 @@ void WavefrontPathTracer::handleHit(){
 }
 
 void WavefrontPathTracer::handleMiss(){
-	PROFILE("Process missed rays");
+	PROFILE("Process escaped rays");
 	Scene::SceneData& sceneData = mpScene->mData;
 	ForAllQueued(missRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const MissRayWorkItem& w) {
@@ -139,10 +139,7 @@ void WavefrontPathTracer::generateCameraRays(int sampleId){
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		Sampler sampler = &pixelState->sampler[pixelId];
 		vec2i pixelCoord = { pixelId % frameSize.x, pixelId / frameSize.x };
-		Ray cameraRay = {
-			camera->getPosition(),
-			camera->getRayDir(pixelCoord, frameSize, sampler.get2D())
-		};
+		Ray cameraRay = camera->getRay(pixelCoord, frameSize, sampler);
 		cameraRayQueue->pushCameraRay(cameraRay, pixelId);
 	});
 }
@@ -162,6 +159,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene){
 
 void WavefrontPathTracer::beginFrame(CUDABuffer& frame){
 	if (!mpScene || !maxQueueSize) return;
+	PROFILE("Begin frame");
 	vec4f* frameBuffer = (vec4f*)frame.data();
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){	// reset per-pixel radiance
 		pixelState->L[pixelId] = 0;
@@ -171,13 +169,11 @@ void WavefrontPathTracer::beginFrame(CUDABuffer& frame){
 		vec2i pixelCoord = { pixelId % frameSize.x, pixelId / frameSize.x };
 		pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameId * samplesPerPixel);
 	});
-	CUDA_SYNC_CHECK();
 }
 
 void WavefrontPathTracer::render(CUDABuffer& frame){
 	if (!mpScene || !maxQueueSize) return;
 	PROFILE("Wavefront Path Tracer");
-	
 	vec4f* frameBuffer = (vec4f*)frame.data();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
@@ -214,11 +210,10 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 		}
 	}
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
-		vec3f L = vec3f(pixelState->L[pixelId]) / samplesPerPixel; 
-		if(enableClamp) L = clamp(L, vec3f(0), vec3f(clampMax));
+		vec3f L = vec3f(pixelState->L[pixelId]) / samplesPerPixel;
+		if (enableClamp) L = clamp(L, vec3f(0), vec3f(clampMax));
 		frameBuffer[pixelId] = vec4f(L, any(L) ? 1 : 0);
 	});
-	CUDA_SYNC_CHECK();
 	frameId++;
 }
 

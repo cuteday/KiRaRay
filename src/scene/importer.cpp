@@ -5,6 +5,7 @@
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
 #include "assimp/pbrmaterial.h"
+//#include "assimp/GltfMaterial.h"
 
 #include "math/math.h"
 #include "light.h"
@@ -30,6 +31,7 @@ namespace assimp {
 	vec3f aiCast(const aiColor3D& ai) { return vec3f(ai.r, ai.g, ai.b); }
 	vec3f aiCast(const aiVector3D& val) { return vec3f(val.x, val.y, val.z); }
 	quat aiCast(const aiQuaternion& q) { return quat(q.w, q.x, q.y, q.z); }
+	aabb3f aiCast(const aiAABB& aabb) { return aabb3f(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
 
 	struct TextureMapping
 	{
@@ -50,7 +52,7 @@ namespace assimp {
 		{ AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, Material::TextureType::Specular }
 	};
 
-	float convertSpecPowerToRoughness(float specPower){
+	float convertSpecPowerToRoughness(float specPower) {
 		return clamp(sqrt(2.0f / (specPower + 2.0f)), 0.f, 1.f);
 	}
 
@@ -78,13 +80,13 @@ namespace assimp {
 		}
 	}
 
-	Material::SharedPtr createMaterial(const aiMaterial* pAiMaterial, const string &modelFolder, ImportMode importMode = ImportMode::Default) {
+	Material::SharedPtr createMaterial(const aiMaterial* pAiMaterial, const string& modelFolder, ImportMode importMode = ImportMode::Default) {
 		aiString name;
 		pAiMaterial->Get(AI_MATKEY_NAME, name);
 
 		// Parse the name
 		std::string nameStr = std::string(name.C_Str());
-		if (nameStr.empty()){
+		if (nameStr.empty()) {
 			logWarning("Material with no name found -> renaming to 'unnamed'");
 			nameStr = "unnamed";
 		}
@@ -96,18 +98,18 @@ namespace assimp {
 
 		// Opacity
 		float opacity = 1;
-		if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS){
+		if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS) {
 			pMaterial->mMaterialParams.diffuse.a = opacity;
-			if (opacity < 1.f) 
+			if (opacity < 1.f)
 				pMaterial->mMaterialParams.specularTransmission = 1 - opacity;
 			logDebug("opacity: " + to_string(opacity));
 		}
 
 		// Shininess
 		float shininess;
-		if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS){
+		if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS) {
 			// Convert OBJ/MTL Phong exponent to glossiness.
-			if (importMode == ImportMode::OBJ){
+			if (importMode == ImportMode::OBJ) {
 				float roughness = convertSpecPowerToRoughness(shininess);
 				shininess = 1.f - roughness;
 			}
@@ -124,55 +126,55 @@ namespace assimp {
 		// Diffuse color
 		aiColor3D color;
 
-		if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS){
-			vec3f transmission = 1.f - vec3f( color.r,color.g,color.b );
+		if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS) {
+			vec3f transmission = 1.f - vec3f(color.r, color.g, color.b);
 			pMaterial->mMaterialParams.specularTransmission = luminance(transmission);
 			logDebug("transmission: " + to_string(luminance(transmission)));
 		}
 
-		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS){
+		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS) {
 			vec4f diffuse = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.diffuse.a);
 			pMaterial->mMaterialParams.diffuse = diffuse;
 		}
 
 		// Specular color
-		if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS){
+		if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS) {
 			vec4f specular = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.specular.a);
 			pMaterial->mMaterialParams.specular = specular;
 			logDebug("specular : " + to_string(specular.r) + " " + to_string(specular.g) + " " + to_string(specular.b) + " ");
 		}
 
 		// Emissive color
-		if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS){
+		if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
 			vec3f emissive = vec3f(color.r, color.g, color.b);
 			pMaterial->mMaterialParams.emissive = emissive;
 		}
 
 		// Double-Sided
 		int isDoubleSided;
-		if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS){
+		if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS) {
 			pMaterial->mDoubleSided = true;
 		}
 
-		if (importMode == ImportMode::GLTF2){
-			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS){
+		if (importMode == ImportMode::GLTF2) {
+			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS) {
 				vec4f baseColor = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.diffuse.a);
 				pMaterial->mMaterialParams.diffuse = baseColor;
 			}
 			vec4f specularParams = pMaterial->mMaterialParams.specular;
 			float metallic;
-			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic) == AI_SUCCESS){
+			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic) == AI_SUCCESS) {
 				specularParams.b = metallic;
 			}
 			float roughness;
-			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS){
+			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS) {
 				specularParams.g = roughness;
 			}
 
 			pMaterial->mMaterialParams.specular = specularParams;
 		}
 
-		pMaterial->mShadingModel = importMode == ImportMode::OBJ ? 
+		pMaterial->mShadingModel = importMode == ImportMode::OBJ ?
 			Material::ShadingModel::SpecularGlossiness : Material::ShadingModel::MetallicRoughness;
 
 		return pMaterial;
@@ -181,7 +183,7 @@ namespace assimp {
 
 using namespace texture;
 
-void MaterialLoader::loadTexture(const Material::SharedPtr& pMaterial, TextureType type, const std::string& filename){
+void MaterialLoader::loadTexture(const Material::SharedPtr& pMaterial, TextureType type, const std::string& filename) {
 	assert(pMaterial);
 	bool srgb = mUseSrgb && pMaterial->determineSrgb(filename, type);
 	if (!fs::exists(filename)) {
@@ -218,9 +220,10 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 		| aiProcess_FlipUVs
 		//| aiProcess_FlipWindingOrder
 		| aiProcess_PreTransformVertices
+		| aiProcess_GenBoundingBoxes
 		;
 	int removeFlags = aiComponent_COLORS;
-	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS; uvLayer++) 
+	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS; uvLayer++)
 		removeFlags |= aiComponent_TEXCOORDSn(uvLayer);
 
 	mFilepath = filepath;
@@ -255,12 +258,12 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 	return true;
 }
 
-void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform){
+void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform) {
 	Mesh mesh;
 	mesh.vertices.reserve(pAiMesh->mNumVertices);
 	mesh.normals.reserve(pAiMesh->mNumVertices);
 	mesh.indices.reserve(pAiMesh->mNumFaces);
-	if (pAiMesh->HasTextureCoords(0)) 
+	if (pAiMesh->HasTextureCoords(0))
 		mesh.texcoords.reserve(pAiMesh->mNumVertices);
 	if (pAiMesh->HasTangentsAndBitangents()) {
 		mesh.tangents.reserve(pAiMesh->mNumVertices);
@@ -276,7 +279,7 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform){
 		mesh.normals.push_back(normal);
 
 		if (pAiMesh->HasTextureCoords(0)) {
-		//if (pAiMesh->mTextureCoords[0]) {
+			//if (pAiMesh->mTextureCoords[0]) {
 			vec3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
 			mesh.texcoords.push_back({ texcoord.x, texcoord.y });
 		}
@@ -307,13 +310,13 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform){
 
 	// finalizing creating a mesh
 	mpScene->meshes.push_back(mesh);
+	mpScene->mAABB.extend(aiCast(pAiMesh->mAABB));
 	//mpScene->mData.meshes.push_back(mesh.mData);
 }
 
 void AssimpImporter::traverseNode(aiNode* node, aiMatrix4x4 transform)
 {
 	transform = transform * node->mTransformation;
-
 	for (int i = 0; i < node->mNumMeshes; i++) {
 		aiMesh* mesh = mpAiScene->mMeshes[node->mMeshes[i]];
 		processMesh(mesh, transform);
@@ -324,7 +327,7 @@ void AssimpImporter::traverseNode(aiNode* node, aiMatrix4x4 transform)
 	}
 }
 
-void AssimpImporter::loadMaterials(const string &modelFolder)
+void AssimpImporter::loadMaterials(const string& modelFolder)
 {
 	mpScene->mData.materials->reserve(mpAiScene->mNumMaterials + 1LL);
 	mpScene->mData.materials->push_back(Material());

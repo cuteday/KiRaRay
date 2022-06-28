@@ -10,13 +10,12 @@
 > __Working in progress (?) project__  
 > This project is only for learning purpose with very limited features, and not sure if it will continue developing.
 
-- [x] Orbit camera controlling.
 - [x] Assimp as scene importer.
-- [x] Image-based environment lighting.
+- [x] Orbit camera controlling & thin lens camera.
 - [x] Diffuse, microfacet, disney and fresnel-blended bsdfs.
 - [x] GPU path tracing (a megakernel version and a [wavefront](https://research.nvidia.com/publication/2013-07_megakernels-considered-harmful-wavefront-path-tracing-gpus) version).
-- [x] Next event estimation and multiple importance sampling (naive ver.)
-- [x] Tone mapping and frame accumulating.
+- [x] Next event estimation and multiple importance sampling (naive version).
+- [x] Post processing passes (e.g., tone mapping and frame accumulating).
 - [x] Simple CPU/GPU profiling.
 
 If possible, more features will be added in the future, for example:
@@ -41,9 +40,9 @@ This project uses cmake to build, no additional setting is needed. Make sure cud
 
 #### Usage
 
-**Camera Controlling** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
+**Camera Controlling.** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
 
-**Hot Keys** `F1` for screen shots, `F2` for showing/hiding the profiler.
+**Hot Keys.** `F1` for screen shots, `F2` for showing/hiding the profiler.
 
 ### Common Issues
 
@@ -53,7 +52,7 @@ Ninja is recommended as generator when build with Visual Studio, otherwise some 
 
 #### Test scenes and assets
 
-For testing, HDR environment images can be downloaded at [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), OBJ scenes can be obtained at [McGuire's Archive](https://casual-effects.com/data/). Also gltf models can usually be loaded and rendered. 
+For testing, HDR environment images can be downloaded at [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), OBJ scenes can be obtained at [McGuire's Archive](https://casual-effects.com/data/). Also glTF2 models can usually be loaded and rendered. 
 
 #### Performance
 

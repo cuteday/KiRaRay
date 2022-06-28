@@ -6,8 +6,7 @@
 
 #include <optix_device.h>
 
-using namespace krr;	// this is needed or nvcc can't recognize the launchParams extern "C" var.
-
+using namespace krr;	// this is needed or nvcc cannot recognize the launchParams extern "C" var.
 KRR_NAMESPACE_BEGIN
 
 using namespace math;
@@ -106,10 +105,6 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 	// how to eliminate branches here to improve performance?
 	vec3f woLocal = sd.toLocal(sd.wo);
 	BSDFSample sample = BxDF::sample(sd, woLocal, path.sampler, (int)sd.bsdfType);
-	if (woLocal.z < 0) {
-		print("wi.z: %f\n", sample.wi.z);
-		print("Transmit out! F: %f, PDF: %f\n", sample.f, sample.pdf);
-	}
 	if (sample.pdf == 0 || !any(sample.f)) return false;
 
 	vec3f wiWorld = sd.fromLocal(sample.wi);
@@ -152,17 +147,12 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 			RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_DISABLE_ANYHIT, (void*)&sd);
 
 		if (sd.miss) {			// incorporate emission from envmap, by escaped rays
-			handleMiss(sd, path);
-			break;
+			handleMiss(sd, path); break;
 		}
-		else if (sd.light){		// incorporate emission from surface area lights
-			handleHit(sd, path);
-		}
-
-		if (launchParams.NEE) {
-			evalDirect(sd, path);
-		}
-
+		else if (sd.light) handleHit(sd, path);
+		
+		if (launchParams.NEE) evalDirect(sd, path);
+		
 		if (launchParams.RR) {
 			float u = path.sampler.get1D();
 			if (u < launchParams.probRR) break;
@@ -187,8 +177,7 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	sampler.setPixelSample(pixel, frameID);
 
 	// primary ray 
-	vec3f rayOrigin = camera.getPosition();
-	vec3f rayDir = camera.getRayDir(pixel, launchParams.fbSize, sampler.get2D());
+	Ray cameraRay = camera.getRay(pixel, launchParams.fbSize, &sampler);
 	
 	PathData path = {};
 	path.lightSampler = launchParams.sceneData.lightSampler;
@@ -198,8 +187,8 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	for (int i = 0; i < launchParams.spp; i++) {
 		path.throughput = 1;
 		path.L = 0;
-		path.pos = rayOrigin;
-		path.dir = rayDir;
+		path.pos = cameraRay.origin;
+		path.dir = cameraRay.dir;
 
 		tracePath(path);
 		color += path.L;

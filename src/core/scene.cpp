@@ -29,7 +29,10 @@ bool Scene::update(){
 void Scene::renderUI() {
 	if (ui::CollapsingHeader("Scene")) {
 		if (mpCamera && ui::CollapsingHeader("Camera")) {
+			ui::Text("Camera parameters");
 			mpCamera->renderUI();
+			ui::Text("Orbit controller");
+			mpCameraController->renderUI();
 		}
 		if (ui::CollapsingHeader("Environment lights")) {
 			for (int i = 0; i < mData.infiniteLights->size(); i++) {

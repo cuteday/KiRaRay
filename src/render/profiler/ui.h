@@ -56,7 +56,7 @@ private:
 
 	Profiler::SharedPtr mpProfiler;         ///< Profiler instance.
 
-	GraphMode mGraphMode = GraphMode::Off;  ///< Graph mode.
+	GraphMode mGraphMode = GraphMode::GpuTime;  ///< Graph mode.
 	bool mEnableAverage = true;             ///< Use averaged time values (EMA).
 
 	struct EventData {

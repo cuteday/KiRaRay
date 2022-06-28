@@ -2,6 +2,7 @@
 #include <optix_types.h>
 
 #include "device/cuda.h"
+#include "render/profiler/profiler.h"
 #include "render/wavefront/backend.h"
 #include "pathtracer.h"
 
@@ -9,8 +10,7 @@ KRR_NAMESPACE_BEGIN
 
 extern "C" char PATHTRACER_PTX[];
 
-PathTracer::PathTracer()
-{
+PathTracer::PathTracer() {
 	logInfo("setting up module ...");
 	module = OptiXBackend::createOptiXModule(gpContext->optixContext, PATHTRACER_PTX);
 	logInfo("creating program groups ...");
@@ -22,13 +22,11 @@ PathTracer::PathTracer()
 	logSuccess("PathTracer::Optix 7 context fully set up");
 }
 
-PathTracer::~PathTracer()
-{
+PathTracer::~PathTracer() {
 	gpContext->alloc->deallocate_object(launchParams);
 }
 
-void PathTracer::createProgramGroups()
-{
+void PathTracer::createProgramGroups() {
 	// setup raygen program groups
 	raygenPGs.resize(1);;
 	raygenPGs[0] = OptiXBackend::createRaygenPG(gpContext->optixContext, module, "__raygen__Pathtracer");
@@ -47,8 +45,7 @@ void PathTracer::createProgramGroups()
 	}
 }
 
-void PathTracer::createPipeline()
-{
+void PathTracer::createPipeline() {
 	std::vector<OptixProgramGroup> programGroups;
 	for (auto pg : raygenPGs)
 		programGroups.push_back(pg);
@@ -79,8 +76,7 @@ void PathTracer::createPipeline()
 }
 
 
-void PathTracer::buildSBT()
-{
+void PathTracer::buildSBT() {
 	// build raygen records
 	for (int i = 0; i < raygenPGs.size(); i++) {
 		RaygenRecord rec;
@@ -115,8 +111,7 @@ void PathTracer::buildSBT()
 	sbt.hitgroupRecordCount = hitgroupRecords.size();
 }
 
-void PathTracer::buildAS()
-{
+void PathTracer::buildAS() {
 	OptixTraversableHandle& asHandle = launchParams->traversable;
 	asHandle = OptiXBackend::buildAccelStructure(gpContext->optixContext, gpContext->cudaStream, *mpScene);
 }
@@ -139,27 +134,30 @@ void PathTracer::renderUI() {
 	}
 }
 
-void PathTracer::render(CUDABuffer& frame)
-{
+void PathTracer::render(CUDABuffer& frame) {
 	if (launchParams->fbSize.x * launchParams->fbSize.y == 0) return;
-
-	// prefetch memory resource
-	CUDATrackedMemory::singleton.PrefetchToGPU();
-	launchParams->fbSize = mFrameSize;
-	launchParams->colorBuffer = (vec4f*)frame.data();
-	launchParams->camera = mpScene->getCamera();
-	launchParams->sceneData = mpScene->getSceneData();
-	launchParams->frameID++;
-
-	OPTIX_CHECK(optixLaunch(
-		pipeline, gpContext->cudaStream,
-		(CUdeviceptr)launchParams,
-		sizeof(LaunchParamsPT),
-		&sbt,
-		launchParams->fbSize.x,
-		launchParams->fbSize.y,
-		1
-	));
+	PROFILE("Megakernel Path Tracer");
+	{
+		PROFILE("Updating parameters");
+		CUDATrackedMemory::singleton.PrefetchToGPU();
+		launchParams->fbSize = mFrameSize;
+		launchParams->colorBuffer = (vec4f*)frame.data();
+		launchParams->camera = mpScene->getCamera();
+		launchParams->sceneData = mpScene->getSceneData();
+		launchParams->frameID++;
+	}
+	{
+		PROFILE("Path tracing kernel");
+		OPTIX_CHECK(optixLaunch(
+			pipeline, gpContext->cudaStream,
+			(CUdeviceptr)launchParams,
+			sizeof(LaunchParamsPT),
+			&sbt,
+			launchParams->fbSize.x,
+			launchParams->fbSize.y,
+			1
+		));
+	}
 	CUDA_SYNC_CHECK();
 }
 

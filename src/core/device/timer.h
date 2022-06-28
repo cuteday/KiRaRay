@@ -41,7 +41,6 @@ public:
 private:
 	CUstream stream{ 0 };
 	cudaEvent_t start, stop;
-	GLuint glQuery;
 };
 
 KRR_NAMESPACE_END

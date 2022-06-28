@@ -3,30 +3,23 @@
 
 KRR_NAMESPACE_BEGIN
 
-
 bool Camera::update(){
 	if (mPreserveHeight)
-		mData.frameSize.x = mData.aspectRatio * mData.frameSize.y;
-	else mData.frameSize.y = mData.frameSize.x / mData.aspectRatio;
+		mData.filmSize.x = mData.aspectRatio * mData.filmSize.y;
+	else mData.filmSize.y = mData.filmSize.x / mData.aspectRatio;
 
-	float fov = atan2(mData.frameSize.y * 0.5, mData.focalLength); // vertical fov
-	
-	mData.w = mData.focalLength * normalize(mData.target - mData.pos);
-	mData.u = normalize(cross(mData.w, mData.up)) * mData.frameSize.x * 0.5f;
-	mData.v = normalize(cross(mData.u, mData.w)) * mData.frameSize.y * 0.5f;
-
-	// checking if camera data have changes
-	bool hasChanges = false;
+	float fovY = atan2(mData.filmSize.y * 0.5, mData.focalLength);
+	mData.w = normalize(mData.target - mData.pos) * mData.focalDistance;
+	mData.u = normalize(cross(mData.w, mData.up)) * tan(fovY) * mData.focalDistance * mData.aspectRatio;
+	mData.v = normalize(cross(mData.u, mData.w)) * tan(fovY) * mData.focalDistance;
+	bool hasChanges = (bool)memcmp(&mData, &mDataPrev, sizeof(CameraData));;
 	mDataPrev = mData;
 	return hasChanges;
 }
 
-void Camera::renderUI(){
-	ui::Text("Position: %f, %f, %f", mData.pos.x, mData.pos.y, mData.pos.z);
-	ui::Text("Target: %f, %f, %f", mData.target.x, mData.target.y, mData.target.z);
-	ui::Text("Focal vector: %f, %f, %f", mData.w.x, mData.w.y, mData.w.z);
-	ui::Text("Sensor right: %f, %f, %f", mData.u.x, mData.u.y, mData.u.z);
-	ui::Text("Sensor up: %f, %f, %f", mData.v.x, mData.v.y, mData.v.z);
+void Camera::renderUI() {
+	ui::DragFloat("Lens radius", &mData.lensRadius, 0.001f, 0.f, 100.f);
+	ui::DragFloat("Focal distance", &mData.focalDistance, 0.1f, 1.f, 100.f);
 }
 
 bool OrbitCameraController::update(){	
@@ -37,8 +30,7 @@ bool OrbitCameraController::update(){
 	mpCamera->setPosition(pos);
 	mpCamera->setTarget(mData.target);
 
-	bool hasChanges = false;
-	hasChanges |= (bool)memcmp(&mData, &mDataPrev, sizeof(CameraControllerData));
+	bool hasChanges = (bool)memcmp(&mData, &mDataPrev, sizeof(CameraControllerData));
 	mDataPrev = mData;
 	return hasChanges;
 }
@@ -64,6 +56,7 @@ bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent){
 	case io::MouseEvent::Type::Move:
 		vec2f curMousePos = mouseEvent.pos;
 		vec2f deltaPos = curMousePos - mLastMousePos;
+		mLastMousePos = curMousePos;
 		if (mPanning && mOrbiting) {
 			mData.target -= mpCamera->getRight() * mData.radius * mPanSpeed * deltaPos.x;
 			mData.target += mpCamera->getUp() * mData.radius * mPanSpeed * deltaPos.y;
@@ -74,8 +67,7 @@ bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent){
 			mData.yaw = fmod(mData.yaw, 2 * M_PI);
 			mData.pitch = clamp(mData.pitch, -M_PI / 2, M_PI / 2);	
 		}
-
-		mLastMousePos = curMousePos;
+		return mOrbiting;
 	}
 	return false;
 }
@@ -89,6 +81,13 @@ bool OrbitCameraController::onKeyEvent(const KeyboardEvent& keyEvent){
 		return true;
 	}
 	return false;
+}
+
+void OrbitCameraController::renderUI() {
+	ui::DragFloat("Orbit radius", &mData.radius, 1e-2, 0.1f, 1e5f);
+	ui::DragFloat("Yaw", &mData.yaw, 1e-2, 0, 2 * M_PI);
+	ui::DragFloat("Pitch", &mData.pitch, 1e-2, -M_PI / 2, M_PI / 2);
+	ui::DragFloat3("Target", (float*)&mData.target, 1e-1, -1e5f, 1e5f);
 }
 
 KRR_NAMESPACE_END
