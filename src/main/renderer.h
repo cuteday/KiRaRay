@@ -68,30 +68,24 @@ public:
 	}
 
 	void renderUI() override{
-		PROFILE("Draw UI");
 		static bool saveHdr = false;
 		ui::Begin(KRR_PROJECT_NAME);
+		if (Profiler::instance().isEnabled() && ui::Button("Hide profiler")) 
+			Profiler::instance().setEnabled(false);
+		else if (!Profiler::instance().isEnabled() && ui::Button("Show profiler"))
+			Profiler::instance().setEnabled(true);
+		PROFILE("Draw UI");
+		ui::SameLine();
 		if (ui::Button("Screen shot"))
 			captureFrame(saveHdr);
 		ui::SameLine();
 		ui::Checkbox("Save HDR", &saveHdr);
-		
-		Profiler::instance().endEvent("Draw UI");	// enable/disable profiler between events causes crashing
-		if (Profiler::instance().isEnabled()) {
-			if (ui::Button("Hide profiler")) 
-				Profiler::instance().setEnabled(false);
-		}
-		else if (ui::Button("Show profiler"))
-			Profiler::instance().setEnabled(true);
-		Profiler::instance().startEvent("Draw UI");
-		
 		if(ui::InputInt2("Frame size", (int*)&fbSize))
 			resize(fbSize);
 		if (mpScene) mpScene->renderUI();
 		for (auto p : mpPasses)
 			if (p) p->renderUI();
 		ui::End();
-
 		if (Profiler::instance().isEnabled()) {
 			if (!mpProfilerUI) mpProfilerUI = ProfilerUI::create(Profiler::instancePtr());
 			ui::Begin("Profiler");

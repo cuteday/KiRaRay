@@ -96,6 +96,7 @@ SET(KRR_HEADERS
 	render/profiler/profiler.h
 	render/profiler/ui.h
 	scene/importer.h
+	scene/scenegraph.h
 	# others
 	main/renderer.h
 	util/check.h

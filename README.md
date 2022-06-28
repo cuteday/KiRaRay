@@ -40,7 +40,7 @@ This project uses cmake to build, no additional setting is needed. Make sure cud
 
 #### Usage
 
-**Camera Controlling.** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
+**Camera controlling.** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
 
 **Hot Keys.** `F1` for screen shots, `F2` for showing/hiding the profiler.
 
@@ -89,14 +89,4 @@ But actually i'm like **sleeps all the time**:
 <p align=center>
 <img src=common/demo/higokumaru.jpg width="700">
 
-<!-- #### Breakfast room
-
-<p align=center>
-<img src=common/demo/breakfast_room.jpg width="700"> -->
-
-#### Rungholt
-
-<p align=center>
-<img src=common/demo/rungholt.jpg width="700">
-
-#### More renderings [here](https://cutesail.com/?p=493)!
+[More renderings...](https://cutesail.com/?p=493)
