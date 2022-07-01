@@ -1,6 +1,6 @@
 # KiRaRay
 
-*KiRaRay* is a simple interactive ray-tracing renderer using optix. The purpose of this project is to let me (a beginner) learn c++ and optix in a more interesting way. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer, and many parts of the coding structures are inspired by [pbrt-v4](https://github.com/mmp/pbrt-v4). Currently it has very limited features and potentially some bugs.
+*KiRaRay* is a simple interactive ray-tracing renderer using optix. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer, and many parts of the coding structures are inspired by [pbrt-v4](https://github.com/mmp/pbrt-v4). Currently it has very limited features and potentially some bugs.
 
 <p align=center>
 <img src=common/demo/kirara.jpg width="750">
@@ -15,7 +15,7 @@
 - [x] Diffuse, microfacet, disney and fresnel-blended bsdfs.
 - [x] GPU path tracing (a megakernel version and a [wavefront](https://research.nvidia.com/publication/2013-07_megakernels-considered-harmful-wavefront-path-tracing-gpus) version).
 - [x] Next event estimation and multiple importance sampling (naive version).
-- [x] Post processing passes (e.g., tone mapping and frame accumulating).
+- [x] Post processing passes (tone mapping and frame accumulating).
 - [x] Simple CPU/GPU profiling.
 
 If possible, more features will be added in the future, for example:
@@ -27,12 +27,15 @@ If possible, more features will be added in the future, for example:
 
 ### Build and run
 
+| *MSVC@Windows* | [![Building](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml/badge.svg)](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml) |
+| -------------- | ------------------------------------------------- |
+
 #### Requirements
 
 - Nvidia gpu (Turing or higher if possible).
 - OptiX 7.0+ and CUDA 11.0+ installed.
 
-This project is tested with optix 7.3/4 and cuda 11.4/5/6. It may not compile successfully on Linux, since it is only tested on Windows (MSVC) currently. 
+This project is tested with optix 7.3/4 and cuda 11.4/5/6. It may not compile successfully on Linux, since it is only tested on newer versions of Windows (MSVC). 
 
 #### Build
 
@@ -60,7 +63,7 @@ The megakernel pathtracer should run at 30+ fps for rendering an 1 spp 1920*1080
 
 ### Epilogue
 
-I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i'm acting like a lazy old uncle, trying to sleep as more as possible (\*/ω＼\*).
+Although the initial purpose of this project is to let me (a beginner) learn c++ and optix in a more interesting way, I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i'm acting like a lazy old uncle, trying to sleep as more as possible (\*/ω＼\*).
 
 <details>
 <summary>blue archive meme</summary>
@@ -89,4 +92,4 @@ But actually i'm like **sleeps all the time**:
 <p align=center>
 <img src=common/demo/higokumaru.jpg width="700">
 
-[More renderings...](https://cutesail.com/?p=493)
+[More](https://cutesail.com/?p=493) renderings...
