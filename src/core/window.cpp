@@ -1,16 +1,18 @@
 #include "window.h"
+#include "logger.h"
 
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
 #include "device/optix.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
 namespace api{
 
 	using namespace krr::io;
-	inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey);
+	inline KeyboardEvent::Key glfwToKey(int glfwKey);
 
 	inline const char* getGLErrorString(GLenum error) {
 		switch (error) {
@@ -176,14 +178,13 @@ namespace api{
 }
 using namespace krr::api;
 
-WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVsync)
-{
-	//glfwSetErrorCallback(glfw_error_callback);
+WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVsync) {
 	glfwSetErrorCallback(ApiCallbacks::errorCallback);
 
 	initGLFW();
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);	// we need this to support immediate mode (for simple framebuffer bliting), instead of core profile only
 	glfwWindowHint(GLFW_VISIBLE, visible);
 
 	handle = glfwCreateWindow(size.x, size.y, title, NULL, NULL);
@@ -203,6 +204,12 @@ WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVs
 	glfwSetScrollCallback(handle, ApiCallbacks::mouseWheelCallback);
 	glfwSetCharCallback(handle, ApiCallbacks::charInputCallback);
 
+	GLenum e = glewInit();
+	if (e != GLEW_OK) {
+		glfwDestroyWindow(handle);
+		Log(Error, "GLEW initialization failed: %s\n", glewGetErrorString(e));
+	}
+
 	initUI(handle);
 }
 
@@ -211,89 +218,45 @@ WindowApp::~WindowApp(){
 	glfwTerminate();
 }
 
-void WindowApp::resize(const vec2i &size)
-{
+void WindowApp::resize(const vec2i &size) {
 	glfwMakeContextCurrent(handle);
 	glfwSetWindowSize(handle, size.x, size.y);
-	if (fbPointer)
-		cudaFree(fbPointer);
-	cudaMallocManaged(&fbPointer, sizeof(vec4f) * size.x * size.y);
-
+	fbBuffer.resize(sizeof(vec4f) * size.x * size.y);
 	fbSize = size;
-	if (fbTexture == 0)
-		GL_CHECK(glGenTextures(1, &fbTexture));
-	else if (cuDisplayTexture)
-	{
+
+	if (fbTexture == 0) GL_CHECK(glGenTextures(1, &fbTexture));
+	if (fbPbo) GL_CHECK(glDeleteBuffers(1, &fbPbo));
+	if (fbPbo == 0)  GL_CHECK(glGenBuffers(1, &fbPbo));
+	else if (cuDisplayTexture) {
 		cudaGraphicsUnregisterResource(cuDisplayTexture);
 		cuDisplayTexture = 0;
 	}
 
-	GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbTexture));
-	GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, size.x, size.y, 0, GL_RGBA,
-						  GL_FLOAT, nullptr));
+	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, fbPbo));
+	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(vec4f) * size.x * size.y, nullptr, GL_STREAM_DRAW));
+	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
 	// We need to re-register when resizing the texture
-	cudaError_t rc = cudaGraphicsGLRegisterImage(&cuDisplayTexture, fbTexture, GL_TEXTURE_2D, 0);
+	cudaError_t rc = cudaGraphicsGLRegisterBuffer(&cuDisplayTexture, fbPbo, cudaGraphicsMapFlagsWriteDiscard);
 
-	bool forceSlowDisplay = false;
-	if (rc != cudaSuccess || forceSlowDisplay)
-	{
-		logError("Could not do CUDA graphics resource sharing "
-			"for the display buffer texture (" + 
-			string(cudaGetErrorString(cudaGetLastError())) +
-			")... falling back to a slower path"
-			);
-
-		resourceSharingSuccessful = false;
-		if (cuDisplayTexture)
-		{
-			cudaGraphicsUnregisterResource(cuDisplayTexture);
-			cuDisplayTexture = 0;
-		}
-	}
-	else
-	{
-		resourceSharingSuccessful = true;
-	}
+	if (rc != cudaSuccess) 
+		logError("Could not do CUDA graphics resource sharing (DMA) for the display buffer texture (" + 
+			string(cudaGetErrorString(cudaGetLastError())) + ")... ", true);
 }
 
-void WindowApp::draw()
-{
+void WindowApp::draw() {
 	glfwMakeContextCurrent(handle);
 
-	if (resourceSharingSuccessful)
-	{
-		// there are two ways of transfering device data to an opengl texture.
-		// via cudaMemcpyToArray, or glTexSubImage2D. 
-		// the CUDA api is faster, while needs to register the texture to device beforehand.
-		CUDA_CHECK(cudaGraphicsMapResources(1, &cuDisplayTexture));
+	// there are two ways of transfering device data to an opengl texture.
+	// via cudaMemcpyToArray, or glTexSubImage2D. 
+	// the CUDA api is faster, while needing to register the texture to device beforehand.
+	CUDA_CHECK(cudaGraphicsMapResources(1, &cuDisplayTexture));
 
-		cudaArray_t array;
-		// render data are put into fbPointer, which is mapped onto fbTexture
-		CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&array, cuDisplayTexture, 0, 0));
+	void* fbPointer;
+	size_t fbBytes;
+	CUDA_CHECK(cudaGraphicsResourceGetMappedPointer(&fbPointer, &fbBytes, cuDisplayTexture));
+	CUDA_CHECK(cudaMemcpy(fbPointer, (void*)fbBuffer.data(), fbBytes, cudaMemcpyDeviceToDevice));
 
-		CUDA_CHECK(cudaMemcpy2DToArray(array,
-								0,
-								0,
-								reinterpret_cast<const void*>(fbPointer),
-								fbSize.x * sizeof(vec4f),
-								fbSize.x * sizeof(vec4f),
-								fbSize.y,
-								cudaMemcpyDeviceToDevice));
-		
-		//CUDA_CHECK(cudaMemcpyToArray(array, 0, 0, reinterpret_cast<const void*>(fbPointer),
-		//	sizeof(vec4f) * fbSize.x * fbSize.y, cudaMemcpyDeviceToDevice));
-	}
-	else
-	{
-		// if cuda graphics interop failed, use opengl api to copy data into fbTexture
-		GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbTexture));
-		glEnable(GL_TEXTURE_2D);
-		GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0,
-								 0, 0,
-								 fbSize.x, fbSize.y,
-								 GL_RGBA, GL_FLOAT, fbPointer));
-	}
 	glDisable(GL_LIGHTING);
 	glColor3f(1, 1, 1);
 
@@ -302,11 +265,12 @@ void WindowApp::draw()
 
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, fbTexture);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, fbPbo);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, fbSize.x, fbSize.y, 0, GL_RGBA, GL_FLOAT, nullptr);
 
 	glDisable(GL_DEPTH_TEST);
-
 	glViewport(0, 0, fbSize.x, fbSize.y);
 
 	glMatrixMode(GL_PROJECTION);
@@ -329,49 +293,43 @@ void WindowApp::draw()
 	}
 	glEnd();
 
-	if (resourceSharingSuccessful)
-	{
-		CUDA_CHECK(cudaGraphicsUnmapResources(1, &cuDisplayTexture));
-	}
+	CUDA_CHECK(cudaGraphicsUnmapResources(1, &cuDisplayTexture));
 }
 
-void WindowApp::run()
-{
+void WindowApp::run() {
 	int width, height;
 	glfwGetFramebufferSize(handle, &width, &height);
 	resize(vec2i(width,height));
 
-	while (!glfwWindowShouldClose(handle))
-	{
+	while (!glfwWindowShouldClose(handle)) {
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
 		render();
+			
 		draw();
-
 		renderUI();
-
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+		{
+			PROFILE("Draw UI");
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		}
+		
 		glfwSwapBuffers(handle);
 		glfwPollEvents();
 	}
 }
 
 namespace api {
-	inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey)
-	{
+	inline KeyboardEvent::Key glfwToKey(int glfwKey) {
 		static_assert(GLFW_KEY_ESCAPE == 256, "GLFW_KEY_ESCAPE is expected to be 256");
-		if (glfwKey < GLFW_KEY_ESCAPE)
-		{
+		if (glfwKey < GLFW_KEY_ESCAPE) {
 			// Printable keys are expected to have the same value
 			return (KeyboardEvent::Key)glfwKey;
 		}
 
-		switch (glfwKey)
-		{
+		switch (glfwKey) {
 		case GLFW_KEY_ESCAPE:
 			return KeyboardEvent::Key::Escape;
 		case GLFW_KEY_ENTER:

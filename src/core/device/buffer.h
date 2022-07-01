@@ -12,21 +12,15 @@ KRR_NAMESPACE_BEGIN
 class CUDABuffer {
 public:
 	CUDABuffer() = default;
+	CUDABuffer(size_t size) { resize(size); }
 	~CUDABuffer() { free(); }
 
-	KRR_CALLABLE CUdeviceptr data() const
-	{
-		return (CUdeviceptr)d_ptr;
-	}
-
-	KRR_CALLABLE size_t size() const
-	{
-		return sizeInBytes;
-	}
+	KRR_CALLABLE void setPtr(void* ptr) { d_ptr = ptr; }
+	KRR_CALLABLE CUdeviceptr data() const { return (CUdeviceptr)d_ptr; }
+	KRR_CALLABLE size_t size() const { return sizeInBytes; }
 
 	//! re-size buffer to given number of bytes
-	void resize(size_t size)
-	{
+	void resize(size_t size) {
 		if (sizeInBytes == size) return;
 		if (d_ptr) free();
 		this->sizeInBytes = size;
@@ -34,8 +28,7 @@ public:
 	}
 
 	//! free allocated memory
-	void free()
-	{
+	void free() {
 		CUDA_CHECK(cudaFree(d_ptr));
 		d_ptr = nullptr;
 		sizeInBytes = 0;

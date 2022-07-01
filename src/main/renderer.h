@@ -20,7 +20,6 @@ public:
 
 	void resize(const vec2i& size) override {
 		if (!mpScene) return;
-		mRenderBuffer.resize(size.x * size.y * sizeof(vec4f));
 		WindowApp::resize(size);
 		for (auto p : mpPasses)
 			p->resize(size);
@@ -61,8 +60,8 @@ public:
 		mpScene->update();
 		for (auto p : mpPasses)
 			if (p) { 
-				p->beginFrame(mRenderBuffer);
-				p->render(mRenderBuffer); 
+				p->beginFrame(fbBuffer);
+				p->render(fbBuffer);
 			}
 		if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
 	}
@@ -70,10 +69,8 @@ public:
 	void renderUI() override{
 		static bool saveHdr = false;
 		ui::Begin(KRR_PROJECT_NAME);
-		if (Profiler::instance().isEnabled() && ui::Button("Hide profiler")) 
-			Profiler::instance().setEnabled(false);
-		else if (!Profiler::instance().isEnabled() && ui::Button("Show profiler"))
-			Profiler::instance().setEnabled(true);
+		if (ui::Button(Profiler::instance().isEnabled() ?"Hide profiler" : "Show profiler"))
+			Profiler::instance().setEnabled(!Profiler::instance().isEnabled());
 		PROFILE("Draw UI");
 		ui::SameLine();
 		if (ui::Button("Screen shot"))
@@ -95,7 +92,7 @@ public:
 	}
 
 	void draw() override {
-		mRenderBuffer.copy_to_device(fbPointer, fbSize.x * fbSize.y);
+		PROFILE("Blit framebuffer");
 		WindowApp::draw();
 	}
 
@@ -103,16 +100,15 @@ private:
 	void captureFrame(bool hdr = false) {
 		string extension = hdr ? ".exr" : ".png";
 		Image image(fbSize, Image::Format::RGBAfloat);
-		mRenderBuffer.copy_to_host(image.data(), fbSize.x * fbSize.y * 4 * sizeof(float));
+		fbBuffer.copy_to_host(image.data(), fbSize.x * fbSize.y * 4 * sizeof(float));
 		fs::path filepath = File::resolve("common/images") / ("krr_" + Log::nowToString("%H_%M_%S") + extension);
-		image.saveImage(filepath.string());
+		image.saveImage(filepath);
 		logSuccess("Saved screen shot to " + filepath.string());
 	}
 
 	std::vector<RenderPass::SharedPtr> mpPasses;
 	Scene::SharedPtr mpScene;
 	ProfilerUI::UniquePtr mpProfilerUI;
-	CUDABuffer mRenderBuffer;
 };
 
 KRR_NAMESPACE_END

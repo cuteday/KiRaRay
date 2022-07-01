@@ -70,6 +70,12 @@ inline void logWarning(const std::string& msg) { Logger::log(Logger::Level::Warn
 inline void logError(const std::string& msg, bool terminate = false) { Logger::log(Logger::Level::Error, msg, terminate); }
 inline void logFatal(const std::string& msg, bool terminate = true) { Logger::log(Logger::Level::Fatal, msg, terminate); }
 
+#define Log(level, fmt, ...) do{				\
+		char s[256];							\
+		sprintf(s, fmt, ## __VA_ARGS__);		\
+		log ## level (s);						\
+	} while (0)
+
 // util functions
 namespace Log {
 

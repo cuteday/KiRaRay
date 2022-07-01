@@ -1,12 +1,33 @@
 #pragma once
 
 #include "common.h"
+#include "window.h"
 #include "math/math.h"
 #include "device/buffer.h"
 #include "scene.h"
-#include "window.h"
 
 KRR_NAMESPACE_BEGIN
+
+class RenderResource {
+	RenderResource(string name) :name(name) { glGenBuffers(1, &pbo); }
+	~RenderResource() { glDeleteBuffers(1, &pbo); }
+	void resize(size_t size) {}
+	void registerCUDA();
+	void* map() {};
+	void unmap() {};
+private:
+	string name;
+	GLuint pbo;
+};
+
+class RenderData {
+public:
+	RenderData() = default;
+	RenderResource* getResource(string name);
+	RenderResource* createResource(string name);
+private:
+	std::map<string, RenderResource*> resources;
+};
 
 class RenderPass{
 public:

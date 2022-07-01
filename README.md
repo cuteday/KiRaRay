@@ -42,7 +42,7 @@ This project uses cmake to build, no additional setting is needed. Make sure cud
 
 **Camera controlling.** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
 
-**Hot Keys.** `F1` for screen shots, `F2` for showing/hiding the profiler.
+**Hot keys.** `F1` for screen shots, `F2` for showing/hiding the profiler.
 
 ### Common Issues
 

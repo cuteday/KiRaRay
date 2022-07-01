@@ -160,7 +160,6 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene){
 void WavefrontPathTracer::beginFrame(CUDABuffer& frame){
 	if (!mpScene || !maxQueueSize) return;
 	PROFILE("Begin frame");
-	vec4f* frameBuffer = (vec4f*)frame.data();
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){	// reset per-pixel radiance
 		pixelState->L[pixelId] = 0;
 	});
