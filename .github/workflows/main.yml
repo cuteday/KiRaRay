@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix: 
         cuda: ["11.5.1"]
-        cuda_arch: ["86"]
+        cuda_arch: ["61"]
         os: ["windows-2019"]
         visual_studio: ["Visual Studio 16 2019"]
     
