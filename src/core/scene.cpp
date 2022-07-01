@@ -35,6 +35,7 @@ void Scene::renderUI() {
 			mpCameraController->renderUI();
 		}
 		if (ui::CollapsingHeader("Environment lights")) {
+			CUDA_SYNC_CHECK();
 			for (int i = 0; i < mData.infiniteLights->size(); i++) {
 				if (ui::CollapsingHeader(to_string(i).c_str())) {
 					(*mData.infiniteLights)[i].renderUI();
@@ -42,6 +43,7 @@ void Scene::renderUI() {
 			}
 		}
 		if (ui::CollapsingHeader("Materials")) {
+			CUDA_SYNC_CHECK();
 			for (int i = 0; i < mData.materials->size(); i++) {
 				if (ui::CollapsingHeader((*mData.materials)[i].getName().c_str())) {
 					(*mData.materials)[i].renderUI();

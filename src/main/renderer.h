@@ -36,10 +36,13 @@ public:
 		if (keyEvent.type == io::KeyboardEvent::Type::KeyPressed) {
 			switch (keyEvent.key) {		// top-prior operations captured by application
 			case io::KeyboardEvent::Key::F1:
-				captureFrame();
+				mShowUI = !mShowUI;
 				return;
 			case io::KeyboardEvent::Key::F2:
 				Profiler::instance().setEnabled(!Profiler::instance().isEnabled());
+				return;
+			case io::KeyboardEvent::Key::F3:
+				captureFrame();
 				return;
 			}
 		}
@@ -66,23 +69,44 @@ public:
 		if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
 	}
 
-	void renderUI() override{
-		static bool saveHdr = false;
-		ui::Begin(KRR_PROJECT_NAME);
-		if (ui::Button(Profiler::instance().isEnabled() ?"Hide profiler" : "Show profiler"))
-			Profiler::instance().setEnabled(!Profiler::instance().isEnabled());
-		PROFILE("Draw UI");
-		ui::SameLine();
-		if (ui::Button("Screen shot"))
-			captureFrame(saveHdr);
-		ui::SameLine();
-		ui::Checkbox("Save HDR", &saveHdr);
-		if(ui::InputInt2("Frame size", (int*)&fbSize))
-			resize(fbSize);
-		if (mpScene) mpScene->renderUI();
-		for (auto p : mpPasses)
-			if (p) p->renderUI();
-		ui::End();
+	void renderUI() override {
+		static bool saveHdr{};
+		static bool showProfiler;
+		static bool showDashboard{ true };
+		
+		if (!mShowUI) return;
+		showProfiler = Profiler::instance().isEnabled();
+		if (ui::BeginMainMenuBar()) {
+			if (ui::BeginMenu("Views")) {
+				ui::MenuItem("Global UI", NULL, &mShowUI);
+				ui::MenuItem("Dashboard", NULL, &showDashboard);
+				if(ui::MenuItem("Profiler", NULL, &showProfiler))
+					Profiler::instance().setEnabled(showProfiler); 
+				ui::EndMenu();
+			}
+			if (ui::BeginMenu("Tools")) {
+				ui::MenuItem("Save HDR", NULL, &saveHdr);
+				if (ui::MenuItem("Screen shot")) captureFrame();
+				ui::EndMenu();
+			}
+			ui::EndMainMenuBar();
+		}
+
+		if(showDashboard){
+			ui::Begin(KRR_PROJECT_NAME);
+			if (ui::Checkbox("Profiler", &showProfiler));
+				Profiler::instance().setEnabled(showProfiler); ui::SameLine();
+			ui::Checkbox("Save HDR", &saveHdr); ui::SameLine();
+			if (ui::Button("Screen shot"))
+				captureFrame(saveHdr);
+			if (ui::InputInt2("Frame size", (int*)&fbSize))
+				resize(fbSize);
+			if (mpScene) mpScene->renderUI();
+			for (auto p : mpPasses)
+				if (p) p->renderUI();
+			ui::End();
+		}
+		
 		if (Profiler::instance().isEnabled()) {
 			if (!mpProfilerUI) mpProfilerUI = ProfilerUI::create(Profiler::instancePtr());
 			ui::Begin("Profiler");
@@ -106,6 +130,7 @@ private:
 		logSuccess("Saved screen shot to " + filepath.string());
 	}
 
+	bool mShowUI{ true };
 	std::vector<RenderPass::SharedPtr> mpPasses;
 	Scene::SharedPtr mpScene;
 	ProfilerUI::UniquePtr mpProfilerUI;

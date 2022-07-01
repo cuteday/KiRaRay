@@ -29,9 +29,8 @@ public:
 		if (ui::CollapsingHeader("Tone mapping pass")) {
 			ui::Checkbox("Enabled", &mEnable);
 			if (mEnable) {
-				ui::SliderFloat("Exposure compensation",
-					&mExposureCompensation, 0.001, 100, "%.3f");
-				ui::ListBox("Tonemap operator", (int*)&mOperator, operators, (int)Operator::NumsOperators);
+				ui::SliderFloat("Exposure compensation", &mExposureCompensation, 0.001, 100, "%.3f");
+				ui::Combo("Tonemap operator", (int*)&mOperator, operators, (int)Operator::NumsOperators);
 			}
 		}
 	}

@@ -102,8 +102,7 @@ Image::Image(vec2i size, Format format, bool srgb):
 	mData = new uchar[size.x * size.y * 4 * getElementSize()];
 }
 
-bool Image::loadImage(const fs::path& filepath, bool srgb)
-{
+bool Image::loadImage(const fs::path& filepath, bool srgb) {
 	vec2i size;
 	int channels;
 	string filename = filepath.string();
@@ -145,8 +144,7 @@ bool Image::loadImage(const fs::path& filepath, bool srgb)
 	return true;
 }
 
-bool Image::saveImage(const fs::path& filepath)
-{
+bool Image::saveImage(const fs::path& filepath) {
 	string extension = filepath.extension().string();
 	uint nElements = mSize.x * mSize.y * 4;
 	if (extension == ".png") {
@@ -294,11 +292,11 @@ void Material::renderUI() {
 	static const char* bsdfTypes[] = {"Diffuse", "FresnelBlend", "Disney"};
 	ui::ListBox("Shading model", (int*)&mShadingModel, shadingModels, 2);
 	ui::ListBox("BSDF", (int*)&mBsdfType, bsdfTypes, (int)BsdfType::Count);
-	ui::InputFloat4("Diffuse", (float*)&mMaterialParams.diffuse);
-	ui::InputFloat4("Specular", (float*)&mMaterialParams.specular);
-	ui::InputFloat3("Emissive", (float*)&mMaterialParams.emissive);
-	ui::InputFloat("Diffuse transmission", &mMaterialParams.diffuseTransmission);
-	ui::InputFloat("Specular transmission", &mMaterialParams.specularTransmission);
+	ui::DragFloat4("Diffuse", (float*)&mMaterialParams.diffuse, 1e-3, 0, 1);
+	ui::DragFloat4("Specular", (float*)&mMaterialParams.specular, 1e-3, 0, 1);
+	ui::DragFloat3("Emissive", (float*)&mMaterialParams.emissive, 1e-3, 0, 1);
+	ui::DragFloat("Diffuse transmission", &mMaterialParams.diffuseTransmission, 1e-3, 0, 1);
+	ui::DragFloat("Specular transmission", &mMaterialParams.specularTransmission, 1e-3, 0, 1);
 	ui::Checkbox("Double sided", &mDoubleSided);
 	if (ui::CollapsingHeader("Texture slots")) {
 		for (int i = 0; i < (int)TextureType::Count; i++) {

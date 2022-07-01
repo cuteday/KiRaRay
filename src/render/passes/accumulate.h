@@ -20,6 +20,7 @@ public:
 			if (ui::Checkbox("Enabled", &mEnable)) reset();
 			if (mEnable) {
 				ui::Text("Accumulate count: %d\n", mAccumCount);
+				if(ui::DragInt("Max accum count", (int*) & mMaxAccumCount, 1, 0, 1e9)) reset();
 				if (ui::Button("reset")) reset();
 			}
 		}
@@ -41,7 +42,7 @@ private:
 	bool mEnable{ true };
 	uint mAccumCount{ 0 };
 	bool mMovingAverage{ false };
-	uint mMaxAccumCount{ (uint)1e9 };
+	uint mMaxAccumCount{ (uint)0 };
 	CUDABuffer *mAccumBuffer;
 };
 
