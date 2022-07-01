@@ -2,14 +2,18 @@
 #include "common.h"
 #include <atomic>
 
-#ifdef KRR_DEVICE_CODE
-#include <cuda/atomic>
-#endif
-
 #include "math/math.h"
 #include "device/cuda.h"
 #include "logger.h"
 #include "workitem.h"
+
+#ifdef KRR_DEVICE_CODE
+#if (__CUDA_ARCH__ < 700)
+#define KRR_LEGACY_CUDA_ATOMICS
+#else 
+#include <cuda/atomic>
+#endif
+#endif
 
 KRR_NAMESPACE_BEGIN
 
@@ -34,14 +38,22 @@ public:
     WorkQueue(int n, Allocator alloc) : SOA<WorkItem>(n, alloc) {}
     WorkQueue& operator=(const WorkQueue& w) {
         SOA<WorkItem>::operator=(w);
+#if defined(KRR_DEVICE_CODE) && defined(KRR_LEGACY_CUDA_ATOMICS)
+		m_size = w.m_size;
+#else
         m_size.store(w.m_size.load());
+#endif
         return *this;
     }
 
     KRR_CALLABLE
         int size() const {
 #ifdef KRR_DEVICE_CODE
+#ifdef KRR_LEGACY_CUDA_ATOMICS
+        return m_size;
+#else
         return m_size.load(cuda::std::memory_order_relaxed);
+#endif
 #else
         return m_size.load(std::memory_order_relaxed);
 #endif
@@ -49,7 +61,11 @@ public:
     KRR_CALLABLE
         void reset() {
 #ifdef KRR_DEVICE_CODE
+#ifdef KRR_LEGACY_CUDA_ATOMICS
+        m_size = 0;
+#else
         m_size.store(0, cuda::std::memory_order_relaxed);
+#endif
 #else
         m_size.store(0, std::memory_order_relaxed);
 #endif
@@ -66,7 +82,11 @@ protected:
     KRR_CALLABLE
         int allocateEntry() {
 #ifdef KRR_DEVICE_CODE
+#ifdef KRR_LEGACY_CUDA_ATOMICS
+        return atomicAdd(&m_size, 1);
+#else
         return m_size.fetch_add(1, cuda::std::memory_order_relaxed);
+#endif
 #else
         return m_size.fetch_add(1, std::memory_order_relaxed);
 #endif
@@ -74,7 +94,11 @@ protected:
 
 private:
 #ifdef KRR_DEVICE_CODE
+#ifdef KRR_LEGACY_CUDA_ATOMICS
+    int m_size{ 0 };
+#else
     cuda::atomic<int, cuda::thread_scope_device> m_size{ 0 };
+#endif
 #else
     std::atomic<int> m_size{ 0 };
 #endif 

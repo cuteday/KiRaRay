@@ -85,9 +85,9 @@ public:
 				cudaMemPrefetchAsync(iter.first, iter.second, 0, 0 /* stream */));
 			bytes += iter.second;
 		}
-		CUDA_CHECK(cudaDeviceSynchronize());
 		logDebug("Done prefetching total bytes: " + to_string(bytes));
 #endif
+		CUDA_CHECK(cudaDeviceSynchronize());
 	}
 	
 	size_t BytesAllocated() const { return bytesAllocated; }

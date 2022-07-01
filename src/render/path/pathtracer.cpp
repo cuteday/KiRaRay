@@ -18,12 +18,12 @@ PathTracer::PathTracer() {
 	logInfo("setting up optix pipeline ...");
 	createPipeline();
 	
-	launchParams = gpContext->alloc->new_object<LaunchParamsPT>();
+	launchParamsDevice = gpContext->alloc->new_object<LaunchParamsPT>();
 	logSuccess("PathTracer::Optix 7 context fully set up");
 }
 
 PathTracer::~PathTracer() {
-	gpContext->alloc->deallocate_object(launchParams);
+	gpContext->alloc->deallocate_object(launchParamsDevice);
 }
 
 void PathTracer::createProgramGroups() {
@@ -70,9 +70,9 @@ void PathTracer::createPipeline() {
 	));
 	logDebug(log);
 
-	//OPTIX_CHECK(optixPipelineSetStackSize (/* [in] The pipeline to configure the stack size for */
-	//	pipeline, 2 * 1024, 2 * 1024, 2 * 1024, 1));
-	//logDebug(log);
+	OPTIX_CHECK(optixPipelineSetStackSize (/* [in] The pipeline to configure the stack size for */
+		pipeline, 2 * 1024, 2 * 1024, 2 * 1024, 1));
+	logDebug(log);
 }
 
 
@@ -112,49 +112,50 @@ void PathTracer::buildSBT() {
 }
 
 void PathTracer::buildAS() {
-	OptixTraversableHandle& asHandle = launchParams->traversable;
+	OptixTraversableHandle& asHandle = launchParams.traversable;
 	asHandle = OptiXBackend::buildAccelStructure(gpContext->optixContext, gpContext->cudaStream, *mpScene);
 }
 
 void PathTracer::renderUI() {
 	if (ui::CollapsingHeader("Path tracer")) {
 		ui::Text("Path tracing parameters");
-		ui::InputInt("Samples per pixel", &launchParams->spp);
-		ui::SliderFloat("RR absorption probability", &launchParams->probRR, 0.f, 1.f, "%.3f");
-		ui::SliderInt("Max recursion depth", &launchParams->maxDepth, 0, 30);
-		if (mpScene->mData.lights->size() > 0)	// only when we have light sources...
-			ui::Checkbox("Next event estimation", &launchParams->NEE);
-		if (launchParams->NEE) {
-			ui::Checkbox("Multiple importance sampling", &launchParams->MIS);
-			ui::InputInt("Light sample count", &launchParams->lightSamples);
+		ui::InputInt("Samples per pixel", &launchParams.spp);
+		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
+		ui::SliderInt("Max recursion depth", &launchParams.maxDepth, 0, 30);
+		//if (mpScene->mData.lights->size() > 0)	// only when we have light sources...
+			ui::Checkbox("Next event estimation", &launchParams.NEE);
+		if (launchParams.NEE) {
+			ui::Checkbox("Multiple importance sampling", &launchParams.MIS);
+			ui::InputInt("Light sample count", &launchParams.lightSamples);
 		}
 		ui::Text("Debugging");
-		ui::Checkbox("Shader debug output", &launchParams->debugOutput);
-		ui::InputInt2("Debug pixel", (int*)&launchParams->debugPixel);
+		ui::Checkbox("Shader debug output", &launchParams.debugOutput);
+		ui::InputInt2("Debug pixel", (int*)&launchParams.debugPixel);
 	}
 }
 
 void PathTracer::render(CUDABuffer& frame) {
-	if (launchParams->fbSize.x * launchParams->fbSize.y == 0) return;
+	if (mFrameSize.x * mFrameSize.y == 0) return;
 	PROFILE("Megakernel Path Tracer");
 	{
 		PROFILE("Updating parameters");
 		CUDATrackedMemory::singleton.PrefetchToGPU();
-		launchParams->fbSize = mFrameSize;
-		launchParams->colorBuffer = (vec4f*)frame.data();
-		launchParams->camera = mpScene->getCamera();
-		launchParams->sceneData = mpScene->getSceneData();
-		launchParams->frameID++;
+		launchParams.fbSize = mFrameSize;
+		launchParams.colorBuffer = (vec4f*)frame.data();
+		launchParams.camera = mpScene->getCamera();
+		launchParams.sceneData = mpScene->getSceneData();
+		launchParams.frameID++;
+		cudaMemcpy(launchParamsDevice, &launchParams, sizeof(LaunchParamsPT), cudaMemcpyHostToDevice);
 	}
 	{
 		PROFILE("Path tracing kernel");
 		OPTIX_CHECK(optixLaunch(
 			pipeline, gpContext->cudaStream,
-			(CUdeviceptr)launchParams,
+			(CUdeviceptr)launchParamsDevice,
 			sizeof(LaunchParamsPT),
 			&sbt,
-			launchParams->fbSize.x,
-			launchParams->fbSize.y,
+			launchParams.fbSize.x,
+			launchParams.fbSize.y,
 			1
 		));
 	}

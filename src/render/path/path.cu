@@ -84,8 +84,10 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 	float misWeight = 1;
 
 	if (launchParams.MIS) misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
-	if (isnan(misWeight)) printf("invalid misWeight\n");
-
+	//if (isnan(misWeight)) 
+	// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
+	//	printf("nee misWeight %f lightPdf %f bsdfPdf %f lightSelect %f lightSample %f\n",
+	//		misWeight, lightPdf, bsdfPdf, sampledLight.pdf, ls.pdf);
 	vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
 	vec3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
 

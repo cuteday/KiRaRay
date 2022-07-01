@@ -29,7 +29,7 @@ public:
 	void renderUI() override;
 	void render(CUDABuffer& frame) override;
 	void resize(const vec2i& size) override { 
-		mFrameSize = launchParams->fbSize = size; 
+		mFrameSize = launchParams.fbSize = size; 
 	}
 
 	void setScene(Scene::SharedPtr scene) override {
@@ -51,8 +51,8 @@ private:
 	inter::vector<RaygenRecord> raygenRecords;
 	inter::vector<HitgroupRecord> hitgroupRecords;
 	OptixShaderBindingTable sbt = {};
-
-	LaunchParamsPT* launchParams;
+	LaunchParamsPT launchParams;
+	LaunchParamsPT* launchParamsDevice;
 };
 
 KRR_NAMESPACE_END

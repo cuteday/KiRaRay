@@ -65,7 +65,7 @@ void Profiler::Event::start(uint32_t frameIndex, CUstream stream) {
 	frameData.cpuStartTime = CpuTimer::getCurrentTimePoint();
 
 	// Update GPU time.
-	assert(frameData.pActiveTimer == -1);
+	assert(frameData.activeTimer == -1);
 	assert(frameData.currentTimer <= frameData.gpuTimers.size());
 	if (frameData.currentTimer == frameData.gpuTimers.size()) {
 	    frameData.gpuTimers.push_back(GpuTimer());

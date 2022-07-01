@@ -93,16 +93,16 @@ void WavefrontPathTracer::generateScatterRays(){
 			LightSample ls = light.sampleLi(sampler.get2D(), { sd.pos, sd.N });
 			vec3f wiWorld = normalize(ls.intr.p - sd.pos);
 			vec3f wiLocal = sd.toLocal(wiWorld);
-			// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
+			
 			float lightPdf = sampledLight.pdf * ls.pdf;
 			float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
 			vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
-
 			float misWeight = evalMIS(lightPdf, bsdfPdf);
+			// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
+			//if (isnan(misWeight))
+			//	printf("nee misWeight %f lightPdf %f bsdfPdf %f lightSelect %f lightSample %f\n",
+			//		misWeight, lightPdf, bsdfPdf, sampledLight.pdf, ls.pdf);
 			if (!isnan(misWeight) && !isinf(misWeight)) {
-				//if(isnan(misWeight))
-				//	printf("nee misWeight %f lightPdf %f bsdfPdf %f lightSelect %f lightSample %f\n",
-				//		misWeight, lightPdf, bsdfPdf, sampledLight.pdf, ls.pdf);
 				Ray shadowRay = sd.getInteraction().spawnRay(ls.intr);
 				ShadowRayWorkItem sw = {};
 				sw.ray = shadowRay;
