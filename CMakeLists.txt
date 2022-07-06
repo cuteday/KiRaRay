@@ -106,6 +106,19 @@ target_compile_options (
 )
 
 ###############################################################################
+# python3 (for building python binding)
+###############################################################################
+find_package(Python3 COMPONENTS Interpreter Development)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/pybind11/tools")
+find_package(PythonLibsNew)
+if (PYTHONLIBS_FOUND)
+	set(KRR_ENABLE_PYTHON ON)
+	message("Find python at ${PYTHON_INCLUDE_DIRS}")
+else()
+	message("Do not find python, disable python binding")
+endif()
+
+###############################################################################
 # platform
 ###############################################################################
 if(WIN32)

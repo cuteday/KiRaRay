@@ -8,3 +8,7 @@
 [submodule "src/ext/glfw"]
 	path = src/ext/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule ".\\src\\ext\\pybind11"]
+	path = .\\src\\ext\\pybind11
+	url = https://github.com/pybind/pybind11.git
+	branch = stable
