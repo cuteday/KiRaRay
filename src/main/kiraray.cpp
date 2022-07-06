@@ -1,6 +1,7 @@
 #include <filesystem>
 
 #include "file.h"
+#include "json.hpp"
 #include "kiraray.h"
 
 #include "render/passes/accumulate.h"
