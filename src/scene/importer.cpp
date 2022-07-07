@@ -233,6 +233,7 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
 	importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, 60);
 
+	logDebug("Start loading scene with assimp importer");
 	mpAiScene = (aiScene*)importer.ReadFile(filepath, postProcessSteps);
 	if (!mpAiScene) logFatal("Assimp::load model failed");
 

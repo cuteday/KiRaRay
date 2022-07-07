@@ -9,7 +9,7 @@
 # http://www.graphics.cornell.edu/online/box/data.html
 #
 
-mtllib CornellBox-Original.mtl
+mtllib cbox.mtl
 
 ## Object floor
 v  -1.01  0.00   0.99

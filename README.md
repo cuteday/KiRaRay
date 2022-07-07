@@ -47,6 +47,14 @@ This project uses cmake to build, no additional setting is needed. Make sure cud
 
 **Hot keys.** `F1` for showing/hiding UI,  `F2` for showing/hiding the profiler, and `F3` for screen shots.
 
+#### Python binding
+
+Currently the pythin scripting can only be used to start the renderer, for example:
+
+~~~Python
+python scripts/run.py --scene "common/assets/scenes/cbox/cbox.obj"
+~~~
+
 ### Common Issues
 
 #### Choosing generator for Visual Studio
