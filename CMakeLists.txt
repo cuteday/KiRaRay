@@ -1,4 +1,4 @@
-  CMAKE_MINIMUM_REQUIRED ( VERSION 3.19 )
+CMAKE_MINIMUM_REQUIRED ( VERSION 3.19 )
 
 PROJECT (KiRaRay
 	DESCRIPTION "A simple implememtation of an optix renderer."
@@ -24,6 +24,7 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_DEBUG_POSTFIX "")
 
 # the CONFIG inherently comes from CMAKE_BUILD_TYPE
 add_compile_definitions ("$<$<CONFIG:Debug>:KRR_DEBUG_BUILD>")
@@ -108,7 +109,6 @@ target_compile_options (
 ###############################################################################
 # python3 (for building python binding)
 ###############################################################################
-find_package(Python3 COMPONENTS Interpreter Development)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/pybind11/tools")
 find_package(PythonLibsNew)
 if (PYTHONLIBS_FOUND)
