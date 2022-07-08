@@ -21,6 +21,7 @@ public:
 		// TODO: this cannot work
 		//cudaEventDestroy(start);
 		//cudaEventDestroy(stop);
+		glDeleteQueries(1, &glQuery);
 	};
 
 	void begin(CUstream _stream = 0) {

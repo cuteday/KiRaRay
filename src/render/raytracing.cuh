@@ -18,22 +18,5 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 		std::forward<Args>(payload)...);	/* (unpacked pointers to) payloads */
 }
 
-KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
-	float tMax, int rayType, OptixRayFlags flags, void* payload) {
-	uint u0, u1;
-	packPointer(payload, u0, u1);
-	traceRay(traversable, ray, tMax, rayType, flags, u0, u1);
-}
-
-template <typename... Args>
-KRR_DEVICE_FUNCTION bool traceShadowRay(OptixTraversableHandle traversable,
-	Ray ray, float tMax) {
-	ShadowRayData sd = { false };
-	OptixRayFlags flags = (OptixRayFlags)(OPTIX_RAY_FLAG_DISABLE_ANYHIT);
-	uint u0, u1;
-	packPointer(&sd, u0, u1);
-	traceRay(traversable, ray, tMax, (int)SHADOW_RAY_TYPE, flags, u0, u1);
-	return sd.visible;
-}
 
 KRR_NAMESPACE_END

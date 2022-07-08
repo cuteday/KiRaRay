@@ -46,7 +46,6 @@ KRR_NAMESPACE_BEGIN
 
 template <typename F>
 inline int GetBlockSize(F kernel) {
-	// How to configure block size: 
 	// https://developer.nvidia.com/blog/cuda-pro-tip-occupancy-api-simplifies-launch-configuration/
 	static std::map<std::type_index, int> kernelBlockSizes;
 

@@ -18,8 +18,7 @@ struct LightSampleContext{ vec3f p, n; };
 
 struct PixelState {
 	vec3f L;
-	//LCGSampler sampler;
-	HaltonSampler sampler;
+	LCGSampler sampler;
 };
 
 struct RayWorkItem {

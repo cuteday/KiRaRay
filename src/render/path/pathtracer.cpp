@@ -70,9 +70,9 @@ void PathTracer::createPipeline() {
 	));
 	logDebug(log);
 
-	OPTIX_CHECK(optixPipelineSetStackSize (/* [in] The pipeline to configure the stack size for */
-		pipeline, 2 * 1024, 2 * 1024, 2 * 1024, 1));
-	logDebug(log);
+	//OPTIX_CHECK(optixPipelineSetStackSize (/* [in] The pipeline to configure the stack size for */
+	//	pipeline, 2 * 1024, 2 * 1024, 2 * 1024, 1));
+	//logDebug(log);
 }
 
 

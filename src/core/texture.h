@@ -80,7 +80,6 @@ public:
 	
 	__device__ vec3f tex(vec2f uv)const {
 #ifdef __NVCC__ 
-		DCHECK(mCudaTexture);
 		vec3f color = (vec3f)tex2D<float4>(mCudaTexture, uv.x, uv.y);
 		return color;
 #endif 

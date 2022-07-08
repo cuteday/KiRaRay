@@ -31,8 +31,6 @@ KRR_NAMESPACE_BEGIN
     do {            \
     } while (false) /* swallow semicolon */
 
-// Use an empty check (rather than expanding the macros to nothing) to swallow the
-// semicolon at the end, and avoid empty if-statements.
 #define DCHECK(x) EMPTY_CHECK
 
 #define DCHECK_EQ(a, b) EMPTY_CHECK

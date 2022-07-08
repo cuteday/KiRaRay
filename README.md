@@ -1,6 +1,6 @@
 # KiRaRay
 
-*KiRaRay* is a simple interactive ray-tracing renderer using optix. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer, and many parts of the coding structures are inspired by [pbrt-v4](https://github.com/mmp/pbrt-v4). Currently it has very limited features and potentially some bugs.
+*KiRaRay* is a simple interactive ray-tracing renderer using optix. The initial expectation of this project was to extend [optix7course](https://github.com/ingowald/optix7course) to a functional simple path tracer, and many parts of the coding structures are inspired by [pbrt-v4](https://github.com/mmp/pbrt-v4). Currently it has very limited features and some bugs.
 
 <p align=center>
 <img src=common/demo/kirara.jpg width="750">
@@ -47,9 +47,7 @@ This project uses cmake to build, no additional setting is needed. Make sure cud
 
 **Hot keys.** `F1` for showing/hiding UI,  `F2` for showing/hiding the profiler, and `F3` for screen shots.
 
-#### Python binding
-
-Currently the pythin scripting can only be used to start the renderer, for example:
+**Python binding.** Currently the python scripting is somewhat useless and can only start the renderer, for example:
 
 ~~~Python
 python scripts/run.py --scene "common/assets/scenes/cbox/cbox.obj"
@@ -67,7 +65,7 @@ For testing, HDR environment images can be downloaded at [sIBL Archive](http://w
 
 #### Performance
 
-The megakernel pathtracer should run at 30+ fps for rendering an 1 spp 1920*1080 image on an RTX 3060 or similar GPU, if the average path length is less than 5 and NEE disabled. The wavefront pathtracer however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does runs significantly faster when next event estimation is enabled though). 
+Switch to *Release* build for normal performance. The megakernel pathtracer should run at 30+ fps for rendering an 1 spp 1920*1080 image on an RTX 3060 or similar GPU, if the average path length is less than 5 and NEE disabled. The wavefront pathtracer however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does run significantly faster when next event estimation is enabled though). 
 
 ### Epilogue
 
@@ -90,7 +88,7 @@ But actually i'm like **sleeps all the time**:
 
 ### Galleries
 
-#### Salle de bain
+#### Bathroom
 
 <p align=center>
 <img src=common/demo/salle_de_bain.jpg width="700">
@@ -99,5 +97,3 @@ But actually i'm like **sleeps all the time**:
 
 <p align=center>
 <img src=common/demo/higokumaru.jpg width="700">
-
-[More](https://cutesail.com/?p=493) renderings...

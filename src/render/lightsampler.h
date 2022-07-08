@@ -25,10 +25,9 @@ public:
 	__both__ SampledLight sample(float u)const {
 		SampledLight sl = {};
 		uint sampleId = u * mLights.size();
-		DCHECK(sampleId < mLights.size());
+		DCHECK_LT(sampleId, mLights.size());
 		sl.light = mLights[sampleId];
 		sl.pdf = 1.f / mLights.size();
-		DCHECK(sl.light.ptr());
 		return sl;
 	}
 

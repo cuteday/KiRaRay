@@ -60,7 +60,7 @@ public:
 
 		std::lock_guard<std::mutex> lock(mutex);
 		auto iter = allocations.find(p);
-		DCHECK(iter != allocations.end());
+		DCHECK_NE(iter, allocations.end());
 		allocations.erase(iter);
 		bytesAllocated -= size;
 	}

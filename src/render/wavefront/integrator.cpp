@@ -31,13 +31,14 @@ void WavefrontPathTracer::initialize(){
 	if (pixelState) pixelState->resize(maxQueueSize, alloc);
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
 	CUDA_SYNC_CHECK();	// necessary
-	if (maxQueueSize > 0) {
-		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-			pixelState->sampler[pixelId].initialize(RandomizeStrategy::Owen);
-		});
-	}
+	//if (maxQueueSize > 0) {
+	//	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
+	//		pixelState->sampler[pixelId].initialize(RandomizeStrategy::Owen);
+	//	});
+	//}
 	if (!camera) camera = alloc.new_object<Camera>();
 	if (!backend) backend = new OptiXWavefrontBackend();
+	CUDA_SYNC_CHECK();
 }
 
 void WavefrontPathTracer::handleHit(){
@@ -160,12 +161,10 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene){
 void WavefrontPathTracer::beginFrame(CUDABuffer& frame){
 	if (!mpScene || !maxQueueSize) return;
 	PROFILE("Begin frame");
-	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){	// reset per-pixel radiance
-		pixelState->L[pixelId] = 0;
-	});
 	cudaMemcpy(camera, &mpScene->getCamera(), sizeof(Camera), cudaMemcpyHostToDevice);
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){	// reset per-pixel sample state
 		vec2i pixelCoord = { pixelId % frameSize.x, pixelId / frameSize.x };
+		pixelState->L[pixelId] = 0;
 		pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameId * samplesPerPixel);
 	});
 }
@@ -211,7 +210,7 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		vec3f L = vec3f(pixelState->L[pixelId]) / samplesPerPixel;
 		if (enableClamp) L = clamp(L, vec3f(0), vec3f(clampMax));
-		frameBuffer[pixelId] = vec4f(L, any(L) ? 1 : 0);
+		frameBuffer[pixelId] = vec4f(L, 1);
 	});
 	frameId++;
 }

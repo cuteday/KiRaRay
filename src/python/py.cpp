@@ -19,9 +19,7 @@ void run(const char scene_file[], const char env_file[] = nullptr) {
 	Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
 	if (env_file) scene->addInfiniteLight(InfiniteLight(env_file));
 	AssimpImporter importer;
-	Log(Info, "Scene importing.");
 	importer.import(scene_file, scene);
-	Log(Info, "Scene loaded.");
 	app.setScene(scene);
 	app.run();
 }

@@ -28,6 +28,7 @@
 # Python cache
 __pycache__
 *.pyc
+tempCodeRunnerFile.py
 
 # Executables
 *.exe

@@ -32,13 +32,13 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 
 KRR_DEVICE_FUNCTION RayWorkItem getRayWorkItem() {
 	int rayIndex(optixGetLaunchIndex().x);
-	DCHECK(rayIndex < launchParams.currentRayQueue->size());
+	DCHECK_LT(rayIndex, launchParams.currentRayQueue->size());
 	return (*launchParams.currentRayQueue)[rayIndex];
 }
 
 KRR_DEVICE_FUNCTION ShadowRayWorkItem getShadowRayWorkItem() {
 	int rayIndex(optixGetLaunchIndex().x);
-	DCHECK(rayIndex < launchParams.shadowRayQueue->size());
+	DCHECK_LT(rayIndex, launchParams.shadowRayQueue->size());
 	return (*launchParams.shadowRayQueue)[rayIndex];
 }
 

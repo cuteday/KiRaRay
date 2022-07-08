@@ -14,12 +14,12 @@
 KRR_NAMESPACE_BEGIN
 
 extern "C" int main(int argc, char *argv[]) {
-	logSuccess("Kiraray::Main Hello, world!");
 	std::filesystem::current_path(File::cwd());
 	logInfo("Working directory: " + string(KRR_PROJECT_DIR));
 	logInfo("Kiraray build type: " + string(KRR_BUILD_TYPE));
 #ifdef KRR_DEBUG_BUILD
-	logWarning("Kiraray::Running in debug mode!");
+	logWarning("Running in debug mode, the performance may be slow.");
+	logWarning("Switch to Release build for normal performance!");
 #endif
 #if KRR_PLATFORM_UNKNOWN
 	logError("Kiraray::Running on unsupported platform!");
@@ -32,8 +32,8 @@ extern "C" int main(int argc, char *argv[]) {
 #endif
 		gpContext = Context::SharedPtr(new Context());
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 },
-					  { // RenderPass::SharedPtr(new PathTracer()),
-						RenderPass::SharedPtr(new WavefrontPathTracer()),
+					  { RenderPass::SharedPtr(new PathTracer()),
+						//RenderPass::SharedPtr(new WavefrontPathTracer()),
 						RenderPass::SharedPtr(new AccumulatePass()),
 						RenderPass::SharedPtr(new ToneMappingPass()) });
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());

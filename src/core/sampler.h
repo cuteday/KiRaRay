@@ -107,8 +107,6 @@ private:
 	}
 
 	__both__ float sampleDimension(int dimension) const {
-		DCHECK_LE(dimension, maxHaltonResolution);
-		DCHECK_LE(maxHaltonResolution, PrimeTableSize);
 		if (randomize == RandomizeStrategy::None)
 			return RadicalInverse(dimension, haltonIndex);
 		else {
