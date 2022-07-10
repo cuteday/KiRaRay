@@ -12,3 +12,6 @@
 	path = src/ext/pybind11
 	url = https://github.com/pybind/pybind11.git
 	branch = stable
+[submodule "src/ext/enoki"]
+	path = src/ext/enoki
+	url = https://github.com/mitsuba-renderer/enoki.git
