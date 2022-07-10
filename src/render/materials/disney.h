@@ -41,7 +41,7 @@ public:
 
 		// Diffuse fresnel - go from 1 at normal incidence to .5 at grazing.
 		// Burley 2015, eq (4).
-		return R * M_1_PI * (1 - Fo / 2) * (1 - Fi / 2);
+		return R * M_INV_PI * (1 - Fo / 2) * (1 - Fi / 2);
 	}
 	KRR_CALLABLE vec3f rho(const vec3f&, int, const vec2f*) const { return R; }
 	KRR_CALLABLE vec3f rho(int, const vec3f*, const vec3f*) const { return R; }
@@ -72,7 +72,7 @@ public:
 		float ss =
 			1.25f * (Fss * (1 / (AbsCosTheta(wo) + AbsCosTheta(wi)) - .5f) + .5f);
 
-		return R * M_1_PI * ss;
+		return R * M_INV_PI * ss;
 	};
 
 	KRR_CALLABLE vec3f rho(const vec3f&, int, const vec2f*) const { return R; }
@@ -99,7 +99,7 @@ public:
 		float Rr = 2 * roughness * cosThetaD * cosThetaD;
 
 		// Burley 2015, eq (4).
-		return R * M_1_PI * Rr * (Fo + Fi + Fo * Fi * (Rr - 1));
+		return R * M_INV_PI * Rr * (Fo + Fi + Fo * Fi * (Rr - 1));
 	};
 	KRR_CALLABLE vec3f rho(const vec3f&, int, const vec2f*) const { return R; }
 	KRR_CALLABLE vec3f rho(int, const vec2f*, const vec2f*) const { return R; }
@@ -362,7 +362,7 @@ public:
 					sample.f += disneyDiffuse.f(wo, sample.wi);
 				if (components & DISNEY_RETRO)
 					sample.f += disneyRetro.f(wo, sample.wi);
-				sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_1_PI;
+				sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
 			}
 		}
 		else if (pSpecTrans > 0) {
@@ -376,7 +376,7 @@ public:
 		float val = 0;
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && (components & (DISNEY_DIFFUSE | DISNEY_RETRO)) && reflect) {
-			val += pDiffuse * AbsCosTheta(wi) * M_1_PI;
+			val += pDiffuse * AbsCosTheta(wi) * M_INV_PI;
 		}
 		if (pSpecRefl > 0 && (components & DISNEY_SPEC_REFLECTION) && reflect) {
 			val += pSpecRefl * microfacetBrdf.pdf(wo, wi);

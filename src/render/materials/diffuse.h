@@ -26,7 +26,7 @@ public:
 	}
 
 	__both__ vec3f f(vec3f wo, vec3f wi) const {
-		return diffuse * M_1_PI;
+		return diffuse * M_INV_PI;
 	}
 
 	__both__ BSDFSample sample(vec3f wo, Sampler& sg) const {
@@ -41,7 +41,7 @@ public:
 
 	__both__ float pdf(vec3f wo, vec3f wi) const {
 		if (!SameHemisphere(wo, wi)) return 0;
-		return fabs(wi.z) * M_1_PI;
+		return fabs(wi.z) * M_INV_PI;
 	}
 
 	vec3f diffuse;
@@ -65,8 +65,8 @@ public:
 	}
 
 	__both__ vec3f f(vec3f wo, vec3f wi) const {
-		if (SameHemisphere(wo, wi)) return reflection * M_1_PI;
-		return transmission * M_1_PI;
+		if (SameHemisphere(wo, wi)) return reflection * M_INV_PI;
+		return transmission * M_INV_PI;
 	}
 
 	__both__ BSDFSample sample(vec3f wo, Sampler& sg) const {

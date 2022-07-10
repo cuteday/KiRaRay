@@ -64,14 +64,6 @@ template <typename Type> pybind11::handle get_type_handle() {
 #define KRR_MODULE_NAME_1(lib, variant) lib##_##variant##_ext
 #define KRR_MODULE_NAME(lib, variant) KRR_MODULE_NAME_1(lib, variant)
 
-template <typename Func> decltype(auto) vectorize(const Func &func) {
-#if KRR_VARIANT_VECTORIZE == 1
-	return enoki::vectorize_wrapper(func);
-#else
-	return func;
-#endif
-}
-
 inline py::module create_submodule(py::module &m, const char *name) {
 	std::string full_name = std::string(PyModule_GetName(m.ptr())) + "." + name;
 	py::module module =

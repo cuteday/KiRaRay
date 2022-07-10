@@ -52,7 +52,7 @@ public:
 	}
 
 	__device__ float pdf(vec3f wi) {
-		return 0.25 * M_1_PI;
+		return 0.25 * M_INV_PI;
 	}
 
 	__device__ EnvLightSample sample(vec2f u) {
@@ -60,7 +60,7 @@ public:
 		EnvLightSample ls = {};
 		ls.wi = wi;
 		ls.L = eval(wi);
-		ls.pdf = 0.25 * M_1_PI;
+		ls.pdf = 0.25 * M_INV_PI;
 		return ls;
 	}
 

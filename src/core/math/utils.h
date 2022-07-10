@@ -123,7 +123,7 @@ namespace math{
 			vec3f p = normalize(dir);
 			vec2f uv;
 			uv.x = atan2(p.x, -p.z) / M_2PI + 0.5f;
-			uv.y = acos(p.y) * M_1_PI;
+			uv.y = acos(p.y) * M_INV_PI;
 			return uv;
 		}
 
