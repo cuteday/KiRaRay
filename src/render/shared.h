@@ -32,6 +32,21 @@ namespace shader {
 		vec3f N;
 		vec3f T;
 		vec3f B;
+
+		ShadingFrame(vec3f n, vec3f t, vec3f b): N(n), T(t), B(b) {}
+		
+		ShadingFrame(vec3f n) : N(n) { 
+			T = utils::getPerpendicular(N);
+			B = normalize(cross(N, T));
+		}
+
+		KRR_CALLABLE vec3f fromLocal(vec3f v) const {
+			return T * v.x + B * v.y + N * v.z;
+		}
+
+		KRR_CALLABLE vec3f toLocal(vec3f v) const {
+			return { dot(T, v), dot(B, v), dot(N, v) };
+		}
 	};
 
 	struct HitInfo {

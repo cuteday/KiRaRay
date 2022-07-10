@@ -29,6 +29,13 @@ KRR_CALLABLE float evalMIS(float n0, float p0, float n1, float p1) {
 #endif
 }
 
+KRR_CALLABLE vec3f uniformSampleSphere(const vec2f& u) {
+	float z = 1.0f - 2.0f * u.x;
+	float r = sqrt(max(0.0f, 1.0f - z * z));
+	float phi = 2.0f * M_PI * u.y;
+	return vec3f(r * cos(phi), r * sin(phi), z);
+}
+
 KRR_CALLABLE vec3f uniformSampleHemisphere(const vec2f& u) {
 	float z = u[0];
 	float r = sqrt(max(0.f, (float)1.f - z * z));

@@ -94,12 +94,12 @@ public:
 		vec3f wi = utils::latlongToWorld(u);
 		ls.intr = Interaction(ctx.p + wi * 1e7f);
 		ls.L = Li(wi);
-		ls.pdf = 0.25 * M_1_PI;
+		ls.pdf = 0.25 * M_INV_PI;
 		return ls;
 	}
 
 	KRR_CALLABLE float pdfLi(Interaction& p, const LightSampleContext& ctx) const {
-		return 0.25 * M_1_PI;
+		return 0.25 * M_INV_PI;
 	}
 
 	KRR_CALLABLE vec3f L(vec3f p, vec3f n, vec2f uv, vec3f w) const { return 0; }

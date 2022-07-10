@@ -26,6 +26,10 @@ KRR_CALLABLE T mod(T a, T b) {
 	return (T)((result < 0) ? result + b : result);
 }
 
+template <typename T> KRR_CALLABLE T safe_sqrt(T value) {
+	return sqrt(max((T)0, value));
+}
+
 template <typename T, int n>
 KRR_CALLABLE T average(math::vec_t<T, n> v) {
 	float val{};
@@ -39,5 +43,6 @@ template <typename T, int n>
 KRR_CALLABLE T isValid(math::vec_t<T, n> v) {
 	return !isnan(v) && !isinf(v);
 }
+
 
 KRR_NAMESPACE_END

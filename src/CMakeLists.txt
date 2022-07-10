@@ -70,6 +70,7 @@ SET ( KRR_CORE_HEADERS
 	core/math/aabb.h
 	core/math/quat.h
 	core/math/utils.h
+	core/math/vmf.h
 	core/math/transform.h
 	core/math/vec/compare.h
 	core/math/vec/rotate.h
