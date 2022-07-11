@@ -14,4 +14,5 @@
 	branch = stable
 [submodule "src/ext/enoki"]
 	path = src/ext/enoki
-	url = https://github.com/mitsuba-renderer/enoki.git
+	url = https://github.com/cuteday/enoki.git
+	branch = mod
