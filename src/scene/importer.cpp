@@ -28,9 +28,9 @@ namespace assimp {
 
 	MaterialLoader sMaterialLoader;
 
-	vec3f aiCast(const aiColor3D& ai) { return vec3f(ai.r, ai.g, ai.b); }
-	vec3f aiCast(const aiVector3D& val) { return vec3f(val.x, val.y, val.z); }
-	quat aiCast(const aiQuaternion& q) { return quat(q.w, q.x, q.y, q.z); }
+	vec3f aiCast(const aiColor3D& ai) { return vec3f(ai[0], ai[1], ai[2]); }
+	vec3f aiCast(const aiVector3D& val) { return vec3f(val[0], val[1], val[2]); }
+	quat aiCast(const aiQuaternion& q) { return quat(q.w, q[0], q[1], q[2]); }
 	aabb3f aiCast(const aiAABB& aabb) { return aabb3f(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
 
 	struct TextureMapping
@@ -127,26 +127,26 @@ namespace assimp {
 		aiColor3D color;
 
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS) {
-			vec3f transmission = 1.f - vec3f(color.r, color.g, color.b);
+			vec3f transmission = 1.f - vec3f(color[0], color[1], color[2]);
 			pMaterial->mMaterialParams.specularTransmission = luminance(transmission);
 			logDebug("transmission: " + to_string(luminance(transmission)));
 		}
 
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS) {
-			vec4f diffuse = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.diffuse.a);
+			vec4f diffuse = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse.a);
 			pMaterial->mMaterialParams.diffuse = diffuse;
 		}
 
 		// Specular color
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS) {
-			vec4f specular = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.specular.a);
+			vec4f specular = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.specular.a);
 			pMaterial->mMaterialParams.specular = specular;
-			logDebug("specular : " + to_string(specular.r) + " " + to_string(specular.g) + " " + to_string(specular.b) + " ");
+			logDebug("specular : " + to_string(specular[0]) + " " + to_string(specular[1]) + " " + to_string(specular[2]) + " ");
 		}
 
 		// Emissive color
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
-			vec3f emissive = vec3f(color.r, color.g, color.b);
+			vec3f emissive = vec3f(color[0], color[1], color[2]);
 			pMaterial->mMaterialParams.emissive = emissive;
 		}
 
@@ -158,17 +158,17 @@ namespace assimp {
 
 		if (importMode == ImportMode::GLTF2) {
 			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS) {
-				vec4f baseColor = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.diffuse.a);
+				vec4f baseColor = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse.a);
 				pMaterial->mMaterialParams.diffuse = baseColor;
 			}
 			vec4f specularParams = pMaterial->mMaterialParams.specular;
 			float metallic;
 			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic) == AI_SUCCESS) {
-				specularParams.b = metallic;
+				specularParams[2] = metallic;
 			}
 			float roughness;
 			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS) {
-				specularParams.g = roughness;
+				specularParams[1] = roughness;
 			}
 
 			pMaterial->mMaterialParams.specular = specularParams;
@@ -282,7 +282,7 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform) {
 		if (pAiMesh->HasTextureCoords(0)) {
 			//if (pAiMesh->mTextureCoords[0]) {
 			vec3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
-			mesh.texcoords.push_back({ texcoord.x, texcoord.y });
+			mesh.texcoords.push_back({ texcoord[0], texcoord[1] });
 		}
 
 		if (pAiMesh->HasTangentsAndBitangents()) {

@@ -68,7 +68,7 @@ public:
 
 	__both__ float pdf(vec3f wo, vec3f wi) const {
 		if (!SameHemisphere(wo, wi)) return 0;
-		float diffPdf = fabs(wi.z) * M_INV_PI;
+		float diffPdf = fabs(wi[2]) * M_INV_PI;
 
 		vec3f wh = normalize(wo + wi);
 		float specPdf = ggx.Pdf(wo, wh) / (4 * dot(wo, wh));

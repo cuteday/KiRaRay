@@ -30,9 +30,9 @@ KRR_CALLABLE float evalMIS(float n0, float p0, float n1, float p1) {
 }
 
 KRR_CALLABLE vec3f uniformSampleSphere(const vec2f& u) {
-	float z = 1.0f - 2.0f * u.x;
+	float z = 1.0f - 2.0f * u[0];
 	float r = sqrt(max(0.0f, 1.0f - z * z));
-	float phi = 2.0f * M_PI * u.y;
+	float phi = 2.0f * M_PI * u[1];
 	return vec3f(r * cos(phi), r * sin(phi), z);
 }
 
@@ -51,24 +51,24 @@ KRR_CALLABLE vec2f uniformSampleDisk(const vec2f& u) {
 		
 	// the concentric method
 	vec2f uOffset = 2.f * u - vec2f(1, 1);
-	if (uOffset.x == 0 && uOffset.y == 0)
+	if (uOffset[0] == 0 && uOffset[1] == 0)
 		return vec2f(0, 0);
 	float theta, r;
-	if (fabs(uOffset.x) > fabs(uOffset.y)) {
-		r = uOffset.x;
-		theta = M_PI / 4 * (uOffset.y / uOffset.x);
+	if (fabs(uOffset[0]) > fabs(uOffset[1])) {
+		r = uOffset[0];
+		theta = M_PI / 4 * (uOffset[1] / uOffset[0]);
 	}
 	else {
-		r = uOffset.y;
-		theta = M_PI / 2 - M_PI / 4 * (uOffset.x / uOffset.y);
+		r = uOffset[1];
+		theta = M_PI / 2 - M_PI / 4 * (uOffset[0] / uOffset[1]);
 	}
 	return r * vec2f(cos(theta), sin(theta));
 }
 
 KRR_CALLABLE vec3f cosineSampleHemisphere(const vec2f& u) {
 	vec2f d = uniformSampleDisk(u);
-	float z = sqrt(max(0.f, 1 - d.x * d.x - d.y * d.y));
-	return { d.x, d.y, z };
+	float z = sqrt(max(0.f, 1 - d[0] * d[0] - d[1] * d[1]));
+	return { d[0], d[1], z };
 }
 
 KRR_CALLABLE vec3f uniformSampleTriangle(const vec2f& u) {

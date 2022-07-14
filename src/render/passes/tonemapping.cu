@@ -61,7 +61,7 @@ void ToneMappingPass::render(CUDABuffer& frame){
 	CUstream &stream = gpContext->cudaStream;
 	vec3f colorTransform = vec3f(mExposureCompensation);
 	vec4f* frameBuffer = (vec4f*)frame.data();
-	GPUParallelFor(mFrameSize.x * mFrameSize.y, KRR_DEVICE_LAMBDA(int pixelId) {
+	GPUParallelFor(mFrameSize[0] * mFrameSize[1], KRR_DEVICE_LAMBDA(int pixelId) {
 		vec3f color = vec3f(frameBuffer[pixelId]) * colorTransform;
 		switch (mOperator) {
 		case krr::ToneMappingPass::Operator::Linear:

@@ -99,7 +99,7 @@ using namespace texture;
 
 Image::Image(vec2i size, Format format, bool srgb):
 	mSrgb(srgb), mFormat(format), mSize(size){
-	mData = new uchar[size.x * size.y * 4 * getElementSize()];
+	mData = new uchar[size[0] * size[1] * 4 * getElementSize()];
 }
 
 bool Image::loadImage(const fs::path& filepath, bool srgb) {
@@ -110,7 +110,7 @@ bool Image::loadImage(const fs::path& filepath, bool srgb) {
 	if (IsEXR(filename.c_str()) == TINYEXR_SUCCESS) {
 		char* errMsg = nullptr;
 		// to do: if loadEXR always return RGBA data?
-		int res = LoadEXR((float**)&data, &size.x, &size.y, filename.c_str(), (const char**)&errMsg);
+		int res = LoadEXR((float**)&data, &size[0], &size[1], filename.c_str(), (const char**)&errMsg);
 		if (res != TINYEXR_SUCCESS) {
 			logError("Failed to load EXR image at " + filename);
 			if (errMsg) logError(errMsg);
@@ -119,7 +119,7 @@ bool Image::loadImage(const fs::path& filepath, bool srgb) {
 		mFormat = Format::RGBAfloat;
 	}
 	else if (stbi_is_hdr(filename.c_str())){
-		data = (uchar*)stbi_loadf(filename.c_str(), &size.x, &size.y, &channels, STBI_rgb_alpha);
+		data = (uchar*)stbi_loadf(filename.c_str(), &size[0], &size[1], &channels, STBI_rgb_alpha);
 		if (data == nullptr) {
 			logError("Failed to load float hdr image at " + filename);
 			return false;
@@ -127,7 +127,7 @@ bool Image::loadImage(const fs::path& filepath, bool srgb) {
 		mFormat = Format::RGBAfloat;
 	}
 	else {	// formats other than exr...
-		data = stbi_load(filename.c_str(), &size.x, &size.y, &channels, STBI_rgb_alpha);
+		data = stbi_load(filename.c_str(), &size[0], &size[1], &channels, STBI_rgb_alpha);
 		if (data == nullptr) {
 			logError("Failed to load image at " + filename);
 			return false;
@@ -140,24 +140,24 @@ bool Image::loadImage(const fs::path& filepath, bool srgb) {
 	mData = data;
 
 	mSize = size;
-	logDebug("Loaded image " + to_string(size.x) + "*" + to_string(size.y));
+	logDebug("Loaded image " + to_string(size[0]) + "*" + to_string(size[1]));
 	return true;
 }
 
 bool Image::saveImage(const fs::path& filepath) {
 	string extension = filepath.extension().string();
-	uint nElements = mSize.x * mSize.y * 4;
+	uint nElements = mSize[0] * mSize[1] * 4;
 	if (extension == ".png") {
 		stbi_flip_vertically_on_write(true);
 		if (mFormat == Format::RGBAuchar) {
-			stbi_write_png(filepath.string().c_str(), mSize.x, mSize.y, 4, mData, 0);
+			stbi_write_png(filepath.string().c_str(), mSize[0], mSize[1], 4, mData, 0);
 		}
 		else if (mFormat == Format::RGBAfloat) {
 			uchar* data = new uchar[nElements];
 			float* internalData = reinterpret_cast<float*>(mData);
 			std::transform(internalData, internalData + nElements, data,
 				[](float v) -> uchar { return math::clamp((int)(v * 255), 0, 255); });
-			stbi_write_png(filepath.string().c_str(), mSize.x, mSize.y, 4, data, 0);
+			stbi_write_png(filepath.string().c_str(), mSize[0], mSize[1], 4, data, 0);
 			delete[] data;
 		}
 		return true;
@@ -167,7 +167,7 @@ bool Image::saveImage(const fs::path& filepath) {
 			logError("Image::saveImage Saving non-hdr image as hdr file...");
 			return false;
 		}
-		tinyexr::save_exr(reinterpret_cast<float*>(mData), mSize.x, mSize.y, 4, 4, filepath.string().c_str());
+		tinyexr::save_exr(reinterpret_cast<float*>(mData), mSize[0], mSize[1], 4, 4, filepath.string().c_str());
 	}
 	else {
 		logError("Image::saveImage Unknown image extension: " + extension);
@@ -218,18 +218,18 @@ void Texture::toDevice() {
 	Format textureFormat = mImage.getFormat();
 
 	if (textureFormat == Format::RGBAfloat) {
-		pitch = size.x * numComponents * sizeof(float);
+		pitch = size[0] * numComponents * sizeof(float);
 		channelDesc = cudaCreateChannelDesc<float4>();
 	}
 	else {
-		pitch = size.x * numComponents * sizeof(uchar);
+		pitch = size[0] * numComponents * sizeof(uchar);
 		channelDesc = cudaCreateChannelDesc<uchar4>();
 	}
 	
 	// create internal cuda array for texture object
-	CUDA_CHECK(cudaMallocArray(&mCudaArray, &channelDesc, size.x, size.y));
+	CUDA_CHECK(cudaMallocArray(&mCudaArray, &channelDesc, size[0], size[1]));
 	// transfer data to cuda array
-	CUDA_CHECK(cudaMemcpy2DToArray(mCudaArray, 0, 0, mImage.data(), pitch, pitch, size.y, cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy2DToArray(mCudaArray, 0, 0, mImage.data(), pitch, pitch, size[1], cudaMemcpyHostToDevice));
 
 	cudaResourceDesc resDesc = {};
 	resDesc.resType = cudaResourceTypeArray;

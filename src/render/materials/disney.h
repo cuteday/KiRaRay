@@ -59,7 +59,7 @@ public:
 
 	KRR_CALLABLE vec3f f(const vec3f& wo, const vec3f& wi) const {
 		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return vec3f(0.);
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return vec3f(0.);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -90,7 +90,7 @@ public:
 		: R(R), roughness(roughness) {}
 	KRR_CALLABLE vec3f f(const vec3f& wo, const vec3f& wi) const {
 		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return vec3f(0.);
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return vec3f(0.);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -116,7 +116,7 @@ public:
 	KRR_CALLABLE DisneySheen(const vec3f& R): R(R) {}
 	KRR_CALLABLE vec3f f(const vec3f& wo, const vec3f& wi) const {
 		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return vec3f(0.);
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return vec3f(0.);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -152,7 +152,7 @@ public:
 
 	KRR_CALLABLE vec3f f(const vec3f& wo, const vec3f& wi) const {
 		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return vec3f(0.);
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return vec3f(0.);
 		wh = normalize(wh);
 
 		float Dr = GTR1(AbsCosTheta(wh), gloss);
@@ -167,7 +167,7 @@ public:
 	KRR_CALLABLE vec3f Sample_f(const vec3f& wo, vec3f* wi, const vec2f& u,
 		float* pdf, BxDFType* sampledType) const {
 
-		if (wo.z == 0) return 0.;
+		if (wo[2] == 0) return 0.;
 
 		float alpha2 = gloss * gloss;
 		float cosTheta = sqrt(
@@ -188,7 +188,7 @@ public:
 		if (!SameHemisphere(wo, wi)) return 0;
 
 		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return 0;
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return 0;
 		wh = normalize(wh);
 
 		float Dr = GTR1(AbsCosTheta(wh), gloss);
@@ -349,7 +349,7 @@ public:
 		float comp = sg.get1D();
 		if (comp < pDiffuse) {
 			vec3f wi = cosineSampleHemisphere(sg.get2D());
-			if (wo.z < 0) wi.z *= -1;
+			if (wo[2] < 0) wi[2] *= -1;
 			sample.pdf = pdf(wo, wi);
 			sample.f = f(wo, wi);
 			sample.wi = wi;

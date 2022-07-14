@@ -110,7 +110,7 @@ public:
 
 		if (!image.isOnDevice()) return L;
 		vec2f uv = utils::worldToLatLong(wi);
-		uv.x = fmod(uv.x + rotation, 1.f);
+		uv[0] = fmod(uv[0] + rotation, 1.f);
 		L *= image.tex(uv);
 
 		return L;

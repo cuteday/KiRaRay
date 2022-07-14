@@ -51,7 +51,7 @@ struct Frame {
 	}
 
 	KRR_CALLABLE vec3f toWorld(vec3f v) const {
-		return T * v.x + B * v.y + N * v.z;
+		return T * v[0] + B * v[1] + N * v[2];
 	}
 
 	KRR_CALLABLE vec3f toLocal(vec3f v) const {

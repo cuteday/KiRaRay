@@ -71,7 +71,7 @@ public:
 		//cudaTextureObject_t texture = mData.mEnvTexture.getCudaTexture();
 		if (!mIBL && mData.mEnvTexture.isOnDevice()) return Li;
 		vec2f uv = utils::worldToLatLong(wi);
-		uv.x = fmod(uv.x + mData.rotation, 1.f);
+		uv[0] = fmod(uv[0] + mData.rotation, 1.f);
 		vec3f env = mData.mEnvTexture.tex(uv);
 		Li *= env;
 

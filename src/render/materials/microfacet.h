@@ -146,7 +146,7 @@ KRR_CALLABLE static vec3f GGXSample(const vec3f& wi, float alpha_x,
     float alpha_y, float U1, float U2) {
     // 1. stretch wi
     vec3f wiStretched =
-        normalize(vec3f(alpha_x * wi.x, alpha_y * wi.y, wi.z));
+        normalize(vec3f(alpha_x * wi[0], alpha_y * wi[1], wi[2]));
 
     // 2. simulate P22_{wi}(x_slope, y_slope, 1, 1)
     float slope_x, slope_y;
@@ -190,7 +190,7 @@ inline vec3f GGXMicrofacetDistribution::Sample(const vec3f& wo,
         if (!SameHemisphere(wo, wh)) wh = -wh;
     }
     else {
-        bool flip = wo.z < 0;
+        bool flip = wo[2] < 0;
         wh = GGXSample(flip ? -wo : wo, alphax, alphay, u[0], u[1]);
         if (flip) wh = -wh;
     }
@@ -240,7 +240,7 @@ public:
         vec3f wi, wh;
         vec2f u = sg.get2D();
 
-        if (wo.z == 0) return sample;
+        if (wo[2] == 0) return sample;
         wh = distribution.Sample(wo, u);
         if (dot(wo, wh) < 0) return sample;
 
@@ -298,13 +298,13 @@ public:
     __both__ vec3f f(vec3f wo, vec3f wi) const {
         if (SameHemisphere(wo, wi)) return 0;
 
-        float cosThetaO = wo.z, cosThetaI = wi.z;
+        float cosThetaO = wo[2], cosThetaI = wi[2];
         if (cosThetaI == 0 || cosThetaO == 0) return 0;
 
         // Compute $\wh$ from $\wo$ and $\wi$ for microfacet transmission
         float eta = CosTheta(wo) > 0 ? etaB / etaA : etaA / etaB;
         vec3f wh = normalize(wo + wi * eta);
-        if (wh.z < 0) wh = -wh;
+        if (wh[2] < 0) wh = -wh;
 
         // Same side?
         if (dot(wo, wh) * dot(wi, wh) > 0) return 0;
@@ -321,7 +321,7 @@ public:
 
     __both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
         BSDFSample sample = {};
-        if (wo.z == 0) return sample;
+        if (wo[2] == 0) return sample;
 
         vec2f u = sg.get2D();
         vec3f wh = distribution.Sample(wo, u);

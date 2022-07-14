@@ -100,7 +100,7 @@ public:
 	KRR_CALLABLE void setPixelSample(vec2i samplePixel, uint sampleIndex) {
 		uint v0 = utils::interleave_32bit(vec2ui(samplePixel));
 		uint v1 = sampleIndex;
-		state	= utils::blockCipherTEA(v0, v1, 16).x;
+		state	= utils::blockCipherTEA(v0, v1, 16)[0];
 	}
 
 	// return u in [0, 1)

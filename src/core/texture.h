@@ -45,7 +45,7 @@ public:
 
 	static bool isHdr(const string& filepath);
 	static Image::SharedPtr createFromFile(const string& filepath, bool srgb = false);
-	bool isValid() const { return mFormat != Format::NONE && mSize.x * mSize.y; }
+	bool isValid() const { return mFormat != Format::NONE && mSize[0] * mSize[1]; }
 	bool isSrgb() const { return mSrgb; }
 	vec2i getSize() const { return mSize; }
 	Format getFormat() const { return mFormat; }
@@ -80,7 +80,7 @@ public:
 	
 	__device__ vec3f tex(vec2f uv)const {
 #ifdef __NVCC__ 
-		vec3f color = (vec3f)tex2D<float4>(mCudaTexture, uv.x, uv.y);
+		vec3f color = (vec3f)tex2D<float4>(mCudaTexture, uv[0], uv[1]);
 		return color;
 #endif 
 		return 0;

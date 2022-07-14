@@ -14,7 +14,7 @@ WavefrontPathTracer::WavefrontPathTracer(Scene& scene){
 
 void WavefrontPathTracer::initialize(){
 	Allocator& alloc = *gpContext->alloc;
-	maxQueueSize = frameSize.x * frameSize.y;
+	maxQueueSize = frameSize[0] * frameSize[1];
 	CUDA_SYNC_CHECK();	// necessary, preventing kernel accessing memories tobe free'ed...
 	for (int i = 0; i < 2; i++) {
 		if (rayQueue[i]) rayQueue[i]->resize(maxQueueSize, alloc);
@@ -97,7 +97,7 @@ void WavefrontPathTracer::generateScatterRays(){
 			
 			float lightPdf = sampledLight.pdf * ls.pdf;
 			float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
-			vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
+			vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
 			float misWeight = evalMIS(lightPdf, bsdfPdf);
 			// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
 			//if (isnan(misWeight))
@@ -128,7 +128,7 @@ void WavefrontPathTracer::generateScatterRays(){
 			r.ctx = { sd.pos, sd.frame.N };
 			r.pixelId = w.pixelId;
 			r.depth = w.depth + 1;
-			r.thp = w.thp * sample.f * fabs(sample.wi.z) / sample.pdf / probRR;
+			r.thp = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf / probRR;
 			nextRayQueue(w.depth)->push(r);
 		}
 	});
@@ -139,7 +139,7 @@ void WavefrontPathTracer::generateCameraRays(int sampleId){
 	RayQueue* cameraRayQueue = currentRayQueue(0);
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		Sampler sampler = &pixelState->sampler[pixelId];
-		vec2i pixelCoord = { pixelId % frameSize.x, pixelId / frameSize.x };
+		vec2i pixelCoord = { pixelId % frameSize[0], pixelId / frameSize[0] };
 		Ray cameraRay = camera->getRay(pixelCoord, frameSize, sampler);
 		cameraRayQueue->pushCameraRay(cameraRay, pixelId);
 	});
@@ -163,7 +163,7 @@ void WavefrontPathTracer::beginFrame(CUDABuffer& frame){
 	PROFILE("Begin frame");
 	cudaMemcpy(camera, &mpScene->getCamera(), sizeof(Camera), cudaMemcpyHostToDevice);
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){	// reset per-pixel sample state
-		vec2i pixelCoord = { pixelId % frameSize.x, pixelId / frameSize.x };
+		vec2i pixelCoord = { pixelId % frameSize[0], pixelId / frameSize[0] };
 		pixelState->L[pixelId] = 0;
 		pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameId * samplesPerPixel);
 	});

@@ -38,13 +38,13 @@ public:
 		vec2f p = vec2f(pixel) + vec2f(0.5) + sampler.get2D() /*uniform sample + box filter*/;
 		vec2f ndc = vec2f(2, 2) * (p) / vec2f(frameSize) + vec2f(-1);	// ndc in [-1, 1]^2
 		if (mData.lensRadius > 0) {			/*Thin lens*/
-			vec3f focalPoint = mData.pos + ndc.x * mData.u + ndc.y * mData.v + mData.w;
+			vec3f focalPoint = mData.pos + ndc[0] * mData.u + ndc[1] * mData.v + mData.w;
 			vec2f apertureSample = mData.lensRadius > M_EPSILON ? uniformSampleDisk(sampler.get2D()) : 0;
-			ray.origin = mData.pos + mData.lensRadius * (apertureSample.x * normalize(mData.u) + apertureSample.y * normalize(mData.v));
+			ray.origin = mData.pos + mData.lensRadius * (apertureSample[0] * normalize(mData.u) + apertureSample[1] * normalize(mData.v));
 			ray.dir = normalize(focalPoint - ray.origin);
 		} else {							/*Pin hole*/
 			ray.origin = mData.pos;
-			ray.dir = normalize(ndc.x * mData.u + ndc.y * mData.v + mData.w);
+			ray.dir = normalize(ndc[0] * mData.u + ndc[1] * mData.v + mData.w);
 		}
 		return ray;
 	}

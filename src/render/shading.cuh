@@ -31,8 +31,8 @@ namespace {
 		vec3f n;
 		*((vec2f*)&n) = 2.f * rg - 1.f;
 		// Saturate because error from BC5 can break the sqrt
-		n.z = saturate(dot(rg, rg)); // z = r*r + g*g
-		n.z = sqrt(1 - n.z);
+		n[2] = saturate(dot(rg, rg)); // z = r*r + g*g
+		n[2] = sqrt(1 - n[2]);
 		return n;
 	}
 }
@@ -41,7 +41,7 @@ template <typename T>
 KRR_DEVICE_FUNCTION T sampleTexture(Texture& texture, vec2f uv, T fallback) {
 	cudaTextureObject_t cudaTexture = texture.getCudaTexture();
 	if (cudaTexture) {
-		return tex2D<float4>(cudaTexture, uv.x, uv.y);
+		return tex2D<float4>(cudaTexture, uv[0], uv[1]);
 	}
 	return fallback;
 }
@@ -54,7 +54,7 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	hitInfo.mesh = hitData->mesh;
 	hitInfo.wo = -normalize((vec3f)optixGetWorldRayDirection());
 	hitInfo.hitKind = optixGetHitKind();
-	hitInfo.barycentric = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y };
+	hitInfo.barycentric = { 1 - barycentric[0] - barycentric[1], barycentric[0], barycentric[1] };
 	return hitInfo;
 }
 
@@ -133,7 +133,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		vec3f normal = sampleTexture(normalTexture, sd.uv, vec3f{});
 		normal = rgbToNormal(normal);
 
-		sd.frame.N = normalize(sd.frame.T * normal.x + sd.frame.B * normal.y + sd.frame.N * normal.z);
+		sd.frame.N = normalize(sd.frame.T * normal[0] + sd.frame.B * normal[1] + sd.frame.N * normal[2]);
 		sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.T, sd.frame.N));
 		sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
 	}

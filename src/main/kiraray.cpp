@@ -11,6 +11,8 @@
 #include "render/wavefront/integrator.h"
 #include "scene/importer.h"
 
+#include "Eigen/Dense"
+
 KRR_NAMESPACE_BEGIN
 
 extern "C" int main(int argc, char *argv[]) {

@@ -43,16 +43,16 @@ namespace
 
 	void drawRectFilled(const ImVec2& pos, const ImVec2& size, uint32_t color = 0xffffffff) {
 		auto cursorPos = ui::GetCursorScreenPos();
-		ui::GetWindowDrawList()->AddRectFilled(ImVec2(cursorPos.x + pos.x, cursorPos.y + pos.y), ImVec2(cursorPos.x + pos.x + size.x, cursorPos.y + pos.y + size.y), color);
+		ui::GetWindowDrawList()->AddRectFilled(ImVec2(cursorPos[0] + pos[0], cursorPos[1] + pos[1]), ImVec2(cursorPos[0] + pos[0] + size[0], cursorPos[1] + pos[1] + size[1]), color);
 	};
 
 	void drawBar(float fraction, const ImVec2& size, ImU32 color = 0xffffffff, ImU32 background = 0x00000000, bool highlight = false) {
 		auto cursorPos = ui::GetCursorScreenPos();
 		auto height = ui::GetTextLineHeightWithSpacing();
-		cursorPos.y += 0.5f * (height - size.y);
-		ui::GetWindowDrawList()->AddRectFilled(ImVec2(cursorPos.x, cursorPos.y), ImVec2(cursorPos.x + size.x, cursorPos.y + size.y), background);
-		ui::GetWindowDrawList()->AddRectFilled(ImVec2(cursorPos.x, cursorPos.y), ImVec2(cursorPos.x + fraction * size.x, cursorPos.y + size.y), color);
-		if (highlight) ui::GetWindowDrawList()->AddRect(ImVec2(cursorPos.x, cursorPos.y), ImVec2(cursorPos.x + size.x, cursorPos.y + size.y), kHighlightColor);
+		cursorPos[1] += 0.5f * (height - size[1]);
+		ui::GetWindowDrawList()->AddRectFilled(ImVec2(cursorPos[0], cursorPos[1]), ImVec2(cursorPos[0] + size[0], cursorPos[1] + size[1]), background);
+		ui::GetWindowDrawList()->AddRectFilled(ImVec2(cursorPos[0], cursorPos[1]), ImVec2(cursorPos[0] + fraction * size[0], cursorPos[1] + size[1]), color);
+		if (highlight) ui::GetWindowDrawList()->AddRect(ImVec2(cursorPos[0], cursorPos[1]), ImVec2(cursorPos[0] + size[0], cursorPos[1] + size[1]), kHighlightColor);
 	}
 }
 
@@ -68,9 +68,9 @@ void ProfilerUI::render() {
 
 	// Compute column widths.
 	float columnWidth[kColumnCount];
-	for (size_t i = 0; i < kColumnCount; ++i) columnWidth[i] = ui::CalcTextSize(kColumnTitle[i]).x + kPadding;
+	for (size_t i = 0; i < kColumnCount; ++i) columnWidth[i] = ui::CalcTextSize(kColumnTitle[i])[0] + kPadding;
 	for (const auto& eventData : mEventData) {
-		columnWidth[0] = std::max(columnWidth[0], ui::CalcTextSize(eventData.name.c_str()).x + eventData.level * kIndentWidth + kPadding);
+		columnWidth[0] = std::max(columnWidth[0], ui::CalcTextSize(eventData.name.c_str())[0] + eventData.level * kIndentWidth + kPadding);
 	}
 
 	float startY;
@@ -159,7 +159,7 @@ void ProfilerUI::render() {
 	if (mGraphMode != GraphMode::Off) {
 		ui::Text("Graph");
 		ui::Dummy(ImVec2(0.f, kHeaderSpacing));
-		ImVec2 graphSize(ui::GetWindowSize().x - ui::GetCursorPosX(), endY - startY);
+		ImVec2 graphSize(ui::GetWindowSize()[0] - ui::GetCursorPosX(), endY - startY);
 		renderGraph(graphSize, mHighlightIndex, newHighlightIndex);
 		mHighlightIndex = newHighlightIndex;
 	}
@@ -195,13 +195,13 @@ void ProfilerUI::renderGraph(const ImVec2& size, size_t highlightIndex, size_t& 
 {
 	ImVec2 mousePos = ui::GetMousePos();
 	ImVec2 screenPos = ui::GetCursorScreenPos();
-	mousePos.x -= screenPos.x;
-	mousePos.y -= screenPos.y;
+	mousePos[0] -= screenPos[0];
+	mousePos[1] -= screenPos[1];
 
 	float totalMaxGraphValue = 0.f;
 	for (const auto& eventData : mEventData) totalMaxGraphValue += eventData.level == 0 ? eventData.maxGraphValue : 0.f;
 
-	const float scaleY = size.y / totalMaxGraphValue;
+	const float scaleY = size[1] / totalMaxGraphValue;
 
 	float x = 0.f;
 	float levelY[128];
@@ -215,7 +215,7 @@ void ProfilerUI::renderGraph(const ImVec2& size, size_t highlightIndex, size_t& 
 			totalValue += eventData.level == 0 ? eventData.graphHistory[historyIndex] : 0.f;
 		}
 
-		levelY[0] = size.y - totalValue * scaleY;
+		levelY[0] = size[1] - totalValue * scaleY;
 		float highlightY = 0.f;
 		float highlightHeight = 0.f;
 
@@ -229,7 +229,7 @@ void ProfilerUI::renderGraph(const ImVec2& size, size_t highlightIndex, size_t& 
 			drawRectFilled(ImVec2(x, y), ImVec2(kGraphBarWidth, height), eventData.color);
 
 			// Check if mouse is over this bar for tooltip value and highlighting in next frame.
-			if (mousePos.x >= x && mousePos.x < x + kGraphBarWidth && mousePos.y >= y && mousePos.y < y + height) {
+			if (mousePos[0] >= x && mousePos[0] < x + kGraphBarWidth && mousePos[1] >= y && mousePos[1] < y + height) {
 				newHighlightIndex = i;
 				highlightValue = value / totalValue;
 			}
@@ -246,7 +246,7 @@ void ProfilerUI::renderGraph(const ImVec2& size, size_t highlightIndex, size_t& 
 		if (highlightHeight > 0.f) drawRectFilled(ImVec2(x, highlightY), ImVec2(kGraphBarWidth, highlightHeight), kHighlightColor);
 
 		x += kGraphBarWidth;
-		if (x > size.x) break;
+		if (x > size[0]) break;
 	}
 
 	ui::Dummy(ImVec2(size));

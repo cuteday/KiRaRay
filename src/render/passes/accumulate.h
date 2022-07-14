@@ -22,7 +22,7 @@ public:
 	void resize(const vec2i& size) override {
 		mFrameSize = size;
 		if (!mAccumBuffer) mAccumBuffer = new CUDABuffer();
-		mAccumBuffer->resize(size.x * size.y * sizeof(vec4f));
+		mAccumBuffer->resize(size[0] * size[1] * sizeof(vec4f));
 		reset();
 	}
 

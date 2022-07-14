@@ -23,7 +23,7 @@ public:
 		WindowApp::resize(size);
 		for (auto p : mpPasses)
 			p->resize(size);
-		mpScene->getCamera().setAspectRatio((float)size.x / size.y);
+		mpScene->getCamera().setAspectRatio((float)size[0] / size[1]);
 	}
 
 	virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {
@@ -124,7 +124,7 @@ private:
 	void captureFrame(bool hdr = false) {
 		string extension = hdr ? ".exr" : ".png";
 		Image image(fbSize, Image::Format::RGBAfloat);
-		fbBuffer.copy_to_host(image.data(), fbSize.x * fbSize.y * 4 * sizeof(float));
+		fbBuffer.copy_to_host(image.data(), fbSize[0] * fbSize[1] * 4 * sizeof(float));
 		fs::path filepath = File::resolve("common/images") / ("krr_" + Log::nowToString("%H_%M_%S") + extension);
 		image.saveImage(filepath);
 		logSuccess("Saved screen shot to " + filepath.string());

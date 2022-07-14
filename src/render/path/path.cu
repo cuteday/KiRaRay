@@ -38,7 +38,7 @@ KRR_DEVICE_FUNCTION bool traceShadowRay(OptixTraversableHandle traversable,
 template <typename... Args>
 KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 	if (!launchParams.debugOutput) return;
-	vec2i pixel = (vec2i)optixGetLaunchIndex();
+	vec2i pixel = (vec2i) optixGetLaunchIndex();
 	if (pixel == launchParams.debugPixel)
 		printf(fmt, std::forward<Args>(args)...);
 }
@@ -99,7 +99,7 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
 	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
-	vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal.z);
+	vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
 	float misWeight = 1;
 
 	if (launchParams.MIS) misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
@@ -132,7 +132,7 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 	path.pos = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 	path.dir = wiWorld;
 	path.pdf = max(sample.pdf, 1e-7f);
-	path.throughput *= sample.f * fabs(sample.wi.z) / path.pdf;
+	path.throughput *= sample.f * fabs(sample.wi[2]) / path.pdf;
 	return true;
 }
 
@@ -188,10 +188,10 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 
 extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	vec3i launchIndex = (vec3i)optixGetLaunchIndex();
-	vec2i pixel = { launchIndex.x, launchIndex.y };
+	vec2i pixel = { launchIndex[0], launchIndex[1] };
 
 	const int frameID = launchParams.frameID;
-	const uint32_t fbIndex = pixel.x + pixel.y * launchParams.fbSize.x;
+	const uint32_t fbIndex = pixel[0] + pixel[1] * launchParams.fbSize[0];
 
 	Camera& camera = launchParams.camera;
 	PCGSampler sampler;

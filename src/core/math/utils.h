@@ -26,7 +26,7 @@ namespace math{
 
 		KRR_CALLABLE vec3f srgb2linear(vec3f sRGBColor)
 		{
-			return vec3f(srgb2linear(sRGBColor.r), srgb2linear(sRGBColor.g), srgb2linear(sRGBColor.b));
+			return vec3f(srgb2linear(sRGBColor[0]), srgb2linear(sRGBColor[1]), srgb2linear(sRGBColor[2]));
 		}
 
 		KRR_CALLABLE float linear2srgb(float linearColor)
@@ -39,7 +39,7 @@ namespace math{
 
 		KRR_CALLABLE vec3f linear2srgb(vec3f linearColor)
 		{
-			return vec3f(linear2srgb(linearColor.r), linear2srgb(linearColor.g), linear2srgb(linearColor.b));
+			return vec3f(linear2srgb(linearColor[0]), linear2srgb(linearColor[1]), linear2srgb(linearColor[2]));
 		}
 
 		/*******************************************************
@@ -75,8 +75,8 @@ namespace math{
 		********************************************************/
 	
 		KRR_CALLABLE uint interleave_32bit(vec2ui v){
-			uint x = v.x & 0x0000ffff;              // x = ---- ---- ---- ---- fedc ba98 7654 3210
-			uint y = v.y & 0x0000ffff;
+			uint x = v[0] & 0x0000ffff;              // x = ---- ---- ---- ---- fedc ba98 7654 3210
+			uint y = v[1] & 0x0000ffff;
 
 			x = (x | (x << 8)) & 0x00FF00FF;        // x = ---- ---- fedc ba98 ---- ---- 7654 3210
 			x = (x | (x << 4)) & 0x0F0F0F0F;        // x = ---- fedc ---- ba98 ---- 7654 ---- 3210
@@ -108,9 +108,9 @@ namespace math{
 		// generate a perpendicular vector which is orthogonal to the given vector
 		KRR_CALLABLE vec3f getPerpendicular(const vec3f& u){
 			vec3f a = abs(u);
-			uint32_t uyx = (a.x - a.y) < 0 ? 1 : 0;
-			uint32_t uzx = (a.x - a.z) < 0 ? 1 : 0;
-			uint32_t uzy = (a.y - a.z) < 0 ? 1 : 0;
+			uint32_t uyx = (a[0] - a[1]) < 0 ? 1 : 0;
+			uint32_t uzx = (a[0] - a[2]) < 0 ? 1 : 0;
+			uint32_t uzy = (a[1] - a[2]) < 0 ? 1 : 0;
 			uint32_t xm = uyx & uzx;
 			uint32_t ym = (1 ^ xm) & uzy;
 			uint32_t zm = 1 ^ (xm | ym); // 1 ^ (xm & ym)
@@ -122,16 +122,16 @@ namespace math{
 		KRR_CALLABLE vec2f worldToLatLong(const vec3f& dir) {
 			vec3f p = normalize(dir);
 			vec2f uv;
-			uv.x = atan2(p.x, -p.z) / M_2PI + 0.5f;
-			uv.y = acos(p.y) * M_INV_PI;
+			uv[0] = atan2(p[0], -p[2]) / M_2PI + 0.5f;
+			uv[1] = acos(p[1]) * M_INV_PI;
 			return uv;
 		}
 
 		/// <param name="latlong"> in [0, 1]*[0, 1] </param>
 		KRR_CALLABLE vec3f latlongToWorld(vec2f latlong)
 		{
-			float phi = M_PI * (2.f * saturate(latlong.x) - 1.f);
-			float theta = M_PI * saturate(latlong.y);
+			float phi = M_PI * (2.f * saturate(latlong[0]) - 1.f);
+			float theta = M_PI * saturate(latlong[1]);
 			float sinTheta = sin(theta);
 			float cosTheta = cos(theta);
 			float sinPhi = sin(phi);
@@ -143,14 +143,14 @@ namespace math{
 		KRR_CALLABLE vec2f cartesianToSpherical(const vec3f& v) {
 			vec3f nv = normalize(v);
 			vec2f sph;
-			sph.x = acos(nv.z);
-			sph.y = atan2(-nv.y, -nv.x) + M_PI;
+			sph[0] = acos(nv[2]);
+			sph[1] = atan2(-nv[1], -nv[0]) + M_PI;
 			return sph;
 		}
 
 		KRR_CALLABLE vec2f cartesianToSphericalNormalized(const vec3f& v) {
 			vec2f sph = cartesianToSpherical(v);
-			return { sph.x / M_PI, sph.y / M_2PI };
+			return { sph[0] / M_PI, sph[1] / M_2PI };
 		}
 
 		/// <param name="sph">\phi in [0, 2pi] and \theta in [0, pi]</param>
@@ -167,11 +167,11 @@ namespace math{
 		}
 
 		KRR_CALLABLE float sphericalTheta(const vec3f& v) {
-			return acos(clamp(v.z, -1.f, 1.f));
+			return acos(clamp(v[2], -1.f, 1.f));
 		}
 
 		KRR_CALLABLE float sphericalPhi(const vec3f& v) {
-			float p = atan2(v.y, v.x);
+			float p = atan2(v[1], v[0]);
 			return (p < 0) ? (p + 2 * M_PI) : p;
 		}
 

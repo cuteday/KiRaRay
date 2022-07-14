@@ -135,7 +135,7 @@ void PathTracer::renderUI() {
 }
 
 void PathTracer::render(CUDABuffer& frame) {
-	if (mFrameSize.x * mFrameSize.y == 0) return;
+	if (mFrameSize[0] * mFrameSize[1] == 0) return;
 	PROFILE("Megakernel Path Tracer");
 	{
 		PROFILE("Updating parameters");
@@ -154,8 +154,8 @@ void PathTracer::render(CUDABuffer& frame) {
 			(CUdeviceptr)launchParamsDevice,
 			sizeof(LaunchParamsPT),
 			&sbt,
-			launchParams.fbSize.x,
-			launchParams.fbSize.y,
+			launchParams.fbSize[0],
+			launchParams.fbSize[1],
 			1
 		));
 	}
