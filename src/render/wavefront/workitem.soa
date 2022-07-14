@@ -7,6 +7,7 @@ flat Light;
 flat BsdfType;
 flat ShadingData;
 flat LCGSampler;
+flat PCGSampler;
 flat HaltonSampler;
 
 struct vec2f { float x, y; };
@@ -18,7 +19,7 @@ struct LightSampleContext{ vec3f p, n; };
 
 struct PixelState {
 	vec3f L;
-	LCGSampler sampler;
+	PCGSampler sampler;
 };
 
 struct RayWorkItem {

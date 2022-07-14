@@ -60,7 +60,7 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 
 KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitInfo, Material& material) {
 	// [NOTE] about local shading frame (tangent space, TBN, etc.)
-	// The shading normal sd.N and face normal sd.geoN is always points towards the outside of the object,
+	// The shading normal sd.frame.N and face normal sd.geoN is always points towards the outside of the object,
 	// we can use this convention to determine whether an incident ray is coming from outside of the object.
 	
 	vec3f b = hitInfo.barycentric;
@@ -76,13 +76,13 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	sd.geoN = normalize(cross(mesh.vertices[v[1]] - mesh.vertices[v[0]],
 		mesh.vertices[v[2]] - mesh.vertices[v[0]]));
 
-	sd.N = normalize(
+	sd.frame.N = normalize(
 		b[0] * mesh.normals[v[0]] +
 		b[1] * mesh.normals[v[1]] +
 		b[2] * mesh.normals[v[2]]);
 
 	if (mesh.tangents && mesh.bitangents) {
-		sd.T = normalize(
+		sd.frame.T = normalize(
 			b[0] * mesh.tangents[v[0]] +
 			b[1] * mesh.tangents[v[1]] +
 			b[2] * mesh.tangents[v[2]]);
@@ -90,13 +90,13 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		// re-orthogonize the tangent space 
 		// since tbn may become not orthogonal after the interpolation process.
 		// or they are not orthogonal at the beginning (when we import the models)
-		sd.T = normalize(sd.T - sd.N * dot(sd.N, sd.T));
-		sd.B = normalize(cross(sd.N, sd.T));
+		sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.N, sd.frame.T));
+		sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
 	}
 	else {
 		// generate a fake tbn frame for now...
-		sd.T = getPerpendicular(sd.N);
-		sd.B = normalize(cross(sd.N, sd.T));
+		sd.frame.T = getPerpendicular(sd.frame.N);
+		sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
 	}
 
 	vec2f uv[3];
@@ -133,9 +133,9 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		vec3f normal = sampleTexture(normalTexture, sd.uv, vec3f{});
 		normal = rgbToNormal(normal);
 
-		sd.N = normalize(sd.T * normal.x + sd.B * normal.y + sd.N * normal.z);
-		sd.T = normalize(sd.T - sd.N * dot(sd.T, sd.N));
-		sd.B = normalize(cross(sd.N, sd.T));
+		sd.frame.N = normalize(sd.frame.T * normal.x + sd.frame.B * normal.y + sd.frame.N * normal.z);
+		sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.T, sd.frame.N));
+		sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
 	}
 
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {

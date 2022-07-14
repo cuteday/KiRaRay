@@ -44,6 +44,17 @@ namespace {
 	}
 }
 
+void ToneMappingPass::renderUI() {
+	static const char *operators[] = { "Linear", "Reinhard", "Aces", "Uncharted2", "HejiHable" };
+	if (ui::CollapsingHeader("Tone mapping pass")) {
+		ui::Checkbox("Enabled", &mEnable);
+		if (mEnable) {
+			ui::DragFloat("Exposure compensation", &mExposureCompensation, 0.001, 0.001, 100, "%.3f");
+			ui::Combo("Tonemap operator", (int *) &mOperator, operators, (int) Operator::NumsOperators);
+		}
+	}
+}
+
 void ToneMappingPass::render(CUDABuffer& frame){
 	if (!mEnable) return;
 	PROFILE("Tong mapping pass");

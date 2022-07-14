@@ -2,6 +2,7 @@
 
 #include "math/math.h"
 #include "math/utils.h"
+#include "raytracing.h"
 #include "scene.h"
 
 #define KRR_RT_RG(name) __raygen__ ## name
@@ -28,27 +29,6 @@ namespace shader {
 		RAY_TYPE_COUNT
 	};
 
-	struct ShadingFrame {
-		vec3f N;
-		vec3f T;
-		vec3f B;
-
-		ShadingFrame(vec3f n, vec3f t, vec3f b): N(n), T(t), B(b) {}
-		
-		ShadingFrame(vec3f n) : N(n) { 
-			T = utils::getPerpendicular(N);
-			B = normalize(cross(N, T));
-		}
-
-		KRR_CALLABLE vec3f fromLocal(vec3f v) const {
-			return T * v.x + B * v.y + N * v.z;
-		}
-
-		KRR_CALLABLE vec3f toLocal(vec3f v) const {
-			return { dot(T, v), dot(B, v), dot(N, v) };
-		}
-	};
-
 	struct HitInfo {
 		uint primitiveId;
 		vec3f barycentric;
@@ -64,9 +44,7 @@ namespace shader {
 		vec2f uv;				// texture coords
 		vec3f geoN;				// geometry normal [on the front-facing side]
 
-		vec3f N;				// shading normal [flipped if back-facing]
-		vec3f T;				// tangent
-		vec3f B;				// bitangent
+		Frame frame;
 
 		float IoR{ 1.5 };
 		vec3f diffuse;			// diffuse reflectance
@@ -86,16 +64,8 @@ namespace shader {
 		BsdfType bsdfType;
 		uint flags;					// user custom flags?
 
-		__both__ vec3f fromLocal(vec3f v) const {
-			return T * v.x + B * v.y + N * v.z;
-		}
-
-		__both__ vec3f toLocal(vec3f v) const {
-			return { dot(T, v), dot(B, v), dot(N, v) };
-		}
-
 		__both__ Interaction getInteraction() const {
-			return Interaction(pos, wo, N, uv);
+			return Interaction(pos, wo, frame.N, uv);
 		}
 	};
 

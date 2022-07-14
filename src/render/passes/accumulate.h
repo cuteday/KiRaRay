@@ -15,16 +15,7 @@ public:
 
 	AccumulatePass() = default;
 
-	void renderUI() override {
-		if (ui::CollapsingHeader("Accumulate pass")) {
-			if (ui::Checkbox("Enabled", &mEnable)) reset();
-			if (mEnable) {
-				ui::Text("Accumulate count: %d\n", mAccumCount);
-				if(ui::DragInt("Max accum count", (int*) & mMaxAccumCount, 1, 0, 1e9)) reset();
-				if (ui::Button("reset")) reset();
-			}
-		}
-	}
+	void renderUI() override;
 
 	void reset() { mAccumCount = 0; }
 

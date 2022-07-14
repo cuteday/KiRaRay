@@ -46,7 +46,7 @@ extern "C" int main(int argc, char *argv[]) {
 	} catch (std::exception e) {
 		logFatal("Kiraray::Unhandled exception: " + string(e.what()));
 	}
-#endif // KRR_DEBUG_BUILD
+#endif
 
 	return EXIT_SUCCESS;
 }

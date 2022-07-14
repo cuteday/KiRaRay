@@ -1,7 +1,9 @@
 #pragma once
 
 #include "common.h"
+
 #include "math/math.h"
+#include "math/utils.h"
 
 #define KRR_RAY_TMAX	(1e20f)
 #define KRR_RAY_EPS		(1e-4f)
@@ -38,6 +40,27 @@ KRR_CALLABLE vec3f offsetRayOrigin(vec3f p, vec3f n, vec3f w) {
 	return p + offset;
 }
 
+struct Frame {
+	Frame() = default;
+
+	Frame(vec3f n, vec3f t, vec3f b) : N(n), T(t), B(b) {}
+
+	Frame(vec3f n) : N(n) {
+		T = math::utils::getPerpendicular(N);
+		B = normalize(cross(N, T));
+	}
+
+	KRR_CALLABLE vec3f toWorld(vec3f v) const {
+		return T * v.x + B * v.y + N * v.z;
+	}
+
+	KRR_CALLABLE vec3f toLocal(vec3f v) const {
+		return { dot(T, v), dot(B, v), dot(N, v) };
+	}
+
+	vec3f N, T, B;
+};
+
 struct Interaction{
 	Interaction() = default;
 
@@ -69,13 +92,6 @@ struct Interaction{
 	vec3f wo {0};	// world-space out-scattering direction
 	vec3f n {0};
 	vec2f uv {0};
-};
-
-struct SurfaceInteraction : Interaction {
-
-
-	Material* material{ nullptr };
-	Light* areaLight{ nullptr };
 };
 
 KRR_NAMESPACE_END

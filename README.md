@@ -65,7 +65,7 @@ For testing, HDR environment images can be downloaded at [sIBL Archive](http://w
 
 #### Performance
 
-Switch to *Release* build for normal performance. The megakernel pathtracer should run at 30+ fps for rendering an 1 spp 1920*1080 image on an RTX 3060 or similar GPU, if the average path length is less than 5 and NEE disabled. The wavefront pathtracer however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does run significantly faster when next event estimation is enabled though). 
+Switch to *Release* build for normal performance. The megakernel pathtracer should run at about 30 spp per second at 1920*1080 on an RTX 3070, if the average path length is less than 5. The wavefront pathtracer however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does run significantly faster when next event estimation is enabled though). 
 
 ### Epilogue
 

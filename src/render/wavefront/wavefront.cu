@@ -54,7 +54,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 		w.light = sd.light;
 		w.ctx = r.ctx;
 		w.p = sd.pos;
-		w.n = sd.N;
+		w.n = sd.frame.N;
 		w.wo = sd.wo;
 		w.uv = sd.uv;
 		w.depth = r.depth;

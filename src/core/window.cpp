@@ -42,7 +42,7 @@ namespace api{
 		ImGuiIO &io = ui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		ui::StyleColorsLight();
-		ImGui_ImplOpenGL3_Init("#version 150"); // Mac compatible: GL 3.2 + GLSL 150
+		ImGui_ImplOpenGL3_Init("#version 330"); 
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 	}
 

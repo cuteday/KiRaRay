@@ -84,16 +84,16 @@ void WavefrontPathTracer::generateScatterRays(){
 		KRR_DEVICE_LAMBDA(const ScatterRayWorkItem & w) {
 		Sampler sampler = &pixelState->sampler[w.pixelId];
 		const ShadingData& sd = w.sd;
-		vec3f woLocal = sd.toLocal(sd.wo);
+		vec3f woLocal = sd.frame.toLocal(sd.wo);
 
 		/* sample direct lighting */
 		if (enableNEE) {
 			float u = sampler.get1D();
 			SampledLight sampledLight = lightSampler.sample(u);
 			Light light = sampledLight.light;
-			LightSample ls = light.sampleLi(sampler.get2D(), { sd.pos, sd.N });
+			LightSample ls = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
 			vec3f wiWorld = normalize(ls.intr.p - sd.pos);
-			vec3f wiLocal = sd.toLocal(wiWorld);
+			vec3f wiLocal = sd.frame.toLocal(wiWorld);
 			
 			float lightPdf = sampledLight.pdf * ls.pdf;
 			float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
@@ -120,12 +120,12 @@ void WavefrontPathTracer::generateScatterRays(){
 		if (u > probRR) return;		// Russian Roulette
 		BSDFSample sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
 		if (sample.pdf && any(sample.f)) {
-			vec3f wiWorld = sd.fromLocal(sample.wi);
+			vec3f wiWorld = sd.frame.toWorld(sample.wi);
 			RayWorkItem r = {};
-			vec3f p = offsetRayOrigin(sd.pos, sd.N, wiWorld);
+			vec3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 			r.pdf = sample.pdf, 1e-7f;
 			r.ray = { p, wiWorld };
-			r.ctx = { sd.pos, sd.N };
+			r.ctx = { sd.pos, sd.frame.N };
 			r.pixelId = w.pixelId;
 			r.depth = w.depth + 1;
 			r.thp = w.thp * sample.f * fabs(sample.wi.z) / sample.pdf / probRR;

@@ -57,7 +57,7 @@ using namespace math;
 class WindowApp{
 public:
 	WindowApp(const char title[], vec2i size,
-			bool visible = true, bool enableVsync = true);
+			bool visible = true, bool enableVsync = false);
 
 	~WindowApp();
 

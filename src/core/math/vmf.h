@@ -1,5 +1,8 @@
 #include "common.h"
+
 #include "math/math.h"
+#include "raytracing.h"
+
 #include "render/sampling.h"
 #include "render/shared.h"
 
@@ -36,10 +39,10 @@ public:
 		return vec3f(cosPhi * sinTheta, sinPhi * sinTheta, cosTheta);
 	}
 
-	// sample and rotate to specified ¦Ì
+	// sample and rotate to specified mu
 	KRR_CALLABLE vec3f sample(vec2f u, vec3f mu) { 
 		vec3f dir = sample(u);
-		return shader::ShadingFrame(mu).fromLocal(dir);
+		return Frame(mu).toWorld(dir);
 	}
 	
 private:
