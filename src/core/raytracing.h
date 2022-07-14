@@ -10,6 +10,8 @@
 
 KRR_NAMESPACE_BEGIN
 
+using namespace math;
+
 class Material;
 class Light;
 

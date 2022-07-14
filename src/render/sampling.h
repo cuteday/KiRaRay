@@ -89,16 +89,16 @@ KRR_CALLABLE vec3f uniformSampleTriangle(const vec2f& u) {
 //		pdf = 0;
 //	// Compute vectors _a_, _b_, and _c_ to spherical triangle vertices
 //	vec3f a(v[0] - p), b(v[1] - p), c(v[2] - p);
-//	CHECK_GT(lengthSquared(a), 0);
-//	CHECK_GT(lengthSquared(b), 0);
-//	CHECK_GT(lengthSquared(c), 0);
+//	CHECK_GT(squaredLength(a), 0);
+//	CHECK_GT(squaredLength(b), 0);
+//	CHECK_GT(squaredLength(c), 0);
 //	a = normalize(a);
 //	b = normalize(b);
 //	c = normalize(c);
 //
 //	// Compute normalized cross products of all direction pairs
 //	vec3f n_ab = cross(a, b), n_bc = cross(b, c), n_ca = cross(c, a);
-//	if (lengthSquared(n_ab) == 0 || lengthSquared(n_bc) == 0 || lengthSquared(n_ca) == 0)
+//	if (squaredLength(n_ab) == 0 || squaredLength(n_bc) == 0 || squaredLength(n_ca) == 0)
 //		return {};
 //	n_ab = normalize(n_ab);
 //	n_bc = normalize(n_bc);

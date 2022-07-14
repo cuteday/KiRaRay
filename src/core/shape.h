@@ -10,6 +10,8 @@
 
 KRR_NAMESPACE_BEGIN
 
+using namespace math;
+
 struct ShapeSample {
 	Interaction intr;
 	float pdf;
@@ -98,7 +100,7 @@ public:
 			vec3f wi = normalize(ss.intr.p - ctx.p);
 
 			// Convert area sampling PDF in _ss_ to solid angle measure
-			ss.pdf /= abs(dot(ss.intr.n, -wi)) / lengthSquared(ctx.p - ss.intr.p);
+			ss.pdf /= abs(dot(ss.intr.n, wi)) / squaredLength(ctx.p - ss.intr.p);
 			if(isinf(ss.pdf)) ss.pdf = 0;
 			return ss;
 		//}
@@ -116,8 +118,8 @@ public:
 
 			vec3f wi = normalize(sample.p - ctx.p);
 			// Compute PDF in solid angle measure from shape intersection point
-			float pdf = (1 / area()) / (abs(dot(sample.n, -wi)) /
-				lengthSquared(ctx.p - sample.p));
+			float pdf = (1 / area()) / (abs(sample.n.dot(-wi))) /
+				squaredLength(ctx.p - sample.p);
 			if (isinf(pdf))
 				pdf = 0;
 

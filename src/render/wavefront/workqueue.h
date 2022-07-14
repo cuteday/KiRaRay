@@ -122,7 +122,7 @@ public:
     KRR_CALLABLE int pushCameraRay(Ray ray, uint pixelId) {
         int index = allocateEntry();
         this->depth[index] = 0;
-        this->thp[index] = 1;
+		this->thp[index]	 = vec3f::Ones();
         this->pixelId[index] = pixelId;
         this->ray[index] = ray;
         return index;

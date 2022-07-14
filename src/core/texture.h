@@ -83,7 +83,7 @@ public:
 		vec3f color = (vec3f)tex2D<float4>(mCudaTexture, uv[0], uv[1]);
 		return color;
 #endif 
-		return 0;
+		return {};
 	}
 
 	void toDevice();

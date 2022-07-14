@@ -20,7 +20,7 @@ namespace bsdf{
 	};
 
 	struct BSDFSample {
-		vec3f f = 0;
+		vec3f f{};
 		vec3f wi;
 		float pdf = 0;
 		uint flags;

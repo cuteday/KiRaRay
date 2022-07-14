@@ -72,7 +72,7 @@ public:
 	// user input handler
 	virtual void onMouseEvent(io::MouseEvent& mouseEvent) {};
 	virtual void onKeyEvent(io::KeyboardEvent &keyEvent) {};
-	vec2f getMouseScale() { return vec2f(1) / vec2f(fbSize); }
+	vec2f getMouseScale() { return fbSize.cast<float>().inverse(); }
 
 	inline vec2i getMousePos() const {
 		double x, y;

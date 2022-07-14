@@ -31,13 +31,13 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 }
 
 KRR_DEVICE_FUNCTION RayWorkItem getRayWorkItem() {
-	int rayIndex(optixGetLaunchIndex()[0]);
+	int rayIndex(optixGetLaunchIndex().x);
 	DCHECK_LT(rayIndex, launchParams.currentRayQueue->size());
 	return (*launchParams.currentRayQueue)[rayIndex];
 }
 
 KRR_DEVICE_FUNCTION ShadowRayWorkItem getShadowRayWorkItem() {
-	int rayIndex(optixGetLaunchIndex()[0]);
+	int rayIndex(optixGetLaunchIndex().x);
 	DCHECK_LT(rayIndex, launchParams.shadowRayQueue->size());
 	return (*launchParams.shadowRayQueue)[rayIndex];
 }
@@ -79,7 +79,7 @@ extern "C" __global__ void KRR_RT_MS(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_RG(Closest)() {
-	int rayIndex(optixGetLaunchIndex()[0]);
+	int rayIndex(optixGetLaunchIndex().x);
 	if (rayIndex >= launchParams.currentRayQueue->size()) return;
 	RayWorkItem r = getRayWorkItem();
 	ShadingData sd = {};
@@ -95,7 +95,7 @@ extern "C" __global__ void KRR_RT_AH(Shadow)() { optixSetPayload_0(0); }
 extern "C" __global__ void KRR_RT_MS(Shadow)() {}
 
 extern "C" __global__ void KRR_RT_RG(Shadow)() {
-	int rayIndex(optixGetLaunchIndex()[0]);
+	int rayIndex(optixGetLaunchIndex().x);
 	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
 	ShadowRayWorkItem r = getShadowRayWorkItem();
 	uint32_t miss{1};

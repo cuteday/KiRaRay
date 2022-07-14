@@ -51,7 +51,7 @@ public:
 	}
 
 	__both__ vec3f f(vec3f wo, vec3f wi) const {
-		vec3f val = 0;
+		vec3f val = vec3f::Zero();
 		if(pDiff) val += (1 - specTrans) * diffuseBsdf.f(wo, wi);
 		if(pSpecRefl) val += (1 - specTrans) * microfacetBrdf.f(wo, wi);
 		if(pSpecTrans) val += specTrans * microfacetBtdf.f(wo, wi);

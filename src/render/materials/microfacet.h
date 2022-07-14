@@ -219,8 +219,9 @@ public:
     __both__ vec3f f(vec3f wo, vec3f wi) const {
         float cosThetaO = AbsCosTheta(wo), cosThetaI = AbsCosTheta(wi);
         vec3f wh = wi + wo;
-        if (cosThetaI == 0 || cosThetaO == 0) return 0;
-        if (!any(wh)) return 0;
+        if (cosThetaI == 0 || cosThetaO == 0) return vec3f::Zero();
+		if (!any(wh))
+			return vec3f::Zero();
         wh = normalize(wh);
 
         // fresnel is also on the microfacet (wrt to wh)
@@ -296,10 +297,12 @@ public:
     }
 
     __both__ vec3f f(vec3f wo, vec3f wi) const {
-        if (SameHemisphere(wo, wi)) return 0;
+		if (SameHemisphere(wo, wi))
+			return vec3f::Constant(0);
 
         float cosThetaO = wo[2], cosThetaI = wi[2];
-        if (cosThetaI == 0 || cosThetaO == 0) return 0;
+		if (cosThetaI == 0 || cosThetaO == 0)
+			return vec3f::Constant(0);
 
         // Compute $\wh$ from $\wo$ and $\wi$ for microfacet transmission
         float eta = CosTheta(wo) > 0 ? etaB / etaA : etaA / etaB;
@@ -307,8 +310,8 @@ public:
         if (wh[2] < 0) wh = -wh;
 
         // Same side?
-        if (dot(wo, wh) * dot(wi, wh) > 0) return 0;
-        vec3f F = FrDielectric(dot(wo, wh), etaB / etaA);
+        if (dot(wo, wh) * dot(wi, wh) > 0) return vec3f::Constant(0);
+        vec3f F = vec3f::Constant(FrDielectric(dot(wo, wh), etaB / etaA));
 
         float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
         float factor = 1.f / eta;

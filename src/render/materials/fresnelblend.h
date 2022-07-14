@@ -10,7 +10,7 @@
 #include "matutils.h"
 #include "fresnel.h"
 #include "microfacet.h"
-#include "sampling.h"
+#include "render/sampling.h"
 #include "sampler.h"
 
 KRR_NAMESPACE_BEGIN
@@ -31,7 +31,8 @@ public:
 	}
 
 	__both__ vec3f f(vec3f wo, vec3f wi) const {
-		if (!SameHemisphere(wo, wi)) return 0;
+		if (!SameHemisphere(wo, wi))
+			return vec3f::Constant(0);
 		vec3f diff = (28.f / (23.f * M_PI)) * diffuse
 			* (vec3f(1) - specular)
 			* (1.f - pow5(1.f - 0.5f * AbsCosTheta(wi)))

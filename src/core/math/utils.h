@@ -96,7 +96,7 @@ namespace math{
 		********************************************************/
 
 		template <typename T>
-		KRR_CALLABLE float lengthSquared(T v) {
+		KRR_CALLABLE float squaredLength(T v) {
 			float l = length(v);
 			return l * l;
 		}

@@ -161,13 +161,14 @@ public:
 		float Gr =
 			smithG_GGX(AbsCosTheta(wo), .25) * smithG_GGX(AbsCosTheta(wi), .25);
 
-		return weight * Gr * Fr * Dr / 4;
+		return vec3f::Constant(weight) * Gr * Fr * Dr / 4;
 	};
 
 	KRR_CALLABLE vec3f Sample_f(const vec3f& wo, vec3f* wi, const vec2f& u,
 		float* pdf, BxDFType* sampledType) const {
 
-		if (wo[2] == 0) return 0.;
+		if (wo[2] == 0)
+			return vec3f::Zero();
 
 		float alpha2 = gloss * gloss;
 		float cosTheta = sqrt(
@@ -248,7 +249,7 @@ public:
 				//disneyFakeSS = DisneyFakeSS(diffuseWeight * flat * (1 - dt) * c, rough);
 			}
 			else {
-				vec3f scatterDistance = 0;
+				vec3f scatterDistance = vec3f::Zero();
 				if (!any(scatterDistance)) {
 					// No subsurface scattering; use regular (Fresnel modified) diffuse.
 					disneyDiffuse = DisneyDiffuse(diffuseWeight * c);
@@ -295,7 +296,7 @@ public:
 		// specular BTDF if has transmission
 		if (strans > 0) {
 			//vec3f T = strans * sqrt(c);
-			vec3f T = strans;
+			vec3f T = vec3f::Constant(strans);
 			if (thin) {
 				// Scale roughness based on IOR (Burley 2015, Figure 15).
 				assert(false);
@@ -329,7 +330,7 @@ public:
 	}
 
 	KRR_CALLABLE vec3f f(vec3f wo, vec3f wi) const {
-		vec3f val = 0;
+		vec3f val	 = vec3f::Zero();
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
 			if (components & DISNEY_DIFFUSE)val += disneyDiffuse.f(wo, wi);

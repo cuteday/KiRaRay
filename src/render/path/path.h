@@ -18,7 +18,7 @@ const string shaderProgramNames[] = {
 struct LaunchParamsPT
 {
 	uint frameID{ 0 };
-	vec2i fbSize = 0;
+	vec2i fbSize = vec2i::Zero();
 	// per pixel debugging output
 	bool debugOutput = false;
 	vec2i debugPixel = { 960, 540 };
@@ -28,7 +28,7 @@ struct LaunchParamsPT
 	bool MIS = true;			// enable multiple importance sampling. if disable but NEE enabled, "some types" of the lights (i.e. area lights and env lights) will be counted twice.
 	int maxDepth = 10;
 	float probRR = 0.15;
-	vec3f clampThreshold = 100;	// clamp max radiance contrib per frame
+	vec3f clampThreshold = vec3f::Constant(100); // clamp max radiance contrib per frame
 	int spp = 1;
 	int lightSamples = 1;
 	// scene 
@@ -41,7 +41,7 @@ struct LaunchParamsPT
 };
 
 struct PathData {
-	vec3f L = 0;				// total contribution to the current pixel
+	vec3f L{};					// total contribution to the current pixel
 	vec3f throughput;			// maintain the throughput of path
 	vec3f pos;					// ray origin from last scattering event 
 	vec3f dir;					// world space direction of last scatter

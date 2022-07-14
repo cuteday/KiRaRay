@@ -24,7 +24,7 @@ namespace {
 	}
 
 	KRR_DEVICE_FUNCTION vec3f rgbToNormal(vec3f rgb){
-		return rgb * 2.f - 1.f;
+		return 2 * rgb - 1;
 	}
 
 	KRR_DEVICE_FUNCTION vec3f rgToNormal(vec2f rg){
@@ -141,21 +141,21 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// this is the default except for OBJ or when user specified 
 		// G - Roughness; B - Metallic
-		sd.diffuse = lerp(baseColor, vec3f(0), spec.b);
+		sd.diffuse = lerp(baseColor, vec3f::Zero(), spec[2]);
 
 		// Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
 		// UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
 		float f = (sd.IoR - 1.f) / (sd.IoR + 1.f);
 		float F0 = f * f;
 
-		sd.specular = lerp(vec3f(F0), baseColor, spec.b);
-		sd.metallic = spec.b;
-		sd.roughness = spec.g;
+		sd.specular	 = lerp(vec3f(F0), baseColor, spec[2]);
+		sd.metallic	 = spec[2];
+		sd.roughness = spec[1];
 	}
 	else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		sd.diffuse = baseColor;
 		sd.specular = (vec3f)spec;			// specular reflectance
-		sd.roughness = 1 - spec.a;			// 
+		sd.roughness = 1 - spec[3];	 // 
 		sd.metallic = getMetallic(sd.diffuse, sd.specular);
 	}
 	else {

@@ -36,7 +36,7 @@ public:
 	KRR_CALLABLE Ray getRay(vec2i pixel, vec2i frameSize, Sampler sampler) {
 		Ray ray;
 		vec2f p = vec2f(pixel) + vec2f(0.5) + sampler.get2D() /*uniform sample + box filter*/;
-		vec2f ndc = vec2f(2, 2) * (p) / vec2f(frameSize) + vec2f(-1);	// ndc in [-1, 1]^2
+		vec2f ndc = vec2f(2 * p) / vec2f(frameSize) + vec2f(-1);	// ndc in [-1, 1]^2
 		if (mData.lensRadius > 0) {			/*Thin lens*/
 			vec3f focalPoint = mData.pos + ndc[0] * mData.u + ndc[1] * mData.v + mData.w;
 			vec2f apertureSample = mData.lensRadius > M_EPSILON ? uniformSampleDisk(sampler.get2D()) : 0;

@@ -205,10 +205,10 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	path.lightSampler = launchParams.sceneData.lightSampler;
 	path.sampler = &sampler;
 
-	vec3f color = 0;
+	vec3f color = vec3f::Zero();
 	for (int i = 0; i < launchParams.spp; i++) {
-		path.throughput = 1;
-		path.L = 0;
+		path.throughput = vec3f::Ones();
+		path.L			= vec3f::Zero();
 		path.pos = cameraRay.origin;
 		path.dir = cameraRay.dir;
 
