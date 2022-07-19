@@ -41,7 +41,7 @@ template <typename T>
 KRR_DEVICE_FUNCTION T sampleTexture(Texture &texture, vec2f uv, T fallback) {
 	cudaTextureObject_t cudaTexture = texture.getCudaTexture();
 	if (cudaTexture) {
-		return to_vec4(tex2D<float4>(cudaTexture, uv[0], uv[1]));
+		return tex2D<float4>(cudaTexture, uv[0], uv[1]);
 	}
 	return fallback;
 }

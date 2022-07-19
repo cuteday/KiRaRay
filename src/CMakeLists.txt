@@ -65,6 +65,7 @@ SET ( KRR_CORE_HEADERS
 	# maths
 	core/math/math.h
 	core/math/vec.h
+	core/math/array.h
 	core/math/utils.h
 	core/math/aabb.h
 	core/math/constants.h

@@ -3,6 +3,7 @@
 #include "common.h"
 #include "math/constants.h"
 #include "math/vec.h"
+#include "math/array.h"
 #include "math/functor.h"
 //#define EIGEN_DEFAULT_DENSE_INDEX_TYPE int
 #include <Eigen/Dense>
@@ -22,12 +23,17 @@ namespace math {
 
 template <typename T>
 KRR_DEVICE_FUNCTION auto clamp(T v, T lo, T hi) {
-	return max(min(v, hi), lo);
+	return std::max(std::min(v, hi), lo);
 }
 
 template <typename DerivedV, typename DerivedB>
 KRR_DEVICE_FUNCTION auto clamp(const Eigen::MatrixBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
 	return v.cwiseMin(hi).cwiseMax(lo);
+}
+
+template <typename DerivedV, typename DerivedB>
+KRR_DEVICE_FUNCTION auto clamp(const Eigen::ArrayBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
+	return v.min(hi).max(lo);
 }
 
 template <typename DerivedA, typename DerivedB, typename DerivedT>

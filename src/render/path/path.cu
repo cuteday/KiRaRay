@@ -183,7 +183,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 		if (!generateScatterRay(sd, path)) break;
 	}
 	// note that clamping also eliminates NaN and INF. 
-	path.L = clamp(path.L, vec3f(0), launchParams.clampThreshold);
+	path.L = clamp(path.L, 0.f, launchParams.clampThreshold);
 }
 
 extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
