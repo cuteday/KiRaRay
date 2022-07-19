@@ -78,9 +78,9 @@ public:
 	
 	__both__ cudaTextureObject_t getCudaTexture()const { return mCudaTexture; }
 	
-	__device__ vec3f tex(vec2f uv)const {
+	__device__ Color tex(vec2f uv) const {
 #ifdef __NVCC__ 
-		vec3f color = (vec3f)tex2D<float4>(mCudaTexture, uv[0], uv[1]);
+		Color color = (vec3f) tex2D<float4>(mCudaTexture, uv[0], uv[1]);
 		return color;
 #endif 
 		return {};

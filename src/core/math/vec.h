@@ -23,6 +23,11 @@ public:
 	using Eigen::Vector<T, Size>::Vector;
 
 	KRR_CALLABLE Vector(void) : Eigen::Vector<T, Size>() {}
+
+	KRR_CALLABLE Vector(T v)
+		: Eigen::Vector<T, Size>(Eigen::Vector<T, Size>::Constant(v)) {}
+
+	KRR_CALLABLE Vector(Eigen::Array<T, Size, 1> arr) : Eigen::Vector<T, Size>(arr.matrix()) {}
 	
 	template <typename OtherDerived>
 	KRR_CALLABLE Vector(const Eigen::MatrixBase<OtherDerived> &other) : Eigen::Vector<T, Size>(other) {}
@@ -147,6 +152,5 @@ using vec3ui = Vector3<uint>;
 using vec4f = Vector4<float>;
 using vec4i = Vector4<int>;
 using vec4ui = Vector4<uint>;
-
 
 KRR_NAMESPACE_END

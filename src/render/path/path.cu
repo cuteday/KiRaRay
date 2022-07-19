@@ -38,7 +38,7 @@ KRR_DEVICE_FUNCTION bool traceShadowRay(OptixTraversableHandle traversable,
 template <typename... Args>
 KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 	if (!launchParams.debugOutput) return;
-	vec2i pixel = (vec2i) optixGetLaunchIndex();
+	vec2i pixel = optixGetLaunchIndex();
 	if (pixel == launchParams.debugPixel)
 		printf(fmt, std::forward<Args>(args)...);
 }
@@ -48,7 +48,7 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 	const Light& light = sd.light;
 	// incorporate the contribution from diffuse surface emission 
 	Interaction intr = Interaction(sd.pos, sd.wo, sd.frame.N, sd.uv);
-	vec3f Le = sd.light.L(sd.pos, sd.frame.N, sd.uv, sd.wo);
+	Color Le		 = sd.light.L(sd.pos, sd.frame.N, sd.uv, sd.wo);
 
 	if (path.depth == 0) {
 		// emission at primary vertex
@@ -99,7 +99,7 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
 	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
-	vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
+	Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType) * fabs(wiLocal[2]);
 	float misWeight = 1;
 
 	if (launchParams.MIS) misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
@@ -177,7 +177,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 		if (launchParams.RR) {
 			float u = path.sampler.get1D();
 			if (u < launchParams.probRR) break;
-			path.throughput /= 1 - launchParams.probRR;
+			path.throughput /= 1.f - launchParams.probRR;
 		}
 
 		if (!generateScatterRay(sd, path)) break;
@@ -187,10 +187,10 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 }
 
 extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
-	vec3i launchIndex = (vec3i)optixGetLaunchIndex();
-	vec2i pixel = { launchIndex[0], launchIndex[1] };
+	vec3ui launchIndex = (vec3ui)optixGetLaunchIndex();
+	vec2ui pixel		   = {  launchIndex[0], launchIndex[1] };
 
-	const int frameID = launchParams.frameID;
+	const uint frameID = launchParams.frameID;
 	const uint32_t fbIndex = pixel[0] + pixel[1] * launchParams.fbSize[0];
 
 	Camera& camera = launchParams.camera;
@@ -205,19 +205,18 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	path.lightSampler = launchParams.sceneData.lightSampler;
 	path.sampler = &sampler;
 
-	vec3f color = vec3f::Zero();
+	Color color = Color::Zero();
 	for (int i = 0; i < launchParams.spp; i++) {
-		path.throughput = vec3f::Ones();
-		path.L			= vec3f::Zero();
+		path.throughput = Color::Ones();
+		path.L			= Color::Zero();
 		path.pos = cameraRay.origin;
 		path.dir = cameraRay.dir;
 
 		tracePath(path);
 		color += path.L;
 	}
-	color /= launchParams.spp;
-	assert(!isnan(luminance(color)));
-	launchParams.colorBuffer[fbIndex] = vec4f(color, 1.0f);
+	color /= float(launchParams.spp);
+	launchParams.colorBuffer[fbIndex] = vec4f(vec3f(color), 1.f);
 }
 
 KRR_NAMESPACE_END

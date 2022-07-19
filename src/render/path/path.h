@@ -41,8 +41,8 @@ struct LaunchParamsPT
 };
 
 struct PathData {
-	vec3f L{};					// total contribution to the current pixel
-	vec3f throughput;			// maintain the throughput of path
+	Color L{};					// total contribution to the current pixel
+	Color throughput;			// maintain the throughput of path
 	vec3f pos;					// ray origin from last scattering event 
 	vec3f dir;					// world space direction of last scatter
 	float pdf;					// BxDF sampling pdf from last scatter

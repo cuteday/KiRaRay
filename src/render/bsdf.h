@@ -22,7 +22,7 @@ public:
 		return dispatch(sample, bsdfIndex);
 	}
 
-	KRR_CALLABLE static vec3f f(const ShadingData& sd, vec3f wo, vec3f wi, int bsdfIndex) {
+	KRR_CALLABLE static Color f(const ShadingData& sd, vec3f wo, vec3f wi, int bsdfIndex) {
 		auto f = [&](auto ptr)->vec3f {return ptr->fInternal(sd, wo, wi); };
 		return dispatch(f, bsdfIndex);
 	}
@@ -38,7 +38,7 @@ public:
 	}
 
 	// [NOTE] f the cosine theta term in render equation is not contained in f().
-	KRR_CALLABLE vec3f f(vec3f wo, vec3f wi) const {
+	KRR_CALLABLE Color f(vec3f wo, vec3f wi) const {
 		auto f = [&](auto ptr)->vec3f {return ptr->f(wo, wi); };
 		return dispatch(f);
 	}

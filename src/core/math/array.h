@@ -12,6 +12,10 @@ public:
 
 	KRR_CALLABLE Array(void) : Eigen::Array<T, Size, 1>() {}
 
+	KRR_CALLABLE Array(T v) : Eigen::Array<T, Size, 1>(Eigen::Array<T, Size, 1>::Constant(v)) {}
+
+	KRR_CALLABLE Array(Eigen::Vector<T, Size> vec): Eigen::Array<T, Size, 1>(vec.array()) {}
+
 	template <typename OtherDerived>
 	KRR_CALLABLE Array(const Eigen::DenseBase<OtherDerived> &other) : Eigen::Array<T, Size, 1>(other) {}
 
@@ -27,6 +31,101 @@ public:
 	}
 };
 
-using arr3f = Array<float, 3>;
+template <typename T>
+class Array2 : public Array<T, 2> {
+public:
+	using Array<T, 2>::Array;
+
+	KRR_CALLABLE Array2(Array3<T> v) {
+		this->operator[](0) = v.operator[](0);
+		this->operator[](1) = v.operator[](1);
+	}
+
+#ifdef __CUDACC__
+
+	KRR_CALLABLE operator float2() const { return make_float2(this->operator[](0), this->operator[](1)); }
+
+	KRR_CALLABLE Array2(const float2 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+	}
+
+	KRR_CALLABLE Array2(const uint2 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+	}
+
+	KRR_CALLABLE Array2(const uint3 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+	}
+#endif
+};
+
+template <typename T>
+class Array3 : public Array<T, 3> {
+public:
+	using Array<T, 3>::Array;
+
+	KRR_CALLABLE Array3(Array4<T> v) {
+		this->operator[](0) = v.operator[](0);
+		this->operator[](1) = v.operator[](1);
+		this->operator[](2) = v.operator[](2);
+	}
+
+#ifdef __CUDACC__
+
+	KRR_CALLABLE operator float3() const {
+		return make_float3(this->operator[](0), this->operator[](1), this->operator[](2));
+	}
+
+	KRR_CALLABLE Array3(const float3 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+		this->operator[](2) = v.z;
+	}
+
+	KRR_CALLABLE Array3(const uint3 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+		this->operator[](2) = v.z;
+	}
+
+	KRR_CALLABLE Array3(const float4 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+		this->operator[](2) = v.z;
+	}
+#endif
+};
+
+template <typename T>
+class Array4 : public Array<T, 4> {
+public:
+	using Array<T, 4>::Array;
+
+	KRR_CALLABLE Array4(Array3<T> v, T w) {
+		this->operator[](0) = v.operator[](0);
+		this->operator[](1) = v.operator[](1);
+		this->operator[](2) = v.operator[](2);
+		this->operator[](3) = w;
+	}
+
+#ifdef __CUDACC__
+	KRR_CALLABLE operator float4() const {
+		return make_float4(this->operator[](0), this->operator[](1), this->operator[](2), this->operator[](3));
+	}
+
+	KRR_CALLABLE Array4(const float4 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+		this->operator[](2) = v.z;
+		this->operator[](3) = v.w;
+	}
+#endif
+};
+
+using arr3f = Array3<float>;
+using arr4f = Array4<float>;
 
 KRR_NAMESPACE_END

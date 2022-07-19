@@ -10,7 +10,7 @@ KRR_NAMESPACE_BEGIN
 namespace bsdf {
 	using namespace math;
 
-	KRR_CALLABLE vec3f FrSchlick(vec3f f0, vec3f f90, float cosTheta){
+	KRR_CALLABLE Color FrSchlick(Color f0, Color f90, float cosTheta) {
 		//return lerp(f0, f90, pow(max(1 - cosTheta, 0.f), 5.f));
 		return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0.f), 5.f); // clamp to avoid NaN if cosTheta = 1+epsilon
 	}
@@ -64,8 +64,8 @@ namespace bsdf {
 	//}
 
 	// eta: etaI/etaT if incident ray
-	KRR_CALLABLE vec3f DisneyFresnel(const vec3f& R0, float metallic, float eta, float cosI) {
-		return lerp(vec3f(FrDielectric(cosI, eta)), FrSchlick(R0, vec3f(1), cosI), metallic);
+	KRR_CALLABLE Color DisneyFresnel(const Color &R0, float metallic, float eta, float cosI) {
+		return lerp(Color(FrDielectric(cosI, eta)), FrSchlick(R0, Color(1), cosI), metallic);
 	}
 
 #if 0

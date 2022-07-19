@@ -10,7 +10,7 @@
 KRR_NAMESPACE_BEGIN
 
 struct EnvLightSample {
-	vec3f L;
+	Color L;
 	float pdf;
 	vec3f wi;
 };
@@ -19,7 +19,7 @@ class EnvLight{
 public:
 	using SharedPtr = std::shared_ptr<EnvLight>;
 	struct EnvLightData {
-		vec3f tint = { 1,1,1 };
+		Color tint		= Color::Ones();
 		float intensity = 1.0;
 		float rotation = 0;
 		Texture mEnvTexture;
@@ -44,7 +44,7 @@ public:
 
 	bool update() {
 		bool hasChanges = false;
-		hasChanges |= mData.tint != mDataPrev.tint;
+		hasChanges |= any(mData.tint != mDataPrev.tint);
 		hasChanges |= mData.intensity != mDataPrev.intensity;
 		hasChanges |= mData.rotation != mDataPrev.rotation;
 		mDataPrev = mData;
@@ -64,15 +64,15 @@ public:
 		return ls;
 	}
 
-	__device__ vec3f eval(vec3f wi) {
-		vec3f Li;
+	__device__ Color eval(vec3f wi) {
+		Color Li;
 		Li = mData.tint * mData.intensity;
 
 		//cudaTextureObject_t texture = mData.mEnvTexture.getCudaTexture();
 		if (!mIBL && mData.mEnvTexture.isOnDevice()) return Li;
 		vec2f uv = utils::worldToLatLong(wi);
 		uv[0] = fmod(uv[0] + mData.rotation, 1.f);
-		vec3f env = mData.mEnvTexture.tex(uv);
+		Color env = mData.mEnvTexture.tex(uv);
 		Li *= env;
 
 		return Li;

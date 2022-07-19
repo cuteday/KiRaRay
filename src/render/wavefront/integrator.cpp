@@ -208,8 +208,8 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 		}
 	}
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
-		vec3f L = vec3f(pixelState->L[pixelId]) / samplesPerPixel;
-		if (enableClamp) L = clamp(L, vec3f(0), vec3f(clampMax));
+		Color L = pixelState->L[pixelId] / float(samplesPerPixel);
+		if (enableClamp) L = clamp(L, 0.f, clampMax);
 		frameBuffer[pixelId] = vec4f(L, 1);
 	});
 	frameId++;

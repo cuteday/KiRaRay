@@ -26,8 +26,8 @@ public:
 		nextUint();
 	}
 
-	KRR_CALLABLE void setPixelSample(vec2i samplePixel, uint sampleIndex) {
-		uint s0 = utils::interleave_32bit(vec2ui(samplePixel));
+	KRR_CALLABLE void setPixelSample(vec2ui samplePixel, uint sampleIndex) {
+		uint s0 = utils::interleave_32bit(samplePixel);
 		uint s1 = sampleIndex;
 		setSeed(s0, s1);
 	}
@@ -97,7 +97,7 @@ public:
 
 	KRR_CALLABLE void setSeed(uint seed) { state = seed; }
 
-	KRR_CALLABLE void setPixelSample(vec2i samplePixel, uint sampleIndex) {
+	KRR_CALLABLE void setPixelSample(vec2ui samplePixel, uint sampleIndex) {
 		uint v0 = utils::interleave_32bit(vec2ui(samplePixel));
 		uint v1 = sampleIndex;
 		state	= utils::blockCipherTEA(v0, v1, 16)[0];
@@ -141,14 +141,14 @@ public:
 
 	KRR_CALLABLE RandomizeStrategy getRandomizeStrategy() const { return randomize; }
 
-	KRR_CALLABLE void setPixelSample(vec2i p, int sampleIndex) { return setPixelSample(p, sampleIndex, 0); }
+	KRR_CALLABLE void setPixelSample(vec2ui p, int sampleIndex) { return setPixelSample(p, sampleIndex, 0); }
 
-	KRR_CALLABLE void setPixelSample(vec2i p, int sampleIndex, int dim) {
+	KRR_CALLABLE void setPixelSample(vec2ui p, int sampleIndex, int dim) {
 		haltonIndex		 = 0;
 		int sampleStride = baseScales[0] * baseScales[1];
 		// Compute Halton sample index for first sample in pixel _p_
 		if (sampleStride > 1) {
-			vec2i pm(p[0] % maxHaltonResolution, p[1] % maxHaltonResolution);
+			vec2ui pm(p[0] % maxHaltonResolution, p[1] % maxHaltonResolution);
 			for (int i = 0; i < 2; ++i) {
 				uint64_t dimOffset = (i == 0) ? InverseRadicalInverse(pm[i], 2, baseExponents[i])
 											  : InverseRadicalInverse(pm[i], 3, baseExponents[i]);
@@ -203,7 +203,7 @@ class Sampler : public TaggedPointer<PCGSampler, LCGSampler, HaltonSampler> {
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_CALLABLE void setPixelSample(vec2i samplePixel, uint sampleIndex) {
+	KRR_CALLABLE void setPixelSample(vec2ui samplePixel, uint sampleIndex) {
 		auto setPixelSample = [&](auto ptr) -> void { return ptr->setPixelSample(samplePixel, sampleIndex); };
 		return dispatch(setPixelSample);
 	}

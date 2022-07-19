@@ -9,7 +9,7 @@
 KRR_NAMESPACE_BEGIN
 
 namespace {
-	KRR_DEVICE_FUNCTION float getMetallic(vec3f diffuse, vec3f spec)
+KRR_DEVICE_FUNCTION float getMetallic(Color diffuse, Color spec)
 	{
 		// This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors
 		// We don't have the specular level information, so the assumption is that it is equal to 0.5 (based on the UE4 documentation)
@@ -23,18 +23,10 @@ namespace {
 		return max(0.f, m);
 	}
 
-	KRR_DEVICE_FUNCTION vec3f rgbToNormal(vec3f rgb){ 
-		return 2 * rgb - vec3f::Ones();
+	KRR_DEVICE_FUNCTION Color rgbToNormal(Color rgb) { 
+		return 2 * rgb - Color::Ones();
 	}
 
-	KRR_DEVICE_FUNCTION vec3f rgToNormal(vec2f rg){
-		vec3f n;
-		*((vec2f *) &n) = 2 * rg - vec2f::Ones();
-		// Saturate because error from BC5 can break the sqrt
-		n[2] = saturate(dot(rg, rg)); // z = r*r + g*g
-		n[2] = sqrt(1 - n[2]);
-		return n;
-	}
 }
 
 template <typename T>

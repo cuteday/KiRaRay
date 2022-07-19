@@ -1,17 +1,18 @@
 #pragma once
 
+#define EIGEN_DEFAULT_DENSE_INDEX_TYPE int
 #include "common.h"
 #include "math/constants.h"
 #include "math/vec.h"
 #include "math/array.h"
 #include "math/functor.h"
-//#define EIGEN_DEFAULT_DENSE_INDEX_TYPE int
 #include <Eigen/Dense>
 
 KRR_NAMESPACE_BEGIN
 
 using Color = arr3f;
 using Color3f = arr3f;
+using Color4f = arr4f;
 using Point = vec3f;
 using Point3f = vec3f;
 using Point2f = vec2f;
@@ -64,7 +65,7 @@ KRR_DEVICE_FUNCTION auto squaredLength(const Eigen::MatrixBase<DerivedV> &v) {
 }
 
 template <typename DerivedV>
-KRR_DEVICE_FUNCTION auto any(const Eigen::MatrixBase<DerivedV> &v) {
+KRR_DEVICE_FUNCTION auto any(const Eigen::DenseBase<DerivedV> &v) {
 	return v.any();
 }
 

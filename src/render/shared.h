@@ -47,10 +47,10 @@ namespace shader {
 		Frame frame;
 
 		float IoR{ 1.5 };
-		vec3f diffuse;			// diffuse reflectance
-		vec3f specular;			// specular reflectance
+		Color diffuse;			// diffuse reflectance
+		Color specular; // specular reflectance
 
-		vec3f transmission{ 1 };	// transmission color (shared by diffuse and specular for now)
+		Color transmission{ Color::Ones() }; // transmission color (shared by diffuse and specular for now)
 		float diffuseTransmission{ 0 };
 		float specularTransmission{ 0 };
 

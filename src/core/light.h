@@ -11,7 +11,7 @@ KRR_NAMESPACE_BEGIN
 
 struct LightSample {
 	Interaction intr;
-	vec3f L;
+	Color L;
 	float pdf;
 };
 
@@ -49,7 +49,7 @@ public:
 		return ls;
 	}
 
-	__device__ inline vec3f L(vec3f p, vec3f n, vec2f uv, vec3f w) const {
+	__device__ inline Color L(vec3f p, vec3f n, vec2f uv, vec3f w) const {
 		if (!twoSided && dot(n, w) < 0.f) return vec3f::Constant(0);	// hit backface
 
 		if (texture.isValid()) {
@@ -68,7 +68,7 @@ public:
 private:
 	Shape shape;
 	Texture texture{};		// emissive image texture
-	vec3f Le{0};
+	Color Le{ 0 };
 	bool twoSided{true};
 	float scale{1};
 };
@@ -78,16 +78,14 @@ public:
 
 	InfiniteLight() = default;
 
-	InfiniteLight(vec3f tint = vec3f::Constant(1), float scale = 1, float rotation = 0) :
-		tint(tint), scale(scale), rotation(rotation) {}
+	InfiniteLight(Color tint = Color::Ones(), float scale = 1, float rotation = 0)
+		:tint(tint), scale(scale), rotation(rotation) {}
 
 	InfiniteLight(const Texture &image, vec3f tint = vec3f::Constant(1), float scale = 1, float rotation = 0)
-		:
-		image(image), tint(tint), scale(scale), rotation(rotation) {}
+		:image(image), tint(tint), scale(scale), rotation(rotation) {}
 
 	InfiniteLight(const string image, vec3f tint = vec3f::Constant(1), float scale = 1, float rotation = 0)
-		:
-		tint(tint), scale(scale), rotation(rotation) {
+		:tint(tint), scale(scale), rotation(rotation) {
 		setImage(image);
 	}
 
@@ -104,10 +102,10 @@ public:
 		return 0.25 * M_INV_PI;
 	}
 
-	KRR_CALLABLE vec3f L(vec3f p, vec3f n, vec2f uv, vec3f w) const { return vec3f::Constant(0); }
+	KRR_CALLABLE Color L(vec3f p, vec3f n, vec2f uv, vec3f w) const { return vec3f::Constant(0); }
 
-	__device__ inline vec3f Li(vec3f wi) const {
-		vec3f L;
+	__device__ inline Color Li(vec3f wi) const {
+		Color L;
 		L = tint * scale;
 
 		if (!image.isOnDevice()) return L;
@@ -136,7 +134,7 @@ private:
 	Texture image{};
 	float scale{1};
 	float rotation{0};
-	vec3f tint{1};
+	Color tint{1};
 
 };
 
@@ -149,7 +147,7 @@ public:
 		return dispatch(sampleLi);
 	}
 
-	KRR_CALLABLE vec3f L(vec3f p, vec3f n, vec2f uv, vec3f w)const {
+	KRR_CALLABLE Color L(vec3f p, vec3f n, vec2f uv, vec3f w) const {
 		auto L = [&](auto ptr) -> vec3f { return ptr->L(p, n, uv, w); };
 		return dispatch(L);
 	}

@@ -30,19 +30,18 @@ public:
 		ggx.setup(alpha, alpha, true);
 	}
 
-	__both__ vec3f f(vec3f wo, vec3f wi) const {
+	__both__ Color f(vec3f wo, vec3f wi) const {
 		if (!SameHemisphere(wo, wi))
-			return vec3f::Constant(0);
-		vec3f diff = (28.f / (23.f * M_PI)) * diffuse
-			* (vec3f(1) - specular)
+			return Color::Zero();
+		Color diff = (28.f / (23.f * M_PI)) * diffuse * (Color::Ones() - specular)
 			* (1.f - pow5(1.f - 0.5f * AbsCosTheta(wi)))
 			* (1.f - pow5(1.f - 0.5f * AbsCosTheta(wo)));
 		vec3f wh = wi + wo;
 		if (!any(wh)) return diff;
 		wh = normalize(wh);
 		float D = ggx.D(wh);
-		vec3f F = FrSchlick(specular, vec3f(1.f), dot(wi, wh));
-		vec3f spec = D * F * 0.25f / (fabs(dot(wi, wh)) * max(AbsCosTheta(wi), AbsCosTheta(wo)));
+		Color F	   = FrSchlick(specular, vec3f(1.f), dot(wi, wh));
+		Color spec = D * F * 0.25f / (fabs(dot(wi, wh)) * max(AbsCosTheta(wi), AbsCosTheta(wo)));
 
 		return diff + spec;
 	}
@@ -78,8 +77,8 @@ public:
 	}
 
 private:
-	vec3f diffuse;
-	vec3f specular;
+	Color diffuse;
+	Color specular;
 	GGXMicrofacetDistribution ggx;
 };
 

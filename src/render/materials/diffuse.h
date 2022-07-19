@@ -25,7 +25,7 @@ public:
 		diffuse = sd.diffuse;
 	}
 
-	__both__ vec3f f(vec3f wo, vec3f wi) const {
+	__both__ Color f(vec3f wo, vec3f wi) const {
 		return diffuse * M_INV_PI;
 	}
 
@@ -44,7 +44,7 @@ public:
 		return fabs(wi[2]) * M_INV_PI;
 	}
 
-	vec3f diffuse;
+	Color diffuse;
 };
 
 class DiffuseBsdf {
@@ -64,7 +64,7 @@ public:
 		}
 	}
 
-	__both__ vec3f f(vec3f wo, vec3f wi) const {
+	__both__ Color f(vec3f wo, vec3f wi) const {
 		if (SameHemisphere(wo, wi)) return reflection * M_INV_PI;
 		return transmission * M_INV_PI;
 	}
@@ -94,7 +94,7 @@ public:
 		return pT * fabs(wi[2]);
 	}
 
-	vec3f reflection{ 0 }, transmission{ 0 };
+	Color reflection{ 0 }, transmission{ 0 };
 	float pR{ 1 }, pT{ 0 };
 };
 

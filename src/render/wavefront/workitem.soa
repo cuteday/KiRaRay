@@ -11,14 +11,14 @@ flat PCGSampler;
 flat HaltonSampler;
 
 flat vec2f;
-flat vec2i;
 flat vec3f;
+flat Color;
 
 struct Ray{ vec3f origin, dir; };
 struct LightSampleContext{ vec3f p, n; };
 
 struct PixelState {
-	vec3f L;
+	Color L;
 	PCGSampler sampler;
 };
 
@@ -26,7 +26,7 @@ struct RayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
 	float pdf;
-	vec3f thp;
+	Color thp;
 	uint depth;
 	uint pixelId;
 };
@@ -35,7 +35,7 @@ struct MissRayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
 	float pdf;
-	vec3f thp;
+	Color thp;
 	uint depth;
 	uint pixelId;
 };
@@ -48,7 +48,7 @@ struct HitLightWorkItem {
 	vec3f wo;
 	vec3f n;
 	vec2f uv;
-	vec3f thp;
+	Color thp;
 	uint depth;
 	uint pixelId;
 };
@@ -56,13 +56,13 @@ struct HitLightWorkItem {
 struct ShadowRayWorkItem {
 	Ray ray;
 	float tMax;
-	vec3f Li;
-	vec3f a;
+	Color Li;
+	Color a;
 	uint pixelId;
 };
 
 struct ScatterRayWorkItem {
-	vec3f thp;
+	Color thp;
 	ShadingData sd;
 	uint depth;
 	uint pixelId;

@@ -11,7 +11,7 @@ using namespace shader;
 /* Remember to copy these definitions to workitem.soa whenever changing them. */
 
 struct PixelState {
-	vec3f L;
+	Color L;
 	PCGSampler sampler;
 };
 
@@ -19,7 +19,7 @@ struct RayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
 	float pdf;
-	vec3f thp;
+	Color thp;
 	uint depth;
 	uint pixelId;
 };
@@ -28,7 +28,7 @@ struct MissRayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
 	float pdf;
-	vec3f thp;
+	Color thp;
 	uint depth;
 	uint pixelId;
 };
@@ -41,7 +41,7 @@ struct HitLightWorkItem {
 	vec3f wo;
 	vec3f n;
 	vec2f uv;
-	vec3f thp;
+	Color thp;
 	uint depth;
 	uint pixelId;
 };
@@ -49,13 +49,13 @@ struct HitLightWorkItem {
 struct ShadowRayWorkItem {
 	Ray ray;
 	float tMax;
-	vec3f Li;
-	vec3f a;
+	Color Li;
+	Color a;
 	uint pixelId;
 };
 
 struct ScatterRayWorkItem {
-	vec3f thp;
+	Color thp;
 	ShadingData sd;
 	uint depth;
 	uint pixelId;

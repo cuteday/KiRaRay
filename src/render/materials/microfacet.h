@@ -201,7 +201,7 @@ class MicrofacetBrdf {
 public:
     MicrofacetBrdf() = default;
 
-    __both__ MicrofacetBrdf(const vec3f& R, float eta, float alpha_x, float alpha_y)
+    __both__ MicrofacetBrdf(const Color &R, float eta, float alpha_x, float alpha_y)
         :R(R), eta(eta){
         distribution.setup(alpha_x, alpha_y);
     }
@@ -216,7 +216,7 @@ public:
         distribution.setup(alpha, alpha, true);
     }
 
-    __both__ vec3f f(vec3f wo, vec3f wi) const {
+    __both__ Color f(vec3f wo, vec3f wi) const {
         float cosThetaO = AbsCosTheta(wo), cosThetaI = AbsCosTheta(wi);
         vec3f wh = wi + wo;
         if (cosThetaI == 0 || cosThetaO == 0) return vec3f::Zero();
@@ -226,7 +226,7 @@ public:
 
         // fresnel is also on the microfacet (wrt to wh)
 #if KRR_USE_DISNEY
-        vec3f F = DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh));  // etaT / etaI
+		Color F = DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)); // etaT / etaI
 #elif KRR_USE_SCHLICK_FRESNEL
         vec3f F = FrSchlick(R, vec3f(1.f), dot(wo, wh)) / R;
 #else
@@ -262,11 +262,11 @@ public:
         return distribution.Pdf(wo, wi) / (4 * dot(wo, wh));
     }
 
-    vec3f R{ 1 };									    // specular reflectance
+    Color R{ 1 };	  // specular reflectance
     float eta{ 1.5 };									// 
 
 #if KRR_USE_DISNEY
-    vec3f disneyR0;
+	Color disneyR0;
     float metallic;
     DisneyMicrofacetDistribution distribution;          // separable masking shadow model for disney
 #else
@@ -279,7 +279,7 @@ class MicrofacetBtdf {
 public:
     MicrofacetBtdf() = default;
 
-    __both__ MicrofacetBtdf(const vec3f& T, float etaA, float etaB, float alpha_x, float alpha_y)
+    __both__ MicrofacetBtdf(const Color &T, float etaA, float etaB, float alpha_x, float alpha_y)
         :T(T), etaA(etaA), etaB(etaB) {
         distribution.setup(alpha_x, alpha_y, true);
     }
@@ -296,7 +296,7 @@ public:
         distribution.setup(alpha, alpha, true);
     }
 
-    __both__ vec3f f(vec3f wo, vec3f wi) const {
+    __both__ Color f(vec3f wo, vec3f wi) const {
 		if (SameHemisphere(wo, wi))
 			return vec3f::Constant(0);
 
@@ -311,12 +311,12 @@ public:
 
         // Same side?
         if (dot(wo, wh) * dot(wi, wh) > 0) return vec3f::Constant(0);
-        vec3f F = vec3f::Constant(FrDielectric(dot(wo, wh), etaB / etaA));
+		Color F = Color::Constant(FrDielectric(dot(wo, wh), etaB / etaA));
 
         float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
         float factor = 1.f / eta;
 
-        return (vec3f(1) - F) * T *
+        return (Color::Ones() - F) * T *
             fabs(distribution.D(wh) * distribution.G(wo, wi) * eta * eta *
                 AbsDot(wi, wh) * AbsDot(wo, wh) * factor * factor /
                 (cosThetaI * cosThetaO * sqrtDenom * sqrtDenom));
@@ -354,7 +354,7 @@ public:
         return pdf * dwh_dwi;
     }
 
-    vec3f T{ 0 };									// specular reflectance
+    Color T{ 0 }; // specular reflectance
     float etaA{ 1 }, etaB{ 1.5 }				/* etaA: outside IoR, etaB: inside IoR */;
     GGXMicrofacetDistribution distribution;
 };
