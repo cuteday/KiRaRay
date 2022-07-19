@@ -61,5 +61,8 @@ struct ScatterRayWorkItem {
 	uint pixelId;
 };
 
+#pragma warning(push)
+#pragma warning(disable : ALL_CODE_ANALYSIS_WARNINGS)
 #include "workitem_soa.h"
+#pragma warning(pop)
 KRR_NAMESPACE_END

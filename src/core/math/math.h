@@ -8,13 +8,14 @@
 
 KRR_NAMESPACE_BEGIN
 
-using color = vec3f;
-using color3f = vec3f;
-using point = vec3f;
-using point3f = vec3f;
-using point2f = vec2f;
-using aabb3f = Eigen::AlignedBox<float, 3>;
-using AABB = aabb3f;
+using Color = arr3f;
+using Color3f = arr3f;
+using Point = vec3f;
+using Point3f = vec3f;
+using Point2f = vec2f;
+using Aabb3f = Eigen::AlignedBox<float, 3>;
+using Aabb = Aabb3f;
+using AABB = Aabb;
 
 namespace math {
 
@@ -26,6 +27,12 @@ auto clamp(const DerivedV &v, DerivedB lo, DerivedB hi) {
 template <typename DerivedV, typename DerivedB>
 auto clamp(const Eigen::MatrixBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
 	return v.cwiseMin(hi).cwiseMax(lo);
+	Aabb3f aabb;
+}
+
+template <typename DerivedV, typename DerivedB>
+auto lerp(const Eigen::MatrixBase<DerivedV> &v, DerivedB t) {
+	return v * (1 - t) + t;
 }
 
 // overload unary opeartors

@@ -1,254 +1,130 @@
 #pragma once
 
+#include "common.h"
 #include "math/vec.h"
 
-namespace krr {
-	namespace math {
+KRR_NAMESPACE_BEGIN
+namespace math {
+	
+struct BoundingBox {
+	KRR_CALLABLE BoundingBox() {}
 
-		template<typename T>
-		struct interval {
-			typedef T scalar_t;
-			inline __both__ interval()
-				: lower(krr::math::empty_bounds_lower<T>()),
-				upper(krr::math::empty_bounds_upper<T>())
-			{}
-			inline __both__ interval(T begin, T end) : begin(begin), end(end) {}
+	KRR_CALLABLE BoundingBox(const vec3f &a, const vec3f &b) : min{ a }, max{ b } {}
 
-			union {
-				T begin;
-				T lower;
-				T lo;
-			};
-			union {
-				T end;
-				T upper;
-				T hi;
-			};
-
-			inline __both__ bool contains(const T& t) const { return t >= lower && t <= upper; }
-			inline __both__ bool is_empty() const { return begin > end; }
-			inline __both__ T center() const { return (begin + end) / 2; }
-			inline __both__ T extent() const { return end - begin; }
-			inline __both__ T span() const { return end - begin; }
-			inline __both__ T diagonal() const { return end - begin; }
-			inline __both__ interval<T>& extend(const T& t)
-			{
-				lower = min(lower, t); upper = max(upper, t); return *this;
-			}
-			inline __both__ interval<T>& extend(const interval<T>& t)
-			{
-				lower = min(lower, t.lower); upper = max(upper, t.upper); return *this;
-			}
-			inline __both__ interval<T> including(const T& t)
-			{
-				return interval<T>(min(lower, t), max(upper, t));
-			}
-
-			static inline __both__ interval<T> positive()
-			{
-				return interval<T>(0.f, krr::math::open_range_upper<T>());
-			}
-		};
-
-		template<typename T>
-		inline __both__ std::ostream& operator<<(std::ostream& o, const interval<T>& b)
-		{
-#ifndef __NVCC__
-			o << "[" << b.lower << ":" << b.upper << "]";
-#endif
-			return o;
-		}
-
-		template<typename T>
-		inline __both__ interval<T> build_interval(const T& a, const T& b)
-		{
-			return interval<T>(min(a, b), max(a, b));
-		}
-
-		template<typename T>
-		inline __both__ interval<T> intersect(const interval<T>& a, const interval<T>& b)
-		{
-			return interval<T>(max(a.lower, b.lower), min(a.upper, b.upper));
-		}
-
-		template<typename T>
-		inline __both__ interval<T> operator-(const interval<T>& a, const T& b)
-		{
-			return interval<T>(a.lower - b, a.upper - b);
-		}
-
-		template<typename T>
-		inline __both__ interval<T> operator*(const interval<T>& a, const T& b)
-		{
-			return build_interval<T>(a.lower * b, a.upper * b);
-		}
-
-		template<typename T>
-		inline __both__ bool operator==(const interval<T>& a, const interval<T>& b)
-		{
-			return a.lower == b.lower && a.upper == b.upper;
-		}
-
-		template<typename T>
-		inline __both__ bool operator!=(const interval<T>& a, const interval<T>& b)
-		{
-			return !(a == b);
-		}
-
-
-
-		template<typename T>
-		struct aabb_t {
-			typedef T vec_t;
-			typedef typename T::scalar_t scalar_t;
-			enum { dims = T::dims };
-
-			inline __both__ aabb_t()
-				: lower(krr::math::empty_bounds_lower<typename T::scalar_t>()),
-				upper(krr::math::empty_bounds_upper<typename T::scalar_t>())
-			{}
-
-			// /*! construct a new, origin-oriented box of given size */
-			// explicit inline __both__ aabb_t(const vec_t &box_size)
-			//   : lower(vec_t(0)),
-			//     upper(box_size)
-			// {}
-			/*! construct a new box around a single point */
-			explicit inline __both__ aabb_t(const vec_t& v)
-				: lower(v),
-				upper(v)
-			{}
-
-			/*! construct a new, origin-oriented box of given size */
-			inline __both__ aabb_t(const vec_t& lo, const vec_t& hi)
-				: lower(lo),
-				upper(hi)
-			{}
-
-			/*! returns new box including both ourselves _and_ the given point */
-			inline __both__ aabb_t including(const vec_t& other) const
-			{
-				return aabb_t(min(lower, other), max(upper, other));
-			}
-			/*! returns new box including both ourselves _and_ the given point */
-			inline __both__ aabb_t including(const aabb_t& other) const
-			{
-				return aabb_t(min(lower, other.lower), max(upper, other.upper));
-			}
-
-
-			/*! returns new box including both ourselves _and_ the given point */
-			inline __both__ aabb_t& extend(const vec_t& other)
-			{
-				lower = min(lower, other); upper = max(upper, other); return *this;
-			}
-			/*! returns new box including both ourselves _and_ the given point */
-			inline __both__ aabb_t& extend(const aabb_t& other)
-			{
-				lower = min(lower, other.lower); upper = max(upper, other.upper); return *this;
-			}
-
-
-			/*! get the d-th dimensional slab (lo[dim]..hi[dim] */
-			inline __both__ interval<scalar_t> get_slab(const uint32_t dim)
-			{
-				return interval<scalar_t>(lower[dim], upper[dim]);
-			}
-
-			inline __both__ bool contains(const vec_t& point) const
-			{
-				return !(any_less_than(point, lower) || any_greater_than(point, upper));
-			}
-
-			inline __both__ bool overlaps(const aabb_t& other) const
-			{
-				return !(any_less_than(other.upper, lower) || any_greater_than(other.lower, upper));
-			}
-
-			inline __both__ vec_t center() const { return (lower + upper) / (typename vec_t::scalar_t)2; }
-			inline __both__ vec_t extent() const { return upper - lower; }
-			inline __both__ vec_t span()   const { return upper - lower; }
-			inline __both__ vec_t size()   const { return upper - lower; }
-
-			inline __both__ typename long_type_of<typename T::scalar_t>::type volume() const
-			{
-				return krr::math::volume(size());
-			}
-
-			inline __both__ bool empty() const { return any_less_than(upper, lower); }
-
-			vec_t lower, upper;
-		};
-
-		// default functions
-
-		template<typename T>
-		inline __both__ typename long_type_of<T>::type area(const aabb_t<vec_t<T, 2>>& b)
-		{
-			return area(b.upper - b.lower);
-		}
-
-		template<typename T>
-		inline __both__ typename long_type_of<T>::type area(const aabb_t<vec_t<T, 3>>& b)
-		{
-			const vec_t<T, 3> diag = b.upper - b.lower;
-			return 2.f * (area(vec_t<T, 2>(diag.x, diag.y)) +
-				area(vec_t<T, 2>(diag.y, diag.z)) +
-				area(vec_t<T, 2>(diag.z, diag.x)));
-		}
-
-		template<typename T>
-		inline __both__ typename long_type_of<T>::type volume(const aabb_t<vec_t<T, 3>>& b)
-		{
-			const vec_t<T, 3> diag = b.upper - b.lower;
-			return diag.x * diag.y * diag.z;
-		}
-
-		template<typename T>
-		inline __both__ std::ostream& operator<<(std::ostream& o, const aabb_t<T>& b)
-		{
-#ifndef __NVCC__
-			o << "[" << b.lower << ":" << b.upper << "]";
-#endif
-			return o;
-		}
-
-		template<typename T>
-		inline __both__ aabb_t<T> intersection(const aabb_t<T>& a, const aabb_t<T>& b)
-		{
-			return aabb_t<T>(max(a.lower, b.lower), min(a.upper, b.upper));
-		}
-
-		template<typename T>
-		inline __both__ bool operator==(const aabb_t<T>& a, const aabb_t<T>& b)
-		{
-			return a.lower == b.lower && a.upper == b.upper;
-		}
-
-		template<typename T>
-		inline __both__ bool operator!=(const aabb_t<T>& a, const aabb_t<T>& b)
-		{
-			return !(a == b);
-		}
-
+	KRR_CALLABLE void enlarge(const BoundingBox &other) {
+		min = min.cwiseMin(other.min);
+		max = max.cwiseMax(other.max);
 	}
-#define _define_aabb_types(T,t)                               \
-	typedef math::aabb_t<math::vec_t<T,2>> aabb2##t;          \
-	typedef math::aabb_t<math::vec_t<T,3>> aabb3##t;          \
-	typedef math::aabb_t<math::vec_t<T,4>> aabb4##t;          \
-	typedef math::aabb_t<math::vec3a_t<T>> aabb3##t##a;       \
 
-	_define_aabb_types(bool, b);
-	_define_aabb_types(int8_t, c);
-	_define_aabb_types(int16_t, s);
-	_define_aabb_types(int32_t, i);
-	_define_aabb_types(int64_t, l);
-	_define_aabb_types(uint8_t, uc);
-	_define_aabb_types(uint16_t, us);
-	_define_aabb_types(uint32_t, ui);
-	_define_aabb_types(uint64_t, ul);
-	_define_aabb_types(float, f);
-	_define_aabb_types(double, d);
+	KRR_CALLABLE void enlarge(const vec3f &point) {
+		min = min.cwiseMin(point);
+		max = max.cwiseMax(point);
+	}
 
-#undef _define_aabb_types
+	KRR_CALLABLE void inflate(float amount) {
+		min -= vec3f::Constant(amount);
+		max += vec3f::Constant(amount);
+	}
+
+	KRR_CALLABLE vec3f diag() const { return max - min; }
+
+	KRR_CALLABLE vec3f relative_pos(const vec3f &pos) const {
+		return (pos - min).cwiseQuotient(diag());
+	}
+
+	KRR_CALLABLE vec3f center() const { return 0.5f * (max + min); }
+
+	KRR_CALLABLE BoundingBox intersection(const BoundingBox &other) const {
+		BoundingBox result = *this;
+		result.min		   = result.min.cwiseMax(other.min);
+		result.max		   = result.max.cwiseMin(other.max);
+		return result;
+	}
+
+	KRR_CALLABLE bool intersects(const BoundingBox &other) const { return !intersection(other).is_empty(); }
+
+	KRR_CALLABLE vec2f ray_intersect(const vec3f &pos, const vec3f &dir) const {
+		float tmin = (min.x() - pos.x()) / dir.x();
+		float tmax = (max.x() - pos.x()) / dir.x();
+
+		if (tmin > tmax) {
+			tcnn::host_device_swap(tmin, tmax);
+		}
+
+		float tymin = (min.y() - pos.y()) / dir.y();
+		float tymax = (max.y() - pos.y()) / dir.y();
+
+		if (tymin > tymax) {
+			tcnn::host_device_swap(tymin, tymax);
+		}
+
+		if (tmin > tymax || tymin > tmax) {
+			return { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() };
+		}
+
+		if (tymin > tmin) {
+			tmin = tymin;
+		}
+
+		if (tymax < tmax) {
+			tmax = tymax;
+		}
+
+		float tzmin = (min.z() - pos.z()) / dir.z();
+		float tzmax = (max.z() - pos.z()) / dir.z();
+
+		if (tzmin > tzmax) {
+			tcnn::host_device_swap(tzmin, tzmax);
+		}
+
+		if (tmin > tzmax || tzmin > tmax) {
+			return { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() };
+		}
+
+		if (tzmin > tmin) {
+			tmin = tzmin;
+		}
+
+		if (tzmax < tmax) {
+			tmax = tzmax;
+		}
+
+		return { tmin, tmax };
+	}
+
+	KRR_CALLABLE bool is_empty() const { return (max.array() < min.array()).any(); }
+
+	KRR_CALLABLE bool contains(const vec3f &p) const {
+		return p.x() >= min.x() && p.x() <= max.x() && p.y() >= min.y() && p.y() <= max.y() && p.z() >= min.z() &&
+			   p.z() <= max.z();
+	}
+
+	/// Calculate the squared point-AABB distance
+	KRR_CALLABLE float distance(const vec3f &p) const { return sqrt(distance_sq(p)); }
+
+	KRR_CALLABLE float distance_sq(const vec3f &p) const {
+		return (min - p).cwiseMax(p - max).cwiseMax(0.0f).squaredNorm();
+	}
+
+	KRR_CALLABLE float signed_distance(const vec3f &p) const {
+		vec3f q = (p - min).cwiseAbs() - diag();
+		return q.cwiseMax(0.0f).norm() + std::min(std::max(q.x(), std::max(q.y(), q.z())), 0.0f);
+	}
+
+	KRR_CALLABLE void get_vertices(vec3f v[8]) const {
+		v[0] = { min.x(), min.y(), min.z() };
+		v[1] = { min.x(), min.y(), max.z() };
+		v[2] = { min.x(), max.y(), min.z() };
+		v[3] = { min.x(), max.y(), max.z() };
+		v[4] = { max.x(), min.y(), min.z() };
+		v[5] = { max.x(), min.y(), max.z() };
+		v[6] = { max.x(), max.y(), min.z() };
+		v[7] = { max.x(), max.y(), max.z() };
+	}
+
+	vec3f min = vec3f::Constant(std::numeric_limits<float>::infinity());
+	vec3f max = vec3f::Constant(-std::numeric_limits<float>::infinity());
+};
+	
 }
+KRR_NAMESPACE_END

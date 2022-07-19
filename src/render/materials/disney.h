@@ -230,7 +230,7 @@ public:
 		float rough = sd.roughness;
 		float lum = luminance(c);
 		// normalize lum. to isolate hue+sat
-		vec3f Ctint = lum > 0 ? (c / lum) : 1;
+		vec3f Ctint = lum > 0 ? (c / lum) : vec3f::Ones();
 
 		float sheenWeight = 0;
 		vec3f Csheen;
@@ -281,7 +281,7 @@ public:
 		vec3f Cspec0 = any(sd.specular) ? sd.specular : 
 			lerp(SchlickR0FromEta(e) * lerp(vec3f(1), Ctint, specTint), c, metallicWeight);
 
-		microfacetBrdf = MicrofacetBrdf(1, e, ax, ay);
+		microfacetBrdf = MicrofacetBrdf(vec3f::Ones(), e, ax, ay);
 		components |= DISNEY_SPEC_REFLECTION;
 #if KRR_USE_DISNEY
 		microfacetBrdf.disneyR0 = Cspec0;

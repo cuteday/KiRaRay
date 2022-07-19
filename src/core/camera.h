@@ -39,7 +39,7 @@ public:
 		vec2f ndc = vec2f(2 * p) / vec2f(frameSize) + vec2f(-1);	// ndc in [-1, 1]^2
 		if (mData.lensRadius > 0) {			/*Thin lens*/
 			vec3f focalPoint = mData.pos + ndc[0] * mData.u + ndc[1] * mData.v + mData.w;
-			vec2f apertureSample = mData.lensRadius > M_EPSILON ? uniformSampleDisk(sampler.get2D()) : 0;
+			vec2f apertureSample = mData.lensRadius > M_EPSILON ? uniformSampleDisk(sampler.get2D()) : vec2f::Zero();
 			ray.origin = mData.pos + mData.lensRadius * (apertureSample[0] * normalize(mData.u) + apertureSample[1] * normalize(mData.v));
 			ray.dir = normalize(focalPoint - ray.origin);
 		} else {							/*Pin hole*/

@@ -11,7 +11,7 @@
 #include "diffuse.h"
 #include "microfacet.h"
 #include "fresnel.h"
-#include "sampling.h"
+#include "render/sampling.h"
 #include "sampler.h"
 
 
@@ -40,7 +40,7 @@ public:
 		float dielectricBSDF = (1 - metallic) * (1 - specTrans);
 
 		float diffuseWeight = luminance(sd.diffuse);
-		float specularWeight = luminance(FrSchlick(sd.specular, 1.f, dot(sd.wo, sd.frame.N)));
+		float specularWeight = FrSchlick(luminance(sd.specular), 1.f, dot(sd.wo, sd.frame.N));
 	
 		pDiff = diffuseWeight * dielectricBSDF;
 		pSpecRefl = specularWeight * (metallicBRDF + dielectricBSDF);

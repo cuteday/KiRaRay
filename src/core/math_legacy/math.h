@@ -32,7 +32,7 @@ using vec4ui = Eigen::Vector<uint, 4>;
 using color = vec3f;
 using color3f = vec3f;
 using point = vec3f;
-using point3f = vec3f;
+using Point3f = vec3f;
 using point2f = vec2f;
 //using AABB = aabb3f;
 

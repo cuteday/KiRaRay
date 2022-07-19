@@ -10,9 +10,9 @@ flat LCGSampler;
 flat PCGSampler;
 flat HaltonSampler;
 
-struct vec2f { float x, y; };
-struct vec3f { float x, y, z; };
-struct vec2i { int x, y; };
+flat vec2f;
+flat vec2i;
+flat vec3f;
 
 struct Ray{ vec3f origin, dir; };
 struct LightSampleContext{ vec3f p, n; };

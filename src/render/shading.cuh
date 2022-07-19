@@ -23,13 +23,13 @@ namespace {
 		return max(0.f, m);
 	}
 
-	KRR_DEVICE_FUNCTION vec3f rgbToNormal(vec3f rgb){
-		return 2 * rgb - 1;
+	KRR_DEVICE_FUNCTION vec3f rgbToNormal(vec3f rgb){ 
+		return 2 * rgb - vec3f::Ones();
 	}
 
 	KRR_DEVICE_FUNCTION vec3f rgToNormal(vec2f rg){
 		vec3f n;
-		*((vec2f*)&n) = 2.f * rg - 1.f;
+		*((vec2f *) &n) = 2 * rg - vec2f::Ones();
 		// Saturate because error from BC5 can break the sqrt
 		n[2] = saturate(dot(rg, rg)); // z = r*r + g*g
 		n[2] = sqrt(1 - n[2]);
