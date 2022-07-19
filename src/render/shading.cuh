@@ -38,10 +38,10 @@ namespace {
 }
 
 template <typename T>
-KRR_DEVICE_FUNCTION T sampleTexture(Texture& texture, vec2f uv, T fallback) {
+KRR_DEVICE_FUNCTION T sampleTexture(Texture &texture, vec2f uv, T fallback) {
 	cudaTextureObject_t cudaTexture = texture.getCudaTexture();
 	if (cudaTexture) {
-		return tex2D<float4>(cudaTexture, uv[0], uv[1]);
+		return to_vec4(tex2D<float4>(cudaTexture, uv[0], uv[1]));
 	}
 	return fallback;
 }
@@ -148,7 +148,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		float f = (sd.IoR - 1.f) / (sd.IoR + 1.f);
 		float F0 = f * f;
 
-		sd.specular	 = lerp(vec3f(F0), baseColor, spec[2]);
+		sd.specular	 = lerp(vec3f::Constant(F0), baseColor, spec[2]);
 		sd.metallic	 = spec[2];
 		sd.roughness = spec[1];
 	}

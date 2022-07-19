@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common.h"
 #include "math/constants.h"
 #include "math/vec.h"
 #include "math/functor.h"
@@ -19,63 +20,62 @@ using AABB = Aabb;
 
 namespace math {
 
-template <typename DerivedV, typename DerivedB>
-auto clamp(const DerivedV &v, DerivedB lo, DerivedB hi) {
+template <typename T>
+KRR_DEVICE_FUNCTION auto clamp(T v, T lo, T hi) {
 	return max(min(v, hi), lo);
 }
 
 template <typename DerivedV, typename DerivedB>
-auto clamp(const Eigen::MatrixBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
+KRR_DEVICE_FUNCTION auto clamp(const Eigen::MatrixBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
 	return v.cwiseMin(hi).cwiseMax(lo);
-	Aabb3f aabb;
 }
 
-template <typename DerivedV, typename DerivedB>
-auto lerp(const Eigen::MatrixBase<DerivedV> &v, DerivedB t) {
-	return v * (1 - t) + t;
+template <typename DerivedA, typename DerivedB, typename DerivedT>
+KRR_DEVICE_FUNCTION auto lerp(const Eigen::DenseBase<DerivedA> &a, const Eigen::DenseBase<DerivedB> &b, DerivedT t) {
+	return a.eval() * (1 - t) + b.eval() * t;
 }
 
 // overload unary opeartors
 
 template <typename DerivedV>
-auto normalize(const Eigen::MatrixBase<DerivedV> &v) {
+KRR_DEVICE_FUNCTION auto normalize(const Eigen::MatrixBase<DerivedV> &v) {
 	return v.normalized();
 }
 
 template <typename DerivedV>
-auto abs(const Eigen::MatrixBase<DerivedV> &v) {
+KRR_DEVICE_FUNCTION auto abs(const Eigen::MatrixBase<DerivedV> &v) {
 	return v.cwiseAbs();
 }
 
 template <typename DerivedV>
-auto length(const Eigen::MatrixBase<DerivedV> &v) {
+KRR_DEVICE_FUNCTION auto length(const Eigen::MatrixBase<DerivedV> &v) {
 	return v.norm();
 }
 
 template <typename DerivedV>
-auto squaredLength(const Eigen::MatrixBase<DerivedV> &v) {
+KRR_DEVICE_FUNCTION auto squaredLength(const Eigen::MatrixBase<DerivedV> &v) {
 	return v.SquaredNorm();
 }
 
 template <typename DerivedV>
-auto any(const Eigen::MatrixBase<DerivedV> &v) {
+KRR_DEVICE_FUNCTION auto any(const Eigen::MatrixBase<DerivedV> &v) {
 	return v.any();
 }
 
 // overload binary operators
 
-template <typename DerivedV>
-auto cross(const Eigen::MatrixBase<DerivedV> &a, const Eigen::MatrixBase<DerivedV> &b) {
+template <typename DerivedA, typename DerivedB> 
+KRR_DEVICE_FUNCTION auto cross(const Eigen::MatrixBase<DerivedA> &a, const Eigen::MatrixBase<DerivedB> &b) {
 	return a.cross(b);
 }
 
-template <typename DerivedV>
-auto dot(const Eigen::MatrixBase<DerivedV> &a, const Eigen::MatrixBase<DerivedV> &b) {
+template <typename DerivedA, typename DerivedB>
+KRR_DEVICE_FUNCTION auto dot(const Eigen::MatrixBase<DerivedA> &a, const Eigen::MatrixBase<DerivedB> &b) {
 	return a.dot(b);
 }
 
-template <typename DerivedV>
-auto operator / (const Eigen::MatrixBase<DerivedV> &a, const Eigen::MatrixBase<DerivedV> &b) {
+template <typename DerivedA, typename DerivedB>
+KRR_DEVICE_FUNCTION auto operator/(const Eigen::MatrixBase<DerivedA> &a, const Eigen::MatrixBase<DerivedB> &b) {
 	return a.cwiseQuotient(b);
 }
 

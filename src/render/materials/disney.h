@@ -230,7 +230,8 @@ public:
 		float rough = sd.roughness;
 		float lum = luminance(c);
 		// normalize lum. to isolate hue+sat
-		vec3f Ctint = lum > 0 ? (c / lum) : vec3f::Ones();
+		vec3f Ctint = vec3f::Ones();
+		if (lum > 0) Ctint = c / lum;
 
 		float sheenWeight = 0;
 		vec3f Csheen;
@@ -278,8 +279,9 @@ public:
 
 		// Specular is Trowbridge-Reitz with a modified Fresnel function.
 		float specTint = 0;
-		vec3f Cspec0 = any(sd.specular) ? sd.specular : 
-			lerp(SchlickR0FromEta(e) * lerp(vec3f(1), Ctint, specTint), c, metallicWeight);
+		vec3f Cspec0   = sd.specular;
+		if (!any(sd.specular)) 
+			Cspec0 = lerp(SchlickR0FromEta(e) * lerp(vec3f::Ones(), Ctint, specTint), c, metallicWeight);
 
 		microfacetBrdf = MicrofacetBrdf(vec3f::Ones(), e, ax, ay);
 		components |= DISNEY_SPEC_REFLECTION;

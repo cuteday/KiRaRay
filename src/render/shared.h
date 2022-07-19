@@ -21,6 +21,24 @@ KRR_NAMESPACE_BEGIN
 using namespace math;
 using namespace math::utils;
 
+namespace math {
+	KRR_DEVICE_FUNCTION vec4f to_vec4(float4 v) { 
+		return vec4f{ v.x, v.y, v.z, v.w };
+	}
+
+	KRR_DEVICE_FUNCTION float4 to_float4(vec4f v) { 
+		return make_float4(v[0], v[1], v[2], v[3]);
+	}
+
+	KRR_DEVICE_FUNCTION vec3f to_vec3(float3 v) { 
+		return vec3f{ v.x, v.y, v.z };
+	}
+
+	KRR_DEVICE_FUNCTION float3 to_float3(vec3f v) { 
+		return make_float3(v[0], v[1], v[2]);
+	}
+}
+
 namespace shader {
 		
 	enum {

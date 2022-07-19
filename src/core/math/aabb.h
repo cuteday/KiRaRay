@@ -122,6 +122,14 @@ struct BoundingBox {
 		v[7] = { max.x(), max.y(), max.z() };
 	}
 
+	std::ostream &operator<<(std::ostream &os) {
+		os << "[";
+		os << "min=[" << min.x() << "," << min.y() << "," << min.z() << "], ";
+		os << "max=[" << max.x() << "," << max.y() << "," << max.z() << "]";
+		os << "]";
+		return os;
+	}
+
 	vec3f min = vec3f::Constant(std::numeric_limits<float>::infinity());
 	vec3f max = vec3f::Constant(-std::numeric_limits<float>::infinity());
 };
