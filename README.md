@@ -67,16 +67,6 @@ python scripts/run.py --scene "common/assets/scenes/cbox/cbox.obj"
 
 Switch to *Release* build for normal performance! The megakernel pathtracer should run at about 30 spp per second at 1920*1080 on an RTX 3070, if the average path length is less than 5. The wavefront pathtracer however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does run significantly faster when next event estimation is enabled though). 
 
-### Credits
-
-- The good optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).
-
-- Some of the code (e.g., bsdf evaluation) are adapted from [pbrt](https://github.com/mmp/pbrt-v4) and [Falcor](https://github.com/NVIDIAGameWorks/Falcor). 
-
-- *KiRaRay* implements a [tiny math library](https://github.com/cuteday/KiRaRay/tree/main/src/core/math) wrapper built upon [Eigen](http://eigen.tuxfamily.org/) for efficient vector/matrix arithmetic.
-
-- HDR environment images are from [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), and OBJ scenes are from [McGuire's Archive](https://casual-effects.com/data/) for demo images.
-
 ### Galleries
 
 #### Bathroom
@@ -88,6 +78,12 @@ Switch to *Release* build for normal performance! The megakernel pathtracer shou
 
 <p align=center>
 <img src=common/demo/higokumaru.jpg width="700">
+
+### Credits
+- The good optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).
+- Some of the code (e.g., bsdf evaluation) are adapted from [pbrt](https://github.com/mmp/pbrt-v4) and [Falcor](https://github.com/NVIDIAGameWorks/Falcor). 
+- *KiRaRay* implements a [tiny math library](https://github.com/cuteday/KiRaRay/tree/main/src/core/math) wrapper built upon [Eigen](http://eigen.tuxfamily.org/) for efficient vector/matrix arithmetic.
+- HDR environment images are from [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), and OBJ scenes are from [McGuire's Archive](https://casual-effects.com/data/) for demo images.
 
 ### Epilogue
 
