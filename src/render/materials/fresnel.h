@@ -42,26 +42,26 @@ namespace bsdf {
 		return (pow2(r_parl) + pow2(r_perp)) / 2;
 	}
 
-	//KRR_CALLABLE float FrComplex(float cosTheta_i, complex<float> eta) {
-	//	// Fresnel for conductors: some of the energy is absorbed by the material and turned into heat.
-	//	using Complex = complex<float>;
-	//	cosTheta_i = clamp(cosTheta_i, 0.f, 1.f);
-	//	// Compute complex $\cos\,\theta_\roman{t}$ for Fresnel equations using Snell's law
-	//	float sin2Theta_i = 1 - pow2(cosTheta_i);
-	//	Complex sin2Theta_t = sin2Theta_i / pow2(eta);
-	//	Complex cosTheta_t = sqrt(1 - sin2Theta_t);
+	KRR_CALLABLE float FrComplex(float cosTheta_i, Complex<float> eta) {
+		// Fresnel for conductors: some of the energy is absorbed by the material and turned into heat.
+		using Complex = Complex<float>;
+		cosTheta_i = clamp(cosTheta_i, 0.f, 1.f);
+		// Compute complex $\cos\,\theta_\roman{t}$ for Fresnel equations using Snell's law
+		float sin2Theta_i = 1 - pow2(cosTheta_i);
+		Complex sin2Theta_t = sin2Theta_i / pow2(eta);
+		Complex cosTheta_t = sqrt(1 - sin2Theta_t);
 
-	//	Complex r_parl = (eta * cosTheta_i - cosTheta_t) / (eta * cosTheta_i + cosTheta_t);
-	//	Complex r_perp = (cosTheta_i - eta * cosTheta_t) / (cosTheta_i + eta * cosTheta_t);
-	//	return (r_parl.norm() + r_perp.norm()) / 2;
-	//}
+		Complex r_parl = (eta * cosTheta_i - cosTheta_t) / (eta * cosTheta_i + cosTheta_t);
+		Complex r_perp = (cosTheta_i - eta * cosTheta_t) / (cosTheta_i + eta * cosTheta_t);
+		return (r_parl.norm() + r_perp.norm()) / 2;
+	}
 
-	//KRR_CALLABLE Vec3f FrComplex(float cosTheta_i, Vec3f eta, Vec3f k) {
-	//	Vec3f result;
-	//	for (int i = 0; i < 3; ++i)
-	//		result[i] = FrComplex(cosTheta_i, complex<float>(eta[i], k[i]));
-	//	return result;
-	//}
+	KRR_CALLABLE Vec3f FrComplex(float cosTheta_i, Vec3f eta, Vec3f k) {
+		Vec3f result;
+		for (int i = 0; i < 3; ++i)
+			result[i] = FrComplex(cosTheta_i, Complex<float>(eta[i], k[i]));
+		return result;
+	}
 
 	// eta: etaI/etaT if incident ray
 	KRR_CALLABLE Color DisneyFresnel(const Color &R0, float metallic, float eta, float cosI) {

@@ -8,6 +8,7 @@
 #include "math/quaternion.h"
 #include "math/aabb.h"
 #include "math/functors.h"
+#include "math/complex.h"
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 

@@ -69,6 +69,7 @@ SET ( KRR_CORE_HEADERS
 	core/math/quaternion.h
 	core/math/utils.h
 	core/math/aabb.h
+	core/math/complex.h
 	core/math/constants.h
 	core/math/functors.h
 	# cuda device backend and host-device interops
@@ -101,6 +102,7 @@ SET(KRR_HEADERS
 	util/string.h
 	util/lowdiscrepancy.h
 	util/tables.h
+	util/vmf.h
 )
 
 SET (KRR_SOURCE
