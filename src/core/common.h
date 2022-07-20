@@ -101,36 +101,4 @@ namespace inter {
 // this allocator uses gpu memory by default.
 using Allocator = inter::polymorphic_allocator<std::byte>;
 
-namespace math {
-#ifdef KRR_DEVICE_CODE
-	using ::min;
-	using ::max;
-	using ::abs;
-	using ::fmod;
-	using ::copysign;
-#else
-	using std::min;
-	using std::max;
-	using std::abs;
-	using std::fmod;
-	using std::copysign;	
-#endif
-
-	inline __both__ float saturate(const float& f) { return min(1.f, max(0.f, f)); }
-	inline __both__ float rcp(float f) { return 1.f / f; }
-	inline __both__ double rcp(double d) { return 1. / d; }
-
-	template <typename T>
-	inline __both__ T divRoundUp(T val, T divisor) { return (val + divisor - 1) / divisor; }
-
-	using ::sin; // this is the double version
-	using ::cos; // this is the double version
-	using ::pow;
-
-	namespace polymorphic {
-		inline __both__ float sqrt(const float f) { return sqrtf(f); }
-		inline __both__ float rsqrt(const float f) { return 1.f / ::sqrt(f); }
-	}
-}
-
 KRR_NAMESPACE_END

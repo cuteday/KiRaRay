@@ -19,8 +19,6 @@ inline __both__ vec2f sqrt(const vec2f v) { return vec2f(sqrtf(v[0]), sqrtf(v[1]
 inline __both__ vec3f sqrt(const vec3f v) { return vec3f(sqrtf(v[0]), sqrtf(v[1]), sqrtf(v[2])); }
 inline __both__ vec4f sqrt(const vec4f v) { return vec4f(sqrtf(v[0]), sqrtf(v[1]), sqrtf(v[2]), sqrtf(v[3])); }
 
-
-
 } // namespace math
 
 KRR_NAMESPACE_END

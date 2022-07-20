@@ -12,3 +12,6 @@
 	path = src/ext/pybind11
 	url = https://github.com/pybind/pybind11.git
 	branch = stable
+[submodule "src/ext/eigen"]
+	path = src/ext/eigen
+	url = https://github.com/cuteday/Eigen.git
