@@ -158,7 +158,7 @@ public:
 		float Gr =
 			smithG_GGX(AbsCosTheta(wo), .25) * smithG_GGX(AbsCosTheta(wi), .25);
 
-		return Color::Constant(weight) * Gr * Fr * Dr / 4;
+		return weight * Gr * Fr * Dr / 4;
 	};
 
 	KRR_CALLABLE Color Sample_f(const Vec3f &wo, Vec3f *wi, const Vec2f &u,
@@ -294,7 +294,7 @@ public:
 		// specular BTDF if has transmission
 		if (strans > 0) {
 			//Vec3f T = strans * sqrt(c);
-			Vec3f T = Vec3f::Constant(strans);
+			Color T = strans;
 			if (thin) {
 				// Scale roughness based on IOR (Burley 2015, Figure 15).
 				assert(false);

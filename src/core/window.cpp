@@ -221,7 +221,7 @@ WindowApp::~WindowApp(){
 void WindowApp::resize(const Vec2i &size) {
 	glfwMakeContextCurrent(handle);
 	glfwSetWindowSize(handle, size[0], size[1]);
-	fbBuffer.resize(sizeof(Vec4f) * size[0] * size[1]);
+	fbBuffer.resize(sizeof(Color4f) * size[0] * size[1]);
 	fbSize = size;
 
 	if (fbTexture == 0) GL_CHECK(glGenTextures(1, &fbTexture));
@@ -233,7 +233,7 @@ void WindowApp::resize(const Vec2i &size) {
 	}
 
 	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, fbPbo));
-	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(Vec4f) * size[0] * size[1], nullptr, GL_STREAM_DRAW));
+	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(Color4f) * size[0] * size[1], nullptr, GL_STREAM_DRAW));
 	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
 	// We need to re-register when resizing the texture

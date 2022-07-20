@@ -24,24 +24,6 @@ using Quat = Quaternionf;
 
 namespace math {
 
-#ifdef KRR_DEVICE_CODE
-using ::min;
-using ::max;
-using ::abs;
-using ::fmod;
-using ::copysign;
-#else
-using std::min;
-using std::max;
-using std::abs;
-using std::fmod;
-using std::copysign;	
-#endif
-	
-using ::sin;
-using ::cos;
-using ::pow;
-
 template <typename T>
 KRR_CALLABLE auto clamp(T v, T lo, T hi) {
 	return std::max(std::min(v, hi), lo);
@@ -110,21 +92,6 @@ template <typename DerivedA, typename DerivedB>
 KRR_CALLABLE auto operator/(const Eigen::MatrixBase<DerivedA> &a, const Eigen::MatrixBase<DerivedB> &b) {
 	return a.cwiseQuotient(b);
 }
-
-template <typename T>
-KRR_CALLABLE T mod(T a, T b) {
-	T result = a - (a / b) * b;
-	return (T) ((result < 0) ? result + b : result);
-}
-
-template <typename T>
-KRR_CALLABLE T safe_sqrt(T value) {
-	return sqrt(max((T) 0, value));
-}
-
-inline __both__ float saturate(const float &f) { return min(1.f, max(0.f, f)); }
-
-inline __both__ float rcp(float f) { return 1.f / f; }
 
 } // namespace math
 

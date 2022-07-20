@@ -168,7 +168,7 @@ void WavefrontPathTracer::beginFrame(CUDABuffer& frame){
 void WavefrontPathTracer::render(CUDABuffer& frame){
 	if (!mpScene || !maxQueueSize) return;
 	PROFILE("Wavefront Path Tracer");
-	Vec4f* frameBuffer = (Vec4f*)frame.data();
+	Color4f *frameBuffer = (Color4f *) frame.data();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
 		Call(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
@@ -206,7 +206,7 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		Color L = pixelState->L[pixelId] / float(samplesPerPixel);
 		if (enableClamp) L = clamp(L, 0.f, clampMax);
-		frameBuffer[pixelId] = Vec4f(Vec3f(L), 1);
+		frameBuffer[pixelId] = Color4f(L, 1);
 	});
 	frameId++;
 }

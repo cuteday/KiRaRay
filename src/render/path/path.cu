@@ -46,24 +46,19 @@ KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 	
 	const Light& light = sd.light;
-	// incorporate the contribution from diffuse surface emission 
-	Interaction intr = Interaction(sd.pos, sd.wo, sd.frame.N, sd.uv);
-	Color Le		 = sd.light.L(sd.pos, sd.frame.N, sd.uv, sd.wo);
+	Interaction intr(sd.pos, sd.wo, sd.frame.N, sd.uv);
+	Color Le = sd.light.L(sd.pos, sd.frame.N, sd.uv, sd.wo);
 
 	if (path.depth == 0) {
-		// emission at primary vertex
-		path.L = Le;
-		return;
+		path.L = Le; return;
 	}
-
-	float weight = 1.f;
+	
+	float weight{ 1 };
 	if (launchParams.NEE) {
 		LightSampleContext ctx = { path.pos, };	// should use pos of prev interaction
 		float bsdfPdf = path.pdf;
 		float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(light);
 		if (launchParams.MIS) weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
-		print("NEE bsdf sampled diffuse area bsdfPdf: %.5f lightPdf: %.5f weight: %.5f\n",
-			bsdfPdf, lightPdf, weight);
 	}
 	path.L += Le * weight * path.throughput;
 }
@@ -99,14 +94,15 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
 	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
-	Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType) * fabs(wiLocal[2]);
+	Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
 	float misWeight = 1;
 
 	if (launchParams.MIS) misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
+	if (isnan(misWeight) || isinf(misWeight)) return;
 	//if (isnan(misWeight)) 
 	// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
-	//	printf("nee misWeight %f lightPdf %f bsdfPdf %f lightSelect %f lightSample %f\n",
-	//		misWeight, lightPdf, bsdfPdf, sampledLight.pdf, ls.pdf);
+		//print("nee misWeight %f lightPdf %f bsdfPdf %f lightSelect %f lightSample %f\n",
+		//	misWeight, lightPdf, bsdfPdf, sampledLight.pdf, ls.pdf);
 	Vec3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 	Vec3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
 
@@ -216,7 +212,7 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 		color += path.L;
 	}
 	color /= float(launchParams.spp);
-	launchParams.colorBuffer[fbIndex] = Vec4f(Vec3f(color), 1.f);
+	launchParams.colorBuffer[fbIndex] = Color4f(color, 1.f);
 }
 
 KRR_NAMESPACE_END

@@ -36,7 +36,7 @@ struct LaunchParamsPT
 	LightSampler lightSampler;
 	Scene::SceneData sceneData;
 
-	Vec4f* colorBuffer{ nullptr };
+	Color4f* colorBuffer{ nullptr };
 	OptixTraversableHandle traversable{ 0 };
 };
 

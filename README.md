@@ -55,17 +55,13 @@ python scripts/run.py --scene "common/assets/scenes/cbox/cbox.obj"
 
 ### Common Issues
 
-#### Choosing generator for Visual Studio
-
-Ninja is recommended as generator when build with Visual Studio, otherwise some strange CUDA errors may be observed at runtime.
-
 #### Test scenes and assets
 
 For testing, HDR environment images can be downloaded at [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), OBJ scenes can be obtained at [McGuire's Archive](https://casual-effects.com/data/). Also glTF2 models can usually be loaded and rendered. 
 
 #### Performance
 
-Switch to *Release* build for normal performance. The megakernel pathtracer should run at about 30 spp per second at 1920*1080 on an RTX 3070, if the average path length is less than 5. The wavefront pathtracer however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does run significantly faster when next event estimation is enabled though). 
+Switch to *Release* build for normal performance! The megakernel pathtracer should run at about 30 spp per second at 1920*1080 on an RTX 3070, if the average path length is less than 5. The wavefront pathtracer however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does run significantly faster when next event estimation is enabled though). 
 
 ### Epilogue
 

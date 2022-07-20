@@ -50,7 +50,7 @@ public:
 	}
 
 	__device__ inline Color L(Vec3f p, Vec3f n, Vec2f uv, Vec3f w) const {
-		if (!twoSided && dot(n, w) < 0.f) return Vec3f::Constant(0);	// hit backface
+		if (!twoSided && dot(n, w) < 0.f) return Vec3f::Zero();	// hit backface
 
 		if (texture.isValid()) {
 			return scale * texture.tex(uv);
@@ -81,10 +81,10 @@ public:
 	InfiniteLight(Color tint = Color::Ones(), float scale = 1, float rotation = 0)
 		:tint(tint), scale(scale), rotation(rotation) {}
 
-	InfiniteLight(const Texture &image, Vec3f tint = Vec3f::Constant(1), float scale = 1, float rotation = 0)
+	InfiniteLight(const Texture &image, Vec3f tint = Vec3f::Ones(), float scale = 1, float rotation = 0)
 		:image(image), tint(tint), scale(scale), rotation(rotation) {}
 
-	InfiniteLight(const string image, Vec3f tint = Vec3f::Constant(1), float scale = 1, float rotation = 0)
+	InfiniteLight(const string image, Vec3f tint = Vec3f::Ones(), float scale = 1, float rotation = 0)
 		:tint(tint), scale(scale), rotation(rotation) {
 		setImage(image);
 	}
@@ -102,7 +102,7 @@ public:
 		return 0.25 * M_INV_PI;
 	}
 
-	KRR_CALLABLE Color L(Vec3f p, Vec3f n, Vec2f uv, Vec3f w) const { return Vec3f::Constant(0); }
+	KRR_CALLABLE Color L(Vec3f p, Vec3f n, Vec2f uv, Vec3f w) const { return Vec3f::Zero(); }
 
 	__device__ inline Color Li(Vec3f wi) const {
 		Color L;

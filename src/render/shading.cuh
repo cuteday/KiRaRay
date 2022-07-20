@@ -140,7 +140,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		float f = (sd.IoR - 1.f) / (sd.IoR + 1.f);
 		float F0 = f * f;
 
-		sd.specular	 = lerp(Vec3f::Constant(F0), baseColor, spec[2]);
+		sd.specular	 = lerp(Vec3f::Zero(), baseColor, spec[2]);
 		sd.metallic	 = spec[2];
 		sd.roughness = spec[1];
 	}

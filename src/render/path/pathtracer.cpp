@@ -11,15 +11,15 @@ KRR_NAMESPACE_BEGIN
 extern "C" char PATHTRACER_PTX[];
 
 PathTracer::PathTracer() {
-	logInfo("setting up module ...");
+	logDebug("Setting up module ...");
 	module = OptiXBackend::createOptiXModule(gpContext->optixContext, PATHTRACER_PTX);
-	logInfo("creating program groups ...");
+	logDebug("Creating program groups ...");
 	createProgramGroups();
-	logInfo("setting up optix pipeline ...");
+	logDebug("Setting up optix pipeline ...");
 	createPipeline();
 	
 	launchParamsDevice = gpContext->alloc->new_object<LaunchParamsPT>();
-	logSuccess("PathTracer::Optix 7 context fully set up");
+	logSuccess("Megakernel PathTracer::Optix context fully set up");
 }
 
 PathTracer::~PathTracer() {
@@ -121,9 +121,9 @@ void PathTracer::renderUI() {
 		ui::Text("Path tracing parameters");
 		ui::InputInt("Samples per pixel", &launchParams.spp);
 		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
-		ui::SliderInt("Max recursion depth", &launchParams.maxDepth, 0, 30);
-		//if (mpScene->mData.lights->size() > 0)	// only when we have light sources...
-			ui::Checkbox("Next event estimation", &launchParams.NEE);
+		ui::DragInt("Max bounces", &launchParams.maxDepth, 1, 1, 100);
+		ui::Checkbox("Next event estimation", &launchParams.NEE);
+		ui::DragFloat("Radiance clip", &launchParams.clampThreshold, 0.1, 1, 500);
 		if (launchParams.NEE) {
 			ui::Checkbox("Multiple importance sampling", &launchParams.MIS);
 			ui::InputInt("Light sample count", &launchParams.lightSamples);
@@ -141,7 +141,7 @@ void PathTracer::render(CUDABuffer& frame) {
 		PROFILE("Updating parameters");
 		CUDATrackedMemory::singleton.PrefetchToGPU();
 		launchParams.fbSize = mFrameSize;
-		launchParams.colorBuffer = (Vec4f*)frame.data();
+		launchParams.colorBuffer = (Color4f*)frame.data();
 		launchParams.camera = mpScene->getCamera();
 		launchParams.sceneData = mpScene->getSceneData();
 		launchParams.frameID++;

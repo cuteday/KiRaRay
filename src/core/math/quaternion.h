@@ -29,9 +29,9 @@ public:
 	}
 
 	KRR_CALLABLE static Quaternion fromEuler(T yaw, T pitch, T roll) {
-		return Eigen::Quaternion<T>(Eigen::AngleAxis<T>(roll, Vec3f::UnitZ()) *
-									Eigen::AngleAxis<T>(pitch, Vec3f::UnitX()) *
-									Eigen::AngleAxis<T>(yaw, Vec3f::UnitY()));
+		return Eigen::Quaternion<T>(Eigen::AngleAxis<T>(yaw, Vec3f::UnitY()) *
+									Eigen::AngleAxis<T>(roll, Vec3f::UnitZ()) *
+									Eigen::AngleAxis<T>(pitch, Vec3f::UnitX()));
 	}
 };
 

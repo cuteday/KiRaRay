@@ -298,11 +298,11 @@ public:
 
     __both__ Color f(Vec3f wo, Vec3f wi) const {
 		if (SameHemisphere(wo, wi))
-			return Vec3f::Constant(0);
+			return 0;
 
         float cosThetaO = wo[2], cosThetaI = wi[2];
 		if (cosThetaI == 0 || cosThetaO == 0)
-			return Vec3f::Constant(0);
+			return 0;
 
         // Compute $\wh$ from $\wo$ and $\wi$ for microfacet transmission
         float eta = CosTheta(wo) > 0 ? etaB / etaA : etaA / etaB;
@@ -310,8 +310,8 @@ public:
         if (wh[2] < 0) wh = -wh;
 
         // Same side?
-        if (dot(wo, wh) * dot(wi, wh) > 0) return Vec3f::Constant(0);
-		Color F = Color::Constant(FrDielectric(dot(wo, wh), etaB / etaA));
+        if (dot(wo, wh) * dot(wi, wh) > 0) return 0;
+		Color F = FrDielectric(dot(wo, wh), etaB / etaA);
 
         float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
         float factor = 1.f / eta;
