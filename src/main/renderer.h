@@ -14,16 +14,16 @@ KRR_NAMESPACE_BEGIN
 
 class RenderApp : public WindowApp{
 public:
-	RenderApp(const char title[], vec2i size) : WindowApp(title, size) { }
-	RenderApp(const char title[], vec2i size, std::vector<RenderPass::SharedPtr> passes)
+	RenderApp(const char title[], Vec2i size) : WindowApp(title, size) { }
+	RenderApp(const char title[], Vec2i size, std::vector<RenderPass::SharedPtr> passes)
 		:WindowApp(title, size), mpPasses(passes) { }
 
-	void resize(const vec2i& size) override {
+	void resize(const Vec2i& size) override {
 		if (!mpScene) return;
 		WindowApp::resize(size);
 		for (auto p : mpPasses)
 			p->resize(size);
-		mpScene->getCamera().setAspectRatio((float)size.x / size.y);
+		mpScene->getCamera().setAspectRatio((float)size[0] / size[1]);
 	}
 
 	virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {
@@ -124,7 +124,7 @@ private:
 	void captureFrame(bool hdr = false) {
 		string extension = hdr ? ".exr" : ".png";
 		Image image(fbSize, Image::Format::RGBAfloat);
-		fbBuffer.copy_to_host(image.data(), fbSize.x * fbSize.y * 4 * sizeof(float));
+		fbBuffer.copy_to_host(image.data(), fbSize[0] * fbSize[1] * 4 * sizeof(float));
 		fs::path filepath = File::resolve("common/images") / ("krr_" + Log::nowToString("%H_%M_%S") + extension);
 		image.saveImage(filepath);
 		logSuccess("Saved screen shot to " + filepath.string());

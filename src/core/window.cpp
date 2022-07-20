@@ -90,8 +90,8 @@ namespace api{
 				MouseEvent event;
 				event.type = MouseEvent::Type::Move;
 				event.pos = calcMousePos(mouseX, mouseY, pWindow->getMouseScale());
-				event.screenPos = vec2f(mouseX, mouseY);
-				event.wheelDelta = vec2f(0, 0);
+				event.screenPos = Vec2f(mouseX, mouseY);
+				event.wheelDelta = Vec2f(0, 0);
 
 				pWindow->onMouseEvent(event);
 			}
@@ -137,7 +137,7 @@ namespace api{
 				double x, y;
 				glfwGetCursorPos(pGlfwWindow, &x, &y);
 				event.pos = calcMousePos(x, y, pWindow->getMouseScale());
-				event.wheelDelta = (vec2f(float(scrollX), float(scrollY)));
+				event.wheelDelta = (Vec2f(float(scrollX), float(scrollY)));
 
 				pWindow->onMouseEvent(event);
 			}
@@ -159,9 +159,9 @@ namespace api{
 		}
 
 		// calculates the mouse pos in sreen [0, 1]^2
-		static inline vec2f calcMousePos(double xPos, double yPos, const vec2f& mouseScale){
-			vec2f pos = vec2f(float(xPos), float(yPos));
-			pos *= mouseScale;
+		static inline Vec2f calcMousePos(double xPos, double yPos, const Vec2f& mouseScale){
+			Vec2f pos = Vec2f(float(xPos), float(yPos));
+			pos = pos.cwiseProduct(mouseScale);
 			return pos;
 		}
 
@@ -178,7 +178,7 @@ namespace api{
 }
 using namespace krr::api;
 
-WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVsync) {
+WindowApp::WindowApp(const char title[], Vec2i size, bool visible, bool enableVsync) {
 	glfwSetErrorCallback(ApiCallbacks::errorCallback);
 
 	initGLFW();
@@ -187,7 +187,7 @@ WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVs
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);	// we need this to support immediate mode (for simple framebuffer bliting), instead of core profile only
 	glfwWindowHint(GLFW_VISIBLE, visible);
 
-	handle = glfwCreateWindow(size.x, size.y, title, NULL, NULL);
+	handle = glfwCreateWindow(size[0], size[1], title, NULL, NULL);
 	if (!handle) {
 		glfwTerminate();
 		exit(EXIT_FAILURE);
@@ -218,10 +218,10 @@ WindowApp::~WindowApp(){
 	glfwTerminate();
 }
 
-void WindowApp::resize(const vec2i &size) {
+void WindowApp::resize(const Vec2i &size) {
 	glfwMakeContextCurrent(handle);
-	glfwSetWindowSize(handle, size.x, size.y);
-	fbBuffer.resize(sizeof(vec4f) * size.x * size.y);
+	glfwSetWindowSize(handle, size[0], size[1]);
+	fbBuffer.resize(sizeof(Color4f) * size[0] * size[1]);
 	fbSize = size;
 
 	if (fbTexture == 0) GL_CHECK(glGenTextures(1, &fbTexture));
@@ -233,7 +233,7 @@ void WindowApp::resize(const vec2i &size) {
 	}
 
 	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, fbPbo));
-	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(vec4f) * size.x * size.y, nullptr, GL_STREAM_DRAW));
+	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(Color4f) * size[0] * size[1], nullptr, GL_STREAM_DRAW));
 	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
 	// We need to re-register when resizing the texture
@@ -268,14 +268,14 @@ void WindowApp::draw() {
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, fbPbo);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, fbSize.x, fbSize.y, 0, GL_RGBA, GL_FLOAT, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, fbSize[0], fbSize[1], 0, GL_RGBA, GL_FLOAT, nullptr);
 
 	glDisable(GL_DEPTH_TEST);
-	glViewport(0, 0, fbSize.x, fbSize.y);
+	glViewport(0, 0, fbSize[0], fbSize[1]);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0.f, (float)fbSize.x, 0.f, (float)fbSize.y, -1.f, 1.f);
+	glOrtho(0.f, (float)fbSize[0], 0.f, (float)fbSize[1], -1.f, 1.f);
 
 	glBegin(GL_QUADS);
 	{
@@ -283,13 +283,13 @@ void WindowApp::draw() {
 		glVertex3f(0.f, 0.f, 0.f);
 
 		glTexCoord2f(0.f, 1.f);
-		glVertex3f(0.f, (float)fbSize.y, 0.f);
+		glVertex3f(0.f, (float)fbSize[1], 0.f);
 
 		glTexCoord2f(1.f, 1.f);
-		glVertex3f((float)fbSize.x, (float)fbSize.y, 0.f);
+		glVertex3f((float)fbSize[0], (float)fbSize[1], 0.f);
 
 		glTexCoord2f(1.f, 0.f);
-		glVertex3f((float)fbSize.x, 0.f, 0.f);
+		glVertex3f((float)fbSize[0], 0.f, 0.f);
 	}
 	glEnd();
 
@@ -299,7 +299,7 @@ void WindowApp::draw() {
 void WindowApp::run() {
 	int width, height;
 	glfwGetFramebufferSize(handle, &width, &height);
-	resize(vec2i(width,height));
+	resize(Vec2i(width,height));
 
 	while (!glfwWindowShouldClose(handle)) {
 		ImGui_ImplOpenGL3_NewFrame();

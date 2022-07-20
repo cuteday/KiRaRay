@@ -37,7 +37,7 @@ public:
 	};
 	
 	Image() {};
-	Image(vec2i size, Format format = Format::RGBAuchar, bool srgb = false);
+	Image(Vec2i size, Format format = Format::RGBAuchar, bool srgb = false);
 	~Image() {}
 
 	bool loadImage(const fs::path& filepath, bool srgb = false);
@@ -45,9 +45,9 @@ public:
 
 	static bool isHdr(const string& filepath);
 	static Image::SharedPtr createFromFile(const string& filepath, bool srgb = false);
-	bool isValid() const { return mFormat != Format::NONE && mSize.x * mSize.y; }
+	bool isValid() const { return mFormat != Format::NONE && mSize[0] * mSize[1]; }
 	bool isSrgb() const { return mSrgb; }
-	vec2i getSize() const { return mSize; }
+	Vec2i getSize() const { return mSize; }
 	Format getFormat() const { return mFormat; }
 	inline size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
 	int getChannels() const { return mChannels; }
@@ -55,7 +55,7 @@ public:
 	
 private:
 	bool mSrgb{ };
-	vec2i mSize = { 0, 0 };
+	Vec2i mSize = Vec2i::Zero();
 	int mChannels{ 4 };
 	Format mFormat{ };
 	uchar* mData{ };
@@ -78,12 +78,12 @@ public:
 	
 	__both__ cudaTextureObject_t getCudaTexture()const { return mCudaTexture; }
 	
-	__device__ vec3f tex(vec2f uv)const {
+	__device__ Color tex(Vec2f uv) const {
 #ifdef __NVCC__ 
-		vec3f color = (vec3f)tex2D<float4>(mCudaTexture, uv.x, uv.y);
+		Color color = (Vec3f) tex2D<float4>(mCudaTexture, uv[0], uv[1]);
 		return color;
 #endif 
-		return 0;
+		return {};
 	}
 
 	void toDevice();
@@ -122,9 +122,9 @@ public:
 	};
 
 	struct MaterialParams {
-		vec4f diffuse{ 0 };			 
-		vec4f specular{ 0 };			// G-roughness B-metallic in MetalRough model
-		vec3f emissive{ 0 };
+		Vec4f diffuse{ 0 };			 
+		Vec4f specular{ 0 };			// G-roughness B-metallic in MetalRough model
+		Vec3f emissive{ 0 };
 		float IoR{ 1.5f };
 		float diffuseTransmission{ 0 };
 		float specularTransmission{ 0 };

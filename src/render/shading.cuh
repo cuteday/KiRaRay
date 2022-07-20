@@ -9,7 +9,7 @@
 KRR_NAMESPACE_BEGIN
 
 namespace {
-	KRR_DEVICE_FUNCTION float getMetallic(vec3f diffuse, vec3f spec)
+KRR_DEVICE_FUNCTION float getMetallic(Color diffuse, Color spec)
 	{
 		// This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors
 		// We don't have the specular level information, so the assumption is that it is equal to 0.5 (based on the UE4 documentation)
@@ -23,25 +23,17 @@ namespace {
 		return max(0.f, m);
 	}
 
-	KRR_DEVICE_FUNCTION vec3f rgbToNormal(vec3f rgb){
-		return rgb * 2.f - 1.f;
+	KRR_DEVICE_FUNCTION Color rgbToNormal(Color rgb) { 
+		return 2 * rgb - Color::Ones();
 	}
 
-	KRR_DEVICE_FUNCTION vec3f rgToNormal(vec2f rg){
-		vec3f n;
-		*((vec2f*)&n) = 2.f * rg - 1.f;
-		// Saturate because error from BC5 can break the sqrt
-		n.z = saturate(dot(rg, rg)); // z = r*r + g*g
-		n.z = sqrt(1 - n.z);
-		return n;
-	}
 }
 
 template <typename T>
-KRR_DEVICE_FUNCTION T sampleTexture(Texture& texture, vec2f uv, T fallback) {
+KRR_DEVICE_FUNCTION T sampleTexture(Texture &texture, Vec2f uv, T fallback) {
 	cudaTextureObject_t cudaTexture = texture.getCudaTexture();
 	if (cudaTexture) {
-		return tex2D<float4>(cudaTexture, uv.x, uv.y);
+		return tex2D<float4>(cudaTexture, uv[0], uv[1]);
 	}
 	return fallback;
 }
@@ -49,12 +41,12 @@ KRR_DEVICE_FUNCTION T sampleTexture(Texture& texture, vec2f uv, T fallback) {
 KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	HitInfo hitInfo = {};
 	HitgroupSBTData* hitData = (HitgroupSBTData*)optixGetSbtDataPointer();
-	vec2f barycentric = (vec2f)optixGetTriangleBarycentrics();
+	Vec2f barycentric = (Vec2f)optixGetTriangleBarycentrics();
 	hitInfo.primitiveId = optixGetPrimitiveIndex();
 	hitInfo.mesh = hitData->mesh;
-	hitInfo.wo = -normalize((vec3f)optixGetWorldRayDirection());
+	hitInfo.wo = -normalize((Vec3f)optixGetWorldRayDirection());
 	hitInfo.hitKind = optixGetHitKind();
-	hitInfo.barycentric = { 1 - barycentric.x - barycentric.y, barycentric.x, barycentric.y };
+	hitInfo.barycentric = { 1 - barycentric[0] - barycentric[1], barycentric[0], barycentric[1] };
 	return hitInfo;
 }
 
@@ -63,9 +55,9 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	// The shading normal sd.frame.N and face normal sd.geoN is always points towards the outside of the object,
 	// we can use this convention to determine whether an incident ray is coming from outside of the object.
 	
-	vec3f b = hitInfo.barycentric;
+	Vec3f b = hitInfo.barycentric;
 	MeshData& mesh = *hitInfo.mesh;
-	vec3i v = mesh.indices[hitInfo.primitiveId];
+	Vec3i v = mesh.indices[hitInfo.primitiveId];
 
 	sd.wo = normalize(hitInfo.wo);
 
@@ -99,7 +91,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
 	}
 
-	vec2f uv[3];
+	Vec2f uv[3];
 	if (mesh.texcoords) {
 		uv[0] = mesh.texcoords[v[0]],
 			uv[1] = mesh.texcoords[v[1]],
@@ -125,15 +117,15 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	Texture& specularTexture = material.mTextures[(uint)Material::TextureType::Specular];
 	Texture& normalTexture = material.mTextures[(uint)Material::TextureType::Normal];
 
-	vec4f diff = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
-	vec4f spec = sampleTexture(specularTexture, sd.uv, materialParams.specular);
-	vec3f baseColor = (vec3f)diff;
+	Vec4f diff = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
+	Vec4f spec = sampleTexture(specularTexture, sd.uv, materialParams.specular);
+	Vec3f baseColor = (Vec3f)diff;
 
 	if (normalTexture.isValid() && mesh.tangents && mesh.bitangents) {	// be cautious if we have the tangent space TBN
-		vec3f normal = sampleTexture(normalTexture, sd.uv, vec3f{});
+		Vec3f normal = sampleTexture(normalTexture, sd.uv, Vec3f{});
 		normal = rgbToNormal(normal);
 
-		sd.frame.N = normalize(sd.frame.T * normal.x + sd.frame.B * normal.y + sd.frame.N * normal.z);
+		sd.frame.N = normalize(sd.frame.T * normal[0] + sd.frame.B * normal[1] + sd.frame.N * normal[2]);
 		sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.T, sd.frame.N));
 		sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
 	}
@@ -141,21 +133,21 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// this is the default except for OBJ or when user specified 
 		// G - Roughness; B - Metallic
-		sd.diffuse = lerp(baseColor, vec3f(0), spec.b);
+		sd.diffuse = lerp(baseColor, Vec3f::Zero(), spec[2]);
 
 		// Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
 		// UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
 		float f = (sd.IoR - 1.f) / (sd.IoR + 1.f);
 		float F0 = f * f;
 
-		sd.specular = lerp(vec3f(F0), baseColor, spec.b);
-		sd.metallic = spec.b;
-		sd.roughness = spec.g;
+		sd.specular	 = lerp(Vec3f::Zero(), baseColor, spec[2]);
+		sd.metallic	 = spec[2];
+		sd.roughness = spec[1];
 	}
 	else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		sd.diffuse = baseColor;
-		sd.specular = (vec3f)spec;			// specular reflectance
-		sd.roughness = 1 - spec.a;			// 
+		sd.specular = (Vec3f)spec;			// specular reflectance
+		sd.roughness = 1.f - spec[3];	 // 
 		sd.metallic = getMetallic(sd.diffuse, sd.specular);
 	}
 	else {

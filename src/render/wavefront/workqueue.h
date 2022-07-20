@@ -22,11 +22,11 @@ public:
     PixelStateBuffer() = default;
     PixelStateBuffer(int n, Allocator alloc) : SOA<PixelState>(n, alloc) {}
 
-    KRR_CALLABLE void setRadiance(int pixelId, color L_val){
+    KRR_CALLABLE void setRadiance(int pixelId, Color L_val){
         L[pixelId] = L_val;
     }
-    KRR_CALLABLE void addRadiance(int pixelId, color L_val) {
-        L_val = L_val + color(L[pixelId]);
+	KRR_CALLABLE void addRadiance(int pixelId, Color L_val) {
+		L_val	   = L_val + Color(L[pixelId]);
         L[pixelId] = L_val;
     }
 };
@@ -122,7 +122,7 @@ public:
     KRR_CALLABLE int pushCameraRay(Ray ray, uint pixelId) {
         int index = allocateEntry();
         this->depth[index] = 0;
-        this->thp[index] = 1;
+		this->thp[index]	 = Color::Ones();
         this->pixelId[index] = pixelId;
         this->ray[index] = ray;
         return index;

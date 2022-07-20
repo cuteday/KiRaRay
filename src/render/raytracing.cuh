@@ -2,6 +2,7 @@
 #include "common.h"
 
 #include <optix_device.h>
+#include "math/math.h"
 
 KRR_NAMESPACE_BEGIN
 

@@ -1,48 +1,99 @@
 #pragma once
 
-#include "math/vec/functors.h"
-#include "math/vec/compare.h"
-#include "math/vec/rotate.h"
-#include "math/vec.h"
-#include "math/quat.h"
-#include "math/aabb.h"
-#include "math/mat.h"
-#include "math/complex.h"
+#define EIGEN_DEFAULT_DENSE_INDEX_TYPE int
+#include "common.h"
 #include "math/constants.h"
-#include "math/transform.h"
+#include "math/vector.h"
+#include "math/array.h"
+#include "math/quaternion.h"
+#include "math/aabb.h"
+#include "math/functors.h"
+#include "math/complex.h"
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 KRR_NAMESPACE_BEGIN
 
-using color = vec3f;
-using color3f = vec3f;
-using point = vec3f;
-using point3f = vec3f;
-using point2f = vec2f;
-using AABB = aabb3f;
+using Color = Array3f;
+using Color3f = Array3f;
+using Color4f = Array4f;
+using Point = Vec3f;
+using Point2f = Vec2f;
+using Point3f = Vec3f;
+using AABB = AABB3f;
+using Quat = Quaternionf;
+
+namespace math {
 
 template <typename T>
-KRR_CALLABLE T mod(T a, T b) {
-	T result = a - (a / b) * b;
-	return (T)((result < 0) ? result + b : result);
+KRR_CALLABLE auto clamp(T v, T lo, T hi) {
+	return std::max(std::min(v, hi), lo);
 }
 
-template <typename T> KRR_CALLABLE T safe_sqrt(T value) {
-	return sqrt(max((T)0, value));
+template <typename DerivedV, typename DerivedB>
+KRR_CALLABLE auto clamp(const Eigen::MatrixBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
+	return v.cwiseMin(hi).cwiseMax(lo);
 }
 
-template <typename T, int n>
-KRR_CALLABLE T average(math::vec_t<T, n> v) {
-	float val{};
-	for (int i = 0; i < n; i++) {
-		val += v[i];
-	}
-	return val / n;
+template <typename DerivedV, typename DerivedB>
+KRR_CALLABLE auto clamp(const Eigen::ArrayBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
+	return v.min(hi).max(lo);
 }
 
-template <typename T, int n>
-KRR_CALLABLE T isValid(math::vec_t<T, n> v) {
-	return !isnan(v) && !isinf(v);
+template <typename DerivedV, typename DerivedB>
+KRR_CALLABLE auto clamp(const Eigen::EigenBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
+	return clamp(v.eval(), lo, hi);
 }
 
+template <typename DerivedA, typename DerivedB, typename DerivedT>
+KRR_CALLABLE auto lerp(const Eigen::DenseBase<DerivedA> &a, const Eigen::DenseBase<DerivedB> &b, DerivedT t) {
+	return (a.eval() * (1 - t) + b.eval() * t).eval();
+}
+
+// overload unary opeartors
+
+template <typename DerivedV>
+KRR_CALLABLE auto normalize(const Eigen::MatrixBase<DerivedV> &v) {
+	return v.normalized();
+}
+
+template <typename DerivedV>
+KRR_CALLABLE auto abs(const Eigen::MatrixBase<DerivedV> &v) {
+	return v.cwiseAbs();
+}
+
+template <typename DerivedV>
+KRR_CALLABLE auto length(const Eigen::MatrixBase<DerivedV> &v) {
+	return v.norm();
+}
+
+template <typename DerivedV>
+KRR_CALLABLE auto squaredLength(const Eigen::MatrixBase<DerivedV> &v) {
+	return v.SquaredNorm();
+}
+
+template <typename DerivedV>
+KRR_CALLABLE auto any(const Eigen::DenseBase<DerivedV> &v) {
+	return v.any();
+}
+
+// overload binary operators
+
+template <typename DerivedA, typename DerivedB> 
+KRR_CALLABLE auto cross(const Eigen::MatrixBase<DerivedA> &a, const Eigen::MatrixBase<DerivedB> &b) {
+	return a.cross(b);
+}
+
+template <typename DerivedA, typename DerivedB>
+KRR_CALLABLE auto dot(const Eigen::MatrixBase<DerivedA> &a, const Eigen::MatrixBase<DerivedB> &b) {
+	return a.dot(b);
+}
+
+template <typename DerivedA, typename DerivedB>
+KRR_CALLABLE auto operator/(const Eigen::MatrixBase<DerivedA> &a, const Eigen::MatrixBase<DerivedB> &b) {
+	return a.cwiseQuotient(b);
+}
+
+} // namespace math
 
 KRR_NAMESPACE_END

@@ -11,7 +11,7 @@
 #include "diffuse.h"
 #include "microfacet.h"
 #include "fresnel.h"
-#include "sampling.h"
+#include "render/sampling.h"
 #include "sampler.h"
 
 
@@ -40,7 +40,7 @@ public:
 		float dielectricBSDF = (1 - metallic) * (1 - specTrans);
 
 		float diffuseWeight = luminance(sd.diffuse);
-		float specularWeight = luminance(FrSchlick(sd.specular, 1.f, dot(sd.wo, sd.frame.N)));
+		float specularWeight = FrSchlick(luminance(sd.specular), 1.f, dot(sd.wo, sd.frame.N));
 	
 		pDiff = diffuseWeight * dielectricBSDF;
 		pSpecRefl = specularWeight * (metallicBRDF + dielectricBSDF);
@@ -50,15 +50,15 @@ public:
 		if (norm > 0) pDiff /= norm, pSpecRefl /= norm, pSpecTrans /= norm;
 	}
 
-	__both__ vec3f f(vec3f wo, vec3f wi) const {
-		vec3f val = 0;
+	__both__ Color f(Vec3f wo, Vec3f wi) const {
+		Color val = Color::Zero();
 		if(pDiff) val += (1 - specTrans) * diffuseBsdf.f(wo, wi);
 		if(pSpecRefl) val += (1 - specTrans) * microfacetBrdf.f(wo, wi);
 		if(pSpecTrans) val += specTrans * microfacetBtdf.f(wo, wi);
 		return val;
 	}
 
-	__both__ BSDFSample sample(vec3f wo, Sampler & sg) const {
+	__both__ BSDFSample sample(Vec3f wo, Sampler & sg) const {
 		float u = sg.get1D();
 		BSDFSample sample = {};
 		if (u < pDiff) {	// reflection
@@ -81,7 +81,7 @@ public:
 		return sample;
 	}
 
-	__both__ float pdf(vec3f wo, vec3f wi) const {
+	__both__ float pdf(Vec3f wo, Vec3f wi) const {
 		float val = 0;
 		if (pDiff) val += pDiff * diffuseBsdf.pdf(wo, wi);
 		if (pSpecRefl) val += pSpecRefl * microfacetBrdf.pdf(wo, wi);

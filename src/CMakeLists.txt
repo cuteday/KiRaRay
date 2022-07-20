@@ -21,6 +21,7 @@ SET ( KRR_INCLUDE_ALL
 	${GLFW_INCLUDE_DIRS}
 	${IMGUI_INCLUDE_DIRS}
 	${JSON_INCLUDE_DIRS}
+	${EIGEN_INCLUDE_DIRS}
 	${IMAGEIO_INCLUDE_DIRS}
 	${CUDA_INCLUDE_DIRS}
 	${OptiX_INCLUDE}
@@ -63,18 +64,14 @@ SET ( KRR_CORE_HEADERS
 	core/sampler.h
 	# maths
 	core/math/math.h
+	core/math/vector.h
+	core/math/array.h
+	core/math/quaternion.h
+	core/math/utils.h
+	core/math/aabb.h
 	core/math/complex.h
 	core/math/constants.h
-	core/math/vec.h
-	core/math/mat.h
-	core/math/aabb.h
-	core/math/quat.h
-	core/math/utils.h
-	core/math/vmf.h
-	core/math/transform.h
-	core/math/vec/compare.h
-	core/math/vec/rotate.h
-	core/math/vec/functors.h
+	core/math/functors.h
 	# cuda device backend and host-device interops
 	core/interop.h
 	core/host/memory.h
@@ -105,6 +102,7 @@ SET(KRR_HEADERS
 	util/string.h
 	util/lowdiscrepancy.h
 	util/tables.h
+	util/vmf.h
 )
 
 SET (KRR_SOURCE

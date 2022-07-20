@@ -10,16 +10,16 @@
 KRR_NAMESPACE_BEGIN
 
 struct EnvLightSample {
-	vec3f L;
+	Color L;
 	float pdf;
-	vec3f wi;
+	Vec3f wi;
 };
 
 class EnvLight{
 public:
 	using SharedPtr = std::shared_ptr<EnvLight>;
 	struct EnvLightData {
-		vec3f tint = { 1,1,1 };
+		Color tint		= Color::Ones();
 		float intensity = 1.0;
 		float rotation = 0;
 		Texture mEnvTexture;
@@ -44,19 +44,19 @@ public:
 
 	bool update() {
 		bool hasChanges = false;
-		hasChanges |= mData.tint != mDataPrev.tint;
+		hasChanges |= any(mData.tint != mDataPrev.tint);
 		hasChanges |= mData.intensity != mDataPrev.intensity;
 		hasChanges |= mData.rotation != mDataPrev.rotation;
 		mDataPrev = mData;
 		return hasChanges;
 	}
 
-	__device__ float pdf(vec3f wi) {
+	__device__ float pdf(Vec3f wi) {
 		return 0.25 * M_INV_PI;
 	}
 
-	__device__ EnvLightSample sample(vec2f u) {
-		vec3f wi = utils::latlongToWorld(u);
+	__device__ EnvLightSample sample(Vec2f u) {
+		Vec3f wi = utils::latlongToWorld(u);
 		EnvLightSample ls = {};
 		ls.wi = wi;
 		ls.L = eval(wi);
@@ -64,15 +64,15 @@ public:
 		return ls;
 	}
 
-	__device__ vec3f eval(vec3f wi) {
-		vec3f Li;
+	__device__ Color eval(Vec3f wi) {
+		Color Li;
 		Li = mData.tint * mData.intensity;
 
 		//cudaTextureObject_t texture = mData.mEnvTexture.getCudaTexture();
 		if (!mIBL && mData.mEnvTexture.isOnDevice()) return Li;
-		vec2f uv = utils::worldToLatLong(wi);
-		uv.x = fmod(uv.x + mData.rotation, 1.f);
-		vec3f env = mData.mEnvTexture.tex(uv);
+		Vec2f uv = utils::worldToLatLong(wi);
+		uv[0] = fmod(uv[0] + mData.rotation, 1.f);
+		Color env = mData.mEnvTexture.tex(uv);
 		Li *= env;
 
 		return Li;

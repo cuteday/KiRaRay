@@ -34,8 +34,8 @@ class DisneyDiffuse{
 public:
 	DisneyDiffuse() = default;
 
-	KRR_CALLABLE DisneyDiffuse(const vec3f& R): R(R) {}
-	KRR_CALLABLE vec3f f(const vec3f& wo, const vec3f& wi) const {
+	KRR_CALLABLE DisneyDiffuse(const Color &R) : R(R) {}
+	KRR_CALLABLE Color f(const Vec3f &wo, const Vec3f &wi) const {
 		float Fo = SchlickWeight(AbsCosTheta(wo)),
 			Fi = SchlickWeight(AbsCosTheta(wi));
 
@@ -43,23 +43,23 @@ public:
 		// Burley 2015, eq (4).
 		return R * M_INV_PI * (1 - Fo / 2) * (1 - Fi / 2);
 	}
-	KRR_CALLABLE vec3f rho(const vec3f&, int, const vec2f*) const { return R; }
-	KRR_CALLABLE vec3f rho(int, const vec3f*, const vec3f*) const { return R; }
+	KRR_CALLABLE Color rho(const Vec3f &, int, const Vec2f *) const { return R; }
+	KRR_CALLABLE Color rho(int, const Vec3f *, const Vec3f *) const { return R; }
 
 //private:
-	vec3f R;
+	Color R;
 };
 
 class DisneyFakeSS{
 public:
 	DisneyFakeSS() = default;
 
-	KRR_CALLABLE DisneyFakeSS(const vec3f& R, float roughness)
+	KRR_CALLABLE DisneyFakeSS(const Color &R, float roughness)
 		: R(R), roughness(roughness) {}
 
-	KRR_CALLABLE vec3f f(const vec3f& wo, const vec3f& wi) const {
-		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return vec3f(0.);
+	KRR_CALLABLE Color f(const Vec3f &wo, const Vec3f &wi) const {
+		Vec3f wh = wi + wo;
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vec3f(0.);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -75,22 +75,21 @@ public:
 		return R * M_INV_PI * ss;
 	};
 
-	KRR_CALLABLE vec3f rho(const vec3f&, int, const vec2f*) const { return R; }
-	KRR_CALLABLE vec3f rho(int, const vec2f*, const vec2f*) const { return R; }
+	KRR_CALLABLE Color rho(const Vec3f &, int, const Vec2f *) const { return R; }
+	KRR_CALLABLE Color rho(int, const Vec2f *, const Vec2f *) const { return R; }
 
-//private:
-	vec3f R;
+	Color R;
 	float roughness;
 };
 
 class DisneyRetro{
 public:
 	DisneyRetro() = default;
-	KRR_CALLABLE DisneyRetro(const vec3f& R, float roughness)
+	KRR_CALLABLE DisneyRetro(const Color& R, float roughness)
 		: R(R), roughness(roughness) {}
-	KRR_CALLABLE vec3f f(const vec3f& wo, const vec3f& wi) const {
-		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return vec3f(0.);
+	KRR_CALLABLE Color f(const Vec3f &wo, const Vec3f &wi) const {
+		Vec3f wh = wi + wo;
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vec3f(0.);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -101,11 +100,10 @@ public:
 		// Burley 2015, eq (4).
 		return R * M_INV_PI * Rr * (Fo + Fi + Fo * Fi * (Rr - 1));
 	};
-	KRR_CALLABLE vec3f rho(const vec3f&, int, const vec2f*) const { return R; }
-	KRR_CALLABLE vec3f rho(int, const vec2f*, const vec2f*) const { return R; }
+	KRR_CALLABLE Color rho(const Vec3f &, int, const Vec2f *) const { return R; }
+	KRR_CALLABLE Color rho(int, const Vec2f *, const Vec2f *) const { return R; }
 
-//private:
-	vec3f R;
+	Color R;
 	float roughness;
 	BxDFType type{ BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE) };
 };
@@ -113,21 +111,20 @@ public:
 class DisneySheen{
 public:
 	DisneySheen() = default;
-	KRR_CALLABLE DisneySheen(const vec3f& R): R(R) {}
-	KRR_CALLABLE vec3f f(const vec3f& wo, const vec3f& wi) const {
-		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return vec3f(0.);
+	KRR_CALLABLE DisneySheen(const Vec3f& R): R(R) {}
+	KRR_CALLABLE Color f(const Vec3f &wo, const Vec3f &wi) const {
+		Vec3f wh = wi + wo;
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vec3f(0.);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
 		return R * SchlickWeight(cosThetaD);
 	}
 
-	KRR_CALLABLE vec3f rho(const vec3f&, int, const vec2f*) const { return R; }
-	KRR_CALLABLE vec3f rho(int, const vec2f*, const vec2f*) const { return R; }
+	KRR_CALLABLE Color rho(const Vec3f &, int, const Vec2f *) const { return R; }
+	KRR_CALLABLE Color rho(int, const Vec2f *, const Vec2f *) const { return R; }
 
-//private:
-	vec3f R;
+	Color R;
 	BxDFType type{ BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE) };
 };
 
@@ -150,9 +147,9 @@ public:
 	KRR_CALLABLE DisneyClearcoat(float weight, float gloss)
 		: weight(weight), gloss(gloss) {}
 
-	KRR_CALLABLE vec3f f(const vec3f& wo, const vec3f& wi) const {
-		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return vec3f(0.);
+	KRR_CALLABLE Color f(const Vec3f &wo, const Vec3f &wi) const {
+		Vec3f wh = wi + wo;
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vec3f(0.);
 		wh = normalize(wh);
 
 		float Dr = GTR1(AbsCosTheta(wh), gloss);
@@ -164,38 +161,38 @@ public:
 		return weight * Gr * Fr * Dr / 4;
 	};
 
-	KRR_CALLABLE vec3f Sample_f(const vec3f& wo, vec3f* wi, const vec2f& u,
+	KRR_CALLABLE Color Sample_f(const Vec3f &wo, Vec3f *wi, const Vec2f &u,
 		float* pdf, BxDFType* sampledType) const {
 
-		if (wo.z == 0) return 0.;
+		if (wo[2] == 0)
+			return Color::Zero();
 
 		float alpha2 = gloss * gloss;
 		float cosTheta = sqrt(
 			max(float(0), (1 - pow(alpha2, 1 - u[0])) / (1 - alpha2)));
 		float sinTheta = sqrt(max((float)0, 1 - cosTheta * cosTheta));
 		float phi = 2 * M_PI * u[1];
-		vec3f wh = sphericalToCartesian(sinTheta, cosTheta, phi);
+		Vec3f wh = sphericalToCartesian(sinTheta, cosTheta, phi);
 		if (!SameHemisphere(wo, wh)) wh = -wh;
 
 		*wi = Reflect(wo, wh);
-		if (!SameHemisphere(wo, *wi)) return vec3f(0.f);
+		if (!SameHemisphere(wo, *wi)) return Vec3f(0.f);
 
 		*pdf = Pdf(wo, *wi);
 		return f(wo, *wi);
 	};
 
-	KRR_CALLABLE float Pdf(const vec3f& wo, const vec3f& wi) const {
+	KRR_CALLABLE float Pdf(const Vec3f& wo, const Vec3f& wi) const {
 		if (!SameHemisphere(wo, wi)) return 0;
 
-		vec3f wh = wi + wo;
-		if (wh.x == 0 && wh.y == 0 && wh.z == 0) return 0;
+		Vec3f wh = wi + wo;
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return 0;
 		wh = normalize(wh);
 
 		float Dr = GTR1(AbsCosTheta(wh), gloss);
 		return Dr * AbsCosTheta(wh) / (4 * dot(wo, wh));
 	};
 
-//private:
 	float weight, gloss;
 	BxDFType type{ BxDFType(BSDF_REFLECTION | BSDF_GLOSSY) };
 };
@@ -220,7 +217,7 @@ public:
 	KRR_CALLABLE void setup(const ShadingData& sd) {
 		constexpr bool thin = 0;
 
-		vec3f c = sd.diffuse;
+		Color c				 = sd.diffuse;
 		float metallicWeight = sd.metallic;
 		float e = 1.5; //sd.IoR; // Some scene has corrupt IoR so we use all 1.5 instead...
 		float strans = sd.specularTransmission;
@@ -229,14 +226,15 @@ public:
 		float rough = sd.roughness;
 		float lum = luminance(c);
 		// normalize lum. to isolate hue+sat
-		vec3f Ctint = lum > 0 ? (c / lum) : 1;
+		Color Ctint = Color::Ones();
+		if (lum > 0) Ctint = c / lum;
 
 		float sheenWeight = 0;
-		vec3f Csheen;
+		Color Csheen;
 		if (sheenWeight > 0) {
 			assert(false);
 			float stint = 0;
-			Csheen = lerp(vec3f(1), Ctint, stint);
+			Csheen		= lerp(Color(1), Ctint, stint);
 		}
 
 		if (diffuseWeight > 0) {
@@ -248,7 +246,7 @@ public:
 				//disneyFakeSS = DisneyFakeSS(diffuseWeight * flat * (1 - dt) * c, rough);
 			}
 			else {
-				vec3f scatterDistance = 0;
+				Vec3f scatterDistance = Vec3f::Zero();
 				if (!any(scatterDistance)) {
 					// No subsurface scattering; use regular (Fresnel modified) diffuse.
 					disneyDiffuse = DisneyDiffuse(diffuseWeight * c);
@@ -277,10 +275,11 @@ public:
 
 		// Specular is Trowbridge-Reitz with a modified Fresnel function.
 		float specTint = 0;
-		vec3f Cspec0 = any(sd.specular) ? sd.specular : 
-			lerp(SchlickR0FromEta(e) * lerp(vec3f(1), Ctint, specTint), c, metallicWeight);
+		Color Cspec0   = sd.specular;
+		if (!any(sd.specular)) 
+			Cspec0 = lerp(SchlickR0FromEta(e) * lerp(Color::Ones(), Ctint, specTint), c, metallicWeight);
 
-		microfacetBrdf = MicrofacetBrdf(1, e, ax, ay);
+		microfacetBrdf = MicrofacetBrdf(Color::Ones(), e, ax, ay);
 		components |= DISNEY_SPEC_REFLECTION;
 #if KRR_USE_DISNEY
 		microfacetBrdf.disneyR0 = Cspec0;
@@ -294,8 +293,8 @@ public:
 
 		// specular BTDF if has transmission
 		if (strans > 0) {
-			//vec3f T = strans * sqrt(c);
-			vec3f T = strans;
+			//Vec3f T = strans * sqrt(c);
+			Color T = strans;
 			if (thin) {
 				// Scale roughness based on IOR (Burley 2015, Figure 15).
 				assert(false);
@@ -318,7 +317,7 @@ public:
 		// calculate sampling weights
 		float approxFresnel = luminance(DisneyFresnel(Cspec0, sd.metallic, e, AbsCosTheta(sd.wo)));
 		pDiffuse = components & DISNEY_DIFFUSE ? luminance(sd.diffuse) * (1 - sd.metallic) * (1 - sd.specularTransmission) : 0;
-		pSpecRefl = components & DISNEY_SPEC_REFLECTION ? luminance(lerp(sd.specular, vec3f(1), approxFresnel)) * (1 - sd.specularTransmission) : 0;
+		pSpecRefl = components & DISNEY_SPEC_REFLECTION ? luminance(lerp(sd.specular, Color::Ones(), approxFresnel)) * (1 - sd.specularTransmission) : 0;
 	//	pSpecTrans = components & DISNEY_SPEC_TRANSMISSION ? (1.f - approxFresnel) * (1 - sd.metallic) * sd.specularTransmission * luminance(sd.diffuse) : 0;
 		pSpecTrans = components & DISNEY_SPEC_TRANSMISSION ? (1.f - approxFresnel) * (1 - sd.metallic) * sd.specularTransmission: 0;
 		float totalWt = pDiffuse + pSpecRefl + pSpecTrans;
@@ -328,8 +327,8 @@ public:
 		//	pDiffuse, pSpecRefl, pSpecTrans, metallicWeight);
 	}
 
-	KRR_CALLABLE vec3f f(vec3f wo, vec3f wi) const {
-		vec3f val = 0;
+	KRR_CALLABLE Color f(Vec3f wo, Vec3f wi) const {
+		Color val	 = Color::Zero();
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
 			if (components & DISNEY_DIFFUSE)val += disneyDiffuse.f(wo, wi);
@@ -344,12 +343,12 @@ public:
 		return val;
 	}
 
-	KRR_CALLABLE BSDFSample sample(vec3f wo, Sampler& sg) const {
+	KRR_CALLABLE BSDFSample sample(Vec3f wo, Sampler& sg) const {
 		BSDFSample sample;
 		float comp = sg.get1D();
 		if (comp < pDiffuse) {
-			vec3f wi = cosineSampleHemisphere(sg.get2D());
-			if (wo.z < 0) wi.z *= -1;
+			Vec3f wi = cosineSampleHemisphere(sg.get2D());
+			if (wo[2] < 0) wi[2] *= -1;
 			sample.pdf = pdf(wo, wi);
 			sample.f = f(wo, wi);
 			sample.wi = wi;
@@ -372,7 +371,7 @@ public:
 		return sample;
 	}
 
-	KRR_CALLABLE float pdf(vec3f wo, vec3f wi) const {
+	KRR_CALLABLE float pdf(Vec3f wo, Vec3f wi) const {
 		float val = 0;
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && (components & (DISNEY_DIFFUSE | DISNEY_RETRO)) && reflect) {
@@ -403,7 +402,7 @@ public:
 	float pSpecRefl{ 0 };
 
 #if 0
-	vec3f color{ 1 };
+	Color color{ 1 };
 	float metallic{ 0 };
 	float eta{ 1.5 };
 	float roughness{ 1 };

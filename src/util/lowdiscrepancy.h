@@ -174,15 +174,15 @@ KRR_CALLABLE uint32_t MultiplyGenerator(inter::span<const uint32_t> C, uint32_t 
     return v;
 }
 
-KRR_CALLABLE float BlueNoiseSample(vec2i p, int instance) {
+KRR_CALLABLE float BlueNoiseSample(Vec2i p, int instance) {
     auto HashPerm = [&](uint64_t index) -> int {
         return uint32_t(MixBits(index ^ (0x55555555 * instance)) >> 24) % 24;
     };
 
     int nBase4Digits = 8;  // Log2Int(256)
-    p.x &= 255;
-    p.y &= 255;
-    uint64_t mortonIndex = EncodeMorton2(p.x, p.y);
+    p[0] &= 255;
+    p[1] &= 255;
+    uint64_t mortonIndex = EncodeMorton2(p[0], p[1]);
 
     static const uint8_t permutations[24][4] = {
         {0, 1, 2, 3}, {0, 1, 3, 2}, {0, 2, 1, 3}, {0, 2, 3, 1}, {0, 3, 2, 1},
@@ -271,7 +271,7 @@ enum class RandomizeStrategy { None, PermuteDigits, FastOwen, Owen };
 //}
 
 //KRR_CALLABLE
-//    uint64_t SobolIntervalToIndex(uint32_t m, uint64_t frame, vec2i p) {
+//    uint64_t SobolIntervalToIndex(uint32_t m, uint64_t frame, Vec2i p) {
 //    if (m == 0)
 //        return frame;
 //
@@ -284,7 +284,7 @@ enum class RandomizeStrategy { None, PermuteDigits, FastOwen, Owen };
 //            delta ^= VdCSobolMatrices[m - 1][c];
 //
 //    // flipped b
-//    uint64_t b = (((uint64_t)((uint32_t)p.x) << m) | ((uint32_t)p.y)) ^ delta;
+//    uint64_t b = (((uint64_t)((uint32_t)p[0]) << m) | ((uint32_t)p[1])) ^ delta;
 //
 //    for (int c = 0; b; b >>= 1, ++c)
 //        if (b & 1)  // Add column 2 * m - c.

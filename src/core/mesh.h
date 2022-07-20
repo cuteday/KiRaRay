@@ -12,12 +12,12 @@ class Triangle;
 class DiffuseAreaLight;
 
 struct MeshData {
-	vec3f* vertices{ nullptr };
-	vec3i* indices{ nullptr };
-	vec3f* normals{ nullptr };
-	vec2f* texcoords{ nullptr };
-	vec3f* tangents{ nullptr };
-	vec3f* bitangents{ nullptr };
+	Vec3f* vertices{ nullptr };
+	Vec3i* indices{ nullptr };
+	Vec3f* normals{ nullptr };
+	Vec2f* texcoords{ nullptr };
+	Vec3f* tangents{ nullptr };
+	Vec3f* bitangents{ nullptr };
 	uint materialId{ 0 };
 
 	DiffuseAreaLight* lights{ nullptr };
@@ -26,12 +26,12 @@ struct MeshData {
 class Mesh {
 public:
 	void toDevice() {
-		mData.vertices = (vec3f*)vertices.data();
-		mData.normals = (vec3f*)normals.data();
-		mData.indices = (vec3i*)indices.data();
-		mData.texcoords = (vec2f*)texcoords.data();
-		mData.tangents = (vec3f*)tangents.data();
-		mData.bitangents = (vec3f*)bitangents.data();
+		mData.vertices = (Vec3f*)vertices.data();
+		mData.normals = (Vec3f*)normals.data();
+		mData.indices = (Vec3i*)indices.data();
+		mData.texcoords = (Vec2f*)texcoords.data();
+		mData.tangents = (Vec3f*)tangents.data();
+		mData.bitangents = (Vec3f*)bitangents.data();
 		mData.materialId = materialId;
 
 		mData.lights = lights.data();
@@ -39,12 +39,12 @@ public:
 
 	std::vector<Triangle> createTriangles(MeshData* mesh);
 
-	inter::vector<vec3f> vertices;
-	inter::vector<vec3f> normals;
-	inter::vector<vec2f> texcoords;
-	inter::vector<vec3i> indices;
-	inter::vector<vec3f> tangents;
-	inter::vector<vec3f> bitangents;
+	inter::vector<Vec3f> vertices;
+	inter::vector<Vec3f> normals;
+	inter::vector<Vec2f> texcoords;
+	inter::vector<Vec3i> indices;
+	inter::vector<Vec3f> tangents;
+	inter::vector<Vec3f> bitangents;
 
 	inter::vector<Triangle> emissiveTriangles;
 	inter::vector<DiffuseAreaLight> lights;

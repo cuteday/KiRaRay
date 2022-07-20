@@ -11,13 +11,13 @@ KRR_NAMESPACE_BEGIN
 
 struct LightSample {
 	Interaction intr;
-	vec3f L;
+	Color L;
 	float pdf;
 };
 
 struct LightSampleContext {
-	vec3f p;
-	vec3f n;
+	Vec3f p;
+	Vec3f n;
 };
 
 class DiffuseAreaLight {
@@ -25,7 +25,7 @@ public:
 
 	DiffuseAreaLight() = default;
 
-	DiffuseAreaLight(Shape& shape, Texture& texture, vec3f Le = 0.f,
+	DiffuseAreaLight(Shape &shape, Texture &texture, Vec3f Le = {},
 		bool twoSided = true, float scale = 1.f) :
 		shape(shape),
 		texture(texture),
@@ -33,7 +33,7 @@ public:
 		twoSided(twoSided),
 		scale(scale) {}
 
-	__device__ inline LightSample sampleLi(vec2f u, const LightSampleContext& ctx) const {
+	__device__ inline LightSample sampleLi(Vec2f u, const LightSampleContext& ctx) const {
 		LightSample ls = {};
 		
 		ShapeSampleContext shapeCtx = { ctx.p, ctx.n };
@@ -49,8 +49,8 @@ public:
 		return ls;
 	}
 
-	__device__ inline vec3f L(vec3f p, vec3f n, vec2f uv, vec3f w) const {
-		if (!twoSided && dot(n, w) < 0.f) return 0;	// hit backface
+	__device__ inline Color L(Vec3f p, Vec3f n, Vec2f uv, Vec3f w) const {
+		if (!twoSided && dot(n, w) < 0.f) return Vec3f::Zero();	// hit backface
 
 		if (texture.isValid()) {
 			return scale * texture.tex(uv);
@@ -68,7 +68,7 @@ public:
 private:
 	Shape shape;
 	Texture texture{};		// emissive image texture
-	vec3f Le{0};
+	Color Le{ 0 };
 	bool twoSided{true};
 	float scale{1};
 };
@@ -78,20 +78,20 @@ public:
 
 	InfiniteLight() = default;
 
-	InfiniteLight(vec3f tint = 1, float scale = 1, float rotation = 0) :
-		tint(tint), scale(scale), rotation(rotation) {}
+	InfiniteLight(Color tint = Color::Ones(), float scale = 1, float rotation = 0)
+		:tint(tint), scale(scale), rotation(rotation) {}
 
-	InfiniteLight(const Texture& image, vec3f tint = 1, float scale = 1, float rotation = 0):
-		image(image), tint(tint), scale(scale), rotation(rotation) {}
+	InfiniteLight(const Texture &image, Vec3f tint = Vec3f::Ones(), float scale = 1, float rotation = 0)
+		:image(image), tint(tint), scale(scale), rotation(rotation) {}
 
-	InfiniteLight(const string image, vec3f tint = 1, float scale = 1, float rotation = 0):
-		tint(tint), scale(scale), rotation(rotation) {
+	InfiniteLight(const string image, Vec3f tint = Vec3f::Ones(), float scale = 1, float rotation = 0)
+		:tint(tint), scale(scale), rotation(rotation) {
 		setImage(image);
 	}
 
-	__device__ inline LightSample sampleLi(vec2f u, const LightSampleContext& ctx) const {
+	__device__ inline LightSample sampleLi(Vec2f u, const LightSampleContext& ctx) const {
 		LightSample ls = {};
-		vec3f wi = utils::latlongToWorld(u);
+		Vec3f wi = utils::latlongToWorld(u);
 		ls.intr = Interaction(ctx.p + wi * 1e7f);
 		ls.L = Li(wi);
 		ls.pdf = 0.25 * M_INV_PI;
@@ -102,15 +102,15 @@ public:
 		return 0.25 * M_INV_PI;
 	}
 
-	KRR_CALLABLE vec3f L(vec3f p, vec3f n, vec2f uv, vec3f w) const { return 0; }
+	KRR_CALLABLE Color L(Vec3f p, Vec3f n, Vec2f uv, Vec3f w) const { return Vec3f::Zero(); }
 
-	__device__ inline vec3f Li(vec3f wi) const {
-		vec3f L;
+	__device__ inline Color Li(Vec3f wi) const {
+		Color L;
 		L = tint * scale;
 
 		if (!image.isOnDevice()) return L;
-		vec2f uv = utils::worldToLatLong(wi);
-		uv.x = fmod(uv.x + rotation, 1.f);
+		Vec2f uv = utils::worldToLatLong(wi);
+		uv[0] = fmod(uv[0] + rotation, 1.f);
 		L *= image.tex(uv);
 
 		return L;
@@ -134,7 +134,7 @@ private:
 	Texture image{};
 	float scale{1};
 	float rotation{0};
-	vec3f tint{1};
+	Color tint{1};
 
 };
 
@@ -142,13 +142,13 @@ class Light :public TaggedPointer<DiffuseAreaLight, InfiniteLight> {
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_CALLABLE LightSample sampleLi(vec2f u, const LightSampleContext& ctx) const {
+	KRR_CALLABLE LightSample sampleLi(Vec2f u, const LightSampleContext& ctx) const {
 		auto sampleLi = [&](auto ptr) -> LightSample {return ptr->sampleLi(u, ctx); };
 		return dispatch(sampleLi);
 	}
 
-	KRR_CALLABLE vec3f L(vec3f p, vec3f n, vec2f uv, vec3f w)const {
-		auto L = [&](auto ptr) -> vec3f { return ptr->L(p, n, uv, w); };
+	KRR_CALLABLE Color L(Vec3f p, Vec3f n, Vec2f uv, Vec3f w) const {
+		auto L = [&](auto ptr) -> Vec3f { return ptr->L(p, n, uv, w); };
 		return dispatch(L);
 	}
 	

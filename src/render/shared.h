@@ -31,26 +31,26 @@ namespace shader {
 
 	struct HitInfo {
 		uint primitiveId;
-		vec3f barycentric;
+		Vec3f barycentric;
 
 		MeshData* mesh;
-		vec3f wo;
+		Vec3f wo;
 		uint hitKind;
 	};
 
 	struct ShadingData {		// for use as per ray data, generated from ch
-		vec3f pos;
-		vec3f wo;				// view direction
-		vec2f uv;				// texture coords
-		vec3f geoN;				// geometry normal [on the front-facing side]
+		Vec3f pos;
+		Vec3f wo;				// view direction
+		Vec2f uv;				// texture coords
+		Vec3f geoN;				// geometry normal [on the front-facing side]
 
 		Frame frame;
 
 		float IoR{ 1.5 };
-		vec3f diffuse;			// diffuse reflectance
-		vec3f specular;			// specular reflectance
+		Color diffuse;			// diffuse reflectance
+		Color specular; // specular reflectance
 
-		vec3f transmission{ 1 };	// transmission color (shared by diffuse and specular for now)
+		Color transmission{ Color::Ones() }; // transmission color (shared by diffuse and specular for now)
 		float diffuseTransmission{ 0 };
 		float specularTransmission{ 0 };
 

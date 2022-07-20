@@ -1,7 +1,6 @@
 #include <filesystem>
 
 #include "file.h"
-#include "json.hpp"
 #include "kiraray.h"
 
 #include "main/renderer.h"
@@ -18,18 +17,13 @@ extern "C" int main(int argc, char *argv[]) {
 	logInfo("Working directory: " + string(KRR_PROJECT_DIR));
 	logInfo("Kiraray build type: " + string(KRR_BUILD_TYPE));
 #ifdef KRR_DEBUG_BUILD
-	logWarning("Running in debug mode, the performance may be slow.");
-	logWarning("Switch to Release build for normal performance!");
-#endif
-#if KRR_PLATFORM_UNKNOWN
-	logError("Kiraray::Running on unsupported platform!");
+	logWarning("Running in debug mode, the performance may be extremely slow.\n"
+				"\t\tSwitch to Release build for normal performance!");
 #endif
 	string sceneFile = "common/assets/scenes/cbox/cbox.obj";
 	string iblFile	 = "common/assets/textures/snowwhite.jpg";
 
-#ifndef KRR_DEBUG_BUILD
 	try {
-#endif
 		gpContext = Context::SharedPtr(new Context());
 		RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 },
 					  { RenderPass::SharedPtr(new PathTracer()),
@@ -42,11 +36,9 @@ extern "C" int main(int argc, char *argv[]) {
 		importer.import(sceneFile, scene);
 		app.setScene(scene);
 		app.run();
-#ifndef KRR_DEBUG_BUILD
 	} catch (std::exception e) {
 		logFatal("Kiraray::Unhandled exception: " + string(e.what()));
 	}
-#endif
 
 	return EXIT_SUCCESS;
 }

@@ -28,10 +28,10 @@ namespace assimp {
 
 	MaterialLoader sMaterialLoader;
 
-	vec3f aiCast(const aiColor3D& ai) { return vec3f(ai.r, ai.g, ai.b); }
-	vec3f aiCast(const aiVector3D& val) { return vec3f(val.x, val.y, val.z); }
-	quat aiCast(const aiQuaternion& q) { return quat(q.w, q.x, q.y, q.z); }
-	aabb3f aiCast(const aiAABB& aabb) { return aabb3f(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
+	Vec3f aiCast(const aiColor3D& ai) { return Vec3f(ai[0], ai[1], ai[2]); }
+	Vec3f aiCast(const aiVector3D& val) { return Vec3f(val[0], val[1], val[2]); }
+	Quat aiCast(const aiQuaternion &q) { return Quat{ q.w, q.x, q.y, q.z }; }
+	AABB aiCast(const aiAABB &aabb) { return AABB(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
 
 	struct TextureMapping
 	{
@@ -99,7 +99,7 @@ namespace assimp {
 		// Opacity
 		float opacity = 1;
 		if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS) {
-			pMaterial->mMaterialParams.diffuse.a = opacity;
+			pMaterial->mMaterialParams.diffuse[3] = opacity;
 			if (opacity < 1.f)
 				pMaterial->mMaterialParams.specularTransmission = 1 - opacity;
 			logDebug("opacity: " + to_string(opacity));
@@ -113,7 +113,7 @@ namespace assimp {
 				float roughness = convertSpecPowerToRoughness(shininess);
 				shininess = 1.f - roughness;
 			}
-			pMaterial->mMaterialParams.specular.a = shininess;
+			pMaterial->mMaterialParams.specular[3] = shininess;
 		}
 
 		// Refraction
@@ -127,26 +127,26 @@ namespace assimp {
 		aiColor3D color;
 
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS) {
-			vec3f transmission = 1.f - vec3f(color.r, color.g, color.b);
+			Color transmission = 1.f - Color(color[0], color[1], color[2]);
 			pMaterial->mMaterialParams.specularTransmission = luminance(transmission);
 			logDebug("transmission: " + to_string(luminance(transmission)));
 		}
 
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS) {
-			vec4f diffuse = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.diffuse.a);
+			Vec4f diffuse = Vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse[3]);
 			pMaterial->mMaterialParams.diffuse = diffuse;
 		}
 
 		// Specular color
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS) {
-			vec4f specular = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.specular.a);
+			Vec4f specular = Vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.specular[3]);
 			pMaterial->mMaterialParams.specular = specular;
-			logDebug("specular : " + to_string(specular.r) + " " + to_string(specular.g) + " " + to_string(specular.b) + " ");
+			logDebug("specular : " + to_string(specular[0]) + " " + to_string(specular[1]) + " " + to_string(specular[2]) + " ");
 		}
 
 		// Emissive color
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
-			vec3f emissive = vec3f(color.r, color.g, color.b);
+			Vec3f emissive = Vec3f(color[0], color[1], color[2]);
 			pMaterial->mMaterialParams.emissive = emissive;
 		}
 
@@ -158,17 +158,17 @@ namespace assimp {
 
 		if (importMode == ImportMode::GLTF2) {
 			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS) {
-				vec4f baseColor = vec4f(color.r, color.g, color.b, pMaterial->mMaterialParams.diffuse.a);
+				Vec4f baseColor = Vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse[3]);
 				pMaterial->mMaterialParams.diffuse = baseColor;
 			}
-			vec4f specularParams = pMaterial->mMaterialParams.specular;
+			Vec4f specularParams = pMaterial->mMaterialParams.specular;
 			float metallic;
 			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic) == AI_SUCCESS) {
-				specularParams.b = metallic;
+				specularParams[2] = metallic;
 			}
 			float roughness;
 			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS) {
-				specularParams.g = roughness;
+				specularParams[1] = roughness;
 			}
 
 			pMaterial->mMaterialParams.specular = specularParams;
@@ -272,26 +272,26 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform) {
 	}
 
 	for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
-		vec3f vertex = aiCast(pAiMesh->mVertices[i]);
+		Vec3f vertex = aiCast(pAiMesh->mVertices[i]);
 		mesh.vertices.push_back(vertex);
 
 		assert(pAiMesh->HasNormals());
-		vec3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
+		Vec3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
 		mesh.normals.push_back(normal);
 
 		if (pAiMesh->HasTextureCoords(0)) {
 			//if (pAiMesh->mTextureCoords[0]) {
-			vec3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
-			mesh.texcoords.push_back({ texcoord.x, texcoord.y });
+			Vec3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
+			mesh.texcoords.push_back({ texcoord[0], texcoord[1] });
 		}
 
 		if (pAiMesh->HasTangentsAndBitangents()) {
-			vec3f T = aiCast(pAiMesh->mTangents[i]);
-			//vec3f B = aiCast(pAiMesh->mBitangents[i]);
+			Vec3f T = aiCast(pAiMesh->mTangents[i]);
+			//Vec3f B = aiCast(pAiMesh->mBitangents[i]);
 			// in assimp the tangents and bitangents are not necessarily orthogonal!
 			// however we need them to be orthonormal since we use tbn as world-local transformations
 			T = normalize(T - normal * dot(normal, T));
-			vec3f B = normalize(cross(normal, T));
+			Vec3f B = normalize(cross(normal, T));
 			mesh.tangents.push_back(T);
 			mesh.bitangents.push_back(B);
 		}
@@ -300,7 +300,7 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform) {
 	for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
 		aiFace face = pAiMesh->mFaces[i];
 		assert(face.mNumIndices == 3);
-		vec3i indices = { (int)face.mIndices[0], (int)face.mIndices[1], (int)face.mIndices[2] };
+		Vec3i indices = { (int)face.mIndices[0], (int)face.mIndices[1], (int)face.mIndices[2] };
 
 		mesh.indices.push_back(indices);
 	}

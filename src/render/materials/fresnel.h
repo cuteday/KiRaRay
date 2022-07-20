@@ -10,7 +10,7 @@ KRR_NAMESPACE_BEGIN
 namespace bsdf {
 	using namespace math;
 
-	KRR_CALLABLE vec3f FrSchlick(vec3f f0, vec3f f90, float cosTheta){
+	KRR_CALLABLE Color FrSchlick(Color f0, Color f90, float cosTheta) {
 		//return lerp(f0, f90, pow(max(1 - cosTheta, 0.f), 5.f));
 		return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0.f), 5.f); // clamp to avoid NaN if cosTheta = 1+epsilon
 	}
@@ -42,9 +42,9 @@ namespace bsdf {
 		return (pow2(r_parl) + pow2(r_perp)) / 2;
 	}
 
-	KRR_CALLABLE float FrComplex(float cosTheta_i, complex<float> eta) {
+	KRR_CALLABLE float FrComplex(float cosTheta_i, Complex<float> eta) {
 		// Fresnel for conductors: some of the energy is absorbed by the material and turned into heat.
-		using Complex = complex<float>;
+		using Complex = Complex<float>;
 		cosTheta_i = clamp(cosTheta_i, 0.f, 1.f);
 		// Compute complex $\cos\,\theta_\roman{t}$ for Fresnel equations using Snell's law
 		float sin2Theta_i = 1 - pow2(cosTheta_i);
@@ -56,16 +56,16 @@ namespace bsdf {
 		return (r_parl.norm() + r_perp.norm()) / 2;
 	}
 
-	KRR_CALLABLE vec3f FrComplex(float cosTheta_i, vec3f eta, vec3f k) {
-		vec3f result;
+	KRR_CALLABLE Vec3f FrComplex(float cosTheta_i, Vec3f eta, Vec3f k) {
+		Vec3f result;
 		for (int i = 0; i < 3; ++i)
-			result[i] = FrComplex(cosTheta_i, complex<float>(eta[i], k[i]));
+			result[i] = FrComplex(cosTheta_i, Complex<float>(eta[i], k[i]));
 		return result;
 	}
 
 	// eta: etaI/etaT if incident ray
-	KRR_CALLABLE vec3f DisneyFresnel(const vec3f& R0, float metallic, float eta, float cosI) {
-		return lerp(vec3f(FrDielectric(cosI, eta)), FrSchlick(R0, vec3f(1), cosI), metallic);
+	KRR_CALLABLE Color DisneyFresnel(const Color &R0, float metallic, float eta, float cosI) {
+		return lerp(Color(FrDielectric(cosI, eta)), FrSchlick(R0, Color(1), cosI), metallic);
 	}
 
 #if 0
@@ -80,7 +80,7 @@ namespace bsdf {
 
 	class FresnelConductor {
 
-		vec3f etaI, etaT, k;
+		Vec3f etaI, etaT, k;
 	};
 
 	class FresnelNull {
@@ -91,7 +91,7 @@ namespace bsdf {
 	public:
 		using TaggedPointer::TaggedPointer;
 
-		vec3f eval(float cosThetaI) const {
+		Vec3f eval(float cosThetaI) const {
 			auto eval = [&](auto ptr)->float {return ptr->eval(cosThetaI); };
 			return dispatch(eval);
 		}

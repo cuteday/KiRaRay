@@ -132,12 +132,12 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 		triangleInputs[i].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
 		// vertex data desc
 		triangleInputs[i].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
-		triangleInputs[i].triangleArray.vertexStrideInBytes = sizeof(vec3f);
+		triangleInputs[i].triangleArray.vertexStrideInBytes = sizeof(Vec3f);
 		triangleInputs[i].triangleArray.numVertices = mesh.vertices.size();
 		triangleInputs[i].triangleArray.vertexBuffers = &vertexBufferPtr[i];
 		// index data desc
 		triangleInputs[i].triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
-		triangleInputs[i].triangleArray.indexStrideInBytes = sizeof(vec3i);
+		triangleInputs[i].triangleArray.indexStrideInBytes = sizeof(Vec3i);
 		triangleInputs[i].triangleArray.numIndexTriplets = mesh.indices.size();
 		triangleInputs[i].triangleArray.indexBuffer = indexBufferPtr[i];
 		triangleInputFlags[i] = 0;
