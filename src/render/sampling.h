@@ -29,30 +29,30 @@ KRR_CALLABLE float evalMIS(float n0, float p0, float n1, float p1) {
 #endif
 }
 
-KRR_CALLABLE vec3f uniformSampleSphere(const vec2f& u) {
+KRR_CALLABLE Vec3f uniformSampleSphere(const Vec2f& u) {
 	float z = 1.0f - 2.0f * u[0];
 	float r = sqrt(max(0.0f, 1.0f - z * z));
 	float phi = 2.0f * M_PI * u[1];
-	return vec3f(r * cos(phi), r * sin(phi), z);
+	return Vec3f(r * cos(phi), r * sin(phi), z);
 }
 
-KRR_CALLABLE vec3f uniformSampleHemisphere(const vec2f& u) {
+KRR_CALLABLE Vec3f uniformSampleHemisphere(const Vec2f& u) {
 	float z = u[0];
 	float r = sqrt(max(0.f, (float)1.f - z * z));
 	float phi = 2 * M_PI * u[1];
-	return vec3f(r * cos(phi), r * sin(phi), z);
+	return Vec3f(r * cos(phi), r * sin(phi), z);
 }
 
-KRR_CALLABLE vec2f uniformSampleDisk(const vec2f& u) {
+KRR_CALLABLE Vec2f uniformSampleDisk(const Vec2f& u) {
 	// simpler method derived using marginal distribution...
 	//float r = sqrt(u[0]);
 	//float theta = 2 * M_PI * u[1];
-	//return vec2f(r * cos(theta), r * sin(theta));
+	//return Vec2f(r * cos(theta), r * sin(theta));
 		
 	// the concentric method
-	vec2f uOffset = 2.f * u - vec2f(1, 1);
+	Vec2f uOffset = 2.f * u - Vec2f(1, 1);
 	if (uOffset[0] == 0 && uOffset[1] == 0)
-		return vec2f(0, 0);
+		return Vec2f(0, 0);
 	float theta, r;
 	if (fabs(uOffset[0]) > fabs(uOffset[1])) {
 		r = uOffset[0];
@@ -62,16 +62,16 @@ KRR_CALLABLE vec2f uniformSampleDisk(const vec2f& u) {
 		r = uOffset[1];
 		theta = M_PI / 2 - M_PI / 4 * (uOffset[0] / uOffset[1]);
 	}
-	return r * vec2f(cos(theta), sin(theta));
+	return r * Vec2f(cos(theta), sin(theta));
 }
 
-KRR_CALLABLE vec3f cosineSampleHemisphere(const vec2f& u) {
-	vec2f d = uniformSampleDisk(u);
+KRR_CALLABLE Vec3f cosineSampleHemisphere(const Vec2f& u) {
+	Vec2f d = uniformSampleDisk(u);
 	float z = sqrt(max(0.f, 1 - d[0] * d[0] - d[1] * d[1]));
 	return { d[0], d[1], z };
 }
 
-KRR_CALLABLE vec3f uniformSampleTriangle(const vec2f& u) {
+KRR_CALLABLE Vec3f uniformSampleTriangle(const Vec2f& u) {
 	float b0, b1;
 	if (u[0] < u[1]) {
 		b0 = u[0] / 2;
@@ -84,11 +84,11 @@ KRR_CALLABLE vec3f uniformSampleTriangle(const vec2f& u) {
 	return { b0, b1, 1 - b0 - b1 };
 }
 
-//KRR_CALLABLE vec3f sampleSphericalTriangle(vec3f v, vec3f p, vec2f u, float& pdf) {
+//KRR_CALLABLE Vec3f sampleSphericalTriangle(Vec3f v, Vec3f p, Vec2f u, float& pdf) {
 //	if (pdf)
 //		pdf = 0;
 //	// Compute vectors _a_, _b_, and _c_ to spherical triangle vertices
-//	vec3f a(v[0] - p), b(v[1] - p), c(v[2] - p);
+//	Vec3f a(v[0] - p), b(v[1] - p), c(v[2] - p);
 //	CHECK_GT(squaredLength(a), 0);
 //	CHECK_GT(squaredLength(b), 0);
 //	CHECK_GT(squaredLength(c), 0);
@@ -97,7 +97,7 @@ KRR_CALLABLE vec3f uniformSampleTriangle(const vec2f& u) {
 //	c = normalize(c);
 //
 //	// Compute normalized cross products of all direction pairs
-//	vec3f n_ab = cross(a, b), n_bc = cross(b, c), n_ca = cross(c, a);
+//	Vec3f n_ab = cross(a, b), n_bc = cross(b, c), n_ca = cross(c, a);
 //	if (squaredLength(n_ab) == 0 || squaredLength(n_bc) == 0 || squaredLength(n_ca) == 0)
 //		return {};
 //	n_ab = normalize(n_ab);
@@ -133,15 +133,15 @@ KRR_CALLABLE vec3f uniformSampleTriangle(const vec2f& u) {
 //
 //	// Sample $c'$ along the arc between $b'$ and $a$
 //	float sinBp = SafeSqrt(1 - Sqr(cosBp));
-//	vec3f cp = cosBp * a + sinBp * normalize(GramSchmidt(c, a));
+//	Vec3f cp = cosBp * a + sinBp * normalize(GramSchmidt(c, a));
 //
 //	// Compute sampled spherical triangle direction and return barycentrics
 //	float cosTheta = 1 - u[1] * (1 - Dot(cp, b));
 //	float sinTheta = SafeSqrt(1 - Sqr(cosTheta));
-//	vec3f w = cosTheta * b + sinTheta * normalize(GramSchmidt(cp, b));
+//	Vec3f w = cosTheta * b + sinTheta * normalize(GramSchmidt(cp, b));
 //	// Find barycentric coordinates for sampled direction _w_
-//	vec3f e1 = v[1] - v[0], e2 = v[2] - v[0];
-//	vec3f s1 = cross(w, e2);
+//	Vec3f e1 = v[1] - v[0], e2 = v[2] - v[0];
+//	Vec3f s1 = cross(w, e2);
 //	float divisor = Dot(s1, e1);
 //
 //	if (divisor == 0) {
@@ -150,7 +150,7 @@ KRR_CALLABLE vec3f uniformSampleTriangle(const vec2f& u) {
 //		return { 1.f / 3.f, 1.f / 3.f, 1.f / 3.f };
 //	}
 //	float invDivisor = 1 / divisor;
-//	vec3f s = p - v[0];
+//	Vec3f s = p - v[0];
 //	float b1 = Dot(s, s1) * invDivisor;
 //	float b2 = Dot(w, cross(s, e1)) * invDivisor;
 //

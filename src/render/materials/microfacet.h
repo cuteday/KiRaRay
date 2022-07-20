@@ -39,15 +39,15 @@ public:
         alphax(max(float(0.001), alphax)),
         alphay(max(float(0.001), alphay)) {}
 
-    __both__ float G1(const vec3f& w) const {
+    __both__ float G1(const Vec3f& w) const {
         return 1 / (1 + Lambda(w));
     }
 
-    __both__ float G(const vec3f& wo, const vec3f& wi) const {
+    __both__ float G(const Vec3f& wo, const Vec3f& wi) const {
         return 1 / (1 + Lambda(wo) + Lambda(wi));
     }
 
-    __both__ float D(const vec3f& wh) const {
+    __both__ float D(const Vec3f& wh) const {
         float tan2Theta = Tan2Theta(wh);
         if (isinf(tan2Theta)) return 0.;
         const float cos4Theta = Cos2Theta(wh) * Cos2Theta(wh);
@@ -55,9 +55,9 @@ public:
         return 1 / (M_PI * alphax * alphay * cos4Theta * (1 + e) * (1 + e));
     }
 
-    KRR_CALLABLE vec3f Sample(const vec3f& wo, const vec2f& u) const;
+    KRR_CALLABLE Vec3f Sample(const Vec3f& wo, const Vec2f& u) const;
     
-    __both__ float Pdf(const vec3f& wo, const vec3f& wh) const {
+    __both__ float Pdf(const Vec3f& wo, const Vec3f& wh) const {
         if (sampleVisibleArea)
             return D(wh) * G1(wo) * fabs(dot(wo, wh)) / AbsCosTheta(wo);
         else
@@ -66,7 +66,7 @@ public:
 
 private:
     // GGXMicrofacetDistribution Private Methods
-    KRR_CALLABLE float Lambda(const vec3f& w) const {
+    KRR_CALLABLE float Lambda(const Vec3f& w) const {
         float absTanTheta = abs(TanTheta(w));
         if (isinf(absTanTheta)) return 0.;
         // Compute _alpha_ for direction _w_
@@ -89,7 +89,7 @@ public:
     KRR_CALLABLE DisneyMicrofacetDistribution(float alphax, float alphay)
         : GGXMicrofacetDistribution(alphax, alphay) {}
 
-    KRR_CALLABLE float G(const vec3f& wo, const vec3f& wi) const {
+    KRR_CALLABLE float G(const Vec3f& wo, const Vec3f& wi) const {
         // Disney uses the separable masking-shadowing model.
         return G1(wo) * G1(wi);
     }
@@ -142,11 +142,11 @@ KRR_CALLABLE static void GGXSample11(float cosTheta, float U1, float U2,
     CHECK(!isnan(*slope_y));
 }
 
-KRR_CALLABLE static vec3f GGXSample(const vec3f& wi, float alpha_x,
+KRR_CALLABLE static Vec3f GGXSample(const Vec3f& wi, float alpha_x,
     float alpha_y, float U1, float U2) {
     // 1. stretch wi
-    vec3f wiStretched =
-        normalize(vec3f(alpha_x * wi[0], alpha_y * wi[1], wi[2]));
+    Vec3f wiStretched =
+        normalize(Vec3f(alpha_x * wi[0], alpha_y * wi[1], wi[2]));
 
     // 2. simulate P22_{wi}(x_slope, y_slope, 1, 1)
     float slope_x, slope_y;
@@ -162,12 +162,12 @@ KRR_CALLABLE static vec3f GGXSample(const vec3f& wi, float alpha_x,
     slope_y = alpha_y * slope_y;
 
     // 5. compute normal
-    return normalize(vec3f(-slope_x, -slope_y, 1.));
+    return normalize(Vec3f(-slope_x, -slope_y, 1.));
 }
 
-inline vec3f GGXMicrofacetDistribution::Sample(const vec3f& wo,
-    const vec2f& u) const {
-    vec3f wh;
+inline Vec3f GGXMicrofacetDistribution::Sample(const Vec3f& wo,
+    const Vec2f& u) const {
+    Vec3f wh;
     if (!sampleVisibleArea) {
         float cosTheta = 0, phi = (2 * M_PI) * u[1];
         if (alphax == alphay) {
@@ -216,30 +216,30 @@ public:
         distribution.setup(alpha, alpha, true);
     }
 
-    __both__ Color f(vec3f wo, vec3f wi) const {
+    __both__ Color f(Vec3f wo, Vec3f wi) const {
         float cosThetaO = AbsCosTheta(wo), cosThetaI = AbsCosTheta(wi);
-        vec3f wh = wi + wo;
-        if (cosThetaI == 0 || cosThetaO == 0) return vec3f::Zero();
+        Vec3f wh = wi + wo;
+        if (cosThetaI == 0 || cosThetaO == 0) return Vec3f::Zero();
 		if (!any(wh))
-			return vec3f::Zero();
+			return Vec3f::Zero();
         wh = normalize(wh);
 
         // fresnel is also on the microfacet (wrt to wh)
 #if KRR_USE_DISNEY
 		Color F = DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)); // etaT / etaI
 #elif KRR_USE_SCHLICK_FRESNEL
-        vec3f F = FrSchlick(R, vec3f(1.f), dot(wo, wh)) / R;
+        Vec3f F = FrSchlick(R, Vec3f(1.f), dot(wo, wh)) / R;
 #else
-        vec3f F = FrDielectric(dot(wo, wh), eta);	// etaT / etaI
+        Vec3f F = FrDielectric(dot(wo, wh), eta);	// etaT / etaI
 #endif
         return R * distribution.D(wh) * distribution.G(wo, wi) * F /
             (4 * cosThetaI * cosThetaO);
     }
 
-    __both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
+    __both__  BSDFSample sample(Vec3f wo, Sampler& sg) const {
         BSDFSample sample = {};
-        vec3f wi, wh;
-        vec2f u = sg.get2D();
+        Vec3f wi, wh;
+        Vec2f u = sg.get2D();
 
         if (wo[2] == 0) return sample;
         wh = distribution.Sample(wo, u);
@@ -256,9 +256,9 @@ public:
 
     }
 
-    __both__ float pdf(vec3f wo, vec3f wi) const {
+    __both__ float pdf(Vec3f wo, Vec3f wi) const {
         if (!SameHemisphere(wo, wi)) return 0;
-        vec3f wh = normalize(wo + wi);
+        Vec3f wh = normalize(wo + wi);
         return distribution.Pdf(wo, wi) / (4 * dot(wo, wh));
     }
 
@@ -296,21 +296,21 @@ public:
         distribution.setup(alpha, alpha, true);
     }
 
-    __both__ Color f(vec3f wo, vec3f wi) const {
+    __both__ Color f(Vec3f wo, Vec3f wi) const {
 		if (SameHemisphere(wo, wi))
-			return vec3f::Constant(0);
+			return Vec3f::Constant(0);
 
         float cosThetaO = wo[2], cosThetaI = wi[2];
 		if (cosThetaI == 0 || cosThetaO == 0)
-			return vec3f::Constant(0);
+			return Vec3f::Constant(0);
 
         // Compute $\wh$ from $\wo$ and $\wi$ for microfacet transmission
         float eta = CosTheta(wo) > 0 ? etaB / etaA : etaA / etaB;
-        vec3f wh = normalize(wo + wi * eta);
+        Vec3f wh = normalize(wo + wi * eta);
         if (wh[2] < 0) wh = -wh;
 
         // Same side?
-        if (dot(wo, wh) * dot(wi, wh) > 0) return vec3f::Constant(0);
+        if (dot(wo, wh) * dot(wi, wh) > 0) return Vec3f::Constant(0);
 		Color F = Color::Constant(FrDielectric(dot(wo, wh), etaB / etaA));
 
         float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
@@ -322,12 +322,12 @@ public:
                 (cosThetaI * cosThetaO * sqrtDenom * sqrtDenom));
     }
 
-    __both__  BSDFSample sample(vec3f wo, Sampler& sg) const {
+    __both__  BSDFSample sample(Vec3f wo, Sampler& sg) const {
         BSDFSample sample = {};
         if (wo[2] == 0) return sample;
 
-        vec2f u = sg.get2D();
-        vec3f wh = distribution.Sample(wo, u);
+        Vec2f u = sg.get2D();
+        Vec3f wh = distribution.Sample(wo, u);
         if (dot(wo, wh) < 0)
             return sample;  // Should be rare
 
@@ -339,11 +339,11 @@ public:
         return sample;
     }
 
-    __both__ float pdf(vec3f wo, vec3f wi) const {
+    __both__ float pdf(Vec3f wo, Vec3f wi) const {
         if (SameHemisphere(wo, wi)) return 0;
         float eta = CosTheta(wo) > 0 ? etaB / etaA : etaA / etaB;	// wo is outside?
         // wh = wo + eta * wi, eta = etaI / etaT
-        vec3f wh = normalize(wo + wi * eta);	// eta=etaI/etaT
+        Vec3f wh = normalize(wo + wi * eta);	// eta=etaI/etaT
 
         if (dot(wo, wh) * dot(wi, wh) > 0) return 0;
         // Compute change of variables _dwh\_dwi_ for microfacet transmission

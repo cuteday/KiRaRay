@@ -28,7 +28,7 @@ public:
 	bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
 	void renderUI() override;
 	void render(CUDABuffer& frame) override;
-	void resize(const vec2i& size) override { 
+	void resize(const Vec2i& size) override { 
 		mFrameSize = launchParams.fbSize = size; 
 	}
 

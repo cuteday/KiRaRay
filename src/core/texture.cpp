@@ -97,13 +97,13 @@ namespace texture {
 
 using namespace texture;
 
-Image::Image(vec2i size, Format format, bool srgb):
+Image::Image(Vec2i size, Format format, bool srgb):
 	mSrgb(srgb), mFormat(format), mSize(size){
 	mData = new uchar[size[0] * size[1] * 4 * getElementSize()];
 }
 
 bool Image::loadImage(const fs::path& filepath, bool srgb) {
-	vec2i size;
+	Vec2i size;
 	int channels;
 	string filename = filepath.string();
 	uchar* data = nullptr;
@@ -208,7 +208,7 @@ void Texture::toDevice() {
 	if (!mImage.isValid()) return;
 
 	// we transfer our texture data to a cuda array, then make the array a cuda texture object.
-	vec2i size = mImage.getSize();
+	Vec2i size = mImage.getSize();
 	uint numComponents = mImage.getChannels();
 	if (numComponents != 4)
 		logError("Incorrect texture image channels (not 4)");
@@ -245,7 +245,7 @@ void Texture::toDevice() {
 	texDesc.maxMipmapLevelClamp = 99;
 	texDesc.minMipmapLevelClamp = 0;
 	texDesc.mipmapFilterMode = cudaFilterModePoint;
-	*(vec4f*)texDesc.borderColor = vec4f(1.0f);
+	*(Vec4f*)texDesc.borderColor = Vec4f(1.0f);
 	texDesc.sRGB = (int)mImage.isSrgb();
 
 	cudaTextureObject_t cudaTexture;

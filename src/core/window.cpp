@@ -90,8 +90,8 @@ namespace api{
 				MouseEvent event;
 				event.type = MouseEvent::Type::Move;
 				event.pos = calcMousePos(mouseX, mouseY, pWindow->getMouseScale());
-				event.screenPos = vec2f(mouseX, mouseY);
-				event.wheelDelta = vec2f(0, 0);
+				event.screenPos = Vec2f(mouseX, mouseY);
+				event.wheelDelta = Vec2f(0, 0);
 
 				pWindow->onMouseEvent(event);
 			}
@@ -137,7 +137,7 @@ namespace api{
 				double x, y;
 				glfwGetCursorPos(pGlfwWindow, &x, &y);
 				event.pos = calcMousePos(x, y, pWindow->getMouseScale());
-				event.wheelDelta = (vec2f(float(scrollX), float(scrollY)));
+				event.wheelDelta = (Vec2f(float(scrollX), float(scrollY)));
 
 				pWindow->onMouseEvent(event);
 			}
@@ -159,8 +159,8 @@ namespace api{
 		}
 
 		// calculates the mouse pos in sreen [0, 1]^2
-		static inline vec2f calcMousePos(double xPos, double yPos, const vec2f& mouseScale){
-			vec2f pos = vec2f(float(xPos), float(yPos));
+		static inline Vec2f calcMousePos(double xPos, double yPos, const Vec2f& mouseScale){
+			Vec2f pos = Vec2f(float(xPos), float(yPos));
 			pos = pos.cwiseProduct(mouseScale);
 			return pos;
 		}
@@ -178,7 +178,7 @@ namespace api{
 }
 using namespace krr::api;
 
-WindowApp::WindowApp(const char title[], vec2i size, bool visible, bool enableVsync) {
+WindowApp::WindowApp(const char title[], Vec2i size, bool visible, bool enableVsync) {
 	glfwSetErrorCallback(ApiCallbacks::errorCallback);
 
 	initGLFW();
@@ -218,10 +218,10 @@ WindowApp::~WindowApp(){
 	glfwTerminate();
 }
 
-void WindowApp::resize(const vec2i &size) {
+void WindowApp::resize(const Vec2i &size) {
 	glfwMakeContextCurrent(handle);
 	glfwSetWindowSize(handle, size[0], size[1]);
-	fbBuffer.resize(sizeof(vec4f) * size[0] * size[1]);
+	fbBuffer.resize(sizeof(Vec4f) * size[0] * size[1]);
 	fbSize = size;
 
 	if (fbTexture == 0) GL_CHECK(glGenTextures(1, &fbTexture));
@@ -233,7 +233,7 @@ void WindowApp::resize(const vec2i &size) {
 	}
 
 	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, fbPbo));
-	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(vec4f) * size[0] * size[1], nullptr, GL_STREAM_DRAW));
+	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(Vec4f) * size[0] * size[1], nullptr, GL_STREAM_DRAW));
 	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
 	// We need to re-register when resizing the texture
@@ -299,7 +299,7 @@ void WindowApp::draw() {
 void WindowApp::run() {
 	int width, height;
 	glfwGetFramebufferSize(handle, &width, &height);
-	resize(vec2i(width,height));
+	resize(Vec2i(width,height));
 
 	while (!glfwWindowShouldClose(handle)) {
 		ImGui_ImplOpenGL3_NewFrame();

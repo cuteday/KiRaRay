@@ -4,19 +4,19 @@
 #include "math/math.h"
 
 #define _DEFINE_BSDF_INTERNAL_ROUTINES(bsdf_name)														\
-	KRR_CALLABLE static BSDFSample sampleInternal(const ShadingData &sd, vec3f wo, Sampler & sg) {	\
+	KRR_CALLABLE static BSDFSample sampleInternal(const ShadingData &sd, Vec3f wo, Sampler & sg) {	\
 		bsdf_name bsdf;																					\
 		bsdf.setup(sd);																					\
 		return bsdf.sample(wo, sg);																		\
 	}																									\
 																										\
-	KRR_CALLABLE static vec3f fInternal(const ShadingData& sd, vec3f wo, vec3f wi) {					\
+	KRR_CALLABLE static Vec3f fInternal(const ShadingData& sd, Vec3f wo, Vec3f wi) {					\
 		bsdf_name bsdf;																					\
 		bsdf.setup(sd);																					\
 		return bsdf.f(wo, wi);																			\
 	}																									\
 																										\
-	KRR_CALLABLE static float pdfInternal(const ShadingData& sd, vec3f wo, vec3f wi) {				\
+	KRR_CALLABLE static float pdfInternal(const ShadingData& sd, Vec3f wo, Vec3f wi) {				\
 		bsdf_name bsdf;																					\
 		bsdf.setup(sd);																					\
 		return bsdf.pdf(wo, wi);																		\
@@ -29,47 +29,47 @@ namespace bsdf{
 	constexpr float epsilon = 1e-6f;
 	constexpr float oneMinusEpsilon = 1.f - epsilon;
 
-	KRR_CALLABLE bool SameHemisphere(const vec3f& w, const vec3f& wp) {
+	KRR_CALLABLE bool SameHemisphere(const Vec3f& w, const Vec3f& wp) {
 		return w[2] * wp[2] > 0;
 	}
-	KRR_CALLABLE vec3f ToSameHemisphere(const vec3f& w, const vec3f& wp) {
+	KRR_CALLABLE Vec3f ToSameHemisphere(const Vec3f& w, const Vec3f& wp) {
 		return { w[0], w[1], w[2] * wp[2] > 0 ? w[2] : -w[2] };
 	}
-	KRR_CALLABLE vec3f FaceForward(const vec3f& w, const vec3f& wp) {
+	KRR_CALLABLE Vec3f FaceForward(const Vec3f& w, const Vec3f& wp) {
 		return dot(w, wp) > 0 ? w : -w;
 	}
 
-	KRR_CALLABLE float CosTheta(const vec3f& w) { return w[2]; }
-	KRR_CALLABLE float Cos2Theta(const vec3f& w) { return w[2] * w[2]; }
-	KRR_CALLABLE float AbsCosTheta(const vec3f& w) { return fabs(w[2]); }
-	KRR_CALLABLE float Sin2Theta(const vec3f& w) {
+	KRR_CALLABLE float CosTheta(const Vec3f& w) { return w[2]; }
+	KRR_CALLABLE float Cos2Theta(const Vec3f& w) { return w[2] * w[2]; }
+	KRR_CALLABLE float AbsCosTheta(const Vec3f& w) { return fabs(w[2]); }
+	KRR_CALLABLE float Sin2Theta(const Vec3f& w) {
 		return max((float)0, (float)1 - Cos2Theta(w));
 	}
-	KRR_CALLABLE float AbsDot(const vec3f& a, const vec3f& b) { return fabs(dot(a, b)); }
+	KRR_CALLABLE float AbsDot(const Vec3f& a, const Vec3f& b) { return fabs(dot(a, b)); }
 
-	KRR_CALLABLE float SinTheta(const vec3f& w) { return sqrt(Sin2Theta(w)); }
+	KRR_CALLABLE float SinTheta(const Vec3f& w) { return sqrt(Sin2Theta(w)); }
 
-	KRR_CALLABLE float TanTheta(const vec3f& w) { return SinTheta(w) / CosTheta(w); }
+	KRR_CALLABLE float TanTheta(const Vec3f& w) { return SinTheta(w) / CosTheta(w); }
 
-	KRR_CALLABLE float Tan2Theta(const vec3f& w) {
+	KRR_CALLABLE float Tan2Theta(const Vec3f& w) {
 		return Sin2Theta(w) / Cos2Theta(w);
 	}
 
-	KRR_CALLABLE float CosPhi(const vec3f& w) {
+	KRR_CALLABLE float CosPhi(const Vec3f& w) {
 		float sinTheta = SinTheta(w);
 		return (sinTheta == 0) ? 1 : clamp(w[0] / sinTheta, -1.f, 1.f);
 	}
 
-	KRR_CALLABLE float SinPhi(const vec3f& w) {
+	KRR_CALLABLE float SinPhi(const Vec3f& w) {
 		float sinTheta = SinTheta(w);
 		return (sinTheta == 0) ? 0 : clamp(w[1] / sinTheta, -1.f, 1.f);
 	}
 
-	KRR_CALLABLE float Cos2Phi(const vec3f& w) { return CosPhi(w) * CosPhi(w); }
+	KRR_CALLABLE float Cos2Phi(const Vec3f& w) { return CosPhi(w) * CosPhi(w); }
 
-	KRR_CALLABLE float Sin2Phi(const vec3f& w) { return SinPhi(w) * SinPhi(w); }
+	KRR_CALLABLE float Sin2Phi(const Vec3f& w) { return SinPhi(w) * SinPhi(w); }
 
-	KRR_CALLABLE float CosDPhi(const vec3f& wa, const vec3f& wb) {
+	KRR_CALLABLE float CosDPhi(const Vec3f& wa, const Vec3f& wb) {
 		float waxy = wa[0] * wa[0] + wa[1] * wa[1];
 		float wbxy = wb[0] * wb[0] + wb[1] * wb[1];
 		if (waxy == 0 || wbxy == 0)
@@ -77,13 +77,13 @@ namespace bsdf{
 		return clamp((wa[0] * wb[0] + wa[1] * wb[1]) / sqrt(waxy * wbxy), -1.f, 1.f);
 	}
 
-	KRR_CALLABLE vec3f Reflect(const vec3f& wo, const vec3f& n) {
+	KRR_CALLABLE Vec3f Reflect(const Vec3f& wo, const Vec3f& n) {
 		return -wo + 2 * dot(wo, n) * n;
 	}
 
 	// eta: etaI/etaT when incident ray (flipped )
-	KRR_CALLABLE bool Refract(const vec3f& wi, const vec3f& n, float eta,
-		vec3f* wt) {
+	KRR_CALLABLE bool Refract(const Vec3f& wi, const Vec3f& n, float eta,
+		Vec3f* wt) {
 		// Compute $\cos \theta_\roman{t}$ using Snell's law
 		float cosThetaI = dot(n, wi);
 		float sin2ThetaI = max(float(0), float(1 - cosThetaI * cosThetaI));

@@ -22,7 +22,7 @@ public:
 	WavefrontPathTracer(Scene& scene);
 	~WavefrontPathTracer() = default;
 
-	void resize(const vec2i& size) override;
+	void resize(const Vec2i& size) override;
 	void setScene(Scene::SharedPtr scene) override;
 	void beginFrame(CUDABuffer& frame) override;
 	void render(CUDABuffer& frame) override;
@@ -69,13 +69,13 @@ public:
 	// path tracing parameters
 	int frameId{ 0 };
 	int maxQueueSize;
-	vec2i frameSize{ };
+	Vec2i frameSize{ };
 	int samplesPerPixel{ 1 };
 	int maxDepth{ 10 };
 	float probRR{ 0.8 };
 	bool enableNEE{ };
 	bool debugOutput{ };
-	vec2i debugPixel{ };
+	Vec2i debugPixel{ };
 	bool enableClamp{ true };
 	float clampMax{ 100 };
 };

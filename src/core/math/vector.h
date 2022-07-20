@@ -160,14 +160,14 @@ public:
 #endif
 };
 
-using vec2f = Vector2<float>;
-using vec2i = Vector2<int>;
-using vec2ui = Vector2<uint>;
-using vec3f = Vector3<float>;
-using vec3i = Vector3<int>;
-using vec3ui = Vector3<uint>;
-using vec4f = Vector4<float>;
-using vec4i = Vector4<int>;
-using vec4ui = Vector4<uint>;
+using Vec2f = Vector2<float>;
+using Vec2i = Vector2<int>;
+using Vec2ui = Vector2<uint>;
+using Vec3f = Vector3<float>;
+using Vec3i = Vector3<int>;
+using Vec3ui = Vector3<uint>;
+using Vec4f = Vector4<float>;
+using Vec4i = Vector4<int>;
+using Vec4ui = Vector4<uint>;
 
 KRR_NAMESPACE_END

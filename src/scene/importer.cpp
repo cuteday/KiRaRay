@@ -28,8 +28,8 @@ namespace assimp {
 
 	MaterialLoader sMaterialLoader;
 
-	vec3f aiCast(const aiColor3D& ai) { return vec3f(ai[0], ai[1], ai[2]); }
-	vec3f aiCast(const aiVector3D& val) { return vec3f(val[0], val[1], val[2]); }
+	Vec3f aiCast(const aiColor3D& ai) { return Vec3f(ai[0], ai[1], ai[2]); }
+	Vec3f aiCast(const aiVector3D& val) { return Vec3f(val[0], val[1], val[2]); }
 	Quat aiCast(const aiQuaternion &q) { return Quat{ q.w, q.x, q.y, q.z }; }
 	AABB aiCast(const aiAABB &aabb) { return AABB(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
 
@@ -133,20 +133,20 @@ namespace assimp {
 		}
 
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS) {
-			vec4f diffuse = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse[3]);
+			Vec4f diffuse = Vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse[3]);
 			pMaterial->mMaterialParams.diffuse = diffuse;
 		}
 
 		// Specular color
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS) {
-			vec4f specular = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.specular[3]);
+			Vec4f specular = Vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.specular[3]);
 			pMaterial->mMaterialParams.specular = specular;
 			logDebug("specular : " + to_string(specular[0]) + " " + to_string(specular[1]) + " " + to_string(specular[2]) + " ");
 		}
 
 		// Emissive color
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
-			vec3f emissive = vec3f(color[0], color[1], color[2]);
+			Vec3f emissive = Vec3f(color[0], color[1], color[2]);
 			pMaterial->mMaterialParams.emissive = emissive;
 		}
 
@@ -158,10 +158,10 @@ namespace assimp {
 
 		if (importMode == ImportMode::GLTF2) {
 			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS) {
-				vec4f baseColor = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse[3]);
+				Vec4f baseColor = Vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse[3]);
 				pMaterial->mMaterialParams.diffuse = baseColor;
 			}
-			vec4f specularParams = pMaterial->mMaterialParams.specular;
+			Vec4f specularParams = pMaterial->mMaterialParams.specular;
 			float metallic;
 			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic) == AI_SUCCESS) {
 				specularParams[2] = metallic;
@@ -272,26 +272,26 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform) {
 	}
 
 	for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
-		vec3f vertex = aiCast(pAiMesh->mVertices[i]);
+		Vec3f vertex = aiCast(pAiMesh->mVertices[i]);
 		mesh.vertices.push_back(vertex);
 
 		assert(pAiMesh->HasNormals());
-		vec3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
+		Vec3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
 		mesh.normals.push_back(normal);
 
 		if (pAiMesh->HasTextureCoords(0)) {
 			//if (pAiMesh->mTextureCoords[0]) {
-			vec3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
+			Vec3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
 			mesh.texcoords.push_back({ texcoord[0], texcoord[1] });
 		}
 
 		if (pAiMesh->HasTangentsAndBitangents()) {
-			vec3f T = aiCast(pAiMesh->mTangents[i]);
-			//vec3f B = aiCast(pAiMesh->mBitangents[i]);
+			Vec3f T = aiCast(pAiMesh->mTangents[i]);
+			//Vec3f B = aiCast(pAiMesh->mBitangents[i]);
 			// in assimp the tangents and bitangents are not necessarily orthogonal!
 			// however we need them to be orthonormal since we use tbn as world-local transformations
 			T = normalize(T - normal * dot(normal, T));
-			vec3f B = normalize(cross(normal, T));
+			Vec3f B = normalize(cross(normal, T));
 			mesh.tangents.push_back(T);
 			mesh.bitangents.push_back(B);
 		}
@@ -300,7 +300,7 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform) {
 	for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
 		aiFace face = pAiMesh->mFaces[i];
 		assert(face.mNumIndices == 3);
-		vec3i indices = { (int)face.mIndices[0], (int)face.mIndices[1], (int)face.mIndices[2] };
+		Vec3i indices = { (int)face.mIndices[0], (int)face.mIndices[1], (int)face.mIndices[2] };
 
 		mesh.indices.push_back(indices);
 	}

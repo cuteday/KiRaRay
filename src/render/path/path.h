@@ -18,10 +18,10 @@ const string shaderProgramNames[] = {
 struct LaunchParamsPT
 {
 	uint frameID{ 0 };
-	vec2i fbSize = vec2i::Zero();
+	Vec2i fbSize = Vec2i::Zero();
 	// per pixel debugging output
 	bool debugOutput = false;
-	vec2i debugPixel = { 960, 540 };
+	Vec2i debugPixel = { 960, 540 };
 	// path tracing parameters
 	bool RR = true;				// enable russian roulette
 	bool NEE = false;			// enable next event estimation
@@ -36,15 +36,15 @@ struct LaunchParamsPT
 	LightSampler lightSampler;
 	Scene::SceneData sceneData;
 
-	vec4f* colorBuffer{ nullptr };
+	Vec4f* colorBuffer{ nullptr };
 	OptixTraversableHandle traversable{ 0 };
 };
 
 struct PathData {
 	Color L{};					// total contribution to the current pixel
 	Color throughput;			// maintain the throughput of path
-	vec3f pos;					// ray origin from last scattering event 
-	vec3f dir;					// world space direction of last scatter
+	Vec3f pos;					// ray origin from last scattering event 
+	Vec3f dir;					// world space direction of last scatter
 	float pdf;					// BxDF sampling pdf from last scatter
 	int depth;					// number of vertices along the path
 	Sampler sampler;			// rng

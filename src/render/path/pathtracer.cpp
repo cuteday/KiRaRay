@@ -141,7 +141,7 @@ void PathTracer::render(CUDABuffer& frame) {
 		PROFILE("Updating parameters");
 		CUDATrackedMemory::singleton.PrefetchToGPU();
 		launchParams.fbSize = mFrameSize;
-		launchParams.colorBuffer = (vec4f*)frame.data();
+		launchParams.colorBuffer = (Vec4f*)frame.data();
 		launchParams.camera = mpScene->getCamera();
 		launchParams.sceneData = mpScene->getSceneData();
 		launchParams.frameID++;

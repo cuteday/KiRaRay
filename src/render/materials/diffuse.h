@@ -25,21 +25,21 @@ public:
 		diffuse = sd.diffuse;
 	}
 
-	__both__ Color f(vec3f wo, vec3f wi) const {
+	__both__ Color f(Vec3f wo, Vec3f wi) const {
 		return diffuse * M_INV_PI;
 	}
 
-	__both__ BSDFSample sample(vec3f wo, Sampler& sg) const {
+	__both__ BSDFSample sample(Vec3f wo, Sampler& sg) const {
 		BSDFSample sample;
-		vec2f u = sg.get2D();
-		vec3f wi = cosineSampleHemisphere(u);
+		Vec2f u = sg.get2D();
+		Vec3f wi = cosineSampleHemisphere(u);
 		sample.wi = ToSameHemisphere(wi, wo);
 		sample.f = f(wo, sample.wi);
 		sample.pdf = pdf(wo, sample.wi);
 		return sample;
 	}
 
-	__both__ float pdf(vec3f wo, vec3f wi) const {
+	__both__ float pdf(Vec3f wo, Vec3f wi) const {
 		if (!SameHemisphere(wo, wi)) return 0;
 		return fabs(wi[2]) * M_INV_PI;
 	}
@@ -64,16 +64,16 @@ public:
 		}
 	}
 
-	__both__ Color f(vec3f wo, vec3f wi) const {
+	__both__ Color f(Vec3f wo, Vec3f wi) const {
 		if (SameHemisphere(wo, wi)) return reflection * M_INV_PI;
 		return transmission * M_INV_PI;
 	}
 
-	__both__ BSDFSample sample(vec3f wo, Sampler& sg) const {
+	__both__ BSDFSample sample(Vec3f wo, Sampler& sg) const {
 		BSDFSample sample;
 		float c = sg.get1D();
-		vec2f u = sg.get2D();
-		vec3f wi = cosineSampleHemisphere(u);
+		Vec2f u = sg.get2D();
+		Vec3f wi = cosineSampleHemisphere(u);
 		if (c < pR) {
 			if (!SameHemisphere(wi, wo))
 				wi[2] *= -1;
@@ -88,7 +88,7 @@ public:
 		return sample;
 	}
 
-	__both__ float pdf(vec3f wo, vec3f wi) const {
+	__both__ float pdf(Vec3f wo, Vec3f wi) const {
 		if (SameHemisphere(wo, wi))
 			return pR * fabs(wi[2]);
 		return pT * fabs(wi[2]);

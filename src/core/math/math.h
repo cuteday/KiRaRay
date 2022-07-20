@@ -7,7 +7,7 @@
 #include "math/array.h"
 #include "math/quaternion.h"
 #include "math/aabb.h"
-#include "math/functor.h"
+#include "math/functors.h"
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
@@ -16,9 +16,9 @@ KRR_NAMESPACE_BEGIN
 using Color = Array3f;
 using Color3f = Array3f;
 using Color4f = Array4f;
-using Point = vec3f;
-using Point2f = vec2f;
-using Point3f = vec3f;
+using Point = Vec3f;
+using Point2f = Vec2f;
+using Point3f = Vec3f;
 using AABB = AABB3f;
 using Quat = Quaternionf;
 

@@ -11,8 +11,8 @@ void AccumulatePass::render(CUDABuffer& frame) {
 	if (!mEnable) return;
 	PROFILE("Accumulate pass");
 	if (mpScene->getChanges()) reset();
-	vec4f* accumBuffer = (vec4f*)mAccumBuffer->data();
-	vec4f* currentBuffer = (vec4f*)frame.data();
+	Vec4f* accumBuffer = (Vec4f*)mAccumBuffer->data();
+	Vec4f* currentBuffer = (Vec4f*)frame.data();
 	mMovingAverage = mMaxAccumCount > 0;
 	GPUParallelFor(mFrameSize[0] * mFrameSize[1], KRR_DEVICE_LAMBDA(int i) {
 		float currentWeight = 1.f / (mAccumCount + 1);

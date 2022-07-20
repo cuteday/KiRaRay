@@ -15,9 +15,9 @@ template <typename T> __both__ constexpr T pow4(T x) { return x * x * x * x; }
 template <typename T> __both__ constexpr T pow5(T x) { return x * x * x * x * x; }
 
 inline __both__ float sqrt(const float v) { return sqrtf(v); }
-inline __both__ vec2f sqrt(const vec2f v) { return vec2f(sqrtf(v[0]), sqrtf(v[1])); }
-inline __both__ vec3f sqrt(const vec3f v) { return vec3f(sqrtf(v[0]), sqrtf(v[1]), sqrtf(v[2])); }
-inline __both__ vec4f sqrt(const vec4f v) { return vec4f(sqrtf(v[0]), sqrtf(v[1]), sqrtf(v[2]), sqrtf(v[3])); }
+inline __both__ Vec2f sqrt(const Vec2f v) { return Vec2f(sqrtf(v[0]), sqrtf(v[1])); }
+inline __both__ Vec3f sqrt(const Vec3f v) { return Vec3f(sqrtf(v[0]), sqrtf(v[1]), sqrtf(v[2])); }
+inline __both__ Vec4f sqrt(const Vec4f v) { return Vec4f(sqrtf(v[0]), sqrtf(v[1]), sqrtf(v[2]), sqrtf(v[3])); }
 
 } // namespace math
 

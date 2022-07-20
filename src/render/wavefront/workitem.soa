@@ -10,12 +10,12 @@ flat LCGSampler;
 flat PCGSampler;
 flat HaltonSampler;
 
-flat vec2f;
-flat vec3f;
+flat Vec2f;
+flat Vec3f;
 flat Color;
 
-struct Ray{ vec3f origin, dir; };
-struct LightSampleContext{ vec3f p, n; };
+struct Ray{ Vec3f origin, dir; };
+struct LightSampleContext{ Vec3f p, n; };
 
 struct PixelState {
 	Color L;
@@ -44,10 +44,10 @@ struct HitLightWorkItem {
 	Light light;
 	LightSampleContext ctx;
 	float pdf;
-	vec3f p;
-	vec3f wo;
-	vec3f n;
-	vec2f uv;
+	Vec3f p;
+	Vec3f wo;
+	Vec3f n;
+	Vec2f uv;
 	Color thp;
 	uint depth;
 	uint pixelId;

@@ -70,7 +70,7 @@ SET ( KRR_CORE_HEADERS
 	core/math/utils.h
 	core/math/aabb.h
 	core/math/constants.h
-	core/math/functor.h
+	core/math/functors.h
 	# cuda device backend and host-device interops
 	core/interop.h
 	core/host/memory.h

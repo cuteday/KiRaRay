@@ -21,7 +21,7 @@ namespace bsdf{
 
 	struct BSDFSample {
 		Color f{};
-		vec3f wi;
+		Vec3f wi;
 		float pdf = 0;
 		uint flags;
 		bool valid = true;

@@ -30,7 +30,7 @@ KRR_DEVICE_FUNCTION float getMetallic(Color diffuse, Color spec)
 }
 
 template <typename T>
-KRR_DEVICE_FUNCTION T sampleTexture(Texture &texture, vec2f uv, T fallback) {
+KRR_DEVICE_FUNCTION T sampleTexture(Texture &texture, Vec2f uv, T fallback) {
 	cudaTextureObject_t cudaTexture = texture.getCudaTexture();
 	if (cudaTexture) {
 		return tex2D<float4>(cudaTexture, uv[0], uv[1]);
@@ -41,10 +41,10 @@ KRR_DEVICE_FUNCTION T sampleTexture(Texture &texture, vec2f uv, T fallback) {
 KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	HitInfo hitInfo = {};
 	HitgroupSBTData* hitData = (HitgroupSBTData*)optixGetSbtDataPointer();
-	vec2f barycentric = (vec2f)optixGetTriangleBarycentrics();
+	Vec2f barycentric = (Vec2f)optixGetTriangleBarycentrics();
 	hitInfo.primitiveId = optixGetPrimitiveIndex();
 	hitInfo.mesh = hitData->mesh;
-	hitInfo.wo = -normalize((vec3f)optixGetWorldRayDirection());
+	hitInfo.wo = -normalize((Vec3f)optixGetWorldRayDirection());
 	hitInfo.hitKind = optixGetHitKind();
 	hitInfo.barycentric = { 1 - barycentric[0] - barycentric[1], barycentric[0], barycentric[1] };
 	return hitInfo;
@@ -55,9 +55,9 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	// The shading normal sd.frame.N and face normal sd.geoN is always points towards the outside of the object,
 	// we can use this convention to determine whether an incident ray is coming from outside of the object.
 	
-	vec3f b = hitInfo.barycentric;
+	Vec3f b = hitInfo.barycentric;
 	MeshData& mesh = *hitInfo.mesh;
-	vec3i v = mesh.indices[hitInfo.primitiveId];
+	Vec3i v = mesh.indices[hitInfo.primitiveId];
 
 	sd.wo = normalize(hitInfo.wo);
 
@@ -91,7 +91,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 		sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
 	}
 
-	vec2f uv[3];
+	Vec2f uv[3];
 	if (mesh.texcoords) {
 		uv[0] = mesh.texcoords[v[0]],
 			uv[1] = mesh.texcoords[v[1]],
@@ -117,12 +117,12 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	Texture& specularTexture = material.mTextures[(uint)Material::TextureType::Specular];
 	Texture& normalTexture = material.mTextures[(uint)Material::TextureType::Normal];
 
-	vec4f diff = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
-	vec4f spec = sampleTexture(specularTexture, sd.uv, materialParams.specular);
-	vec3f baseColor = (vec3f)diff;
+	Vec4f diff = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
+	Vec4f spec = sampleTexture(specularTexture, sd.uv, materialParams.specular);
+	Vec3f baseColor = (Vec3f)diff;
 
 	if (normalTexture.isValid() && mesh.tangents && mesh.bitangents) {	// be cautious if we have the tangent space TBN
-		vec3f normal = sampleTexture(normalTexture, sd.uv, vec3f{});
+		Vec3f normal = sampleTexture(normalTexture, sd.uv, Vec3f{});
 		normal = rgbToNormal(normal);
 
 		sd.frame.N = normalize(sd.frame.T * normal[0] + sd.frame.B * normal[1] + sd.frame.N * normal[2]);
@@ -133,20 +133,20 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// this is the default except for OBJ or when user specified 
 		// G - Roughness; B - Metallic
-		sd.diffuse = lerp(baseColor, vec3f::Zero(), spec[2]);
+		sd.diffuse = lerp(baseColor, Vec3f::Zero(), spec[2]);
 
 		// Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
 		// UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
 		float f = (sd.IoR - 1.f) / (sd.IoR + 1.f);
 		float F0 = f * f;
 
-		sd.specular	 = lerp(vec3f::Constant(F0), baseColor, spec[2]);
+		sd.specular	 = lerp(Vec3f::Constant(F0), baseColor, spec[2]);
 		sd.metallic	 = spec[2];
 		sd.roughness = spec[1];
 	}
 	else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		sd.diffuse = baseColor;
-		sd.specular = (vec3f)spec;			// specular reflectance
+		sd.specular = (Vec3f)spec;			// specular reflectance
 		sd.roughness = 1.f - spec[3];	 // 
 		sd.metallic = getMetallic(sd.diffuse, sd.specular);
 	}

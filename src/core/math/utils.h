@@ -11,9 +11,9 @@ namespace math{
 		/*******************************************************
 		* colors
 		********************************************************/
-		KRR_CALLABLE float luminance(vec3f color)
+		KRR_CALLABLE float luminance(Vec3f color)
 		{
-			return dot(color, vec3f(0.299, 0.587, 0.114));
+			return dot(color, Vec3f(0.299, 0.587, 0.114));
 		}
 
 		KRR_CALLABLE float srgb2linear(float sRGBColor)
@@ -24,9 +24,9 @@ namespace math{
 				return pow((sRGBColor + 0.055) / 1.055, 2.4);
 		}
 
-		KRR_CALLABLE vec3f srgb2linear(vec3f sRGBColor)
+		KRR_CALLABLE Vec3f srgb2linear(Vec3f sRGBColor)
 		{
-			return vec3f(srgb2linear(sRGBColor[0]), srgb2linear(sRGBColor[1]), srgb2linear(sRGBColor[2]));
+			return Vec3f(srgb2linear(sRGBColor[0]), srgb2linear(sRGBColor[1]), srgb2linear(sRGBColor[2]));
 		}
 
 		KRR_CALLABLE float linear2srgb(float linearColor)
@@ -37,9 +37,9 @@ namespace math{
 				return 1.055 * pow(linearColor, 1.0 / 2.4) - 0.055;
 		}
 
-		KRR_CALLABLE vec3f linear2srgb(vec3f linearColor)
+		KRR_CALLABLE Vec3f linear2srgb(Vec3f linearColor)
 		{
-			return vec3f(linear2srgb(linearColor[0]), linear2srgb(linearColor[1]), linear2srgb(linearColor[2]));
+			return Vec3f(linear2srgb(linearColor[0]), linear2srgb(linearColor[1]), linear2srgb(linearColor[2]));
 		}
 
 		/*******************************************************
@@ -74,7 +74,7 @@ namespace math{
 		* bit tricks
 		********************************************************/
 	
-		KRR_CALLABLE uint interleave_32bit(vec2ui v){
+		KRR_CALLABLE uint interleave_32bit(Vec2ui v){
 			uint x = v[0] & 0x0000ffff;              // x = ---- ---- ---- ---- fedc ba98 7654 3210
 			uint y = v[1] & 0x0000ffff;
 
@@ -101,34 +101,34 @@ namespace math{
 			return l * l;
 		}
 
-		KRR_CALLABLE float sphericalTriangleArea(vec3f a, vec3f b, vec3f c) {
+		KRR_CALLABLE float sphericalTriangleArea(Vec3f a, Vec3f b, Vec3f c) {
 			return abs(2 * atan2(dot(a, cross(b, c)), 1 + dot(a, b) + dot(a, c) + dot(b, c)));
 		}
 
 		// generate a perpendicular vector which is orthogonal to the given vector
-		KRR_CALLABLE vec3f getPerpendicular(const vec3f& u){
-			vec3f a = abs(u);
+		KRR_CALLABLE Vec3f getPerpendicular(const Vec3f& u){
+			Vec3f a = abs(u);
 			uint32_t uyx = (a[0] - a[1]) < 0 ? 1 : 0;
 			uint32_t uzx = (a[0] - a[2]) < 0 ? 1 : 0;
 			uint32_t uzy = (a[1] - a[2]) < 0 ? 1 : 0;
 			uint32_t xm = uyx & uzx;
 			uint32_t ym = (1 ^ xm) & uzy;
 			uint32_t zm = 1 ^ (xm | ym); // 1 ^ (xm & ym)
-			vec3f v = normalize(cross(u, vec3f(xm, ym, zm)));
+			Vec3f v = normalize(cross(u, Vec3f(xm, ym, zm)));
 			return v;
 		}
 
 		// world => y-up
-		KRR_CALLABLE vec2f worldToLatLong(const vec3f& dir) {
-			vec3f p = normalize(dir);
-			vec2f uv;
+		KRR_CALLABLE Vec2f worldToLatLong(const Vec3f& dir) {
+			Vec3f p = normalize(dir);
+			Vec2f uv;
 			uv[0] = atan2(p[0], -p[2]) / M_2PI + 0.5f;
 			uv[1] = acos(p[1]) * M_INV_PI;
 			return uv;
 		}
 
 		/// <param name="latlong"> in [0, 1]*[0, 1] </param>
-		KRR_CALLABLE vec3f latlongToWorld(vec2f latlong)
+		KRR_CALLABLE Vec3f latlongToWorld(Vec2f latlong)
 		{
 			float phi = M_PI * (2.f * saturate(latlong[0]) - 1.f);
 			float theta = M_PI * saturate(latlong[1]);
@@ -140,21 +140,21 @@ namespace math{
 		}
 
 		// caetesian, or local frame => z-up 
-		KRR_CALLABLE vec2f cartesianToSpherical(const vec3f& v) {
-			vec3f nv = normalize(v);
-			vec2f sph;
+		KRR_CALLABLE Vec2f cartesianToSpherical(const Vec3f& v) {
+			Vec3f nv = normalize(v);
+			Vec2f sph;
 			sph[0] = acos(nv[2]);
 			sph[1] = atan2(-nv[1], -nv[0]) + M_PI;
 			return sph;
 		}
 
-		KRR_CALLABLE vec2f cartesianToSphericalNormalized(const vec3f& v) {
-			vec2f sph = cartesianToSpherical(v);
+		KRR_CALLABLE Vec2f cartesianToSphericalNormalized(const Vec3f& v) {
+			Vec2f sph = cartesianToSpherical(v);
 			return { sph[0] / M_PI, sph[1] / M_2PI };
 		}
 
 		/// <param name="sph">\phi in [0, 2pi] and \theta in [0, pi]</param>
-		KRR_CALLABLE vec3f sphericalToCartesian(float theta, float phi) {
+		KRR_CALLABLE Vec3f sphericalToCartesian(float theta, float phi) {
 			float sinTheta = sin(theta);
 			float cosTheta = cos(theta);
 			float sinPhi = sin(phi);
@@ -162,15 +162,15 @@ namespace math{
 			return { sinTheta * sinPhi, -sinTheta * cosPhi, cosTheta, };
 		}
 
-		KRR_CALLABLE vec3f sphericalToCartesian(float sinTheta, float cosTheta, float phi) {
-			return vec3f(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+		KRR_CALLABLE Vec3f sphericalToCartesian(float sinTheta, float cosTheta, float phi) {
+			return Vec3f(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
 		}
 
-		KRR_CALLABLE float sphericalTheta(const vec3f& v) {
+		KRR_CALLABLE float sphericalTheta(const Vec3f& v) {
 			return acos(clamp(v[2], -1.f, 1.f));
 		}
 
-		KRR_CALLABLE float sphericalPhi(const vec3f& v) {
+		KRR_CALLABLE float sphericalPhi(const Vec3f& v) {
 			float p = atan2(v[1], v[0]);
 			return (p < 0) ? (p + 2 * M_PI) : p;
 		}
@@ -178,7 +178,7 @@ namespace math{
 		/*******************************************************
 		* hashing utils
 		********************************************************/
-		KRR_CALLABLE vec2ui blockCipherTEA(uint v0, uint v1, uint iterations = 16)
+		KRR_CALLABLE Vec2ui blockCipherTEA(uint v0, uint v1, uint iterations = 16)
 		{
 			uint sum = 0;
 			const uint delta = 0x9e3779b9;
@@ -189,7 +189,7 @@ namespace math{
 				v0 += ((v1 << 4) + k[0]) ^ (v1 + sum) ^ ((v1 >> 5) + k[1]);
 				v1 += ((v0 << 4) + k[2]) ^ (v0 + sum) ^ ((v0 >> 5) + k[3]);
 			}
-			return vec2ui(v0, v1);
+			return Vec2ui(v0, v1);
 		}
 
 		KRR_CALLABLE uint64_t MixBits(uint64_t v) {

@@ -27,8 +27,8 @@ bool OrbitCameraController::update(){
 	Quat rotate = Quat::fromEuler(mData.yaw, mData.pitch, 0);
 	rotate.normalize();
 	//Quat rotate	  = normalize(Quat(mData.yaw, mData.pitch, 0));
-	vec3f forward = rotate * vec3f(0, 0, -1);
-	vec3f pos = mData.target - forward * mData.radius;
+	Vec3f forward = rotate * Vec3f(0, 0, -1);
+	Vec3f pos = mData.target - forward * mData.radius;
 
 	mpCamera->setPosition(pos);
 	mpCamera->setTarget(mData.target);
@@ -57,8 +57,8 @@ bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent){
 		mPanning = mOrbiting = false;
 		return true;
 	case io::MouseEvent::Type::Move:
-		vec2f curMousePos = mouseEvent.pos;
-		vec2f deltaPos = curMousePos - mLastMousePos;
+		Vec2f curMousePos = mouseEvent.pos;
+		Vec2f deltaPos = curMousePos - mLastMousePos;
 		mLastMousePos = curMousePos;
 		if (mPanning && mOrbiting) {
 			mData.target -= mpCamera->getRight() * mData.radius * mPanSpeed * deltaPos[0];
