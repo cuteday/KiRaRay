@@ -10,7 +10,7 @@ class Array : public Eigen::Array<T, Size, 1> {
 public:
 	//using Eigen::Array<T, Size, 1>::Array;
 
-	KRR_CALLABLE Array(void) : Eigen::Array<T, Size, 1>() {}
+	KRR_CALLABLE Array(void) : Eigen::Array<T, Size, 1>(Eigen::Array<T, Size, 1>::Zero()) {}
 
 	KRR_CALLABLE Array(T v) : Eigen::Array<T, Size, 1>(Eigen::Array<T, Size, 1>::Constant(v)) {}
 

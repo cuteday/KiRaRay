@@ -22,7 +22,7 @@ class Vector : public Eigen::Vector<T, Size> {
 public:
 	//using Eigen::Vector<T, Size>::Vector;
 
-	KRR_CALLABLE Vector(void) : Eigen::Vector<T, Size>() {}
+	KRR_CALLABLE Vector(void) : Eigen::Vector<T, Size>(Eigen::Vector<T, Size>::Zero()) {}
 
 	KRR_CALLABLE Vector(T v)
 		: Eigen::Vector<T, Size>(Eigen::Vector<T, Size>::Constant(v)) {}

@@ -24,8 +24,7 @@ void Camera::renderUI() {
 }
 
 bool OrbitCameraController::update(){
-	vec3f rotation(0, mData.pitch, mData.yaw);
-	Quat rotate(Eigen::AngleAxisf(rotation.norm(), rotation.normalized()));
+	Quat rotate = Quat::fromEuler(mData.yaw, mData.pitch, 0);
 	rotate.normalize();
 	//Quat rotate	  = normalize(Quat(mData.yaw, mData.pitch, 0));
 	vec3f forward = rotate * vec3f(0, 0, -1);

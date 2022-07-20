@@ -31,7 +31,7 @@ namespace assimp {
 	vec3f aiCast(const aiColor3D& ai) { return vec3f(ai[0], ai[1], ai[2]); }
 	vec3f aiCast(const aiVector3D& val) { return vec3f(val[0], val[1], val[2]); }
 	Quat aiCast(const aiQuaternion &q) { return Quat{ q.w, q.x, q.y, q.z }; }
-	Aabb aiCast(const aiAABB &aabb) { return Aabb(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
+	AABB aiCast(const aiAABB &aabb) { return AABB(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
 
 	struct TextureMapping
 	{

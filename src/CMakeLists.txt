@@ -64,8 +64,9 @@ SET ( KRR_CORE_HEADERS
 	core/sampler.h
 	# maths
 	core/math/math.h
-	core/math/vec.h
+	core/math/vector.h
 	core/math/array.h
+	core/math/quaternion.h
 	core/math/utils.h
 	core/math/aabb.h
 	core/math/constants.h

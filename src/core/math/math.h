@@ -3,8 +3,9 @@
 #define EIGEN_DEFAULT_DENSE_INDEX_TYPE int
 #include "common.h"
 #include "math/constants.h"
-#include "math/vec.h"
+//#include "math/vector.h"
 #include "math/array.h"
+#include "math/quaternion.h"
 #include "math/functor.h"
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -17,10 +18,9 @@ using Color4f = Array4f;
 using Point = vec3f;
 using Point3f = vec3f;
 using Point2f = vec2f;
-using Aabb3f = Eigen::AlignedBox<float, 3>;
-using Aabb = Aabb3f;
-using AABB = Aabb;
-using Quat = Eigen::Quaternion<float>;
+using AABB3f = Eigen::AlignedBox<float, 3>;
+using AABB = AABB3f;
+using Quat = Quaternionf;
 
 namespace math {
 

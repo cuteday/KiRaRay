@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "math/vec.h"
+#include "math/vector.h"
 
 KRR_NAMESPACE_BEGIN
 
