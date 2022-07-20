@@ -129,10 +129,7 @@ namespace math {
 
 	namespace polymorphic {
 		inline __both__ float sqrt(const float f) { return sqrtf(f); }
-		inline __both__ double sqrt(const double d) { return sqrt(d); }
-
 		inline __both__ float rsqrt(const float f) { return 1.f / ::sqrt(f); }
-		inline __both__ double rsqrt(const double d) { return 1. / ::sqrt(d); }
 	}
 }
 

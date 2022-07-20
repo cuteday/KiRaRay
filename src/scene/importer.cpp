@@ -30,8 +30,8 @@ namespace assimp {
 
 	vec3f aiCast(const aiColor3D& ai) { return vec3f(ai[0], ai[1], ai[2]); }
 	vec3f aiCast(const aiVector3D& val) { return vec3f(val[0], val[1], val[2]); }
-	quat aiCast(const aiQuaternion& q) { return quat(q.w, q[0], q[1], q[2]); }
-	aabb3f aiCast(const aiAABB& aabb) { return aabb3f(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
+	Quat aiCast(const aiQuaternion &q) { return Quat{ q.w, q.x, q.y, q.z }; }
+	Aabb aiCast(const aiAABB &aabb) { return Aabb(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
 
 	struct TextureMapping
 	{
@@ -99,7 +99,7 @@ namespace assimp {
 		// Opacity
 		float opacity = 1;
 		if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS) {
-			pMaterial->mMaterialParams.diffuse.a = opacity;
+			pMaterial->mMaterialParams.diffuse[3] = opacity;
 			if (opacity < 1.f)
 				pMaterial->mMaterialParams.specularTransmission = 1 - opacity;
 			logDebug("opacity: " + to_string(opacity));
@@ -113,7 +113,7 @@ namespace assimp {
 				float roughness = convertSpecPowerToRoughness(shininess);
 				shininess = 1.f - roughness;
 			}
-			pMaterial->mMaterialParams.specular.a = shininess;
+			pMaterial->mMaterialParams.specular[3] = shininess;
 		}
 
 		// Refraction
@@ -127,19 +127,19 @@ namespace assimp {
 		aiColor3D color;
 
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS) {
-			vec3f transmission = 1.f - vec3f(color[0], color[1], color[2]);
+			Color transmission = 1.f - Color(color[0], color[1], color[2]);
 			pMaterial->mMaterialParams.specularTransmission = luminance(transmission);
 			logDebug("transmission: " + to_string(luminance(transmission)));
 		}
 
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS) {
-			vec4f diffuse = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse.a);
+			vec4f diffuse = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse[3]);
 			pMaterial->mMaterialParams.diffuse = diffuse;
 		}
 
 		// Specular color
 		if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS) {
-			vec4f specular = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.specular.a);
+			vec4f specular = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.specular[3]);
 			pMaterial->mMaterialParams.specular = specular;
 			logDebug("specular : " + to_string(specular[0]) + " " + to_string(specular[1]) + " " + to_string(specular[2]) + " ");
 		}
@@ -158,7 +158,7 @@ namespace assimp {
 
 		if (importMode == ImportMode::GLTF2) {
 			if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS) {
-				vec4f baseColor = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse.a);
+				vec4f baseColor = vec4f(color[0], color[1], color[2], pMaterial->mMaterialParams.diffuse[3]);
 				pMaterial->mMaterialParams.diffuse = baseColor;
 			}
 			vec4f specularParams = pMaterial->mMaterialParams.specular;

@@ -30,12 +30,7 @@ void WavefrontPathTracer::initialize(){
 	else scatterRayQueue = alloc.new_object<ScatterRayQueue>(maxQueueSize, alloc);
 	if (pixelState) pixelState->resize(maxQueueSize, alloc);
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
-	CUDA_SYNC_CHECK();	// necessary
-	//if (maxQueueSize > 0) {
-	//	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-	//		pixelState->sampler[pixelId].initialize(RandomizeStrategy::Owen);
-	//	});
-	//}
+	cudaDeviceSynchronize();	
 	if (!camera) camera = alloc.new_object<Camera>();
 	if (!backend) backend = new OptiXWavefrontBackend();
 	CUDA_SYNC_CHECK();
@@ -45,7 +40,7 @@ void WavefrontPathTracer::handleHit(){
 	PROFILE("Process intersected rays");
 	ForAllQueued(hitLightRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const HitLightWorkItem & w){
-		color Le = w.light.L(w.p, w.n, w.uv, w.wo);
+		Color Le = w.light.L(w.p, w.n, w.uv, w.wo);
 		float misWeight = 1;
 		if (enableNEE && w.depth) {
 			Light light = w.light;
@@ -63,7 +58,7 @@ void WavefrontPathTracer::handleMiss(){
 	Scene::SceneData& sceneData = mpScene->mData;
 	ForAllQueued(missRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const MissRayWorkItem& w) {
-		color L = {};
+		Color L = {};
 		Interaction intr(w.ray.origin);
 		for (const InfiniteLight& light : *sceneData.infiniteLights) {
 			float misWeight = 1;
@@ -97,7 +92,7 @@ void WavefrontPathTracer::generateScatterRays(){
 			
 			float lightPdf = sampledLight.pdf * ls.pdf;
 			float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
-			vec3f bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
+			Color bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
 			float misWeight = evalMIS(lightPdf, bsdfPdf);
 			// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
 			//if (isnan(misWeight))
@@ -166,6 +161,7 @@ void WavefrontPathTracer::beginFrame(CUDABuffer& frame){
 		vec2i pixelCoord = { pixelId % frameSize[0], pixelId / frameSize[0] };
 		pixelState->L[pixelId] = 0;
 		pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameId * samplesPerPixel);
+		pixelState->sampler[pixelId].advance(256 * pixelId);
 	});
 }
 
@@ -210,7 +206,7 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		Color L = pixelState->L[pixelId] / float(samplesPerPixel);
 		if (enableClamp) L = clamp(L, 0.f, clampMax);
-		frameBuffer[pixelId] = vec4f(L, 1);
+		frameBuffer[pixelId] = vec4f(vec3f(L), 1);
 	});
 	frameId++;
 }

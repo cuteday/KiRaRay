@@ -161,7 +161,7 @@ namespace api{
 		// calculates the mouse pos in sreen [0, 1]^2
 		static inline vec2f calcMousePos(double xPos, double yPos, const vec2f& mouseScale){
 			vec2f pos = vec2f(float(xPos), float(yPos));
-			pos *= mouseScale;
+			pos = pos.cwiseProduct(mouseScale);
 			return pos;
 		}
 

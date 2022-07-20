@@ -147,7 +147,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		sd.diffuse = baseColor;
 		sd.specular = (vec3f)spec;			// specular reflectance
-		sd.roughness = 1 - spec[3];	 // 
+		sd.roughness = 1.f - spec[3];	 // 
 		sd.metallic = getMetallic(sd.diffuse, sd.specular);
 	}
 	else {

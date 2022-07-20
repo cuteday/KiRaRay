@@ -85,7 +85,7 @@ public:
 class DisneyRetro{
 public:
 	DisneyRetro() = default;
-	KRR_CALLABLE DisneyRetro(const vec3f& R, float roughness)
+	KRR_CALLABLE DisneyRetro(const Color& R, float roughness)
 		: R(R), roughness(roughness) {}
 	KRR_CALLABLE Color f(const vec3f &wo, const vec3f &wi) const {
 		vec3f wh = wi + wo;
@@ -275,7 +275,7 @@ public:
 
 		// Specular is Trowbridge-Reitz with a modified Fresnel function.
 		float specTint = 0;
-		vec3f Cspec0   = sd.specular;
+		Color Cspec0   = sd.specular;
 		if (!any(sd.specular)) 
 			Cspec0 = lerp(SchlickR0FromEta(e) * lerp(Color::Ones(), Ctint, specTint), c, metallicWeight);
 

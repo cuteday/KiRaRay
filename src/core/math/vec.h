@@ -20,7 +20,7 @@ KRR_NAMESPACE_BEGIN
 template <typename T, int Size>
 class Vector : public Eigen::Vector<T, Size> {
 public:
-	using Eigen::Vector<T, Size>::Vector;
+	//using Eigen::Vector<T, Size>::Vector;
 
 	KRR_CALLABLE Vector(void) : Eigen::Vector<T, Size>() {}
 
@@ -30,18 +30,19 @@ public:
 	KRR_CALLABLE Vector(Eigen::Array<T, Size, 1> arr) : Eigen::Vector<T, Size>(arr.matrix()) {}
 	
 	template <typename OtherDerived>
-	KRR_CALLABLE Vector(const Eigen::MatrixBase<OtherDerived> &other) : Eigen::Vector<T, Size>(other) {}
+	KRR_CALLABLE Vector(const Vector<OtherDerived, Size> &other) {
+		this->Eigen::Vector<T, Size>::operator=(other.template cast<T>());
+	}
+
+	template <typename OtherDerived>
+	KRR_CALLABLE Vector(const Eigen::MatrixBase<OtherDerived> &other) : 
+		Eigen::Vector<T, Size>(other) {}
 	
 	template <typename OtherDerived>
 	KRR_CALLABLE Vector &operator=(const Eigen::MatrixBase<OtherDerived> &other) {
 		this->Eigen::Vector<T, Size>::operator=(other);
 		return *this;
 	}		
-
-	template <typename OtherDerived>
-	KRR_CALLABLE Vector(const Eigen::Vector<OtherDerived, Size> &other) {
-		*this = other.template cast<T>();
-	}
 };
 
 template <typename T>
@@ -49,9 +50,14 @@ class Vector2 : public Vector<T, 2> {
 public:
 	using Vector<T, 2>::Vector;
 
-	KRR_CALLABLE Vector2(Vector3<T> v) {
+	KRR_CALLABLE Vector2(Vector<T, 3>& v) {
 		this->operator[](0) = v.operator[](0);
 		this->operator[](1) = v.operator[](1);
+	}
+
+	KRR_CALLABLE Vector2(const T &x, const T &y) {
+		this->operator[](0) = x;
+		this->operator[](1) = y;
 	}
 
 #ifdef __CUDACC__
@@ -82,10 +88,16 @@ class Vector3 : public Vector<T, 3> {
 public:
 	using Vector<T, 3>::Vector;
 
-	KRR_CALLABLE Vector3(Vector4<T> v) {
+	KRR_CALLABLE Vector3(Vector<T, 4>& v) {
 		this->operator[](0) = v.operator[](0);
 		this->operator[](1) = v.operator[](1);
 		this->operator[](2) = v.operator[](2);
+	}
+
+	KRR_CALLABLE Vector3(const T &x, const T &y, const T &z) {
+		this->operator[](0) = x;
+		this->operator[](1) = y;
+		this->operator[](2) = z;
 	}
 	
 #ifdef __CUDACC__
@@ -122,10 +134,17 @@ class Vector4 : public Vector<T, 4> {
 public:
 	using Vector<T, 4>::Vector;
 
-	KRR_CALLABLE Vector4(Vector3<T> v, T w) {
+	KRR_CALLABLE Vector4(Vector3<T>& v, T w) {
 		this->operator[](0) = v.operator[](0);
 		this->operator[](1) = v.operator[](1);
 		this->operator[](2) = v.operator[](2);
+		this->operator[](3) = w;
+	}
+
+	KRR_CALLABLE Vector4(const T &x, const T &y, const T &z, const T &w) {
+		this->operator[](0) = x;
+		this->operator[](1) = y;
+		this->operator[](2) = z;
 		this->operator[](3) = w;
 	}
 

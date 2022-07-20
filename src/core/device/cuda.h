@@ -67,7 +67,7 @@ void GPUParallelFor(int nElements, F func, CUstream stream = 0);
 #ifdef __NVCC__
 template <typename F>
 __global__ void Kernel(F func, int nElements) {
-	int tid = blockIdx[0] * blockDim[0] + threadIdx[0];
+	int tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if (tid >= nElements) return;
 	func(tid);
 }

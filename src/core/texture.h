@@ -55,7 +55,7 @@ public:
 	
 private:
 	bool mSrgb{ };
-	vec2i mSize = { 0, 0 };
+	vec2i mSize = vec2i::Zero();
 	int mChannels{ 4 };
 	Format mFormat{ };
 	uchar* mData{ };
