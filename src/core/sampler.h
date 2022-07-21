@@ -26,7 +26,7 @@ public:
 		nextUint();
 	}
 
-	KRR_CALLABLE void setPixelSample(Vec2ui samplePixel, uint sampleIndex) {
+	KRR_CALLABLE void setPixelSample(Vector2ui samplePixel, uint sampleIndex) {
 		uint s0 = utils::interleave_32bit(samplePixel);
 		uint s1 = sampleIndex;
 		setSeed(s0, s1);
@@ -35,7 +35,7 @@ public:
 	// return u in [0, 1)
 	KRR_CALLABLE float get1D() { return nextFloat(); }
 
-	KRR_CALLABLE Vec2f get2D() { return { get1D(), get1D() }; }
+	KRR_CALLABLE Vector2f get2D() { return { get1D(), get1D() }; }
 
 	KRR_CALLABLE void advance(int64_t delta = (1ll < 32)) {
 		uint64_t cur_mult = PCG32_MULT, cur_plus = inc, acc_mult = 1u, acc_plus = 0u;
@@ -97,8 +97,8 @@ public:
 
 	KRR_CALLABLE void setSeed(uint seed) { state = seed; }
 
-	KRR_CALLABLE void setPixelSample(Vec2ui samplePixel, uint sampleIndex) {
-		uint v0 = utils::interleave_32bit(Vec2ui(samplePixel));
+	KRR_CALLABLE void setPixelSample(Vector2ui samplePixel, uint sampleIndex) {
+		uint v0 = utils::interleave_32bit(Vector2ui(samplePixel));
 		uint v1 = sampleIndex;
 		state	= utils::blockCipherTEA(v0, v1, 16)[0];
 	}
@@ -111,7 +111,7 @@ public:
 		return (state & 0x00FFFFFF) / (float) 0x01000000;
 	}
 
-	KRR_CALLABLE Vec2f get2D() { return { get1D(), get1D() }; }
+	KRR_CALLABLE Vector2f get2D() { return { get1D(), get1D() }; }
 
 private:
 	uint state = 0;
@@ -141,14 +141,14 @@ public:
 
 	KRR_CALLABLE RandomizeStrategy getRandomizeStrategy() const { return randomize; }
 
-	KRR_CALLABLE void setPixelSample(Vec2ui p, int sampleIndex) { return setPixelSample(p, sampleIndex, 0); }
+	KRR_CALLABLE void setPixelSample(Vector2ui p, int sampleIndex) { return setPixelSample(p, sampleIndex, 0); }
 
-	KRR_CALLABLE void setPixelSample(Vec2ui p, int sampleIndex, int dim) {
+	KRR_CALLABLE void setPixelSample(Vector2ui p, int sampleIndex, int dim) {
 		haltonIndex		 = 0;
 		int sampleStride = baseScales[0] * baseScales[1];
 		// Compute Halton sample index for first sample in pixel _p_
 		if (sampleStride > 1) {
-			Vec2ui pm(p[0] % maxHaltonResolution, p[1] % maxHaltonResolution);
+			Vector2ui pm(p[0] % maxHaltonResolution, p[1] % maxHaltonResolution);
 			for (int i = 0; i < 2; ++i) {
 				uint64_t dimOffset = (i == 0) ? InverseRadicalInverse(pm[i], 2, baseExponents[i])
 											  : InverseRadicalInverse(pm[i], 3, baseExponents[i]);
@@ -166,7 +166,7 @@ public:
 		return sampleDimension(dimension++);
 	}
 
-	KRR_CALLABLE Vec2f get2D() {
+	KRR_CALLABLE Vector2f get2D() {
 		if (dimension + 1 >= PrimeTableSize)
 			dimension = 0;
 		int dim = dimension;
@@ -192,7 +192,7 @@ private:
 
 	RandomizeStrategy randomize;
 	static constexpr int maxHaltonResolution = 128;
-	Vec2i baseScales, baseExponents;
+	Vector2i baseScales, baseExponents;
 	int multInverse[2];
 	int64_t haltonIndex = 0;
 	int dimension		= 0;
@@ -203,7 +203,7 @@ class Sampler : public TaggedPointer<PCGSampler, LCGSampler, HaltonSampler> {
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_CALLABLE void setPixelSample(Vec2ui samplePixel, uint sampleIndex) {
+	KRR_CALLABLE void setPixelSample(Vector2ui samplePixel, uint sampleIndex) {
 		auto setPixelSample = [&](auto ptr) -> void { return ptr->setPixelSample(samplePixel, sampleIndex); };
 		return dispatch(setPixelSample);
 	}
@@ -212,8 +212,8 @@ public:
 		auto get1D = [&](auto ptr) -> float { return ptr->get1D(); };
 		return dispatch(get1D);
 	};
-	KRR_CALLABLE Vec2f get2D() {
-		auto get2D = [&](auto ptr) -> Vec2f { return ptr->get2D(); };
+	KRR_CALLABLE Vector2f get2D() {
+		auto get2D = [&](auto ptr) -> Vector2f { return ptr->get2D(); };
 		return dispatch(get2D);
 	};
 };

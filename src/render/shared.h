@@ -31,18 +31,18 @@ namespace shader {
 
 	struct HitInfo {
 		uint primitiveId;
-		Vec3f barycentric;
+		Vector3f barycentric;
 
 		MeshData* mesh;
-		Vec3f wo;
+		Vector3f wo;
 		uint hitKind;
 	};
 
 	struct ShadingData {		// for use as per ray data, generated from ch
-		Vec3f pos;
-		Vec3f wo;				// view direction
-		Vec2f uv;				// texture coords
-		Vec3f geoN;				// geometry normal [on the front-facing side]
+		Vector3f pos;
+		Vector3f wo;				// view direction
+		Vector2f uv;				// texture coords
+		Vector3f geoN;				// geometry normal [on the front-facing side]
 
 		Frame frame;
 

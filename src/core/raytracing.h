@@ -24,19 +24,19 @@ enum class BsdfType {
 
 class Ray {
 public:
-	Vec3f origin;
-	Vec3f dir;
+	Vector3f origin;
+	Vector3f dir;
 };
 
 class RayDifferential : public Ray {
 public:
 	bool hasDifferentials{ false };
-	Vec3f rxOrigin, ryOrigin;
-	Vec3f rxDir, ryDir;
+	Vector3f rxOrigin, ryOrigin;
+	Vector3f rxDir, ryDir;
 };
 
-KRR_CALLABLE Vec3f offsetRayOrigin(Vec3f p, Vec3f n, Vec3f w) {
-	Vec3f offset = n * KRR_RAY_EPS;
+KRR_CALLABLE Vector3f offsetRayOrigin(Vector3f p, Vector3f n, Vector3f w) {
+	Vector3f offset = n * KRR_RAY_EPS;
 	if (dot(n, w) < 0.f)
 		offset = -offset;
 	return p + offset;
@@ -45,55 +45,55 @@ KRR_CALLABLE Vec3f offsetRayOrigin(Vec3f p, Vec3f n, Vec3f w) {
 struct Frame {
 	Frame() = default;
 
-	Frame(Vec3f n, Vec3f t, Vec3f b) : N(n), T(t), B(b) {}
+	Frame(Vector3f n, Vector3f t, Vector3f b) : N(n), T(t), B(b) {}
 
-	Frame(Vec3f n) : N(n) {
+	Frame(Vector3f n) : N(n) {
 		T = math::utils::getPerpendicular(N);
 		B = normalize(cross(N, T));
 	}
 
-	KRR_CALLABLE Vec3f toWorld(Vec3f v) const {
+	KRR_CALLABLE Vector3f toWorld(Vector3f v) const {
 		return T * v[0] + B * v[1] + N * v[2];
 	}
 
-	KRR_CALLABLE Vec3f toLocal(Vec3f v) const {
+	KRR_CALLABLE Vector3f toLocal(Vector3f v) const {
 		return { dot(T, v), dot(B, v), dot(N, v) };
 	}
 
-	Vec3f N, T, B;
+	Vector3f N, T, B;
 };
 
 struct Interaction{
 	Interaction() = default;
 
-	KRR_CALLABLE Interaction(Vec3f p) : p(p){}
-	KRR_CALLABLE Interaction(Vec3f p, Vec2f uv): p(p), uv(uv) {}
-	KRR_CALLABLE Interaction(Vec3f p, Vec3f n, Vec2f uv) : p(p), n(n), uv(uv) {}
-	KRR_CALLABLE Interaction(Vec3f p, Vec3f wo, Vec3f n, Vec2f uv): p(p), wo(wo), n(n), uv(uv) {}
+	KRR_CALLABLE Interaction(Vector3f p) : p(p){}
+	KRR_CALLABLE Interaction(Vector3f p, Vector2f uv): p(p), uv(uv) {}
+	KRR_CALLABLE Interaction(Vector3f p, Vector3f n, Vector2f uv) : p(p), n(n), uv(uv) {}
+	KRR_CALLABLE Interaction(Vector3f p, Vector3f wo, Vector3f n, Vector2f uv): p(p), wo(wo), n(n), uv(uv) {}
 
-	KRR_CALLABLE Vec3f offsetRayOrigin(const Vec3f& w) const {
+	KRR_CALLABLE Vector3f offsetRayOrigin(const Vector3f& w) const {
 		return krr::offsetRayOrigin(p, n, w);
 	}
 
-	KRR_CALLABLE Vec3f offsetRayOrigin() {
+	KRR_CALLABLE Vector3f offsetRayOrigin() {
 		return Interaction::offsetRayOrigin(wo);
 	}
 
 	// spawn a ray from and to 2 slightly offseted points, length of direction is the distance
-	KRR_CALLABLE Ray spawnRay(const Vec3f& to) const {
-		Vec3f p_o = offsetRayOrigin(to - p);
+	KRR_CALLABLE Ray spawnRay(const Vector3f& to) const {
+		Vector3f p_o = offsetRayOrigin(to - p);
 		return { p_o, to - p_o };
 	}
 
 	KRR_CALLABLE Ray spawnRay(const Interaction& intr) const{
-		Vec3f to = intr.offsetRayOrigin(p - intr.p);
+		Vector3f to = intr.offsetRayOrigin(p - intr.p);
 		return spawnRay(to);
 	}
 
-	Vec3f p {0};
-	Vec3f wo {0};	// world-space out-scattering direction
-	Vec3f n {0};
-	Vec2f uv {0};
+	Vector3f p {0};
+	Vector3f wo {0};	// world-space out-scattering direction
+	Vector3f n {0};
+	Vector2f uv {0};
 };
 
 KRR_NAMESPACE_END

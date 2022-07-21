@@ -76,7 +76,7 @@ void Scene::processLights(){
 			std::vector<Triangle> triangles = mesh.createTriangles(&(*mData.meshes)[meshId]);
 			mesh.emissiveTriangles.assign(triangles.begin(), triangles.end());
 			for (Triangle& tri : mesh.emissiveTriangles) {
-				Vec3f Le = material.mMaterialParams.emissive;
+				Vector3f Le = material.mMaterialParams.emissive;
 				Texture& texture = material.getTexture(Material::TextureType::Emissive);
 				mesh.lights.push_back(DiffuseAreaLight(Shape(&tri), texture, Le, true, 1.f));
 			}

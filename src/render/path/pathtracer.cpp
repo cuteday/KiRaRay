@@ -121,9 +121,9 @@ void PathTracer::renderUI() {
 		ui::Text("Path tracing parameters");
 		ui::InputInt("Samples per pixel", &launchParams.spp);
 		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
-		ui::DragInt("Max bounces", &launchParams.maxDepth, 1, 1, 100);
-		ui::Checkbox("Next event estimation", &launchParams.NEE);
+		ui::InputInt("Max bounces", &launchParams.maxDepth);
 		ui::DragFloat("Radiance clip", &launchParams.clampThreshold, 0.1, 1, 500);
+		ui::Checkbox("Next event estimation", &launchParams.NEE);
 		if (launchParams.NEE) {
 			ui::Checkbox("Multiple importance sampling", &launchParams.MIS);
 			ui::InputInt("Light sample count", &launchParams.lightSamples);

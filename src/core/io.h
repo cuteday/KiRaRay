@@ -37,9 +37,9 @@ namespace krr{
 			};
 
 			Type type;              ///< Event Type.
-			Vec2f pos;             ///< Normalized coordinates x,y in range [0, 1]. (0,0) is the top-left corner of the window.
-			Vec2f screenPos;       ///< Screen-space coordinates in range [0, clientSize]. (0,0) is the top-left corner of the window.
-			Vec2f wheelDelta;      ///< If the current event is CMouseEvent#Type#Wheel, the change in wheel scroll. Otherwise zero.
+			Vector2f pos;             ///< Normalized coordinates x,y in range [0, 1]. (0,0) is the top-left corner of the window.
+			Vector2f screenPos;       ///< Screen-space coordinates in range [0, clientSize]. (0,0) is the top-left corner of the window.
+			Vector2f wheelDelta;      ///< If the current event is CMouseEvent#Type#Wheel, the change in wheel scroll. Otherwise zero.
 			InputModifiers mods;    ///< Keyboard modifiers. Only valid if the event Type is one the button events
 		};
 

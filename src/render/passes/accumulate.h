@@ -19,10 +19,10 @@ public:
 
 	void reset() { mAccumCount = 0; }
 
-	void resize(const Vec2i& size) override {
+	void resize(const Vector2i& size) override {
 		mFrameSize = size;
 		if (!mAccumBuffer) mAccumBuffer = new CUDABuffer();
-		mAccumBuffer->resize(size[0] * size[1] * sizeof(Vec4f));
+		mAccumBuffer->resize(size[0] * size[1] * sizeof(Vector4f));
 		reset();
 	}
 

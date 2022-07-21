@@ -35,7 +35,7 @@ public:
 	DisneyDiffuse() = default;
 
 	KRR_CALLABLE DisneyDiffuse(const Color &R) : R(R) {}
-	KRR_CALLABLE Color f(const Vec3f &wo, const Vec3f &wi) const {
+	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
 		float Fo = SchlickWeight(AbsCosTheta(wo)),
 			Fi = SchlickWeight(AbsCosTheta(wi));
 
@@ -43,8 +43,8 @@ public:
 		// Burley 2015, eq (4).
 		return R * M_INV_PI * (1 - Fo / 2) * (1 - Fi / 2);
 	}
-	KRR_CALLABLE Color rho(const Vec3f &, int, const Vec2f *) const { return R; }
-	KRR_CALLABLE Color rho(int, const Vec3f *, const Vec3f *) const { return R; }
+	KRR_CALLABLE Color rho(const Vector3f &, int, const Vector2f *) const { return R; }
+	KRR_CALLABLE Color rho(int, const Vector3f *, const Vector3f *) const { return R; }
 
 //private:
 	Color R;
@@ -57,9 +57,9 @@ public:
 	KRR_CALLABLE DisneyFakeSS(const Color &R, float roughness)
 		: R(R), roughness(roughness) {}
 
-	KRR_CALLABLE Color f(const Vec3f &wo, const Vec3f &wi) const {
-		Vec3f wh = wi + wo;
-		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vec3f(0.);
+	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
+		Vector3f wh = wi + wo;
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vector3f(0.);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -75,8 +75,8 @@ public:
 		return R * M_INV_PI * ss;
 	};
 
-	KRR_CALLABLE Color rho(const Vec3f &, int, const Vec2f *) const { return R; }
-	KRR_CALLABLE Color rho(int, const Vec2f *, const Vec2f *) const { return R; }
+	KRR_CALLABLE Color rho(const Vector3f &, int, const Vector2f *) const { return R; }
+	KRR_CALLABLE Color rho(int, const Vector2f *, const Vector2f *) const { return R; }
 
 	Color R;
 	float roughness;
@@ -87,9 +87,9 @@ public:
 	DisneyRetro() = default;
 	KRR_CALLABLE DisneyRetro(const Color& R, float roughness)
 		: R(R), roughness(roughness) {}
-	KRR_CALLABLE Color f(const Vec3f &wo, const Vec3f &wi) const {
-		Vec3f wh = wi + wo;
-		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vec3f(0.);
+	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
+		Vector3f wh = wi + wo;
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vector3f(0.);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -100,8 +100,8 @@ public:
 		// Burley 2015, eq (4).
 		return R * M_INV_PI * Rr * (Fo + Fi + Fo * Fi * (Rr - 1));
 	};
-	KRR_CALLABLE Color rho(const Vec3f &, int, const Vec2f *) const { return R; }
-	KRR_CALLABLE Color rho(int, const Vec2f *, const Vec2f *) const { return R; }
+	KRR_CALLABLE Color rho(const Vector3f &, int, const Vector2f *) const { return R; }
+	KRR_CALLABLE Color rho(int, const Vector2f *, const Vector2f *) const { return R; }
 
 	Color R;
 	float roughness;
@@ -111,18 +111,18 @@ public:
 class DisneySheen{
 public:
 	DisneySheen() = default;
-	KRR_CALLABLE DisneySheen(const Vec3f& R): R(R) {}
-	KRR_CALLABLE Color f(const Vec3f &wo, const Vec3f &wi) const {
-		Vec3f wh = wi + wo;
-		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vec3f(0.);
+	KRR_CALLABLE DisneySheen(const Vector3f& R): R(R) {}
+	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
+		Vector3f wh = wi + wo;
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vector3f(0.);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
 		return R * SchlickWeight(cosThetaD);
 	}
 
-	KRR_CALLABLE Color rho(const Vec3f &, int, const Vec2f *) const { return R; }
-	KRR_CALLABLE Color rho(int, const Vec2f *, const Vec2f *) const { return R; }
+	KRR_CALLABLE Color rho(const Vector3f &, int, const Vector2f *) const { return R; }
+	KRR_CALLABLE Color rho(int, const Vector2f *, const Vector2f *) const { return R; }
 
 	Color R;
 	BxDFType type{ BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE) };
@@ -147,9 +147,9 @@ public:
 	KRR_CALLABLE DisneyClearcoat(float weight, float gloss)
 		: weight(weight), gloss(gloss) {}
 
-	KRR_CALLABLE Color f(const Vec3f &wo, const Vec3f &wi) const {
-		Vec3f wh = wi + wo;
-		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vec3f(0.);
+	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
+		Vector3f wh = wi + wo;
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vector3f(0.);
 		wh = normalize(wh);
 
 		float Dr = GTR1(AbsCosTheta(wh), gloss);
@@ -161,7 +161,7 @@ public:
 		return weight * Gr * Fr * Dr / 4;
 	};
 
-	KRR_CALLABLE Color Sample_f(const Vec3f &wo, Vec3f *wi, const Vec2f &u,
+	KRR_CALLABLE Color Sample_f(const Vector3f &wo, Vector3f *wi, const Vector2f &u,
 		float* pdf, BxDFType* sampledType) const {
 
 		if (wo[2] == 0)
@@ -172,20 +172,20 @@ public:
 			max(float(0), (1 - pow(alpha2, 1 - u[0])) / (1 - alpha2)));
 		float sinTheta = sqrt(max((float)0, 1 - cosTheta * cosTheta));
 		float phi = 2 * M_PI * u[1];
-		Vec3f wh = sphericalToCartesian(sinTheta, cosTheta, phi);
+		Vector3f wh = sphericalToCartesian(sinTheta, cosTheta, phi);
 		if (!SameHemisphere(wo, wh)) wh = -wh;
 
 		*wi = Reflect(wo, wh);
-		if (!SameHemisphere(wo, *wi)) return Vec3f(0.f);
+		if (!SameHemisphere(wo, *wi)) return Vector3f(0.f);
 
 		*pdf = Pdf(wo, *wi);
 		return f(wo, *wi);
 	};
 
-	KRR_CALLABLE float Pdf(const Vec3f& wo, const Vec3f& wi) const {
+	KRR_CALLABLE float Pdf(const Vector3f& wo, const Vector3f& wi) const {
 		if (!SameHemisphere(wo, wi)) return 0;
 
-		Vec3f wh = wi + wo;
+		Vector3f wh = wi + wo;
 		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return 0;
 		wh = normalize(wh);
 
@@ -246,7 +246,7 @@ public:
 				//disneyFakeSS = DisneyFakeSS(diffuseWeight * flat * (1 - dt) * c, rough);
 			}
 			else {
-				Vec3f scatterDistance = Vec3f::Zero();
+				Vector3f scatterDistance = Vector3f::Zero();
 				if (!any(scatterDistance)) {
 					// No subsurface scattering; use regular (Fresnel modified) diffuse.
 					disneyDiffuse = DisneyDiffuse(diffuseWeight * c);
@@ -293,7 +293,7 @@ public:
 
 		// specular BTDF if has transmission
 		if (strans > 0) {
-			//Vec3f T = strans * sqrt(c);
+			//Vector3f T = strans * sqrt(c);
 			Color T = strans;
 			if (thin) {
 				// Scale roughness based on IOR (Burley 2015, Figure 15).
@@ -327,7 +327,7 @@ public:
 		//	pDiffuse, pSpecRefl, pSpecTrans, metallicWeight);
 	}
 
-	KRR_CALLABLE Color f(Vec3f wo, Vec3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
 		Color val	 = Color::Zero();
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
@@ -343,11 +343,11 @@ public:
 		return val;
 	}
 
-	KRR_CALLABLE BSDFSample sample(Vec3f wo, Sampler& sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler& sg) const {
 		BSDFSample sample;
 		float comp = sg.get1D();
 		if (comp < pDiffuse) {
-			Vec3f wi = cosineSampleHemisphere(sg.get2D());
+			Vector3f wi = cosineSampleHemisphere(sg.get2D());
 			if (wo[2] < 0) wi[2] *= -1;
 			sample.pdf = pdf(wo, wi);
 			sample.f = f(wo, wi);
@@ -371,7 +371,7 @@ public:
 		return sample;
 	}
 
-	KRR_CALLABLE float pdf(Vec3f wo, Vec3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
 		float val = 0;
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && (components & (DISNEY_DIFFUSE | DISNEY_RETRO)) && reflect) {

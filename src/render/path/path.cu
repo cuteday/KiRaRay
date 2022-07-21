@@ -38,7 +38,7 @@ KRR_DEVICE_FUNCTION bool traceShadowRay(OptixTraversableHandle traversable,
 template <typename... Args>
 KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 	if (!launchParams.debugOutput) return;
-	Vec2i pixel = optixGetLaunchIndex();
+	Vector2i pixel = optixGetLaunchIndex();
 	if (pixel == launchParams.debugPixel)
 		printf(fmt, std::forward<Args>(args)...);
 }
@@ -64,7 +64,7 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 }
 
 KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
-	Vec3f wi = normalize(path.dir);
+	Vector3f wi = normalize(path.dir);
 
 	LightSampleContext ctx = { sd.pos, sd.frame.N };
 	Interaction intr(sd.pos);
@@ -82,15 +82,15 @@ KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 
 KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path, Ray& shadowRay) {
 
-	Vec2f u = path.sampler.get2D();
-	Vec3f woLocal = sd.frame.toLocal(sd.wo);
+	Vector2f u = path.sampler.get2D();
+	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 
 	SampledLight sampledLight = path.lightSampler.sample(u[0]);
 	Light& light = sampledLight.light;
 	LightSample ls = light.sampleLi(u, { sd.pos, sd.frame.N });
 
-	Vec3f wiWorld = normalize(ls.intr.p - sd.pos);
-	Vec3f wiLocal = sd.frame.toLocal(wiWorld);
+	Vector3f wiWorld = normalize(ls.intr.p - sd.pos);
+	Vector3f wiLocal = sd.frame.toLocal(wiWorld);
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
 	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
@@ -103,8 +103,8 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 	// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
 		//print("nee misWeight %f lightPdf %f bsdfPdf %f lightSelect %f lightSample %f\n",
 		//	misWeight, lightPdf, bsdfPdf, sampledLight.pdf, ls.pdf);
-	Vec3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
-	Vec3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
+	Vector3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
+	Vector3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
 
 	shadowRay = { p, to - p };
 	bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1);
@@ -120,11 +120,11 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 
 KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& path) {
 	// how to eliminate branches here to improve performance?
-	Vec3f woLocal = sd.frame.toLocal(sd.wo);
+	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 	BSDFSample sample = BxDF::sample(sd, woLocal, path.sampler, (int)sd.bsdfType);
 	if (sample.pdf == 0 || !any(sample.f)) return false;
 
-	Vec3f wiWorld = sd.frame.toWorld(sample.wi);
+	Vector3f wiWorld = sd.frame.toWorld(sample.wi);
 	path.pos = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 	path.dir = wiWorld;
 	path.pdf = max(sample.pdf, 1e-7f);
@@ -183,8 +183,8 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 }
 
 extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
-	Vec3ui launchIndex = (Vec3ui)optixGetLaunchIndex();
-	Vec2ui pixel		   = {  launchIndex[0], launchIndex[1] };
+	Vector3ui launchIndex = optixGetLaunchIndex();
+	Vector2ui pixel		   = {  launchIndex[0], launchIndex[1] };
 
 	const uint frameID = launchParams.frameID;
 	const uint32_t fbIndex = pixel[0] + pixel[1] * launchParams.fbSize[0];

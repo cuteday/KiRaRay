@@ -16,8 +16,8 @@ struct LightSample {
 };
 
 struct LightSampleContext {
-	Vec3f p;
-	Vec3f n;
+	Vector3f p;
+	Vector3f n;
 };
 
 class DiffuseAreaLight {
@@ -25,7 +25,7 @@ public:
 
 	DiffuseAreaLight() = default;
 
-	DiffuseAreaLight(Shape &shape, Texture &texture, Vec3f Le = {},
+	DiffuseAreaLight(Shape &shape, Texture &texture, Vector3f Le = {},
 		bool twoSided = true, float scale = 1.f) :
 		shape(shape),
 		texture(texture),
@@ -33,7 +33,7 @@ public:
 		twoSided(twoSided),
 		scale(scale) {}
 
-	__device__ inline LightSample sampleLi(Vec2f u, const LightSampleContext& ctx) const {
+	__device__ inline LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
 		LightSample ls = {};
 		
 		ShapeSampleContext shapeCtx = { ctx.p, ctx.n };
@@ -49,8 +49,8 @@ public:
 		return ls;
 	}
 
-	__device__ inline Color L(Vec3f p, Vec3f n, Vec2f uv, Vec3f w) const {
-		if (!twoSided && dot(n, w) < 0.f) return Vec3f::Zero();	// hit backface
+	__device__ inline Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
+		if (!twoSided && dot(n, w) < 0.f) return Vector3f::Zero();	// hit backface
 
 		if (texture.isValid()) {
 			return scale * texture.tex(uv);
@@ -81,17 +81,17 @@ public:
 	InfiniteLight(Color tint = Color::Ones(), float scale = 1, float rotation = 0)
 		:tint(tint), scale(scale), rotation(rotation) {}
 
-	InfiniteLight(const Texture &image, Vec3f tint = Vec3f::Ones(), float scale = 1, float rotation = 0)
+	InfiniteLight(const Texture &image, Vector3f tint = Vector3f::Ones(), float scale = 1, float rotation = 0)
 		:image(image), tint(tint), scale(scale), rotation(rotation) {}
 
-	InfiniteLight(const string image, Vec3f tint = Vec3f::Ones(), float scale = 1, float rotation = 0)
+	InfiniteLight(const string image, Vector3f tint = Vector3f::Ones(), float scale = 1, float rotation = 0)
 		:tint(tint), scale(scale), rotation(rotation) {
 		setImage(image);
 	}
 
-	__device__ inline LightSample sampleLi(Vec2f u, const LightSampleContext& ctx) const {
+	__device__ inline LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
 		LightSample ls = {};
-		Vec3f wi = utils::latlongToWorld(u);
+		Vector3f wi = utils::latlongToWorld(u);
 		ls.intr = Interaction(ctx.p + wi * 1e7f);
 		ls.L = Li(wi);
 		ls.pdf = 0.25 * M_INV_PI;
@@ -102,14 +102,14 @@ public:
 		return 0.25 * M_INV_PI;
 	}
 
-	KRR_CALLABLE Color L(Vec3f p, Vec3f n, Vec2f uv, Vec3f w) const { return Vec3f::Zero(); }
+	KRR_CALLABLE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const { return Vector3f::Zero(); }
 
-	__device__ inline Color Li(Vec3f wi) const {
+	__device__ inline Color Li(Vector3f wi) const {
 		Color L;
 		L = tint * scale;
 
 		if (!image.isOnDevice()) return L;
-		Vec2f uv = utils::worldToLatLong(wi);
+		Vector2f uv = utils::worldToLatLong(wi);
 		uv[0] = fmod(uv[0] + rotation, 1.f);
 		L *= image.tex(uv);
 
@@ -142,13 +142,13 @@ class Light :public TaggedPointer<DiffuseAreaLight, InfiniteLight> {
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_CALLABLE LightSample sampleLi(Vec2f u, const LightSampleContext& ctx) const {
+	KRR_CALLABLE LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
 		auto sampleLi = [&](auto ptr) -> LightSample {return ptr->sampleLi(u, ctx); };
 		return dispatch(sampleLi);
 	}
 
-	KRR_CALLABLE Color L(Vec3f p, Vec3f n, Vec2f uv, Vec3f w) const {
-		auto L = [&](auto ptr) -> Vec3f { return ptr->L(p, n, uv, w); };
+	KRR_CALLABLE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
+		auto L = [&](auto ptr) -> Vector3f { return ptr->L(p, n, uv, w); };
 		return dispatch(L);
 	}
 	

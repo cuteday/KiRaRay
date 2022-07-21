@@ -30,33 +30,33 @@ public:
 		ggx.setup(alpha, alpha, true);
 	}
 
-	__both__ Color f(Vec3f wo, Vec3f wi) const {
+	__both__ Color f(Vector3f wo, Vector3f wi) const {
 		if (!SameHemisphere(wo, wi))
 			return Color::Zero();
 		Color diff = (28.f / (23.f * M_PI)) * diffuse * (Color::Ones() - specular)
 			* (1.f - pow5(1.f - 0.5f * AbsCosTheta(wi)))
 			* (1.f - pow5(1.f - 0.5f * AbsCosTheta(wo)));
-		Vec3f wh = wi + wo;
+		Vector3f wh = wi + wo;
 		if (!any(wh)) return diff;
 		wh = normalize(wh);
 		float D = ggx.D(wh);
-		Color F	   = FrSchlick(specular, Vec3f(1.f), dot(wi, wh));
+		Color F	   = FrSchlick(specular, Vector3f(1.f), dot(wi, wh));
 		Color spec = D * F * 0.25f / (fabs(dot(wi, wh)) * max(AbsCosTheta(wi), AbsCosTheta(wo)));
 
 		return diff + spec;
 	}
 
-	__both__ BSDFSample sample(Vec3f wo, Sampler & sg) const {
+	__both__ BSDFSample sample(Vector3f wo, Sampler & sg) const {
 		BSDFSample sample = {};
 		float comp = sg.get1D();
-		Vec2f u = sg.get2D();
-		Vec3f wi;
+		Vector2f u = sg.get2D();
+		Vector3f wi;
 		if (comp < 0.5f) {
 			wi = cosineSampleHemisphere(u);
 			wi = ToSameHemisphere(wi, wo);
 		}
 		else {
-			Vec3f wh = ggx.Sample(wo, u);
+			Vector3f wh = ggx.Sample(wo, u);
 			wi = Reflect(wo, wh);
 			if (!SameHemisphere(wi, wo)) return sample;
 		}
@@ -66,11 +66,11 @@ public:
 		return sample;
 	}
 
-	__both__ float pdf(Vec3f wo, Vec3f wi) const {
+	__both__ float pdf(Vector3f wo, Vector3f wi) const {
 		if (!SameHemisphere(wo, wi)) return 0;
 		float diffPdf = fabs(wi[2]) * M_INV_PI;
 
-		Vec3f wh = normalize(wo + wi);
+		Vector3f wh = normalize(wo + wi);
 		float specPdf = ggx.Pdf(wo, wh) / (4 * dot(wo, wh));
 
 		return 0.5f * (diffPdf + specPdf);

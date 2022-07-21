@@ -12,7 +12,7 @@ KRR_NAMESPACE_BEGIN
 struct EnvLightSample {
 	Color L;
 	float pdf;
-	Vec3f wi;
+	Vector3f wi;
 };
 
 class EnvLight{
@@ -51,12 +51,12 @@ public:
 		return hasChanges;
 	}
 
-	__device__ float pdf(Vec3f wi) {
+	__device__ float pdf(Vector3f wi) {
 		return 0.25 * M_INV_PI;
 	}
 
-	__device__ EnvLightSample sample(Vec2f u) {
-		Vec3f wi = utils::latlongToWorld(u);
+	__device__ EnvLightSample sample(Vector2f u) {
+		Vector3f wi = utils::latlongToWorld(u);
 		EnvLightSample ls = {};
 		ls.wi = wi;
 		ls.L = eval(wi);
@@ -64,13 +64,13 @@ public:
 		return ls;
 	}
 
-	__device__ Color eval(Vec3f wi) {
+	__device__ Color eval(Vector3f wi) {
 		Color Li;
 		Li = mData.tint * mData.intensity;
 
 		//cudaTextureObject_t texture = mData.mEnvTexture.getCudaTexture();
 		if (!mIBL && mData.mEnvTexture.isOnDevice()) return Li;
-		Vec2f uv = utils::worldToLatLong(wi);
+		Vector2f uv = utils::worldToLatLong(wi);
 		uv[0] = fmod(uv[0] + mData.rotation, 1.f);
 		Color env = mData.mEnvTexture.tex(uv);
 		Li *= env;

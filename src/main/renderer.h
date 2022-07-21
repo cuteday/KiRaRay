@@ -14,11 +14,11 @@ KRR_NAMESPACE_BEGIN
 
 class RenderApp : public WindowApp{
 public:
-	RenderApp(const char title[], Vec2i size) : WindowApp(title, size) { }
-	RenderApp(const char title[], Vec2i size, std::vector<RenderPass::SharedPtr> passes)
+	RenderApp(const char title[], Vector2i size) : WindowApp(title, size) { }
+	RenderApp(const char title[], Vector2i size, std::vector<RenderPass::SharedPtr> passes)
 		:WindowApp(title, size), mpPasses(passes) { }
 
-	void resize(const Vec2i& size) override {
+	void resize(const Vector2i& size) override {
 		if (!mpScene) return;
 		WindowApp::resize(size);
 		for (auto p : mpPasses)

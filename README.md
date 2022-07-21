@@ -1,9 +1,9 @@
 # KiRaRay
 
-*KiRaRay* is a simple interactive ray-tracing renderer using optix. It is for personal learning purpose, and currently with very limited features and some bugs.
+*KiRaRay* is a simple interactive ray-tracing renderer using optix. It is mainly for personal learning purpose, with currently very limited features and some bugs.
 
 <p align=center>
-<img src=common/demo/kirara.jpg width="750">
+<img src=common/demo/kirara.jpg width="800">
 
 ### Features
 
@@ -11,12 +11,12 @@
 > This project is only for learning purpose with very limited features, and not sure if it will continue developing.
 
 - [x] Orbit camera controlling & thin lens camera.
-- [x] Assimp as scene importer (supports OBJ and glTF2 scenes).
+- [x] Assimp as scene importer (OBJ and glTF2 scenes✅).
 - [x] Diffuse, microfacet, disney and fresnel-blended bsdfs.
 - [x] GPU path tracing (a megakernel version and a [wavefront](https://research.nvidia.com/publication/2013-07_megakernels-considered-harmful-wavefront-path-tracing-gpus) version).
 - [x] Next event estimation and multiple importance sampling.
 - [x] Post processing passes (tone mapping and frame accumulating).
-- [x] Simple CPU/GPU profiling.
+- [x] Simple CPU/GPU performance profiling.
 
 If possible, more features will be added in the future, for example:
 
@@ -42,7 +42,7 @@ This project is only tested with optix 7.3/4 and cuda 11.4/5/6 on Windows (MSVC)
 *KiRaRay* uses external dependencies as submodules, so fetch them recursively with `--recursive` when cloning:
 
 ~~~bash
-git clone --recursive https://github.com/cuteday/KiRaRay.git
+git clone --recursive --depth=1 https://github.com/cuteday/KiRaRay.git
 ~~~
 
 #### Building
@@ -58,7 +58,7 @@ This project uses cmake to build, no additional setting is needed. Make sure cud
 **Python binding.** Currently the python scripting is somewhat useless and can only start the renderer, for example:
 
 ~~~bash
-python scripts/run.py --scene "common/assets/scenes/cbox/cbox.obj"
+python common/scripts/run.py --scene "common/assets/scenes/cbox/cbox.obj"
 ~~~
 
 ### Common Issues
@@ -80,8 +80,8 @@ Switch to *Release* build for normal performance! The megakernel pathtracer shou
 <img src=common/demo/higokumaru.jpg width="700">
 
 ### Credits
-- The good optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).
-- Some of the code (e.g., bsdf evaluation) are adapted from [pbrt](https://github.com/mmp/pbrt-v4) and [Falcor](https://github.com/NVIDIAGameWorks/Falcor). 
+- The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).
+- Some of the code (e.g., bsdf evaluation, wavefront path) are adapted from [pbrt](https://github.com/mmp/pbrt-v4) and [Falcor](https://github.com/NVIDIAGameWorks/Falcor). 
 - *KiRaRay* implements a [tiny math library](https://github.com/cuteday/KiRaRay/tree/main/src/core/math) wrapper built upon [Eigen](http://eigen.tuxfamily.org/) for efficient vector/matrix arithmetic.
 - HDR environment images are from [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), and OBJ scenes are from [McGuire's Archive](https://casual-effects.com/data/) for demo images.
 

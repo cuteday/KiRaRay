@@ -33,7 +33,7 @@ class RenderPass{
 public:
 	using SharedPtr = std::shared_ptr<RenderPass>;
 
-	virtual void resize(const Vec2i& size) { mFrameSize = size; }
+	virtual void resize(const Vector2i& size) { mFrameSize = size; }
 	virtual void setEnable(bool enable) { mEnable = enable; }
 	virtual void setScene(Scene::SharedPtr scene) { mpScene = scene; }
 	virtual Scene::SharedPtr getScene() { return mpScene; }
@@ -47,7 +47,7 @@ public:
 
 protected:
 	bool mEnable = true;
-	Vec2i mFrameSize;
+	Vector2i mFrameSize;
 	Scene::SharedPtr mpScene = nullptr;
 };
 

@@ -56,8 +56,8 @@ namespace bsdf {
 		return (r_parl.norm() + r_perp.norm()) / 2;
 	}
 
-	KRR_CALLABLE Vec3f FrComplex(float cosTheta_i, Vec3f eta, Vec3f k) {
-		Vec3f result;
+	KRR_CALLABLE Vector3f FrComplex(float cosTheta_i, Vector3f eta, Vector3f k) {
+		Vector3f result;
 		for (int i = 0; i < 3; ++i)
 			result[i] = FrComplex(cosTheta_i, Complex<float>(eta[i], k[i]));
 		return result;
@@ -80,7 +80,7 @@ namespace bsdf {
 
 	class FresnelConductor {
 
-		Vec3f etaI, etaT, k;
+		Vector3f etaI, etaT, k;
 	};
 
 	class FresnelNull {
@@ -91,7 +91,7 @@ namespace bsdf {
 	public:
 		using TaggedPointer::TaggedPointer;
 
-		Vec3f eval(float cosThetaI) const {
+		Vector3f eval(float cosThetaI) const {
 			auto eval = [&](auto ptr)->float {return ptr->eval(cosThetaI); };
 			return dispatch(eval);
 		}

@@ -174,7 +174,7 @@ KRR_CALLABLE uint32_t MultiplyGenerator(inter::span<const uint32_t> C, uint32_t 
     return v;
 }
 
-KRR_CALLABLE float BlueNoiseSample(Vec2i p, int instance) {
+KRR_CALLABLE float BlueNoiseSample(Vector2i p, int instance) {
     auto HashPerm = [&](uint64_t index) -> int {
         return uint32_t(MixBits(index ^ (0x55555555 * instance)) >> 24) % 24;
     };
@@ -271,7 +271,7 @@ enum class RandomizeStrategy { None, PermuteDigits, FastOwen, Owen };
 //}
 
 //KRR_CALLABLE
-//    uint64_t SobolIntervalToIndex(uint32_t m, uint64_t frame, Vec2i p) {
+//    uint64_t SobolIntervalToIndex(uint32_t m, uint64_t frame, Vector2i p) {
 //    if (m == 0)
 //        return frame;
 //

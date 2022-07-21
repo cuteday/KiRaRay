@@ -17,11 +17,10 @@ KRR_NAMESPACE_BEGIN
 using Color = Array3f;
 using Color3f = Array3f;
 using Color4f = Array4f;
-using Point = Vec3f;
-using Point2f = Vec2f;
-using Point3f = Vec3f;
+using Point = Vector3f;
+using Point2f = Vector2f;
+using Point3f = Vector3f;
 using AABB = AABB3f;
-using Quat = Quaternionf;
 
 namespace math {
 

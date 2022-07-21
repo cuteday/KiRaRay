@@ -50,7 +50,7 @@ public:
 		if (norm > 0) pDiff /= norm, pSpecRefl /= norm, pSpecTrans /= norm;
 	}
 
-	__both__ Color f(Vec3f wo, Vec3f wi) const {
+	__both__ Color f(Vector3f wo, Vector3f wi) const {
 		Color val = Color::Zero();
 		if(pDiff) val += (1 - specTrans) * diffuseBsdf.f(wo, wi);
 		if(pSpecRefl) val += (1 - specTrans) * microfacetBrdf.f(wo, wi);
@@ -58,7 +58,7 @@ public:
 		return val;
 	}
 
-	__both__ BSDFSample sample(Vec3f wo, Sampler & sg) const {
+	__both__ BSDFSample sample(Vector3f wo, Sampler & sg) const {
 		float u = sg.get1D();
 		BSDFSample sample = {};
 		if (u < pDiff) {	// reflection
@@ -81,7 +81,7 @@ public:
 		return sample;
 	}
 
-	__both__ float pdf(Vec3f wo, Vec3f wi) const {
+	__both__ float pdf(Vector3f wo, Vector3f wi) const {
 		float val = 0;
 		if (pDiff) val += pDiff * diffuseBsdf.pdf(wo, wi);
 		if (pSpecRefl) val += pSpecRefl * microfacetBrdf.pdf(wo, wi);

@@ -12,6 +12,12 @@ WavefrontPathTracer::WavefrontPathTracer(Scene& scene){
 	setScene(std::shared_ptr<Scene>(&scene));
 }
 
+template <typename... Args> 
+void WavefrontPathTracer::debugPrint(uint pixelId, const char *fmt, Args &&...args) {
+	if (pixelId == debugPixel)
+		printf(fmt, std::forward<Args>(args)...);
+}
+
 void WavefrontPathTracer::initialize(){
 	Allocator& alloc = *gpContext->alloc;
 	maxQueueSize = frameSize[0] * frameSize[1];
@@ -79,7 +85,7 @@ void WavefrontPathTracer::generateScatterRays(){
 		KRR_DEVICE_LAMBDA(const ScatterRayWorkItem & w) {
 		Sampler sampler = &pixelState->sampler[w.pixelId];
 		const ShadingData& sd = w.sd;
-		Vec3f woLocal = sd.frame.toLocal(sd.wo);
+		Vector3f woLocal = sd.frame.toLocal(sd.wo);
 
 		/* sample direct lighting */
 		if (enableNEE) {
@@ -87,8 +93,8 @@ void WavefrontPathTracer::generateScatterRays(){
 			SampledLight sampledLight = lightSampler.sample(u);
 			Light light = sampledLight.light;
 			LightSample ls = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
-			Vec3f wiWorld = normalize(ls.intr.p - sd.pos);
-			Vec3f wiLocal = sd.frame.toLocal(wiWorld);
+			Vector3f wiWorld = normalize(ls.intr.p - sd.pos);
+			Vector3f wiLocal = sd.frame.toLocal(wiWorld);
 			
 			float lightPdf = sampledLight.pdf * ls.pdf;
 			float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
@@ -115,9 +121,9 @@ void WavefrontPathTracer::generateScatterRays(){
 		if (u > probRR) return;		// Russian Roulette
 		BSDFSample sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
 		if (sample.pdf && any(sample.f)) {
-			Vec3f wiWorld = sd.frame.toWorld(sample.wi);
+			Vector3f wiWorld = sd.frame.toWorld(sample.wi);
 			RayWorkItem r = {};
-			Vec3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
+			Vector3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 			r.pdf = sample.pdf, 1e-7f;
 			r.ray = { p, wiWorld };
 			r.ctx = { sd.pos, sd.frame.N };
@@ -134,13 +140,13 @@ void WavefrontPathTracer::generateCameraRays(int sampleId){
 	RayQueue* cameraRayQueue = currentRayQueue(0);
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		Sampler sampler = &pixelState->sampler[pixelId];
-		Vec2i pixelCoord = { pixelId % frameSize[0], pixelId / frameSize[0] };
+		Vector2i pixelCoord = { pixelId % frameSize[0], pixelId / frameSize[0] };
 		Ray cameraRay = camera->getRay(pixelCoord, frameSize, sampler);
 		cameraRayQueue->pushCameraRay(cameraRay, pixelId);
 	});
 }
 
-void WavefrontPathTracer::resize(const Vec2i& size){
+void WavefrontPathTracer::resize(const Vector2i& size){
 	frameSize = size;
 	initialize();		// need to resize the queues
 }
@@ -158,7 +164,7 @@ void WavefrontPathTracer::beginFrame(CUDABuffer& frame){
 	PROFILE("Begin frame");
 	cudaMemcpy(camera, &mpScene->getCamera(), sizeof(Camera), cudaMemcpyHostToDevice);
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){	// reset per-pixel sample state
-		Vec2i pixelCoord = { pixelId % frameSize[0], pixelId / frameSize[0] };
+		Vector2i pixelCoord = { pixelId % frameSize[0], pixelId / frameSize[0] };
 		pixelState->L[pixelId] = 0;
 		pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameId * samplesPerPixel);
 		pixelState->sampler[pixelId].advance(256 * pixelId);
@@ -214,7 +220,8 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 void WavefrontPathTracer::renderUI(){
 	if (ui::CollapsingHeader("Wavefront path tracer")) {
 		ui::InputInt("Samples per pixel", &samplesPerPixel);
-		ui::SliderInt("Max recursion depth", &maxDepth, 0, 30);
+		ui::InputInt("Max bounces", &maxDepth, 1);
+		ui::SliderFloat("Russian roulette", &probRR, 0, 1);
 		ui::Checkbox("Enable NEE", &enableNEE);
 		ui::Text("Debugging");
 		ui::Checkbox("Debug output", &debugOutput);

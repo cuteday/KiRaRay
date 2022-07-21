@@ -17,17 +17,17 @@ class BxDF :public TaggedPointer<
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_CALLABLE static BSDFSample sample(const ShadingData& sd, Vec3f wo, Sampler& sg, int bsdfIndex) {
+	KRR_CALLABLE static BSDFSample sample(const ShadingData& sd, Vector3f wo, Sampler& sg, int bsdfIndex) {
 		auto sample = [&](auto ptr)->BSDFSample {return ptr->sampleInternal(sd, wo, sg); };
 		return dispatch(sample, bsdfIndex);
 	}
 
-	KRR_CALLABLE static Color f(const ShadingData& sd, Vec3f wo, Vec3f wi, int bsdfIndex) {
-		auto f = [&](auto ptr)->Vec3f {return ptr->fInternal(sd, wo, wi); };
+	KRR_CALLABLE static Color f(const ShadingData& sd, Vector3f wo, Vector3f wi, int bsdfIndex) {
+		auto f = [&](auto ptr)->Vector3f {return ptr->fInternal(sd, wo, wi); };
 		return dispatch(f, bsdfIndex);
 	}
 
-	KRR_CALLABLE static float pdf(const ShadingData& sd, Vec3f wo, Vec3f wi, int bsdfIndex) {
+	KRR_CALLABLE static float pdf(const ShadingData& sd, Vector3f wo, Vector3f wi, int bsdfIndex) {
 		auto pdf = [&](auto ptr)->float {return ptr->pdfInternal(sd, wo, wi); };
 		return dispatch(pdf, bsdfIndex);
 	}
@@ -38,17 +38,17 @@ public:
 	}
 
 	// [NOTE] f the cosine theta term in render equation is not contained in f().
-	KRR_CALLABLE Color f(Vec3f wo, Vec3f wi) const {
-		auto f = [&](auto ptr)->Vec3f {return ptr->f(wo, wi); };
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
+		auto f = [&](auto ptr)->Vector3f {return ptr->f(wo, wi); };
 		return dispatch(f);
 	}
 
-	KRR_CALLABLE BSDFSample sample(Vec3f wo, Sampler& sg) const{
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler& sg) const{
 		auto sample = [&](auto ptr)->BSDFSample {return ptr->sample(wo, sg); };
 		return dispatch(sample);
 	}
 
-	KRR_CALLABLE float pdf(Vec3f wo, Vec3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
 		auto pdf = [&](auto ptr)->float {return ptr->pdf(wo, wi); };
 		return dispatch(pdf);
 	}

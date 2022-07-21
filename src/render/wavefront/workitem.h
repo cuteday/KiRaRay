@@ -37,10 +37,10 @@ struct HitLightWorkItem {
 	Light light;
 	LightSampleContext ctx;
 	float pdf;
-	Vec3f p;
-	Vec3f wo;
-	Vec3f n;
-	Vec2f uv;
+	Vector3f p;
+	Vector3f wo;
+	Vector3f n;
+	Vector2f uv;
 	Color thp;
 	uint depth;
 	uint pixelId;

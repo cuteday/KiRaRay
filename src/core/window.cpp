@@ -9,182 +9,209 @@
 
 KRR_NAMESPACE_BEGIN
 
-namespace api{
+namespace api {
 
-	using namespace krr::io;
-	inline KeyboardEvent::Key glfwToKey(int glfwKey);
+using namespace krr::io;
+inline KeyboardEvent::Key glfwToKey(int glfwKey);
 
-	inline const char* getGLErrorString(GLenum error) {
-		switch (error) {
-			case GL_NO_ERROR:            return "No error";
-			case GL_INVALID_ENUM:        return "Invalid enum";
-			case GL_INVALID_VALUE:       return "Invalid value";
-			case GL_INVALID_OPERATION:   return "Invalid operation";
-			case GL_STACK_OVERFLOW:      return "Stack overflow";
-			case GL_STACK_UNDERFLOW:     return "Stack underflow";
-			case GL_OUT_OF_MEMORY:       return "Out of memory";
-			default:                     return "Unknown GL error";
+inline const char *getGLErrorString(GLenum error) {
+	switch (error) {
+		case GL_NO_ERROR:
+			return "No error";
+		case GL_INVALID_ENUM:
+			return "Invalid enum";
+		case GL_INVALID_VALUE:
+			return "Invalid value";
+		case GL_INVALID_OPERATION:
+			return "Invalid operation";
+		case GL_STACK_OVERFLOW:
+			return "Stack overflow";
+		case GL_STACK_UNDERFLOW:
+			return "Stack underflow";
+		case GL_OUT_OF_MEMORY:
+			return "Out of memory";
+		default:
+			return "Unknown GL error";
+	}
+}
+
+void initGLFW() {
+	static bool initialized = false;
+	if (initialized)
+		return;
+	if (!glfwInit())
+		exit(EXIT_FAILURE);
+	initialized = true;
+}
+
+void initUI(GLFWwindow *window) {
+	static bool initialized = false;
+	if (initialized)
+		return;
+	ui::CreateContext();
+	ImGuiIO &io = ui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	ui::StyleColorsLight();
+	ImGui_ImplOpenGL3_Init("#version 330");
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+}
+
+class ApiCallbacks {
+public:
+	static void windowSizeCallback(GLFWwindow *pGlfwWindow, int width, int height) {
+		// We also get here in case the window was minimized, so we need to
+		// ignore it
+		if (width * height == 0) {
+			return;
+		}
+		WindowApp *pWindow = (WindowApp *) glfwGetWindowUserPointer(pGlfwWindow);
+		if (pWindow != nullptr) {
+			pWindow->resize({ width, height }); // Window callback is handled in
+												// here
 		}
 	}
 
-	void initGLFW() {
-		static bool initialized = false;
-		if (initialized) return;
-		if (!glfwInit())
-			exit(EXIT_FAILURE);
-		initialized = true;
-	}
-
-	void initUI(GLFWwindow* window) {
-		static bool initialized = false;
-		if(initialized) return;
-		ui::CreateContext();
-		ImGuiIO &io = ui::GetIO();
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-		ui::StyleColorsLight();
-		ImGui_ImplOpenGL3_Init("#version 330"); 
-		ImGui_ImplGlfw_InitForOpenGL(window, true);
-	}
-
-	class ApiCallbacks {
-	public:
-		static void windowSizeCallback(GLFWwindow* pGlfwWindow, int width, int height){
-			// We also get here in case the window was minimized, so we need to ignore it
-			if (width * height == 0){
-				return;
-			}
-			WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
-			if (pWindow != nullptr){
-				pWindow->resize({width, height}); // Window callback is handled in here
-			}
-		}
-
-		static void keyboardCallback(GLFWwindow* pGlfwWindow, int key, int scanCode, int action, int modifiers){
-			if (ImGui::GetIO().WantCaptureKeyboard) return;
-			KeyboardEvent event;
-			if (prepareKeyboardEvent(key, action, modifiers, event)){
-				WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
-				if (pWindow != nullptr){
-					pWindow->onKeyEvent(event);
-				}
-			}
-		}
-
-		static void charInputCallback(GLFWwindow* pGlfwWindow, uint32_t input){
-			if (ImGui::GetIO().WantCaptureKeyboard) return;
-			KeyboardEvent event;
-			event.type = KeyboardEvent::Type::Input;
-			event.codepoint = input;
-
-			WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
-			if (pWindow != nullptr){
+	static void keyboardCallback(GLFWwindow *pGlfwWindow, int key, int scanCode, int action,
+								 int modifiers) {
+		if (ImGui::GetIO().WantCaptureKeyboard)
+			return;
+		KeyboardEvent event;
+		if (prepareKeyboardEvent(key, action, modifiers, event)) {
+			WindowApp *pWindow = (WindowApp *) glfwGetWindowUserPointer(pGlfwWindow);
+			if (pWindow != nullptr) {
 				pWindow->onKeyEvent(event);
 			}
 		}
+	}
 
-		static void mouseMoveCallback(GLFWwindow* pGlfwWindow, double mouseX, double mouseY){
-			if (ImGui::GetIO().WantCaptureMouse) return;
-			WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
-			if (pWindow != nullptr){
-				// Prepare the mouse data
-				MouseEvent event;
-				event.type = MouseEvent::Type::Move;
-				event.pos = calcMousePos(mouseX, mouseY, pWindow->getMouseScale());
-				event.screenPos = Vec2f(mouseX, mouseY);
-				event.wheelDelta = Vec2f(0, 0);
+	static void charInputCallback(GLFWwindow *pGlfwWindow, uint32_t input) {
+		if (ImGui::GetIO().WantCaptureKeyboard)
+			return;
+		KeyboardEvent event;
+		event.type		= KeyboardEvent::Type::Input;
+		event.codepoint = input;
 
-				pWindow->onMouseEvent(event);
-			}
+		WindowApp *pWindow = (WindowApp *) glfwGetWindowUserPointer(pGlfwWindow);
+		if (pWindow != nullptr) {
+			pWindow->onKeyEvent(event);
 		}
+	}
 
-		static void mouseButtonCallback(GLFWwindow* pGlfwWindow, int button, int action, int modifiers){
-			if (ImGui::GetIO().WantCaptureMouse) return;
-			MouseEvent event;
+	static void mouseMoveCallback(GLFWwindow *pGlfwWindow, double mouseX, double mouseY) {
+		if (ImGui::GetIO().WantCaptureMouse)
+			return;
+		WindowApp *pWindow = (WindowApp *) glfwGetWindowUserPointer(pGlfwWindow);
+		if (pWindow != nullptr) {
 			// Prepare the mouse data
-			switch (button){
+			MouseEvent event;
+			event.type		 = MouseEvent::Type::Move;
+			event.pos		 = calcMousePos(mouseX, mouseY, pWindow->getMouseScale());
+			event.screenPos	 = Vector2f(mouseX, mouseY);
+			event.wheelDelta = Vector2f(0, 0);
+
+			pWindow->onMouseEvent(event);
+		}
+	}
+
+	static void mouseButtonCallback(GLFWwindow *pGlfwWindow, int button, int action,
+									int modifiers) {
+		if (ImGui::GetIO().WantCaptureMouse)
+			return;
+		MouseEvent event;
+		// Prepare the mouse data
+		switch (button) {
 			case GLFW_MOUSE_BUTTON_LEFT:
-				event.type = (action == GLFW_PRESS) ? MouseEvent::Type::LeftButtonDown : MouseEvent::Type::LeftButtonUp;
+				event.type = (action == GLFW_PRESS) ? MouseEvent::Type::LeftButtonDown
+													: MouseEvent::Type::LeftButtonUp;
 				break;
 			case GLFW_MOUSE_BUTTON_MIDDLE:
-				event.type = (action == GLFW_PRESS) ? MouseEvent::Type::MiddleButtonDown : MouseEvent::Type::MiddleButtonUp;
+				event.type = (action == GLFW_PRESS) ? MouseEvent::Type::MiddleButtonDown
+													: MouseEvent::Type::MiddleButtonUp;
 				break;
 			case GLFW_MOUSE_BUTTON_RIGHT:
-				event.type = (action == GLFW_PRESS) ? MouseEvent::Type::RightButtonDown : MouseEvent::Type::RightButtonUp;
+				event.type = (action == GLFW_PRESS) ? MouseEvent::Type::RightButtonDown
+													: MouseEvent::Type::RightButtonUp;
 				break;
 			default:
 				// Other keys are not supported
 				break;
-			}
-
-			WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
-			if (pWindow != nullptr){
-				// Modifiers
-				event.mods = getInputModifiers(modifiers);
-				double x, y;
-				glfwGetCursorPos(pGlfwWindow, &x, &y);
-				event.pos = calcMousePos(x, y, pWindow->getMouseScale());
-
-				pWindow->onMouseEvent(event);
-			}
 		}
 
-		static void mouseWheelCallback(GLFWwindow* pGlfwWindow, double scrollX, double scrollY){
-			if (ImGui::GetIO().WantCaptureMouse) return;
-			WindowApp* pWindow = (WindowApp*)glfwGetWindowUserPointer(pGlfwWindow);
-			if (pWindow != nullptr){
-				MouseEvent event;
-				event.type = MouseEvent::Type::Wheel;
-				double x, y;
-				glfwGetCursorPos(pGlfwWindow, &x, &y);
-				event.pos = calcMousePos(x, y, pWindow->getMouseScale());
-				event.wheelDelta = (Vec2f(float(scrollX), float(scrollY)));
-
-				pWindow->onMouseEvent(event);
-			}
-		}
-
-		static void errorCallback(int errorCode, const char* pDescription){
-			std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription) + "\n";
-			logError(errorMsg.c_str());
-		}
-
-	private:
-
-		static inline InputModifiers getInputModifiers(int mask){
-			InputModifiers mods;
-			mods.isAltDown = (mask & GLFW_MOD_ALT) != 0;
-			mods.isCtrlDown = (mask & GLFW_MOD_CONTROL) != 0;
-			mods.isShiftDown = (mask & GLFW_MOD_SHIFT) != 0;
-			return mods;
-		}
-
-		// calculates the mouse pos in sreen [0, 1]^2
-		static inline Vec2f calcMousePos(double xPos, double yPos, const Vec2f& mouseScale){
-			Vec2f pos = Vec2f(float(xPos), float(yPos));
-			pos = pos.cwiseProduct(mouseScale);
-			return pos;
-		}
-
-		static inline bool prepareKeyboardEvent(int key, int action, int modifiers, KeyboardEvent& event){
-			if (action == GLFW_REPEAT || key == GLFW_KEY_UNKNOWN)
-				return false;
-			
-			event.type = (action == GLFW_RELEASE ? KeyboardEvent::Type::KeyReleased : KeyboardEvent::Type::KeyPressed);
-			event.key = glfwToFalcorKey(key);
+		WindowApp *pWindow = (WindowApp *) glfwGetWindowUserPointer(pGlfwWindow);
+		if (pWindow != nullptr) {
+			// Modifiers
 			event.mods = getInputModifiers(modifiers);
-			return true;
+			double x, y;
+			glfwGetCursorPos(pGlfwWindow, &x, &y);
+			event.pos = calcMousePos(x, y, pWindow->getMouseScale());
+
+			pWindow->onMouseEvent(event);
 		}
-	};
-}
+	}
+
+	static void mouseWheelCallback(GLFWwindow *pGlfwWindow, double scrollX, double scrollY) {
+		if (ImGui::GetIO().WantCaptureMouse)
+			return;
+		WindowApp *pWindow = (WindowApp *) glfwGetWindowUserPointer(pGlfwWindow);
+		if (pWindow != nullptr) {
+			MouseEvent event;
+			event.type = MouseEvent::Type::Wheel;
+			double x, y;
+			glfwGetCursorPos(pGlfwWindow, &x, &y);
+			event.pos		 = calcMousePos(x, y, pWindow->getMouseScale());
+			event.wheelDelta = (Vector2f(float(scrollX), float(scrollY)));
+
+			pWindow->onMouseEvent(event);
+		}
+	}
+
+	static void errorCallback(int errorCode, const char *pDescription) {
+		std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription) + "\n";
+		logError(errorMsg.c_str());
+	}
+
+private:
+	static inline InputModifiers getInputModifiers(int mask) {
+		InputModifiers mods;
+		mods.isAltDown	 = (mask & GLFW_MOD_ALT) != 0;
+		mods.isCtrlDown	 = (mask & GLFW_MOD_CONTROL) != 0;
+		mods.isShiftDown = (mask & GLFW_MOD_SHIFT) != 0;
+		return mods;
+	}
+
+	// calculates the mouse pos in sreen [0, 1]^2
+	static inline Vector2f calcMousePos(double xPos, double yPos, const Vector2f &mouseScale) {
+		Vector2f pos = Vector2f(float(xPos), float(yPos));
+		pos		  = pos.cwiseProduct(mouseScale);
+		return pos;
+	}
+
+	static inline bool prepareKeyboardEvent(int key, int action, int modifiers,
+											KeyboardEvent &event) {
+		if (action == GLFW_REPEAT || key == GLFW_KEY_UNKNOWN)
+			return false;
+
+		event.type = (action == GLFW_RELEASE ? KeyboardEvent::Type::KeyReleased
+											 : KeyboardEvent::Type::KeyPressed);
+		event.key  = glfwToFalcorKey(key);
+		event.mods = getInputModifiers(modifiers);
+		return true;
+	}
+};
+} // namespace api
 using namespace krr::api;
 
-WindowApp::WindowApp(const char title[], Vec2i size, bool visible, bool enableVsync) {
+WindowApp::WindowApp(const char title[], Vector2i size, bool visible, bool enableVsync) {
 	glfwSetErrorCallback(ApiCallbacks::errorCallback);
 
 	initGLFW();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);	// we need this to support immediate mode (for simple framebuffer bliting), instead of core profile only
+	glfwWindowHint(GLFW_OPENGL_PROFILE,
+				   GLFW_OPENGL_COMPAT_PROFILE); // we need this to support
+												// immediate mode (for simple
+												// framebuffer bliting), instead
+												// of core profile only
 	glfwWindowHint(GLFW_VISIBLE, visible);
 
 	handle = glfwCreateWindow(size[0], size[1], title, NULL, NULL);
@@ -193,7 +220,8 @@ WindowApp::WindowApp(const char title[], Vec2i size, bool visible, bool enableVs
 		exit(EXIT_FAILURE);
 	}
 
-	glfwSetWindowUserPointer(handle, this); // so we can get current "this" pointer in callback
+	glfwSetWindowUserPointer(handle, this); // so we can get current "this"
+											// pointer in callback
 	glfwMakeContextCurrent(handle);
 	glfwSwapInterval((enableVsync) ? 1 : 0);
 
@@ -213,49 +241,57 @@ WindowApp::WindowApp(const char title[], Vec2i size, bool visible, bool enableVs
 	initUI(handle);
 }
 
-WindowApp::~WindowApp(){
+WindowApp::~WindowApp() {
 	glfwDestroyWindow(handle);
 	glfwTerminate();
 }
 
-void WindowApp::resize(const Vec2i &size) {
+void WindowApp::resize(const Vector2i &size) {
 	glfwMakeContextCurrent(handle);
 	glfwSetWindowSize(handle, size[0], size[1]);
 	fbBuffer.resize(sizeof(Color4f) * size[0] * size[1]);
 	fbSize = size;
 
-	if (fbTexture == 0) GL_CHECK(glGenTextures(1, &fbTexture));
-	if (fbPbo) GL_CHECK(glDeleteBuffers(1, &fbPbo));
-	if (fbPbo == 0)  GL_CHECK(glGenBuffers(1, &fbPbo));
+	if (fbTexture == 0)
+		GL_CHECK(glGenTextures(1, &fbTexture));
+	if (fbPbo)
+		GL_CHECK(glDeleteBuffers(1, &fbPbo));
+	if (fbPbo == 0)
+		GL_CHECK(glGenBuffers(1, &fbPbo));
 	else if (cuDisplayTexture) {
 		cudaGraphicsUnregisterResource(cuDisplayTexture);
 		cuDisplayTexture = 0;
 	}
 
 	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, fbPbo));
-	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(Color4f) * size[0] * size[1], nullptr, GL_STREAM_DRAW));
+	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(Color4f) * size[0] * size[1], nullptr,
+						  GL_STREAM_DRAW));
 	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
 	// We need to re-register when resizing the texture
-	cudaError_t rc = cudaGraphicsGLRegisterBuffer(&cuDisplayTexture, fbPbo, cudaGraphicsMapFlagsWriteDiscard);
+	cudaError_t rc =
+		cudaGraphicsGLRegisterBuffer(&cuDisplayTexture, fbPbo, cudaGraphicsMapFlagsWriteDiscard);
 
-	if (rc != cudaSuccess) 
-		logError("Could not do CUDA graphics resource sharing (DMA) for the display buffer texture (" + 
-			string(cudaGetErrorString(cudaGetLastError())) + ")... ", true);
+	if (rc != cudaSuccess)
+		logError("Could not do CUDA graphics resource sharing (DMA) for the "
+				 "display buffer texture (" +
+					 string(cudaGetErrorString(cudaGetLastError())) + ")... ",
+				 true);
 }
 
 void WindowApp::draw() {
 	glfwMakeContextCurrent(handle);
 
 	// there are two ways of transfering device data to an opengl texture.
-	// via cudaMemcpyToArray, or glTexSubImage2D. 
-	// the CUDA api is faster, while needing to register the texture to device beforehand.
+	// via cudaMemcpyToArray, or glTexSubImage2D.
+	// the CUDA api is faster, while needing to register the texture to device
+	// beforehand.
 	CUDA_CHECK(cudaGraphicsMapResources(1, &cuDisplayTexture));
 
-	void* fbPointer;
+	void *fbPointer;
 	size_t fbBytes;
 	CUDA_CHECK(cudaGraphicsResourceGetMappedPointer(&fbPointer, &fbBytes, cuDisplayTexture));
-	CUDA_CHECK(cudaMemcpy(fbPointer, (void*)fbBuffer.data(), fbBytes, cudaMemcpyDeviceToDevice));
+	CUDA_CHECK(cudaMemcpy(fbPointer, (void *) fbBuffer.data(), fbBytes, cudaMemcpyDeviceToDevice));
 
 	glDisable(GL_LIGHTING);
 	glColor3f(1, 1, 1);
@@ -275,7 +311,7 @@ void WindowApp::draw() {
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0.f, (float)fbSize[0], 0.f, (float)fbSize[1], -1.f, 1.f);
+	glOrtho(0.f, (float) fbSize[0], 0.f, (float) fbSize[1], -1.f, 1.f);
 
 	glBegin(GL_QUADS);
 	{
@@ -283,13 +319,13 @@ void WindowApp::draw() {
 		glVertex3f(0.f, 0.f, 0.f);
 
 		glTexCoord2f(0.f, 1.f);
-		glVertex3f(0.f, (float)fbSize[1], 0.f);
+		glVertex3f(0.f, (float) fbSize[1], 0.f);
 
 		glTexCoord2f(1.f, 1.f);
-		glVertex3f((float)fbSize[0], (float)fbSize[1], 0.f);
+		glVertex3f((float) fbSize[0], (float) fbSize[1], 0.f);
 
 		glTexCoord2f(1.f, 0.f);
-		glVertex3f((float)fbSize[0], 0.f, 0.f);
+		glVertex3f((float) fbSize[0], 0.f, 0.f);
 	}
 	glEnd();
 
@@ -299,7 +335,7 @@ void WindowApp::draw() {
 void WindowApp::run() {
 	int width, height;
 	glfwGetFramebufferSize(handle, &width, &height);
-	resize(Vec2i(width,height));
+	resize(Vector2i(width, height));
 
 	while (!glfwWindowShouldClose(handle)) {
 		ImGui_ImplOpenGL3_NewFrame();
@@ -307,7 +343,7 @@ void WindowApp::run() {
 		ImGui::NewFrame();
 
 		render();
-			
+
 		draw();
 		renderUI();
 		{
@@ -315,21 +351,21 @@ void WindowApp::run() {
 			ImGui::Render();
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		}
-		
+
 		glfwSwapBuffers(handle);
 		glfwPollEvents();
 	}
 }
 
 namespace api {
-	inline KeyboardEvent::Key glfwToKey(int glfwKey) {
-		static_assert(GLFW_KEY_ESCAPE == 256, "GLFW_KEY_ESCAPE is expected to be 256");
-		if (glfwKey < GLFW_KEY_ESCAPE) {
-			// Printable keys are expected to have the same value
-			return (KeyboardEvent::Key)glfwKey;
-		}
+inline KeyboardEvent::Key glfwToKey(int glfwKey) {
+	static_assert(GLFW_KEY_ESCAPE == 256, "GLFW_KEY_ESCAPE is expected to be 256");
+	if (glfwKey < GLFW_KEY_ESCAPE) {
+		// Printable keys are expected to have the same value
+		return (KeyboardEvent::Key) glfwKey;
+	}
 
-		switch (glfwKey) {
+	switch (glfwKey) {
 		case GLFW_KEY_ESCAPE:
 			return KeyboardEvent::Key::Escape;
 		case GLFW_KEY_ENTER:
@@ -446,10 +482,10 @@ namespace api {
 			return KeyboardEvent::Key::Menu;
 		default:
 			KRR_SHOULDNT_GO_HERE;
-			return (KeyboardEvent::Key)0;
-		}
+			return (KeyboardEvent::Key) 0;
 	}
-
 }
+
+} // namespace api
 
 KRR_NAMESPACE_END

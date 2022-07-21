@@ -56,12 +56,12 @@ using namespace math;
 
 class WindowApp{
 public:
-	WindowApp(const char title[], Vec2i size,
+	WindowApp(const char title[], Vector2i size,
 			bool visible = true, bool enableVsync = false);
 
 	~WindowApp();
 
-	virtual void resize(const Vec2i &size);
+	virtual void resize(const Vector2i &size);
 
 	void run();
 
@@ -72,9 +72,9 @@ public:
 	// user input handler
 	virtual void onMouseEvent(io::MouseEvent& mouseEvent) {};
 	virtual void onKeyEvent(io::KeyboardEvent &keyEvent) {};
-	Vec2f getMouseScale() { return fbSize.cast<float>().cwiseInverse(); }
+	Vector2f getMouseScale() { return fbSize.cast<float>().cwiseInverse(); }
 
-	inline Vec2i getMousePos() const {
+	inline Vector2i getMousePos() const {
 		double x, y;
 		glfwGetCursorPos(handle, &x, &y);
 		return { (int)x, (int)y };
@@ -82,7 +82,7 @@ public:
 	virtual void renderUI() {};
 
   protected:
-	Vec2i fbSize{0};
+	Vector2i fbSize{0};
 	GLuint fbTexture{0};
 	GLuint fbPbo{0};
 	cudaGraphicsResource_t cuDisplayTexture{0};
@@ -90,7 +90,7 @@ public:
 
 	/*! the glfw window handle */
 	GLFWwindow *handle{nullptr};
-	Vec2i lastMousePos = {-1, -1};
+	Vector2i lastMousePos = {-1, -1};
 };
 
 KRR_NAMESPACE_END
