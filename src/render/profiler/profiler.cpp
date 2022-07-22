@@ -1,6 +1,8 @@
 #include "profiler.h"
 #include "logger.h"
 
+
+
 KRR_NAMESPACE_BEGIN
 
 namespace {
@@ -12,6 +14,7 @@ namespace {
 	// Size of the event history. The event history is keeping track of event times to allow
 	// for computing statistics (min, max, mean, stddev) over the recent history.
 	const size_t kMaxHistorySize = 512;
+	const size_t kFrameTimeWindow = 10;
 }
 
 Profiler::Stats Profiler::Stats::compute(const float* data, size_t len){
@@ -220,8 +223,7 @@ Profiler::Capture::SharedPtr Profiler::endCapture() {
 	return pCapture;
 }
 
-bool Profiler::isCapturing() const
-{
+bool Profiler::isCapturing() const {
 	return mpCapture != nullptr;
 }
 

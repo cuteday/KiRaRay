@@ -2,6 +2,7 @@
 #include <stack>
 #include <unordered_map>
 #include <memory>
+#include <queue>
 #include <cuda_runtime.h>
 
 #include "common.h"
@@ -106,7 +107,7 @@ public:
 
 		friend class Profiler;
 	};
-
+	
 	/** Check if the profiler is enabled.
 		\return Returns true if the profiler is enabled.
 	*/

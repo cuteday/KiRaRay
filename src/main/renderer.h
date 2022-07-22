@@ -9,6 +9,7 @@
 #include "device/buffer.h"
 #include "device/context.h"
 #include "render/profiler/ui.h"
+#include "render/profiler/fps.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -26,7 +27,9 @@ public:
 		mpScene->getCamera().setAspectRatio((float)size[0] / size[1]);
 	}
 
+	// Process signals passed down from direct imgui callback (imgui do not capture it)
 	virtual void onMouseEvent(io::MouseEvent& mouseEvent) override {
+		if (mPaused) return;
 		if (mpScene && mpScene->onMouseEvent(mouseEvent)) return;
 		for (auto p : mpPasses)
 			if(p->onMouseEvent(mouseEvent)) return;
@@ -38,14 +41,12 @@ public:
 			case io::KeyboardEvent::Key::F1:
 				mShowUI = !mShowUI;
 				return;
-			case io::KeyboardEvent::Key::F2:
-				Profiler::instance().setEnabled(!Profiler::instance().isEnabled());
-				return;
 			case io::KeyboardEvent::Key::F3:
 				captureFrame();
 				return;
 			}
 		}
+		if (mPaused) return;
 		// passing down signals...
 		if (mpScene && mpScene->onKeyEvent(keyEvent)) return;	
 		for (auto p : mpPasses)
@@ -60,28 +61,37 @@ public:
 
 	void render() override {
 		if (!mpScene) return;
-		mpScene->update();
-		for (auto p : mpPasses)
-			if (p) { 
-				p->beginFrame(fbBuffer);
-				p->render(fbBuffer);
-			}
+		if (!mPaused) {		// Froze all updates if paused
+			mpScene->update();
+			for (auto p : mpPasses)
+				if (p) {
+					p->beginFrame(fbBuffer);
+					p->render(fbBuffer);
+				}
+		}
 		if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
 	}
 
 	void renderUI() override {
 		static bool saveHdr{};
-		static bool showProfiler;
+		static bool showProfiler{};
+		static bool showFps{ true };
 		static bool showDashboard{ true };
-		
 		if (!mShowUI) return;
-		showProfiler = Profiler::instance().isEnabled();
+		Profiler::instance().setEnabled(showProfiler);
+		ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.8);		// this sets the global transparency of UI windows.
+		ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5);
 		if (ui::BeginMainMenuBar()) {
+			ui::PopStyleVar(1);	
 			if (ui::BeginMenu("Views")) {
 				ui::MenuItem("Global UI", NULL, &mShowUI);
 				ui::MenuItem("Dashboard", NULL, &showDashboard);
-				if(ui::MenuItem("Profiler", NULL, &showProfiler))
-					Profiler::instance().setEnabled(showProfiler); 
+				ui::MenuItem("FPS Counter", NULL, &showFps);
+				ui::MenuItem("Profiler", NULL, &showProfiler);
+				ui::EndMenu();
+			}
+			if (ui::BeginMenu("Render")) {
+				ui::MenuItem("Pause", NULL, &mPaused);
 				ui::EndMenu();
 			}
 			if (ui::BeginMenu("Tools")) {
@@ -93,12 +103,13 @@ public:
 		}
 
 		if(showDashboard){
-			ui::Begin(KRR_PROJECT_NAME);
-			if (ui::Checkbox("Profiler", &showProfiler));
-				Profiler::instance().setEnabled(showProfiler); ui::SameLine();
+			ui::Begin(KRR_PROJECT_NAME, &showDashboard);
+			ui::Checkbox("Pause", &mPaused); ui::SameLine();
+			ui::Checkbox("Profiler", &showProfiler);
 			ui::Checkbox("Save HDR", &saveHdr); ui::SameLine();
 			if (ui::Button("Screen shot"))
 				captureFrame(saveHdr);
+
 			if (ui::InputInt2("Frame size", (int*)&fbSize))
 				resize(fbSize);
 			if (mpScene) mpScene->renderUI();
@@ -106,13 +117,27 @@ public:
 				if (p) p->renderUI();
 			ui::End();
 		}
+
+		
+		if (showFps) {
+			ImGuiWindowFlags fpsCounterFlags =
+				ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+				ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+				ImGuiWindowFlags_NoNav;
+			mFrameRate.newFrame();
+			ui::SetNextWindowBgAlpha(0.8);
+			ui::Begin("FPS Counter", &showFps, fpsCounterFlags);
+			ui::Text("FPS: %.1lf", 1000 / mFrameRate.getAverageFrameTime());
+			ui::End();
+		}
 		
 		if (Profiler::instance().isEnabled()) {
 			if (!mpProfilerUI) mpProfilerUI = ProfilerUI::create(Profiler::instancePtr());
-			ui::Begin("Profiler");
+			ui::Begin("Profiler", &showProfiler);
 			mpProfilerUI->render();
 			ui::End();
 		}	
+		ui::PopStyleVar();
 	}
 
 	void draw() override {
@@ -127,10 +152,12 @@ private:
 		fbBuffer.copy_to_host(image.data(), fbSize[0] * fbSize[1] * 4 * sizeof(float));
 		fs::path filepath = File::resolve("common/images") / ("krr_" + Log::nowToString("%H_%M_%S") + extension);
 		image.saveImage(filepath);
-		logSuccess("Saved screen shot to " + filepath.string());
+		logSuccess("Saved screenshot to " + filepath.string());
 	}
 
 	bool mShowUI{ true };
+	bool mPaused{ false };
+	FrameRate mFrameRate;
 	std::vector<RenderPass::SharedPtr> mpPasses;
 	Scene::SharedPtr mpScene;
 	ProfilerUI::UniquePtr mpProfilerUI;

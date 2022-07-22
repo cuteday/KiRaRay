@@ -19,7 +19,7 @@ public:
 			This value is meaningless on it's own. Call CCpuTimer#calcDuration() to get the duration that passed between 2 TimePoints
 	*/
 	TimePoint update() {
-		auto now = getCurrentTimePoint();
+		TimePoint now = getCurrentTimePoint();
 		mElapsedTime = now - mCurrentTime;
 		mCurrentTime = now;
 		return mCurrentTime;

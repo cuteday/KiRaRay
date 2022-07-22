@@ -93,6 +93,7 @@ SET(KRR_HEADERS
 	render/wavefront/workqueue.h
 	render/wavefront/backend.h
 	render/profiler/profiler.h
+	render/profiler/fps.h
 	render/profiler/ui.h
 	scene/importer.h
 	scene/scenegraph.h

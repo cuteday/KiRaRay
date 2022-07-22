@@ -13,7 +13,7 @@ WavefrontPathTracer::WavefrontPathTracer(Scene& scene){
 }
 
 template <typename... Args> 
-void WavefrontPathTracer::debugPrint(uint pixelId, const char *fmt, Args &&...args) {
+KRR_DEVICE_FUNCTION void WavefrontPathTracer::debugPrint(uint pixelId, const char *fmt, Args &&...args) {
 	if (pixelId == debugPixel)
 		printf(fmt, std::forward<Args>(args)...);
 }
@@ -219,6 +219,7 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 
 void WavefrontPathTracer::renderUI(){
 	if (ui::CollapsingHeader("Wavefront path tracer")) {
+		ui::Text("Render parameters");
 		ui::InputInt("Samples per pixel", &samplesPerPixel);
 		ui::InputInt("Max bounces", &maxDepth, 1);
 		ui::SliderFloat("Russian roulette", &probRR, 0, 1);
@@ -227,7 +228,7 @@ void WavefrontPathTracer::renderUI(){
 		ui::Checkbox("Debug output", &debugOutput);
 		if (debugOutput) {
 			ui::SameLine();
-			ui::InputInt2("Debug pixel:", (int*)&debugPixel);
+			ui::InputInt("Debug pixel:", (int*) &debugPixel);
 		}
 		ui::Checkbox("Clamping pixel value", &enableClamp);
 		if (enableClamp) {
