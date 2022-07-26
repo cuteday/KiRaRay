@@ -41,7 +41,7 @@ KRR_DEVICE_FUNCTION T sampleTexture(Texture &texture, Vector2f uv, T fallback) {
 KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	HitInfo hitInfo = {};
 	HitgroupSBTData* hitData = (HitgroupSBTData*)optixGetSbtDataPointer();
-	Vector2f barycentric = (Vector2f)optixGetTriangleBarycentrics();
+	Vector2f barycentric = optixGetTriangleBarycentrics();
 	hitInfo.primitiveId = optixGetPrimitiveIndex();
 	hitInfo.mesh = hitData->mesh;
 	hitInfo.wo = -normalize((Vector3f)optixGetWorldRayDirection());
@@ -58,48 +58,27 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	Vector3f b = hitInfo.barycentric;
 	MeshData& mesh = *hitInfo.mesh;
 	Vector3i v = mesh.indices[hitInfo.primitiveId];
-
+	VertexAttribute v0 = mesh.vertices[v[0]],
+					v1 = mesh.vertices[v[1]],
+					v2 = mesh.vertices[v[2]];
+	
 	sd.wo = normalize(hitInfo.wo);
 
-	sd.pos = b[0] * mesh.vertices[v[0]] +
-		b[1] * mesh.vertices[v[1]] +
-		b[2] * mesh.vertices[v[2]];
+	sd.pos = b[0] * v0.vertex + b[1] * v1.vertex +
+			 b[2] * v2.vertex;
 
-	sd.geoN = normalize(cross(mesh.vertices[v[1]] - mesh.vertices[v[0]],
-		mesh.vertices[v[2]] - mesh.vertices[v[0]]));
+	sd.geoN = normalize(cross(v1.vertex - v0.vertex, v2.vertex - v0.vertex));
 
-	sd.frame.N = normalize(
-		b[0] * mesh.normals[v[0]] +
-		b[1] * mesh.normals[v[1]] +
-		b[2] * mesh.normals[v[2]]);
-
-	if (mesh.tangents && mesh.bitangents) {
-		sd.frame.T = normalize(
-			b[0] * mesh.tangents[v[0]] +
-			b[1] * mesh.tangents[v[1]] +
-			b[2] * mesh.tangents[v[2]]);
+	sd.frame.N = normalize(b[0] * v0.normal + b[1] * v1.normal + b[2] * v2.normal);
+	sd.frame.T = normalize(b[0] * v0.tangent + b[1] * v1.tangent + b[2] * v2.tangent);
 		
-		// re-orthogonize the tangent space 
-		// since tbn may become not orthogonal after the interpolation process.
-		// or they are not orthogonal at the beginning (when we import the models)
-		sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.N, sd.frame.T));
-		sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
-	}
-	else {
-		// generate a fake tbn frame for now...
-		sd.frame.T = getPerpendicular(sd.frame.N);
-		sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
-	}
+	// re-orthogonize the tangent space 
+	// since tbn may become not orthogonal after the interpolation process.
+	// or they are not orthogonal at the beginning (when we import the models)
+	sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.N, sd.frame.T));
+	sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
 
-	Vector2f uv[3];
-	if (mesh.texcoords) {
-		uv[0] = mesh.texcoords[v[0]],
-			uv[1] = mesh.texcoords[v[1]],
-			uv[2] = mesh.texcoords[v[2]];
-	}
-	else {
-		uv[0] = { 0,0 }, uv[1] = { 1,0 }, uv[1] = { 1,1 };
-	}
+	Vector2f uv[3] = { v0.texcoord, v1.texcoord, v2.texcoord };
 	sd.uv = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
 
 	if (mesh.lights) {
@@ -121,7 +100,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	Vector4f spec = sampleTexture(specularTexture, sd.uv, materialParams.specular);
 	Vector3f baseColor = (Vector3f)diff;
 
-	if (normalTexture.isValid() && mesh.tangents && mesh.bitangents) {	// be cautious if we have the tangent space TBN
+	if (normalTexture.isValid()) {	// be cautious if we have the tangent space TBN
 		Vector3f normal = sampleTexture(normalTexture, sd.uv, Vector3f{});
 		normal = rgbToNormal(normal);
 

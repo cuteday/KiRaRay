@@ -31,9 +31,9 @@ public:
 
 	KRR_CALLABLE float area()const {
 		Vector3i v = mesh->indices[primId];
-		Vector3f p0 = mesh->vertices[v[0]],
-			p1 = mesh->vertices[v[1]],
-			p2 = mesh->vertices[v[2]];
+		Vector3f p0 = mesh->vertices[v[0]].vertex,
+			p1 = mesh->vertices[v[1]].vertex,
+			p2 = mesh->vertices[v[2]].vertex;
 		float s = 0.5f * length(cross(p1 - p0, p2 - p0));
 		assert(s > 0);
 		return s;
@@ -41,7 +41,9 @@ public:
 
 	KRR_CALLABLE float solidAngle(Vector3f p) const {
 		Vector3i v = mesh->indices[primId];
-		Vector3f p0 = mesh->vertices[v[0]], p1 = mesh->vertices[v[1]], p2 = mesh->vertices[v[2]];
+		Vector3f p0 = mesh->vertices[v[0]].vertex, 
+			p1 = mesh->vertices[v[1]].vertex, 
+			p2 = mesh->vertices[v[2]].vertex;
 
 		return utils::sphericalTriangleArea(normalize(p0 - p), 
 			normalize(p1 - p),
@@ -53,30 +55,25 @@ public:
 		ShapeSample ss = {};
 		
 		Vector3i v = mesh->indices[primId];
-		Vector3f p0 = mesh->vertices[v[0]],
-			p1 = mesh->vertices[v[1]],
-			p2 = mesh->vertices[v[2]];
+		const VertexAttribute& v0 = mesh->vertices[v[0]],
+			&v1 = mesh->vertices[v[1]],
+			&v2 = mesh->vertices[v[2]];
+
+		Vector3f p0 = v0.vertex, p1 = v1.vertex, p2 = v2.vertex;
 		Vector3f b = uniformSampleTriangle(u);
 		Vector3f p = b[0] * p0 + b[1] * p1 + b[2] * p2;
 
 		// face normal
 		Vector3f n = normalize(Vector3f(cross(p1 - p0, p2 - p0)));
-		if (mesh->normals) {
-			Vector3f ns = normalize(b[0] * mesh->normals[v[0]] + b[1] * mesh->normals[v[1]] + b[2] * mesh->normals[v[2]]);
-			if (dot(n, ns) < 0)
-				n *= -1;
-		}
-
-		Vector2f uv[3];
-		if (mesh->texcoords) {
-			uv[0] = mesh->texcoords[v[0]],
-			uv[1] = mesh->texcoords[v[1]],
-			uv[2] = mesh->texcoords[v[2]];
-		}
-		else {
-			uv[0] = { 0,0 }, uv[1] = { 1,0 }, uv[2] = { 1,1 };
-		}
-
+		Vector3f ns = normalize(b[0] * v0.normal + b[1] * v1.normal + b[2] * v2.normal);
+		if (dot(n, ns) < 0)
+			n *= -1;
+		
+		Vector2f uv[3] = {
+			v0.texcoord,
+			v1.texcoord,
+			v2.texcoord
+		};
 		Vector2f uvSample = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
 
 		ss.intr = Interaction(p, n, uvSample);
@@ -90,8 +87,9 @@ public:
 		// also the pdf counted is in solid angle.
 		
 		Vector3i v = mesh->indices[primId];
-		Vector3f p0 = mesh->vertices[v[0]], p1 = mesh->vertices[v[1]], p2 = mesh->vertices[v[2]];
-
+		Vector3f p0 = mesh->vertices[v[0]].vertex, 
+				p1 = mesh->vertices[v[1]].vertex,
+				p2 = mesh->vertices[v[2]].vertex;
 		// Use uniform area sampling for numerically unstable cases
 		float sr = solidAngle(ctx.p);
 		//if (sr < kMinSphericalSampleArea || sr > kMaxSphericalSampleArea) {
