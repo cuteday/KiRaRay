@@ -35,11 +35,6 @@ public:
 	}
 };
 
-class Quaternionf : public Quaternion<float> {
-public:
-	using Quaternion<float>::Quaternion;
-};
-
-
+using Quaternionf = Quaternion<float>;
 
 KRR_NAMESPACE_END

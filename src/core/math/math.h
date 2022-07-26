@@ -5,6 +5,7 @@
 #include "math/constants.h"
 #include "math/vector.h"
 #include "math/array.h"
+#include "math/matrix.h"
 #include "math/quaternion.h"
 #include "math/aabb.h"
 #include "math/functors.h"

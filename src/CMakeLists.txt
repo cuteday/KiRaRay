@@ -66,6 +66,7 @@ SET ( KRR_CORE_HEADERS
 	core/math/math.h
 	core/math/vector.h
 	core/math/array.h
+	core/math/matrix.h
 	core/math/quaternion.h
 	core/math/utils.h
 	core/math/aabb.h
@@ -96,6 +97,7 @@ SET(KRR_HEADERS
 	render/profiler/fps.h
 	render/profiler/ui.h
 	scene/importer.h
+	scene/sgimporter.h
 	scene/scenegraph.h
 	# others
 	main/renderer.h
@@ -115,6 +117,7 @@ SET (KRR_SOURCE
 	render/profiler/profiler.cpp
 	render/profiler/ui.cpp
 	scene/importer.cpp
+	scene/sgimporter.cpp
 	util/tables.cpp
 )
 
