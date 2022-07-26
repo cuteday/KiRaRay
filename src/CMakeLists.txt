@@ -97,7 +97,6 @@ SET(KRR_HEADERS
 	render/profiler/fps.h
 	render/profiler/ui.h
 	scene/importer.h
-	scene/sgimporter.h
 	scene/scenegraph.h
 	# others
 	main/renderer.h
@@ -117,7 +116,6 @@ SET (KRR_SOURCE
 	render/profiler/profiler.cpp
 	render/profiler/ui.cpp
 	scene/importer.cpp
-	scene/sgimporter.cpp
 	util/tables.cpp
 )
 
