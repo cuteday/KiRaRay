@@ -132,7 +132,7 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 		triangleInputs[i].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
 		// vertex data desc
 		triangleInputs[i].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
-		triangleInputs[i].triangleArray.vertexStrideInBytes = sizeof(Vector3f);
+		triangleInputs[i].triangleArray.vertexStrideInBytes = sizeof(VertexAttribute);
 		triangleInputs[i].triangleArray.numVertices = mesh.vertices.size();
 		triangleInputs[i].triangleArray.vertexBuffers = &vertexBufferPtr[i];
 		// index data desc
@@ -140,7 +140,9 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 		triangleInputs[i].triangleArray.indexStrideInBytes = sizeof(Vector3i);
 		triangleInputs[i].triangleArray.numIndexTriplets = mesh.indices.size();
 		triangleInputs[i].triangleArray.indexBuffer = indexBufferPtr[i];
-		triangleInputFlags[i] = 0;
+		
+		triangleInputFlags[i] = OPTIX_GEOMETRY_FLAG_NONE;
+		
 		triangleInputs[i].triangleArray.flags = &triangleInputFlags[i];
 		triangleInputs[i].triangleArray.numSbtRecords = 1;
 		triangleInputs[i].triangleArray.sbtIndexOffsetBuffer = 0;
@@ -154,9 +156,9 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 	accelOptions.motionOptions.numKeys = 1;
 	accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
 
-	OptixAccelBufferSizes blasBufferSizes;
+	OptixAccelBufferSizes accelBufferSizes;
 	OPTIX_CHECK(optixAccelComputeMemoryUsage(optixContext,
-		&accelOptions, triangleInputs.data(), meshes.size(), &blasBufferSizes));
+		&accelOptions, triangleInputs.data(), meshes.size(), &accelBufferSizes));
 
 	// prepare for compaction
 	CUDABuffer compactedSizeBuffer;
@@ -168,9 +170,9 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 
 	// building process
 	CUDABuffer tempBuffer;
-	tempBuffer.resize(blasBufferSizes.tempSizeInBytes);
+	tempBuffer.resize(accelBufferSizes.tempSizeInBytes);
 	CUDABuffer outputBuffer;
-	outputBuffer.resize(blasBufferSizes.outputSizeInBytes);
+	outputBuffer.resize(accelBufferSizes.outputSizeInBytes);
 
 	OptixTraversableHandle asHandle = {};
 

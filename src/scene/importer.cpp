@@ -262,39 +262,36 @@ bool AssimpImporter::import(const string& filepath, const Scene::SharedPtr pScen
 void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform) {
 	Mesh mesh;
 	mesh.vertices.reserve(pAiMesh->mNumVertices);
-	mesh.normals.reserve(pAiMesh->mNumVertices);
-	mesh.indices.reserve(pAiMesh->mNumFaces);
-	if (pAiMesh->HasTextureCoords(0))
-		mesh.texcoords.reserve(pAiMesh->mNumVertices);
-	if (pAiMesh->HasTangentsAndBitangents()) {
-		mesh.tangents.reserve(pAiMesh->mNumVertices);
-		mesh.bitangents.reserve(pAiMesh->mNumVertices);
-	}
+
+	assert(pAiMesh->HasNormals());
+	assert(pAiMesh->HasTextureCoords(0));
 
 	for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
-		Vector3f vertex = aiCast(pAiMesh->mVertices[i]);
-		mesh.vertices.push_back(vertex);
+		VertexAttribute vertex;
+		
+		Vector3f normal	= normalize(aiCast(pAiMesh->mNormals[i]));
+		Vector3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
 
-		assert(pAiMesh->HasNormals());
-		Vector3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
-		mesh.normals.push_back(normal);
-
-		if (pAiMesh->HasTextureCoords(0)) {
-			//if (pAiMesh->mTextureCoords[0]) {
-			Vector3f texcoord = aiCast(pAiMesh->mTextureCoords[0][i]);
-			mesh.texcoords.push_back({ texcoord[0], texcoord[1] });
-		}
-
+		Vector3f T, B;
 		if (pAiMesh->HasTangentsAndBitangents()) {
-			Vector3f T = aiCast(pAiMesh->mTangents[i]);
+			T = aiCast(pAiMesh->mTangents[i]);
 			//Vector3f B = aiCast(pAiMesh->mBitangents[i]);
 			// in assimp the tangents and bitangents are not necessarily orthogonal!
 			// however we need them to be orthonormal since we use tbn as world-local transformations
 			T = normalize(T - normal * dot(normal, T));
-			Vector3f B = normalize(cross(normal, T));
-			mesh.tangents.push_back(T);
-			mesh.bitangents.push_back(B);
+			B = normalize(cross(normal, T));
+		} else {
+			// generate tangents and bitangents here (instead of runtime)
+			T = getPerpendicular(normal);
+			B = normalize(cross(normal, T));
 		}
+		vertex.vertex	 = aiCast(pAiMesh->mVertices[i]);
+		vertex.texcoord	 = texcoord;
+		vertex.tangent	 = T;
+		vertex.bitangent = B;
+		vertex.normal = normal;
+
+		mesh.vertices.push_back(vertex);
 	}
 
 	for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
@@ -312,7 +309,6 @@ void AssimpImporter::processMesh(aiMesh* pAiMesh, aiMatrix4x4 transform) {
 	// finalizing creating a mesh
 	mpScene->meshes.push_back(mesh);
 	mpScene->mAABB.extend(aiCast(pAiMesh->mAABB));
-	//mpScene->mData.meshes.push_back(mesh.mData);
 }
 
 void AssimpImporter::traverseNode(aiNode* node, aiMatrix4x4 transform)
