@@ -13,7 +13,6 @@
 #include "texture.h"
 #include "window.h"
 #include "logger.h"
-#include "device/optix.h"
 
 namespace tinyexr {
 	void save_exr(const float* data, int width, int height, int nChannels, int channelStride, const char* outfilename, bool flip = true) {

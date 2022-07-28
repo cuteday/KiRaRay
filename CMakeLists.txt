@@ -69,6 +69,7 @@ if (NOT DEFINED ENV{CUDA_ARCH})
 	list(SORT CUDA_ARCH_LIST)
 	message(STATUS "Automatically detected GPU architecture: ${CUDA_ARCH_LIST}")
 	list(POP_BACK CUDA_ARCH_LIST CMAKE_CUDA_ARCHITECTURES)
+	set(ENV{CUDA_ARCH} ${CMAKE_CUDA_ARCHITECTURES})
 	string(APPEND CMAKE_CUDA_ARCHITECTURES "-virtual")
 	message(STATUS "Adopted GPU architecture: ${CMAKE_CUDA_ARCHITECTURES}")
 else()
@@ -138,3 +139,4 @@ INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/FindOptiX.cmake)
 find_package(OpenGL REQUIRED)
 
 ADD_SUBDIRECTORY (src)
+SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_DIRS} PARENT_SCOPE)	# exporting KRR_INCLUDE_DIRS to parent scope

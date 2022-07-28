@@ -9,3 +9,5 @@
 #cmakedefine01	KRR_PLATFORM_UNKNOWN
 
 #define KRR_ENABLE_PROFILE	1
+
+#define OPTIX_LOG_SIZE 4096

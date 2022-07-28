@@ -1,8 +1,64 @@
 #pragma once
 
 #include "common.h"
+#include <cuda.h>
+#include <cuda/common.h>
+#include <optix.h>
+#include <optix_stubs.h>
+#include "logger.h"
 
 KRR_NAMESPACE_BEGIN
+
+#define OPTIX_CHECK(call)                                                                          \
+	do {                                                                                           \
+		OptixResult res = call;                                                                    \
+		if (res != OPTIX_SUCCESS) {                                                                \
+			fprintf(stderr, "Optix call (%s) failed with code %d (line %d)\n", #call, res,         \
+					__LINE__);                                                                     \
+			throw std::runtime_error("OptiX check failed");                                        \
+		}                                                                                          \
+	} while (false)
+
+#define OPTIX_CHECK_WITH_LOG(EXPR, LOG)                                                            \
+	do {                                                                                           \
+		OptixResult res = EXPR;                                                                    \
+		if (res != OPTIX_SUCCESS) {                                                                \
+			fprintf(stderr, "OptiX call " #EXPR " failed with code %d: \"%s\"\nLogs: %s",          \
+					int(res), optixGetErrorString(res), LOG);                                      \
+			throw std::runtime_error("OptiX check failed");                                        \
+		}                                                                                          \
+	} while (false) /* eat semicolon */
+
+#define CUDA_CHECK(call)                                                                           \
+	do {                                                                                           \
+		cudaError_t rc = call;                                                                     \
+		if (rc != cudaSuccess) {                                                                   \
+			std::stringstream ss;                                                                  \
+			cudaError_t err = rc; /*cudaGetLastError();*/                                          \
+			ss << "CUDA Error " << cudaGetErrorName(err) << " (" << cudaGetErrorString(err)        \
+			   << ")";                                                                             \
+			logError(ss.str());                                                                    \
+			throw std::runtime_error(ss.str());                                                    \
+		}                                                                                          \
+	} while (0)
+
+#define CUDA_SYNC(call)                                                                            \
+	do {                                                                                           \
+		cudaDeviceSynchronize();                                                                   \
+		call;                                                                                      \
+		cudaDeviceSynchronize();                                                                   \
+	} while (0)
+
+#define CUDA_SYNC_CHECK()                                                                          \
+	do {                                                                                           \
+		cudaDeviceSynchronize();                                                                   \
+		cudaError_t error = cudaGetLastError();                                                    \
+		if (error != cudaSuccess) {                                                                \
+			fprintf(stderr, "error (%s: line %d): %s\n", __FILE__, __LINE__,                       \
+					cudaGetErrorString(error));                                                    \
+			throw std::runtime_error("CUDA synchronized check failed");                            \
+		}                                                                                          \
+	} while (0)
 
 #define CHECK(x) assert(x)
 #define CHECK_IMPL(a, b, op) assert((a)op(b))

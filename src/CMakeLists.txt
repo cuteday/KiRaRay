@@ -27,6 +27,8 @@ SET ( KRR_INCLUDE_ALL
 	${OptiX_INCLUDE}
 )
 
+SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
+
 SET ( KRR_CORE_SOURCE
 	core/scene.cpp
 	core/camera.cpp
@@ -35,6 +37,7 @@ SET ( KRR_CORE_SOURCE
 	# host-device side
 	core/interop.cpp
 	core/device/context.cpp
+	core/device/optix.cpp
 	# components
 	core/window.cpp
 	core/logger.cpp

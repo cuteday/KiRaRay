@@ -1,7 +1,6 @@
 #pragma once
 
 #include "common.h"
-#include "device/optix.h"
 #include "device/buffer.h"
 #include "device/memory.h"
 #include "interop.h"

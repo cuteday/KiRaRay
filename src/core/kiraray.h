@@ -1,7 +1,6 @@
 #pragma once
 
 #include <iostream>
-#include <optix.h>
 
 #include "common.h"
 #include "config.h"

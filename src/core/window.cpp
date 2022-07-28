@@ -4,7 +4,6 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-#include "device/optix.h"
 #include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN

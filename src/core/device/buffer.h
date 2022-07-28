@@ -1,8 +1,8 @@
 #pragma once
 #include <vector>
 #include <assert.h>
+#include <cuda.h>
 
-#include "device/optix.h"
 #include "common.h"
 #include "util/check.h"
 

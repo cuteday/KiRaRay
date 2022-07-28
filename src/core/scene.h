@@ -17,11 +17,6 @@
 
 KRR_NAMESPACE_BEGIN
 
-class AssimpImporter;
-class PathTracer;
-class WavefrontPathTracer;
-class OptiXBackend;
-class OptiXWavefrontBackend;
 using namespace io;
 
 typedef struct {
@@ -81,13 +76,6 @@ public:
 
 	SceneData getSceneData() const { return mData; }
 	AABB getAABB() const { return mAABB; }
-
-private:
-	friend class AssimpImporter;
-	friend class PathTracer;
-	friend class OptiXBackend;
-	friend class OptiXWavefrontBackend;
-	friend class WavefrontPathTracer;
 
 	std::vector<Mesh> meshes;
 	SceneData mData;

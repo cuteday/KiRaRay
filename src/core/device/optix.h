@@ -6,27 +6,23 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "logger.h"
-#include "device/cuda.h"
+#include "scene.h"
 
-#define OPTIX_CHECK( call )													\
-	do {																	\
-		OptixResult res = call;                                             \
-		if( res != OPTIX_SUCCESS )                                          \
-		{																	\
-			fprintf( stderr, "Optix call (%s) failed with code %d (line %d)\n", #call, res, __LINE__ ); \
-			throw std::runtime_error("OptiX check failed");                 \
-		}																	\
-	} while (false)
+KRR_NAMESPACE_BEGIN
 
-#define OPTIX_CHECK_WITH_LOG(EXPR, LOG)                                             \
-	do {                                                                            \
-		OptixResult res = EXPR;                                                     \
-		if (res != OPTIX_SUCCESS)                                                   \
-		{                                                                           \
-			fprintf(stderr, "OptiX call " #EXPR " failed with code %d: \"%s\"\nLogs: %s", \
-				int(res), optixGetErrorString(res), LOG);                           \
-				throw std::runtime_error("OptiX check failed");                     \
-		}                                                                           \
-	} while (false) /* eat semicolon */
+class OptiXBackend {
+public:
+	OptiXBackend() = default;
 
+	static OptixModule createOptiXModule(OptixDeviceContext optixContext, const char* ptx);
+	static OptixPipelineCompileOptions getPipelineCompileOptions();
+
+	static OptixProgramGroup createRaygenPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint);
+	static OptixProgramGroup createMissPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint);
+	static OptixProgramGroup createIntersectionPG(OptixDeviceContext optixContext, OptixModule optixModule,
+		const char* closest, const char* any, const char* intersect);
+
+	static OptixTraversableHandle buildAccelStructure(OptixDeviceContext optixContext, CUstream cudaStream, Scene& scene);
+};
+
+KRR_NAMESPACE_END
