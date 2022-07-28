@@ -10,6 +10,7 @@
 #include "texture.h"
 #include "kiraray.h"
 #include "interop.h"
+#include "scene/scenegraph.h"
 #include "device/buffer.h"
 #include "device/memory.h"
 #include "host/memory.h"
@@ -18,9 +19,11 @@
 KRR_NAMESPACE_BEGIN
 
 class AssimpImporter;
+class SceneGraphImporter;
 class PathTracer;
 class WavefrontPathTracer;
 class OptiXBackend;
+class OptiXSceneGraphBackend;
 class OptiXWavefrontBackend;
 using namespace io;
 
@@ -84,10 +87,16 @@ public:
 
 private:
 	friend class AssimpImporter;
+	friend class SceneGraphImporter;
 	friend class PathTracer;
 	friend class OptiXBackend;
+	friend class OptiXSceneGraphBackend;
 	friend class OptiXWavefrontBackend;
 	friend class WavefrontPathTracer;
+
+	// new scene graph assets
+	SceneGroup::SharedPtr mSceneGroup;
+	std::vector<SceneMesh::SharedPtr> mSceneMeshes;
 
 	std::vector<Mesh> meshes;
 	SceneData mData;

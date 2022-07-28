@@ -1,3 +1,5 @@
+#include <map>
+
 #include "common.h"
 
 #include "scene.h"
@@ -19,15 +21,48 @@ public:
 	static OptixProgramGroup createMissPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint);
 	static OptixProgramGroup createIntersectionPG(OptixDeviceContext optixContext, OptixModule optixModule,
 		const char* closest, const char* any, const char* intersect);
-
+	
 	static OptixTraversableHandle buildAccelStructure(OptixDeviceContext optixContext, CUstream cudaStream, Scene& scene);
+
+private:
+
+};
+
+class OptiXSceneGraphBackend : public OptiXBackend {
+public:
+	OptiXSceneGraphBackend() = default;
+
+	void setNumRayTypes(int numRayTypes) { mNumRayTypes = numRayTypes; }
+	void setScene(Scene &scene);
+	void traverseNode(SceneNode::SharedPtr node, Matrixf<4, 4> transform,
+					  SceneInstance::InstanceData data);
+	
+	OptixInstance createInstance(const OptixTraversableHandle traversable, const Matrixf<4, 4>& transform);
+	OptixTraversableHandle createGeometry(SceneMesh::SharedPtr geometry);
+	OptixTraversableHandle buildAccelStructure(Scene &scene);
+	OptixTraversableHandle getTraversable() { return optixTraversable; }
+
+private:
+	friend class OptiXWavefrontBackend;
+	
+	OptixDeviceContext optixContext;
+	CUstream cudaStream;
+	OptixTraversableHandle optixTraversable{};
+	
+	Scene::SharedPtr mpScene;
+	uint mNumRayTypes{ 1 };
+	std::map<uint, OptixTraversableHandle> mGeometries;
+	inter::vector<OptixInstance> mInstances;
+	inter::vector<SceneInstance::InstanceData> mInstanceData;
 };
 
 class OptiXWavefrontBackend : public OptiXBackend {
 public:
 	OptiXWavefrontBackend() = default;
 	OptiXWavefrontBackend(Scene& scene);
+	
 	void setScene(Scene& scene);
+	void setSceneGraph(Scene &scene);
 
 	void traceClosest(int numRays,
 		RayQueue* currentRayQueue,
@@ -55,6 +90,7 @@ private:
 	OptixShaderBindingTable closestSBT{};
 	OptixShaderBindingTable shadowSBT{};
 	OptixTraversableHandle optixTraversable{};
+	OptiXSceneGraphBackend sceneGraphBackend;
 
 	Scene::SceneData sceneData{};
 	LaunchParams* launchParams{};

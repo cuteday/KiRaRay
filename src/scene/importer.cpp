@@ -338,7 +338,6 @@ void AssimpImporter::loadMaterials(const string& modelFolder)
 		pMaterial->toDevice();
 		mpScene->mData.materials->push_back(*pMaterial);
 	}
-
 }
 
 KRR_NAMESPACE_END

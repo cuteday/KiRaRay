@@ -6,6 +6,10 @@
 
 KRR_NAMESPACE_BEGIN
 
+namespace {	// optix utility functions
+
+}
+
 #define OPTIX_LOG_SIZE 4096
 extern "C" char WAVEFRONT_PTX[];
 
@@ -114,6 +118,158 @@ OptixProgramGroup OptiXBackend::createIntersectionPG(OptixDeviceContext optixCon
 	return pg;
 }
 
+OptixTraversableHandle OptiXSceneGraphBackend::createGeometry(SceneMesh::SharedPtr geometry) {
+	if (mGeometries.count(geometry->getId()))
+		return mGeometries[geometry->getId()];
+	
+	inter::vector<VertexAttribute> const &attributes = geometry->getVertices();
+	inter::vector<Vector3i> const &indices		  = geometry->getIndices();
+
+	const size_t attributesSizeInBytes = sizeof(VertexAttribute) * attributes.size();
+	const size_t indicesSizeInBytes = sizeof(int) * indices.size();
+
+	CUdeviceptr vertexInputs = (CUdeviceptr) attributes.data();
+	CUdeviceptr indexInputs	 = (CUdeviceptr) indices.data();
+
+	OptixBuildInput buildInput = {};
+
+	buildInput.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+
+	buildInput.triangleArray.vertexFormat		 = OPTIX_VERTEX_FORMAT_FLOAT3;
+	buildInput.triangleArray.vertexStrideInBytes = sizeof(VertexAttribute);
+	buildInput.triangleArray.numVertices		 = static_cast<unsigned int>(attributes.size());
+	buildInput.triangleArray.vertexBuffers		 = (CUdeviceptr*) & vertexInputs;
+
+	buildInput.triangleArray.indexFormat		= OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+	buildInput.triangleArray.indexStrideInBytes = sizeof(unsigned int) * 3;
+
+	buildInput.triangleArray.numIndexTriplets = static_cast<unsigned int>(indices.size()) / 3;
+	buildInput.triangleArray.indexBuffer	  = (CUdeviceptr) indexInputs;
+
+	OptixAccelBuildOptions accelOptions = {};
+	accelOptions.buildFlags				= OPTIX_BUILD_FLAG_NONE | OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+	accelOptions.motionOptions.numKeys	= 1;
+	accelOptions.operation				= OPTIX_BUILD_OPERATION_BUILD;
+
+	// building process
+	OptixAccelBufferSizes accelBufferSizes;
+	OPTIX_CHECK(optixAccelComputeMemoryUsage(optixContext, &accelOptions, &buildInput,
+											 1, &accelBufferSizes));
+	CUDABuffer tempBuffer;
+	tempBuffer.resize(accelBufferSizes.tempSizeInBytes);
+	CUDABuffer outputBuffer;
+	outputBuffer.resize(accelBufferSizes.outputSizeInBytes);
+
+	OptixTraversableHandle asHandle = {};
+
+	OPTIX_CHECK(optixAccelBuild(optixContext, cudaStream, &accelOptions, &buildInput,
+								1, tempBuffer.data(), tempBuffer.size(),
+								outputBuffer.data(), outputBuffer.size(), &asHandle, nullptr, 0));
+	CUDA_SYNC_CHECK();
+	mGeometries[geometry->getId()] = asHandle;
+	return asHandle;
+}
+
+OptixTraversableHandle OptiXSceneGraphBackend::buildAccelStructure(Scene &scene) {
+	// build TLAS based on the instance array
+	
+	OptixBuildInput buildInput = {};
+	buildInput.type			   = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+	
+	buildInput.instanceArray.instances		 = (CUdeviceptr) mInstanceData.data();
+	buildInput.instanceArray.numInstances = static_cast<uint>(mInstanceData.size());
+
+	OptixAccelBuildOptions accelOptions = {};
+	accelOptions.buildFlags				= OPTIX_BUILD_FLAG_NONE;
+	accelOptions.motionOptions.numKeys	= 1;
+	accelOptions.operation				= OPTIX_BUILD_OPERATION_BUILD;
+
+	OptixAccelBufferSizes accelBufferSizes;
+	OPTIX_CHECK(optixAccelComputeMemoryUsage(optixContext, &accelOptions, &buildInput, 1,
+											 &accelBufferSizes));
+
+	// building process
+	CUDABuffer tempBuffer;
+	tempBuffer.resize(accelBufferSizes.tempSizeInBytes);
+	CUDABuffer outputBuffer;
+	outputBuffer.resize(accelBufferSizes.outputSizeInBytes);
+
+	OptixTraversableHandle asHandle = {};
+
+	OPTIX_CHECK(optixAccelBuild(optixContext, cudaStream, &accelOptions, &buildInput, 1,
+								tempBuffer.data(), tempBuffer.size(), outputBuffer.data(),
+								outputBuffer.size(), &asHandle, nullptr, 0));
+	CUDA_SYNC_CHECK();
+	return asHandle;
+}
+
+OptixInstance OptiXSceneGraphBackend::createInstance(const OptixTraversableHandle traversable,
+													 const Matrixf<4, 4> &transform) {
+	const uint id		   = static_cast<uint>(mInstances.size());
+	OptixInstance instance = {};
+	memcpy(instance.transform, &transform, sizeof(float) * 12);
+	instance.instanceId		= id; // User defined instance index, queried with optixGetInstanceId().
+	instance.visibilityMask = 255;
+	instance.sbtOffset =
+		id * mNumRayTypes; // This controls the SBT instance offset! This must be set explicitly
+						   // when each instance is using a separate BLAS.
+	instance.flags			   = OPTIX_INSTANCE_FLAG_NONE;
+	instance.traversableHandle = traversable;
+	return instance;
+}
+
+void OptiXSceneGraphBackend::traverseNode(SceneNode::SharedPtr node, Matrixf<4, 4> transform,
+										  SceneInstance::InstanceData data) {
+	NodeType type = node->getType();
+	switch (type) {
+		case NodeType::GROUP: {
+			SceneGroup::SharedPtr group = std::dynamic_pointer_cast<SceneGroup>(node);
+			for (int i = 0; i < group->getNumChildren(); i++) {
+				SceneNode::SharedPtr child = group->getChild(i);
+				traverseNode(child, transform, data);
+			}
+
+		} break;
+		case NodeType::INSTANCE: {
+			SceneInstance::SharedPtr instance = std::dynamic_pointer_cast<SceneInstance>(node);
+			transform						  = transform * instance->getTransform();
+			int material					  = instance->getMaterial();
+			if (material > 0)
+				data.material = material;
+			traverseNode(instance->getChild(), transform, data);
+		} break;
+		case NodeType::MESH: {
+			SceneMesh::SharedPtr mesh = std::dynamic_pointer_cast<SceneMesh>(node);
+			
+			OptixTraversableHandle handle = createGeometry(mesh);
+			OptixInstance instance		  = createInstance(handle, transform);
+
+			inter::vector<Material>* material = mpScene->mData.materials;
+
+			mInstances.push_back(instance);
+			mInstanceData.push_back(data);
+		} break;
+	}
+}
+
+void OptiXSceneGraphBackend::setScene(Scene &scene) { 
+	mpScene = Scene::SharedPtr(&scene); 
+	
+	optixContext = gpContext->optixContext;
+	cudaStream	 = gpContext->cudaStream;
+
+	// build acceleration structure for each mesh
+	std::vector<SceneMesh::SharedPtr>& meshes = scene.mSceneMeshes;
+	Log(Info, "Building acceleration structure for %d meshes...", meshes.size());
+	for (SceneMesh::SharedPtr mesh: meshes) {
+		OptixTraversableHandle handle = createGeometry(mesh);
+		mGeometries[mesh->getId()]	  = handle;
+	}
+	
+	traverseNode(scene.mSceneGroup, Matrixf<4, 4>::Identity(), SceneInstance::InstanceData());
+	optixTraversable = buildAccelStructure(scene);
+}
+
 OptixTraversableHandle OptiXBackend::buildAccelStructure(
 	OptixDeviceContext optixContext, CUstream cudaStream, Scene& scene){
 	std::vector<Mesh>& meshes = scene.meshes;
@@ -151,8 +307,7 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 	}
 
 	OptixAccelBuildOptions accelOptions = {};
-	accelOptions.buildFlags = OPTIX_BUILD_FLAG_NONE |
-		OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+	accelOptions.buildFlags				= OPTIX_BUILD_FLAG_NONE |OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
 	accelOptions.motionOptions.numKeys = 1;
 	accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
 
@@ -168,7 +323,7 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 	emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
 	emitDesc.result = compactedSizeBuffer.data();
 
-	// building process
+	//// building process
 	CUDABuffer tempBuffer;
 	tempBuffer.resize(accelBufferSizes.tempSizeInBytes);
 	CUDABuffer outputBuffer;
@@ -185,7 +340,7 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 		tempBuffer.size(),
 		outputBuffer.data(),
 		outputBuffer.size(),
-		&asHandle,
+		&asHandle, 
 		&emitDesc,
 		1));
 	CUDA_SYNC_CHECK();
@@ -204,6 +359,28 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 		&asHandle));
 	CUDA_SYNC_CHECK();
 	return asHandle;
+}
+
+void OptiXWavefrontBackend::setSceneGraph(Scene &scene) {
+	char log[OPTIX_LOG_SIZE];
+	size_t logSize = sizeof(log);
+
+	// use global context and stream for now
+	optixContext = gpContext->optixContext;
+	cudaStream	 = gpContext->cudaStream;
+
+	sceneGraphBackend.setScene(scene);
+
+		// creating optix module from ptx
+	optixModule = createOptiXModule(optixContext, WAVEFRONT_PTX);
+	// creating program groups
+	OptixProgramGroup raygenClosestPG = createRaygenPG("__raygen__Closest");
+	OptixProgramGroup raygenShadowPG  = createRaygenPG("__raygen__Shadow");
+	OptixProgramGroup missClosestPG	  = createMissPG("__miss__Closest");
+	OptixProgramGroup missShadowPG	  = createMissPG("__miss__Shadow");
+	OptixProgramGroup hitClosestPG =
+		createIntersectionPG("__closesthit__Closest", nullptr, nullptr);
+	OptixProgramGroup hitShadowPG = createIntersectionPG(nullptr, "__anyhit__Shadow", nullptr);
 }
 
 OptiXWavefrontBackend::OptiXWavefrontBackend(Scene& scene){
