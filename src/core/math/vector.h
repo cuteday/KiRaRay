@@ -20,6 +20,8 @@ KRR_NAMESPACE_BEGIN
 template <typename T, int Size>
 class Vector : public Eigen::Vector<T, Size> {
 public:
+	enum {dim = Size};
+
 	KRR_CALLABLE Vector(void) : Eigen::Vector<T, Size>(Eigen::Vector<T, Size>::Zero()) {}
 
 	KRR_CALLABLE Vector(T v)

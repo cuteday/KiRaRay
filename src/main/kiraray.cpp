@@ -26,8 +26,8 @@ extern "C" int main(int argc, char *argv[]) {
     try {
         gpContext = Context::SharedPtr(new Context());
         RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 },
-                      { RenderPass::SharedPtr(new PathTracer()),
-                        // RenderPass::SharedPtr(new WavefrontPathTracer()),
+                      { //RenderPass::SharedPtr(new PathTracer()),
+                        RenderPass::SharedPtr(new WavefrontPathTracer()),
                         RenderPass::SharedPtr(new AccumulatePass()),
                         RenderPass::SharedPtr(new ToneMappingPass()) });
         Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
