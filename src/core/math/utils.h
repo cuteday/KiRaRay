@@ -140,7 +140,7 @@ KRR_CALLABLE Vector2f cartesianToSpherical(const Vector3f &v) {
 
 KRR_CALLABLE Vector2f cartesianToSphericalNormalized(const Vector3f &v) {
 	Vector2f sph = cartesianToSpherical(v);
-	return { sph[0] / M_PI, sph[1] / M_2PI };
+	return { float(sph[0] / M_PI), float(sph[1] / M_2PI) };
 }
 
 /// <param name="sph">\phi in [0, 2pi] and \theta in [0, pi]</param>

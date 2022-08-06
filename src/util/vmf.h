@@ -27,20 +27,19 @@ public:
 	}
 	
 	// sample around +z
-	KRR_CALLABLE Vector3f sample(vec2f u) const {
+	KRR_CALLABLE Vector3f sample(Vector2f u) const {
 		if (m_kappa == 0.f)
 			return uniformSampleSphere(u);
-		float cosTheta =
-			1 + (log(u.x + exp(-2 * m_kappa) * (1 - u.x))) / m_kappa;
+		float cosTheta = 1 + log(u[0] + exp(-2 * m_kappa) * (1 - u[0])) / m_kappa;
 
 		float sinTheta = safe_sqrt(1 - cosTheta * cosTheta), sinPhi, cosPhi;
-		sinPhi = sin(2 * M_PI * u.y);
-		cosPhi = cos(2 * M_PI * u.y);
+		sinPhi		   = sin(2 * M_PI * u[1]);
+		cosPhi		   = cos(2 * M_PI * u[1]);
 		return Vector3f(cosPhi * sinTheta, sinPhi * sinTheta, cosTheta);
 	}
 
 	// sample and rotate to specified mu
-	KRR_CALLABLE Vector3f sample(vec2f u, Vector3f mu) { 
+	KRR_CALLABLE Vector3f sample(Vector2f u, Vector3f mu) { 
 		Vector3f dir = sample(u);
 		return Frame(mu).toWorld(dir);
 	}

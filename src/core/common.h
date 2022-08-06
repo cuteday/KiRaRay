@@ -12,7 +12,11 @@
 #include <sstream>
 #include <vector>
 
-#include "config.h"
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+
+#include "config.h"	
 
 #ifdef __INTELLISENSE__
 #pragma diag_suppress 40		// suppress lambda error for visual studio
@@ -63,11 +67,13 @@ typedef unsigned char uchar;
 # define KRR_HOST     __host__
 # define KRR_FORCEINLINE __forceinline__
 # define KRR_CONST	__device__ const 
+# define KRR_GLOBAL	__global__
 #else
-# define KRR_DEVICE       /* ignore */
-# define KRR_HOST         /* ignore */
-# define KRR_FORCEINLINE  /* ignore */
+# define KRR_DEVICE			/* ignore */
+# define KRR_HOST			/* ignore */
+# define KRR_FORCEINLINE	/* ignore */
 # define KRR_CONST	const
+# define KRR_GLOBAL			/* ignore */
 #endif
 
 # define __both__   KRR_HOST KRR_DEVICE
@@ -76,6 +82,9 @@ typedef unsigned char uchar;
 # define KRR_DEVICE_FUNCTION KRR_DEVICE KRR_FORCEINLINE
 # define KRR_DEVICE_LAMBDA(...) [ =, *this ] KRR_DEVICE(__VA_ARGS__) mutable 
 
+#if !defined(__CUDACC__)
+extern dim3 threadIdx, blockDim, blockIdx;
+#endif	// eliminate intellisense warnings for these kernel built-in variables
 
 #ifdef __GNUC__
 #define MAYBE_UNUSED __attribute__((unused))

@@ -35,6 +35,7 @@ public:
 	// return u in [0, 1)
 	KRR_CALLABLE float get1D() { return nextFloat(); }
 
+	// return an independent 2D sampled vector in [0, 1)^2
 	KRR_CALLABLE Vector2f get2D() { return { get1D(), get1D() }; }
 
 	KRR_CALLABLE void advance(int64_t delta = (1ll < 32)) {

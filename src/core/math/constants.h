@@ -8,6 +8,7 @@
 
 #ifndef M_PI
 #define M_PI			3.14159265358979323846f
+#endif
 #define M_2PI			6.28318530717958647693f
 #define M_4PI			12.5663706143591729539f 
 
@@ -16,7 +17,7 @@
 #define M_INV_4PI		0.07957747154594766788f
 
 #define M_EPSILON		1e-4f
-#endif
+
 
 #ifdef min
 #undef max

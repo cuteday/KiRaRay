@@ -8,7 +8,6 @@
 #include "common.h"
 #include "taggedptr.h"
 
-
 KRR_NAMESPACE_BEGIN
 
 template <typename F>
@@ -31,6 +30,14 @@ inline int GetBlockSize(F kernel) {
 template <typename F>
 void GPUParallelFor(int nElements, F func, CUstream stream = 0);
 
+template <typename K, typename T, typename... Types>
+void LinearKernelShmem(K kernel, uint32_t shmemSize, cudaStream_t stream, T n_elements,
+						  Types... args);
+
+template <typename K, typename T, typename... Types>
+void LinearKernel(K kernel, cudaStream_t stream, T n_elements, Types... args);
+
+
 #ifdef __NVCC__
 template <typename F>
 __global__ void Kernel(F func, int nElements) {
@@ -40,7 +47,7 @@ __global__ void Kernel(F func, int nElements) {
 }
 
 template <typename F>
-void GPUParallelFor(int nElements, F func, CUstream stream) {
+inline void GPUParallelFor(int nElements, F func, CUstream stream) {
 	auto kernel = &Kernel<F>;
 	int blockSize = GetBlockSize(kernel);
 	int gridSize = (nElements + blockSize - 1) / blockSize;
@@ -49,6 +56,72 @@ void GPUParallelFor(int nElements, F func, CUstream stream) {
 	CUDA_SYNC_CHECK();
 #endif
 }
+
+template <typename K, typename T, typename... Types>
+inline void LinearKernelShmem(K kernel, uint32_t shmemSize, cudaStream_t stream, T nElements,
+						  Types... args) {
+	if (nElements <= 0) return;
+	int blockSize = GetBlockSize(kernel);
+	int gridSize  = (nElements + blockSize - 1) / blockSize;
+	kernel<<<gridSize, blockSize, shmemSize, stream>>>(
+		(uint32_t) nElements, args...);
+}
+
+template <typename K, typename T, typename... Types>
+inline void LinearKernel(K kernel, cudaStream_t stream, T n_elements, Types... args) {
+	LinearKernelShmem(kernel, 0, stream, n_elements, std::forward<Types>(args)...);
+}
 #endif
+
+template <typename T> 
+class DeviceAtomicCounter {
+public:
+	DeviceAtomicCounter() = default;
+
+	KRR_CALLABLE void reset() {
+#ifdef KRR_DEVICE_CODE
+		mVal = 0;
+#else
+		cudaDeviceSynchronize();
+		mVal.store(0, std::memory_order_relaxed);
+#endif
+	}
+
+	KRR_CALLABLE int increment() {
+#ifdef KRR_DEVICE_CODE
+		return atomicAdd(&mVal, 1);
+#else
+		cudaDeviceSynchronize();
+		return mVal.fetch_add(1, std::memory_order_relaxed);
+#endif
+	}
+
+	KRR_CALLABLE int load() const {
+#ifdef KRR_DEVICE_CODE
+		return mVal;
+#else
+		cudaDeviceSynchronize();
+		return mVal.load(std::memory_order_relaxed);
+#endif
+	}
+
+	KRR_CALLABLE DeviceAtomicCounter &operator=(const DeviceAtomicCounter &w) {
+#if defined(KRR_DEVICE_CODE)
+		mVal = w.mVal;
+#else
+		cudaDeviceSynchronize();
+		mVal.store(w.mVal.load());
+#endif
+		return *this;
+	}
+
+private:
+#ifdef KRR_DEVICE_CODE
+	int mVal{ 0 };
+#else
+	std::atomic<int> mVal{ 0 };
+#endif
+};
+
 
 KRR_NAMESPACE_END

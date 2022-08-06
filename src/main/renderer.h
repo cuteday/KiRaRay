@@ -67,6 +67,7 @@ public:
 				if (p) {
 					p->beginFrame(fbBuffer);
 					p->render(fbBuffer);
+					p->endFrame(fbBuffer);
 				}
 		}
 		if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();

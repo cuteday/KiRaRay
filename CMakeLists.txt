@@ -16,6 +16,15 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 	set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo")
 endif()
 
+# check if submodules are recursively fetched.
+if (NOT IS_DIRECTORY "${KRR_PROJECT_ROOT}/src/ext/glew")
+	message(FATAL_ERROR
+		"Some external dependencies are missing. "
+		"It is most possible that the \"--recursive\" flag is forgotten when cloning this project, "
+		"this can be fixed by calling \"git submodule update --init --recursive\"."
+	)
+endif()
+
 if (MSVC)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D_CRT_SECURE_NO_WARNINGS ")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")

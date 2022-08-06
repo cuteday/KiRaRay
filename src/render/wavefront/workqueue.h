@@ -7,6 +7,7 @@
 #include "logger.h"
 #include "workitem.h"
 
+#define KRR_LEGACY_CUDA_ATOMICS
 #ifdef KRR_DEVICE_CODE
 #if (__CUDA_ARCH__ < 700)
 #define KRR_LEGACY_CUDA_ATOMICS
