@@ -42,7 +42,6 @@ namespace shader {
 		Vector3f pos;
 		Vector3f wo;				// view direction
 		Vector2f uv;				// texture coords
-		Vector3f geoN;				// geometry normal [on the front-facing side]
 
 		Frame frame;
 
@@ -50,7 +49,7 @@ namespace shader {
 		Color diffuse;			// diffuse reflectance
 		Color specular; // specular reflectance
 
-		Color transmission{ Color::Ones() }; // transmission color (shared by diffuse and specular for now)
+		Color transmission{ 1 }; // transmission color (shared by diffuse and specular for now)
 		float diffuseTransmission{ 0 };
 		float specularTransmission{ 0 };
 
@@ -59,12 +58,10 @@ namespace shader {
 		float anisotropic{ 0 };		// 
 
 		Light light{ nullptr };
-		bool miss = false;			// not valid if missing, or ?
-			
 		BsdfType bsdfType;
-		uint flags;					// user custom flags?
+		bool miss{ };
 
-		__both__ Interaction getInteraction() const {
+		KRR_CALLABLE Interaction getInteraction() const {
 			return Interaction(pos, wo, frame.N, uv);
 		}
 	};

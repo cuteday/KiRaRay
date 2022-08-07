@@ -136,7 +136,7 @@ SET(KRR_SHADER_MATERIALS
 SET ( KRR_SHADERS
 	${KRR_SHADER_MATERIALS}
 	render/shared.h
-	render/shading.cuh
+	render/shading.h
 	render/sampling.h
 	render/bsdf.h
 	render/lightsampler.h

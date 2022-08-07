@@ -5,7 +5,6 @@ flat bool;
 flat double;
 flat Light;
 flat BsdfType;
-flat ShadingData;
 flat LCGSampler;
 flat PCGSampler;
 flat HaltonSampler;
@@ -20,6 +19,31 @@ struct LightSampleContext{ Vector3f p, n; };
 struct PixelState {
 	Color L;
 	PCGSampler sampler;
+};
+
+struct Frame {
+	Vector3f N; 
+	Vector3f T; 
+	Vector3f B;
+};
+
+struct ShadingData {
+		Vector3f pos;
+		Vector3f wo;
+		Vector2f uv;
+		Frame frame;
+		float IoR;
+		Color diffuse;
+		Color specular;
+		Color transmission; 
+		float diffuseTransmission;
+		float specularTransmission;
+		float roughness;		
+		float metallic;		
+		float anisotropic;
+		Light light;			
+		BsdfType bsdfType;
+		bool miss;
 };
 
 struct RayWorkItem {

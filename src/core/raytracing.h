@@ -60,7 +60,9 @@ struct Frame {
 		return { dot(T, v), dot(B, v), dot(N, v) };
 	}
 
-	Vector3f N, T, B;
+	Vector3f N;
+	Vector3f T;
+	Vector3f B;
 };
 
 struct Interaction{

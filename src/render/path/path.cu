@@ -1,7 +1,7 @@
 #include "math/utils.h"
 #include "path.h"
 #include "render/shared.h"
-#include "render/shading.cuh"
+#include "render/shading.h"
 #include "render/raytracing.cuh"
 
 #include <optix_device.h>

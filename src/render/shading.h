@@ -2,6 +2,7 @@
 
 #include "shared.h"
 #include "common.h"
+#include "math/math.h"
 #include "bsdf.h"
 
 #include <optix_device.h>
@@ -67,7 +68,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData& sd, const HitInfo& hitI
 	sd.pos = b[0] * v0.vertex + b[1] * v1.vertex +
 			 b[2] * v2.vertex;
 
-	sd.geoN = normalize(cross(v1.vertex - v0.vertex, v2.vertex - v0.vertex));
+	//sd.geoN = normalize(cross(v1.vertex - v0.vertex, v2.vertex - v0.vertex));
 
 	sd.frame.N = normalize(b[0] * v0.normal + b[1] * v1.normal + b[2] * v2.normal);
 	sd.frame.T = normalize(b[0] * v0.tangent + b[1] * v1.tangent + b[2] * v2.tangent);

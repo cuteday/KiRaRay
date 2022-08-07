@@ -1,5 +1,5 @@
 #include "render/shared.h"
-#include "render/shading.cuh"
+#include "render/shading.h"
 #include "render/wavefront/wavefront.h"
 #include "render/wavefront/workqueue.h"
 
@@ -46,7 +46,6 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	HitInfo hitInfo = getHitInfo();
 	ShadingData& sd = *getPRD<ShadingData>();
 	RayWorkItem r = getRayWorkItem();
-	sd.miss = false;
 	Material& material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
 	prepareShadingData(sd, hitInfo, material);
 	if (sd.light) {		// push to hit ray queue if mesh has light
@@ -75,7 +74,8 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_MS(Closest)() {
-	getPRD<ShadingData>()->miss = true;
+	//getPRD<ShadingData>()->miss = true;
+	launchParams.missRayQueue->push(getRayWorkItem());
 }
 
 extern "C" __global__ void KRR_RT_RG(Closest)() {
@@ -85,9 +85,9 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 	ShadingData sd = {};
 	traceRay(launchParams.traversable, r.ray, KRR_RAY_TMAX,
 		0, OPTIX_RAY_FLAG_DISABLE_ANYHIT, (void*)&sd);
-	if (sd.miss) {	// push to miss ray queue
-		launchParams.missRayQueue->push(r);
-	}
+	//if (sd.miss) {	// push to miss ray queue
+	//	launchParams.missRayQueue->push(r);
+	//}
 }
 
 extern "C" __global__ void KRR_RT_AH(Shadow)() { 
