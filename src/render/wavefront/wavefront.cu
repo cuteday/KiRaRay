@@ -90,17 +90,20 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 	}
 }
 
-extern "C" __global__ void KRR_RT_AH(Shadow)() { optixSetPayload_0(0); }
+extern "C" __global__ void KRR_RT_AH(Shadow)() { 
+	optixSetPayload_0(0); 
+	optixTerminateRay();
+}
 
-extern "C" __global__ void KRR_RT_MS(Shadow)() {}
+extern "C" __global__ void KRR_RT_MS(Shadow)() { optixSetPayload_0(1); }
 
 extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	uint rayIndex(optixGetLaunchIndex().x);
 	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
 	ShadowRayWorkItem r = getShadowRayWorkItem();
-	uint32_t miss{1};
+	uint32_t miss{0};
 	traceRay(launchParams.traversable, r.ray, r.tMax, 0,
-		OptixRayFlags(OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
+			 OptixRayFlags(OPTIX_RAY_FLAG_DISABLE_ANYHIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
 		miss);
 	if (miss) {
 		launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);

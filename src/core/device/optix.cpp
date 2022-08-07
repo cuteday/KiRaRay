@@ -6,10 +6,11 @@ KRR_NAMESPACE_BEGIN
 
 OptixPipelineCompileOptions OptiXBackend::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
-	pipelineCompileOptions.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
-	pipelineCompileOptions.usesMotionBlur = false;
-	pipelineCompileOptions.numPayloadValues = 3;
-	pipelineCompileOptions.numAttributeValues = 4;
+	// currently we do not implement scene graph and instancing, as such this optimizes performance.
+	pipelineCompileOptions.traversableGraphFlags	   = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
+	pipelineCompileOptions.usesMotionBlur		= false;
+	pipelineCompileOptions.numPayloadValues			   = 2;
+	pipelineCompileOptions.numAttributeValues		   = 0;
 	pipelineCompileOptions.exceptionFlags = //OPTIX_EXCEPTION_FLAG_NONE;
 		(OPTIX_EXCEPTION_FLAG_STACK_OVERFLOW | OPTIX_EXCEPTION_FLAG_TRACE_DEPTH |
 			OPTIX_EXCEPTION_FLAG_DEBUG);
