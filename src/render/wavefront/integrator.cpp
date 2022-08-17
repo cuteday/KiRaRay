@@ -218,26 +218,24 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 }
 
 void WavefrontPathTracer::renderUI(){
-	if (ui::CollapsingHeader("Wavefront path tracer")) {
-		ui::Text("Render parameters");
-		ui::InputInt("Samples per pixel", &samplesPerPixel);
-		ui::InputInt("Max bounces", &maxDepth, 1);
-		ui::SliderFloat("Russian roulette", &probRR, 0, 1);
-		ui::Checkbox("Enable NEE", &enableNEE);
-		ui::Text("Debugging");
-		ui::Checkbox("Debug output", &debugOutput);
-		if (debugOutput) {
-			ui::SameLine();
-			ui::InputInt("Debug pixel:", (int*) &debugPixel);
-		}
-		ui::Checkbox("Clamping pixel value", &enableClamp);
-		if (enableClamp) {
-			ui::SameLine();
-			ui::DragFloat("Max:", &clampMax, 1, 1, 500);
-		}
-		ui::Text("Misc");
-		ui::Checkbox("Transparent background", &transparentBackground);
+	ui::Text("Render parameters");
+	ui::InputInt("Samples per pixel", &samplesPerPixel);
+	ui::InputInt("Max bounces", &maxDepth, 1);
+	ui::SliderFloat("Russian roulette", &probRR, 0, 1);
+	ui::Checkbox("Enable NEE", &enableNEE);
+	ui::Text("Debugging");
+	ui::Checkbox("Debug output", &debugOutput);
+	if (debugOutput) {
+		ui::SameLine();
+		ui::InputInt("Debug pixel:", (int*) &debugPixel);
 	}
+	ui::Checkbox("Clamping pixel value", &enableClamp);
+	if (enableClamp) {
+		ui::SameLine();
+		ui::DragFloat("Max:", &clampMax, 1, 1, 500);
+	}
+	ui::Text("Misc");
+	ui::Checkbox("Transparent background", &transparentBackground);
 }
 
 KRR_NAMESPACE_END

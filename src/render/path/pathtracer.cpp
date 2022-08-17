@@ -117,21 +117,19 @@ void PathTracer::buildAS() {
 }
 
 void PathTracer::renderUI() {
-	if (ui::CollapsingHeader("Path tracer")) {
-		ui::Text("Path tracing parameters");
-		ui::InputInt("Samples per pixel", &launchParams.spp);
-		ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
-		ui::InputInt("Max bounces", &launchParams.maxDepth);
-		ui::DragFloat("Radiance clip", &launchParams.clampThreshold, 0.1, 1, 500);
-		ui::Checkbox("Next event estimation", &launchParams.NEE);
-		if (launchParams.NEE) {
-			ui::Checkbox("Multiple importance sampling", &launchParams.MIS);
-			ui::InputInt("Light sample count", &launchParams.lightSamples);
-		}
-		ui::Text("Debugging");
-		ui::Checkbox("Shader debug output", &launchParams.debugOutput);
-		ui::InputInt2("Debug pixel", (int*)&launchParams.debugPixel);
+	ui::Text("Path tracing parameters");
+	ui::InputInt("Samples per pixel", &launchParams.spp);
+	ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
+	ui::InputInt("Max bounces", &launchParams.maxDepth);
+	ui::DragFloat("Radiance clip", &launchParams.clampThreshold, 0.1, 1, 500);
+	ui::Checkbox("Next event estimation", &launchParams.NEE);
+	if (launchParams.NEE) {
+		ui::Checkbox("Multiple importance sampling", &launchParams.MIS);
+		ui::InputInt("Light sample count", &launchParams.lightSamples);
 	}
+	ui::Text("Debugging");
+	ui::Checkbox("Shader debug output", &launchParams.debugOutput);
+	ui::InputInt2("Debug pixel", (int*)&launchParams.debugPixel);
 }
 
 void PathTracer::render(CUDABuffer& frame) {

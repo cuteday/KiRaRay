@@ -29,7 +29,9 @@ public:
 	void setOperator(Operator toneMappingOperator)
 		{mOperator = toneMappingOperator; }
 	Operator getOperator() const { return mOperator; }
-	void render(CUDABuffer& frame);
+	void render(CUDABuffer& frame) override;
+
+	string getName() const override { return "Tonemapper"; }
 
 private:
 	bool mEnable{ true };

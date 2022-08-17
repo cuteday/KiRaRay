@@ -222,8 +222,8 @@ bool AssimpImporter::import(const string &filepath, const Scene::SharedPtr pScen
 									//| aiProcess_MakeLeftHanded
 									| aiProcess_Triangulate
 									//| aiProcess_RemoveComponent
-									| aiProcess_GenNormals |
-									aiProcess_GenSmoothNormals
+									//| aiProcess_GenNormals 
+									| aiProcess_GenSmoothNormals
 									//| aiProcess_RemoveRedundantMaterials
 									//| aiProcess_FixInfacingNormals
 									| aiProcess_SortByPType |

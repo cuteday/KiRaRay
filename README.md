@@ -15,7 +15,7 @@
 - [x] Diffuse, microfacet, disney and fresnel-blended bsdfs.
 - [x] GPU path tracing (a megakernel version and a [wavefront](https://research.nvidia.com/publication/2013-07_megakernels-considered-harmful-wavefront-path-tracing-gpus) version).
 - [x] Next event estimation and multiple importance sampling.
-- [x] Post processing passes (tone mapping and frame accumulating).
+- [x] Post processing passes (e.g., tonemapping, accumulating and denoising).
 - [x] Simple CPU/GPU performance profiling.
 
 If possible, more features will be added in the future, for example:
@@ -83,6 +83,7 @@ Switch to *Release* build for normal performance! The megakernel pathtracer shou
 - The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).
 - Some of the code (e.g., bsdf evaluation, wavefront path) are adapted from [pbrt](https://github.com/mmp/pbrt-v4) and [Falcor](https://github.com/NVIDIAGameWorks/Falcor). 
 - *KiRaRay* implements a [tiny math library](https://github.com/cuteday/KiRaRay/tree/main/src/core/math) wrapper built upon [Eigen](http://eigen.tuxfamily.org/) for efficient vector/matrix arithmetic.
+- [ImGui](https://github.com/ocornut/imgui) is used to build simple user interfaces for this project. 
 - HDR environment images are from [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), and OBJ scenes are from [McGuire's Archive](https://casual-effects.com/data/) for demo images.
 
 ### Epilogue

@@ -60,6 +60,8 @@ KRR_CALLABLE float saturate(const float &f) { return min(1.f, max(0.f, f)); }
 
 KRR_CALLABLE float rcp(float f) { return 1.f / f; }
 
+KRR_CALLABLE float logistic(const float x) { return 1.0f / (1.0f + expf(-x)); }
+
 } // namespace math
 
 KRR_NAMESPACE_END

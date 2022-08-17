@@ -27,27 +27,25 @@ bool Scene::update(){
 }
 
 void Scene::renderUI() {
-	if (ui::CollapsingHeader("Scene")) {
-		if (mpCamera && ui::CollapsingHeader("Camera")) {
-			ui::Text("Camera parameters");
-			mpCamera->renderUI();
-			ui::Text("Orbit controller");
-			mpCameraController->renderUI();
-		}
-		if (ui::CollapsingHeader("Environment lights")) {
-			CUDA_SYNC_CHECK();
-			for (int i = 0; i < mData.infiniteLights->size(); i++) {
-				if (ui::CollapsingHeader(to_string(i).c_str())) {
-					(*mData.infiniteLights)[i].renderUI();
-				}
+	if (mpCamera && ui::CollapsingHeader("Camera")) {
+		ui::Text("Camera parameters");
+		mpCamera->renderUI();
+		ui::Text("Orbit controller");
+		mpCameraController->renderUI();
+	}
+	if (ui::CollapsingHeader("Environment lights")) {
+		CUDA_SYNC_CHECK();
+		for (int i = 0; i < mData.infiniteLights->size(); i++) {
+			if (ui::CollapsingHeader(to_string(i).c_str())) {
+				(*mData.infiniteLights)[i].renderUI();
 			}
 		}
-		if (ui::CollapsingHeader("Materials")) {
-			CUDA_SYNC_CHECK();
-			for (int i = 0; i < mData.materials->size(); i++) {
-				if (ui::CollapsingHeader((*mData.materials)[i].getName().c_str())) {
-					(*mData.materials)[i].renderUI();
-				}
+	}
+	if (ui::CollapsingHeader("Materials")) {
+		CUDA_SYNC_CHECK();
+		for (int i = 0; i < mData.materials->size(); i++) {
+			if (ui::CollapsingHeader((*mData.materials)[i].getName().c_str())) {
+				(*mData.materials)[i].renderUI();
 			}
 		}
 	}

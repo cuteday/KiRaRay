@@ -113,6 +113,7 @@ SET(KRR_HEADERS
 SET (KRR_SOURCE
 	render/passes/accumulate.cu
 	render/passes/tonemapping.cu
+	render/passes/denoise.cpp
 	render/path/pathtracer.cpp
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
@@ -144,6 +145,7 @@ SET ( KRR_SHADERS
 	render/wavefront/wavefront.h
 	render/passes/accumulate.h
 	render/passes/tonemapping.h
+	render/passes/denoise.h
 	render/raytracing.cuh
 )
 

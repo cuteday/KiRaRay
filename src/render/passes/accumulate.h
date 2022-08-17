@@ -26,6 +26,8 @@ public:
 		reset();
 	}
 
+	string getName() const override { return "Accumulator"; }
+
 	void render(CUDABuffer& frame);
 	CUDABuffer& result() { return *mAccumBuffer; }
 

@@ -30,6 +30,8 @@ public:
 
 	void initialize();
 
+	string getName() const override { return "Wavefront Pathtracer"; }
+
 	// cuda utility functions
 	template <typename F>
 	void Call(F&& func) {

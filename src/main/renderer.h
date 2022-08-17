@@ -113,9 +113,11 @@ public:
 
 			if (ui::InputInt2("Frame size", (int*)&fbSize))
 				resize(fbSize);
-			if (mpScene) mpScene->renderUI();
+			if (mpScene && ui::CollapsingHeader("Scene")) 
+				mpScene->renderUI();
 			for (auto p : mpPasses)
-				if (p) p->renderUI();
+				if (p && ui::CollapsingHeader(p->getName().c_str()) )
+					p->renderUI();
 			ui::End();
 		}
 

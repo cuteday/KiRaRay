@@ -209,10 +209,13 @@ public:
 		return dispatch(setPixelSample);
 	}
 
+	// @returns uniform random variable in [0, 1)
 	KRR_CALLABLE float get1D() {
 		auto get1D = [&](auto ptr) -> float { return ptr->get1D(); };
 		return dispatch(get1D);
 	};
+
+	// @returns uniform independent 2D vector in [0, 1)^2
 	KRR_CALLABLE Vector2f get2D() {
 		auto get2D = [&](auto ptr) -> Vector2f { return ptr->get2D(); };
 		return dispatch(get2D);

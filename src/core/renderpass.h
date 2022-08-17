@@ -33,6 +33,10 @@ class RenderPass{
 public:
 	using SharedPtr = std::shared_ptr<RenderPass>;
 
+	RenderPass() = default;
+	// Whether this pass is enabled by default
+	RenderPass(bool enable) : mEnable(enable) {}
+
 	virtual void resize(const Vector2i& size) { mFrameSize = size; }
 	virtual void setEnable(bool enable) { mEnable = enable; }
 	virtual void setScene(Scene::SharedPtr scene) { mpScene = scene; }
@@ -44,6 +48,8 @@ public:
 
 	virtual bool onMouseEvent(const io::MouseEvent& mouseEvent) { return false; }
 	virtual bool onKeyEvent(const io::KeyboardEvent& keyEvent) { return false; }
+
+	virtual string getName() const { return ""; }
 
 protected:
 	bool mEnable = true;

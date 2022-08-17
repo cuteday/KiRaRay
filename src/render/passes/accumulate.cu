@@ -35,16 +35,14 @@ void AccumulatePass::render(CUDABuffer& frame) {
 }
 
 void AccumulatePass::renderUI() {
-	if (ui::CollapsingHeader("Accumulate pass")) {
-		if (ui::Checkbox("Enabled", &mEnable))
+	if (ui::Checkbox("Enabled", &mEnable))
+		reset();
+	if (mEnable) {
+		ui::Text("Accumulate count: %d\n", mAccumCount);
+		if (ui::DragInt("Max accum count", (int *) &mMaxAccumCount, 1, 0, 1e9))
 			reset();
-		if (mEnable) {
-			ui::Text("Accumulate count: %d\n", mAccumCount);
-			if (ui::DragInt("Max accum count", (int *) &mMaxAccumCount, 1, 0, 1e9))
-				reset();
-			if (ui::Button("reset"))
-				reset();
-		}
+		if (ui::Button("reset"))
+			reset();
 	}
 }
 

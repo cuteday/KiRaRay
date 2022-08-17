@@ -40,6 +40,8 @@ public:
 		logSuccess("Scene set...");
 	}
 
+	string getName() const override { return "Megakernel Pathtracer"; }
+
 private:
 	OptixPipeline               pipeline;
 	OptixModule                 module;
