@@ -10,6 +10,8 @@ void DenoiseBackend::initialize() {
 	cuCtxGetCurrent(&cudaContext);
 	CHECK(cudaContext != nullptr);
 	const OptixDeviceContext &optixContext = gpContext->optixContext;
+	if (denoiserHandle)
+		optixDenoiserDestroy(denoiserHandle);
 
 	OptixDenoiserOptions options = {};
 #if (OPTIX_VERSION >= 70300)
@@ -19,8 +21,9 @@ void DenoiseBackend::initialize() {
 	OPTIX_CHECK(optixDenoiserCreate(optixContext, OPTIX_DENOISER_MODEL_KIND_HDR, &options,
 									&denoiserHandle));
 #else
-	options.inputKind = haveGeometryBuffer ? OPTIX_DENOISER_INPUT_Color4f_ALBEDO_NORMAL
-										   : OPTIX_DENOISER_INPUT_Color4f;
+	options.inputKind = haveGeometryBuffer ? 
+		(pixelFormat == PixelFormat::FLOAT3 ? OPTIX_DENOISER_INPUT_Color3f_ALBEDO_NORMAL : OPTIX_DENOISER_INPUT_Color4f_ALBEDO_NORMAL) : 
+		(pixelFormat == PixelFormat::FLOAT3 ? OPTIX_DENOISER_INPUT_Color3f : OPTIX_DENOISER_INPUT_Color4f);
 
 	OPTIX_CHECK(optixDenoiserCreate(optixContext, &options, &denoiserHandle));
 
@@ -28,15 +31,19 @@ void DenoiseBackend::initialize() {
 #endif
 }
 
-void DenoiseBackend::denoise(Color3f *rgb, Vector3f *normal, Color3f *albedo, Color3f *result) {
+void DenoiseBackend::denoise(float *rgb, float *normal, float *albedo, float *result) {
 	std::array<OptixImage2D, 3> inputLayers;
+	int inputPixelStride = pixelFormat == PixelFormat::FLOAT3 ? sizeof(Color3f) : sizeof(Color4f);
+	int outputPixelStride = pixelFormat == PixelFormat::FLOAT3 ? sizeof(Color3f) : sizeof(Color4f);
 	int nLayers = haveGeometryBuffer ? 3 : 1;
+	
 	for (int i = 0; i < nLayers; ++i) {
 		inputLayers[i].width			  = resolution[0];
 		inputLayers[i].height			  = resolution[1];
-		inputLayers[i].rowStrideInBytes	  = resolution[0] * sizeof(Color4f);
-		inputLayers[i].pixelStrideInBytes = sizeof(Color4f);
-		inputLayers[i].format			  = OPTIX_PIXEL_FORMAT_FLOAT4;
+		inputLayers[i].rowStrideInBytes	  = resolution[0] * inputPixelStride;
+		inputLayers[i].pixelStrideInBytes = inputPixelStride;
+		inputLayers[i].format = pixelFormat == PixelFormat::FLOAT3 ? 
+			OPTIX_PIXEL_FORMAT_FLOAT3 : OPTIX_PIXEL_FORMAT_FLOAT4;
 	}
 	inputLayers[0].data = CUdeviceptr(rgb);
 	if (haveGeometryBuffer) {
@@ -49,9 +56,10 @@ void DenoiseBackend::denoise(Color3f *rgb, Vector3f *normal, Color3f *albedo, Co
 	OptixImage2D outputImage;
 	outputImage.width			   = resolution[0];
 	outputImage.height			   = resolution[1];
-	outputImage.rowStrideInBytes   = resolution[0] * sizeof(Color4f);
-	outputImage.pixelStrideInBytes = sizeof(Color4f);
-	outputImage.format			   = OPTIX_PIXEL_FORMAT_FLOAT4;
+	outputImage.rowStrideInBytes   = resolution[0] * outputPixelStride;
+	outputImage.pixelStrideInBytes = outputPixelStride;
+	outputImage.format = pixelFormat == PixelFormat::FLOAT3 ? 
+		OPTIX_PIXEL_FORMAT_FLOAT3 : OPTIX_PIXEL_FORMAT_FLOAT4;
 	outputImage.data			   = CUdeviceptr(result);
 
 	OPTIX_CHECK(optixDenoiserComputeIntensity(denoiserHandle, 0 /* stream */, &inputLayers[0],
@@ -91,7 +99,8 @@ void DenoiseBackend::denoise(Color3f *rgb, Vector3f *normal, Color3f *albedo, Co
 void DenoiseBackend::resize(Vector2i size) { 
 	if (resolution == size) return;
 	resolution = size; 
-	if (!initialized)  initialize();
+	//if (!initialized)  
+		initialize();
 
 	// re-create compute memory resources.
 	OPTIX_CHECK(optixDenoiserComputeMemoryResources(denoiserHandle, resolution[0], resolution[1],
@@ -109,14 +118,23 @@ void DenoiseBackend::resize(Vector2i size) {
 
 void DenoiseBackend::setHaveGeometry(bool haveGeometry) {
 	bool needInitialize = !initialized || (haveGeometry != haveGeometryBuffer);
+	if (haveGeometryBuffer == haveGeometry) return;
 	haveGeometryBuffer	= haveGeometry;
-	if (needInitialize) initialize();
+	initialize();
+}
+
+void DenoiseBackend::setPixelFormat(PixelFormat format) {
+	bool needIntialize = initialized && (format != pixelFormat);
+	if (pixelFormat == format) return;
+	pixelFormat = format;
+	//if (needIntialize) 
+	initialize();
 }
 
 void DenoisePass::render(CUDABuffer &frame) {
 	if (!mEnable) return;
 	PROFILE("Denoise");
-	mBackend.denoise((Color3f *) frame.data(), nullptr, nullptr, (Color3f *) frame.data());
+	mBackend.denoise((float *) frame.data(), nullptr, nullptr, (float *) frame.data());
 }
 
 void DenoisePass::renderUI() { 

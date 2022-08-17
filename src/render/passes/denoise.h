@@ -12,20 +12,28 @@ KRR_NAMESPACE_BEGIN
 
 class DenoiseBackend {
 public:
+	enum class PixelFormat {
+		FLOAT3,
+		FLOAT4
+	};
+
 	DenoiseBackend() = default;
 
 	void initialize();	
 
-	void denoise(Color3f *rgb, Vector3f *normal, Color3f *albedo, Color3f *result);
+	void denoise(float *rgb, float *normal, float *albedo, float *result);
 	
 	void resize(Vector2i size);
 	
 	void setHaveGeometry(bool haveGeometry);
 
+	void setPixelFormat(PixelFormat format);
+
 private:
 	Vector2i resolution;
+	PixelFormat pixelFormat{PixelFormat::FLOAT4};
 	bool haveGeometryBuffer{}, initialized{};
-	OptixDenoiser denoiserHandle;
+	OptixDenoiser denoiserHandle{};
 	OptixDenoiserSizes memorySizes;
 	CUDABuffer denoiserState, scratchBuffer, intensity;
 };

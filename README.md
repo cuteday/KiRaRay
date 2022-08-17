@@ -55,12 +55,7 @@ This project uses cmake to build, no additional setting is needed. Make sure cud
 
 **Hot keys.** `F1` for showing/hiding UI,  `F2` for showing/hiding the profiler, and `F3` for screen shots.
 
-**Python binding.** Currently the python scripting is somewhat useless and can only start the renderer, for example:
-
-~~~bash
-python common/scripts/run.py --scene "common/assets/scenes/cbox/cbox.obj"
-~~~
-
+**Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11). see [common/scripts](common/scripts).
 ### Common Issues
 
 #### Performance
