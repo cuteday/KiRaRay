@@ -13,7 +13,7 @@ class RenderResource {
 	~RenderResource() { glDeleteBuffers(1, &pbo); }
 	void resize(size_t size) {}
 	void registerCUDA();
-	void* map() {};
+	void *map() { return nullptr; }
 	void unmap() {};
 private:
 	string name;

@@ -43,7 +43,6 @@ add_compile_definitions ("$<$<CONFIG:Debug>:KRR_DEBUG_BUILD>")
 # CUDA compiler setup
 ###############################################################################
 
-find_package(CUDA REQUIRED)
 enable_language (CUDA)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
