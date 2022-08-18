@@ -55,7 +55,7 @@ This project uses cmake to build, no additional setting is needed. Make sure cud
 
 **Hot keys.** `F1` for showing/hiding UI,  `F2` for showing/hiding the profiler, and `F3` for screen shots.
 
-**Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11). see [common/scripts](common/scripts).
+**Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11). see [common/scripts](scripts).
 ### Common Issues
 
 #### Performance

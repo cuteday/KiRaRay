@@ -15,7 +15,7 @@ KRR_NAMESPACE_BEGIN
 void run(const char scene_file[], const char env_file[] = nullptr) {
 	if (!gpContext)
 		gpContext = Context::SharedPtr(new Context());
-	RenderApp app(KRR_PROJECT_NAME, { 1920, 1080 },
+	RenderApp app(KRR_PROJECT_NAME, { 1280, 720 },
 				  { RenderPass::SharedPtr(new WavefrontPathTracer()),
 					RenderPass::SharedPtr(new AccumulatePass()),
 					RenderPass::SharedPtr(new ToneMappingPass()),
@@ -54,7 +54,6 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 	
 	py::buffer_info buf_rgb = rgb.request(), buf_albedo, buf_normals;
 	py::array_t<float> result = py::array_t<float>(buf_rgb.size);
-	result.reshape({ rgb.shape()[0], rgb.shape()[1], rgb.shape()[2] });
 	py::buffer_info buf_result = result.request();
 
 	CUDABuffer gpumem_rgb(buf_rgb.size * sizeof(float)), gpumem_albedo, gpumem_normals;
@@ -74,6 +73,7 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 					 (float *) gpumem_albedo.data(), (float *) gpumem_result.data());
 	cudaDeviceSynchronize();
 	gpumem_result.copy_to_host((float *) buf_result.ptr, buf_result.size);
+	result = result.reshape({ rgb.shape()[0], rgb.shape()[1], rgb.shape()[2] });
 	CUDA_SYNC_CHECK();
 	return result;
 }

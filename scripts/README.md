@@ -14,7 +14,7 @@ img_denoised = pykrr.denoise(img_noisy, img_normals, img_albedo)
     <td>Denoised</td>
   </tr>
   <tr>
-    <td><img src="images/noisy.png" width=250></td>
-    <td><img src="images/denoised.png" width=250></td>
+    <td><img src="images/noisy.png" width=350></td>
+    <td><img src="images/denoised.png" width=350></td>
   </tr>
  </table>

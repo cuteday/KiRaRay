@@ -50,7 +50,7 @@ out
 .DS_Store
 
 # Assets and resource data
-temp/
+temp
 common/scenes
 common/images
 imgui.ini

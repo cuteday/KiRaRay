@@ -10,8 +10,7 @@ void DenoiseBackend::initialize() {
 	cuCtxGetCurrent(&cudaContext);
 	CHECK(cudaContext != nullptr);
 	const OptixDeviceContext &optixContext = gpContext->optixContext;
-	if (denoiserHandle)
-		optixDenoiserDestroy(denoiserHandle);
+	if (denoiserHandle) optixDenoiserDestroy(denoiserHandle);
 
 	OptixDenoiserOptions options = {};
 #if (OPTIX_VERSION >= 70300)
@@ -29,6 +28,18 @@ void DenoiseBackend::initialize() {
 
 	OPTIX_CHECK(optixDenoiserSetModel(denoiserHandle, OPTIX_DENOISER_MODEL_KIND_HDR, nullptr, 0));
 #endif
+	// re-create compute memory resources.
+	OPTIX_CHECK(optixDenoiserComputeMemoryResources(denoiserHandle, resolution[0], resolution[1],
+													&memorySizes));
+
+	denoiserState.resize(memorySizes.stateSizeInBytes);
+	scratchBuffer.resize(memorySizes.withoutOverlapScratchSizeInBytes);
+	intensity.resize(sizeof(float));
+
+	OPTIX_CHECK(optixDenoiserSetup(denoiserHandle, 0 /* stream */, resolution[0], resolution[1],
+								   CUdeviceptr(denoiserState.data()), memorySizes.stateSizeInBytes,
+								   CUdeviceptr(scratchBuffer.data()),
+								   memorySizes.withoutOverlapScratchSizeInBytes));
 }
 
 void DenoiseBackend::denoise(float *rgb, float *normal, float *albedo, float *result) {
@@ -99,35 +110,18 @@ void DenoiseBackend::denoise(float *rgb, float *normal, float *albedo, float *re
 void DenoiseBackend::resize(Vector2i size) { 
 	if (resolution == size) return;
 	resolution = size; 
-	//if (!initialized)  
-		initialize();
-
-	// re-create compute memory resources.
-	OPTIX_CHECK(optixDenoiserComputeMemoryResources(denoiserHandle, resolution[0], resolution[1],
-													&memorySizes));
-
-	denoiserState.resize(memorySizes.stateSizeInBytes);
-	scratchBuffer.resize(memorySizes.withoutOverlapScratchSizeInBytes);
-	intensity.resize(sizeof(float));
-
-	OPTIX_CHECK(optixDenoiserSetup(denoiserHandle, 0 /* stream */, resolution[0], resolution[1],
-								   CUdeviceptr(denoiserState.data()), memorySizes.stateSizeInBytes,
-								   CUdeviceptr(scratchBuffer.data()),
-								   memorySizes.withoutOverlapScratchSizeInBytes));
+	initialize();
 }
 
 void DenoiseBackend::setHaveGeometry(bool haveGeometry) {
-	bool needInitialize = !initialized || (haveGeometry != haveGeometryBuffer);
 	if (haveGeometryBuffer == haveGeometry) return;
 	haveGeometryBuffer	= haveGeometry;
 	initialize();
 }
 
 void DenoiseBackend::setPixelFormat(PixelFormat format) {
-	bool needIntialize = initialized && (format != pixelFormat);
 	if (pixelFormat == format) return;
 	pixelFormat = format;
-	//if (needIntialize) 
 	initialize();
 }
 
