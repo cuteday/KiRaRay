@@ -16,7 +16,7 @@
 #define M_INV_2PI		0.15915494309189533577f    
 #define M_INV_4PI		0.07957747154594766788f
 
-#define M_EPSILON		1e-4f
+#define M_EPSILON		1e-5f
 
 
 #ifdef min

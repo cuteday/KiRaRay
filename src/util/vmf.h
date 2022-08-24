@@ -21,29 +21,27 @@ public:
 
 	KRR_CALLABLE float eval(float cosTheta) const { 
 		if (m_kappa == 0.f)
-			return M_INV_PI * 0.25;
-		return exp(m_kappa * min(0.f, cosTheta - 1.f)) * m_kappa /
-			   (2 * M_PI * (1 - exp(-2 * m_kappa)));
+			return M_INV_4PI;
+		return expf(m_kappa * min(0.f, cosTheta - 1.f)) * m_kappa /
+			   (M_2PI * (1 - expf(-2 * m_kappa)));
 	}
 
-	// @param wi: normalized direction of the incoming ray
-	KRR_CALLABLE float eval(Vector3f wi) const { 
+	// @param wi: normalized direction of the incoming ray, in local space.
+	// @returns pdf of the distribution.
+	KRR_CALLABLE float eval(const Vector3f& wi) const { 
 		return eval(wi[2]);
 	}
 
 	// Evaluate the SG with its specified mean direction.
 	// @param mu: spherical coord of the mean direction.
-	KRR_CALLABLE float eval(Vector3f wi, Vector3f mu) const { 
-		Vector3f wiLocal = Frame(mu).toLocal(wi);
-		return eval(wiLocal[2]); 
+	KRR_CALLABLE float eval(const Vector3f& wi, const Vector3f& mu) const { 
+		return eval(dot(wi, mu)); 
 	}
 
 	// Evaluate the SG with its specified mean direction.
 	// @param mu: cartesian coord of the mean direction.
-	KRR_CALLABLE float eval(Vector3f wi, Vector2f mu) const {
-		Vector3f mu_cartesian = utils::sphericalToCartesian(mu[0], mu[1]);
-		Vector3f wiLocal	  = Frame(mu_cartesian).toLocal(wi);
-		return eval(wiLocal[2]);
+	KRR_CALLABLE float eval(const Vector3f& wi, const Vector2f& mu) const {
+		return eval(wi, utils::sphericalToCartesian(mu[0], mu[1]));
 	}
 	
 	// sample around +z
@@ -61,8 +59,7 @@ public:
 	// sample and rotate to specified mu
 	// @param mu: cartesian coord of the mean direction
 	KRR_CALLABLE Vector3f sample(Vector2f u, Vector3f mu) { 
-		Vector3f dir = sample(u);
-		return Frame(mu).toWorld(dir);
+		return Frame(mu).toWorld(sample(u));
 	}
 	
 	// sample and rotate to specified mu

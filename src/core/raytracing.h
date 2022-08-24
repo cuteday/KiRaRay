@@ -45,18 +45,18 @@ KRR_CALLABLE Vector3f offsetRayOrigin(Vector3f p, Vector3f n, Vector3f w) {
 struct Frame {
 	Frame() = default;
 
-	Frame(Vector3f n, Vector3f t, Vector3f b) : N(n), T(t), B(b) {}
+	KRR_CALLABLE Frame(Vector3f n, Vector3f t, Vector3f b) : N(n), T(t), B(b) {}
 
-	Frame(Vector3f n) : N(n) {
-		T = math::utils::getPerpendicular(N);
-		B = normalize(cross(N, T));
+	KRR_CALLABLE Frame(Vector3f n) : N(n) {
+		T = math::utils::getPerpendicular(n);
+		B = normalize(cross(n, T));
 	}
 
-	KRR_CALLABLE Vector3f toWorld(Vector3f v) const {
+	KRR_CALLABLE Vector3f toWorld(const Vector3f& v) const {
 		return T * v[0] + B * v[1] + N * v[2];
 	}
 
-	KRR_CALLABLE Vector3f toLocal(Vector3f v) const {
+	KRR_CALLABLE Vector3f toLocal(const Vector3f& v) const {
 		return { dot(T, v), dot(B, v), dot(N, v) };
 	}
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <Eigen/Dense>
 
 #include "common.h"
 #include "math/vector.h"
@@ -13,28 +14,30 @@ using ::copysign;
 using ::fmod;
 using ::max;
 using ::min;
+using ::isnan;
 #else
 using std::abs;
 using std::copysign;
 using std::fmod;
 using std::max;
 using std::min;
+using std::isnan;
 #endif
 
 using ::cos;
 using ::pow;
 using ::sin;
+using ::tan;
+using ::sinh;
+using ::cosh;
+using ::tanh;
 
 // power shortcuts
 template <typename T> KRR_CALLABLE constexpr T pow1(T x) { return x; }
 template <typename T> KRR_CALLABLE constexpr T pow2(T x) { return x * x; }
 template <typename T> KRR_CALLABLE constexpr T pow3(T x) { return x * x * x; }
-template <typename T> KRR_CALLABLE constexpr T pow4(T x) {
-	return x * x * x * x;
-}
-template <typename T> KRR_CALLABLE constexpr T pow5(T x) {
-	return x * x * x * x * x;
-}
+template <typename T> KRR_CALLABLE constexpr T pow4(T x) { return x * x * x * x; }
+template <typename T> KRR_CALLABLE constexpr T pow5(T x) { return x * x * x * x * x; }
 
 KRR_CALLABLE float sqrt(const float v) { return sqrtf(v); }
 KRR_CALLABLE Vector2f sqrt(const Vector2f v) {
@@ -60,7 +63,13 @@ KRR_CALLABLE float saturate(const float &f) { return min(1.f, max(0.f, f)); }
 
 KRR_CALLABLE float rcp(float f) { return 1.f / f; }
 
-KRR_CALLABLE float logistic(const float x) { return 1.0f / (1.0f + expf(-x)); }
+KRR_CALLABLE float logistic(const float x) { return 1 / (1.f + expf(-x)); }
+
+KRR_CALLABLE float csch(const float x) { return 1 / sinh(x); }
+
+KRR_CALLABLE float coth(const float x) { return 1 / tanh(x); }
+
+KRR_CALLABLE float sech(const float x) { return 1 / cosh(x); }
 
 } // namespace math
 

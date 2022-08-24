@@ -130,11 +130,11 @@ KRR_CALLABLE Vector3f latlongToWorld(Vector2f latlong) {
 }
 
 // caetesian, or local frame => z-up
+// @returns 
+//	theta: [0, pi], phi: [0, 2pi]
 KRR_CALLABLE Vector2f cartesianToSpherical(const Vector3f &v) {
-	Vector3f nv = normalize(v);
-	Vector2f sph;
-	sph[0] = acos(nv[2]);
-	sph[1] = atan2(-nv[1], -nv[0]) + M_PI;
+	Vector2f sph{ acos(v[2]), atan2(v[1], v[0]) };
+	if (sph[1] < 0) sph[1] += M_2PI;
 	return sph;
 }
 
@@ -150,8 +150,8 @@ KRR_CALLABLE Vector3f sphericalToCartesian(float theta, float phi) {
 	float sinPhi   = sin(phi);
 	float cosPhi   = cos(phi);
 	return {
+		sinTheta * cosPhi,
 		sinTheta * sinPhi,
-		-sinTheta * cosPhi,
 		cosTheta,
 	};
 }
