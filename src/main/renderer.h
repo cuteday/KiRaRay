@@ -113,6 +113,11 @@ public:
 
 			if (ui::InputInt2("Frame size", (int*)&fbSize))
 				resize(fbSize);
+			
+			//if (ui::CollapsingHeader("Performance")) {
+			//	mFrameRate.plotFrameTimeGraph();
+			//}
+
 			if (mpScene && ui::CollapsingHeader("Scene")) 
 				mpScene->renderUI();
 			for (auto p : mpPasses)

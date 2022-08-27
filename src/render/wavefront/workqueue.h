@@ -107,12 +107,12 @@ private:
 
 template <typename F, typename WorkItem>
 void ForAllQueued(const WorkQueue<WorkItem>* q, int nElements,
-    F&& func) {
+    F&& func, CUstream stream = 0) {
     GPUParallelFor(nElements, [=] KRR_DEVICE(int index) mutable {
         if (index >= q->size())
             return;
         func((*q)[index]);
-    });
+    }, stream);
 }
 
 class RayQueue : public WorkQueue<RayWorkItem> {

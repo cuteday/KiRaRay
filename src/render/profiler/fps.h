@@ -3,8 +3,10 @@
 
 #include "common.h"
 #include "logger.h"
+#include "window.h"
 #include "math/math.h"
 #include "host/timer.h"
+#include "util/ema.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -27,7 +29,7 @@ public:
 	}
 
 	double getAverageFrameTime() const {
-		uint64_t frames	   = std::min(mFrameCount, sFrameWindow);
+		uint64_t frames	   = min(mFrameCount, sFrameWindow);
 		double elapsedTime = 0;
 		for (uint64_t i = 0; i < frames; i++)
 			elapsedTime += mFrameTimes[i];
@@ -39,12 +41,17 @@ public:
 
 	uint64_t getFrameCount() const { return mFrameCount; }
 
+	void plotFrameTimeGraph() const {
+		ui::PlotLines("Frame time", mFrameTimes.data(), min(mFrameCount, sFrameWindow),
+					  mFrameCount < sFrameWindow ? 0 : mFrameCount % sFrameWindow, 0,
+					  FLT_MAX, FLT_MAX, ImVec2(0, 50));
+	}
 
 private:
 	CpuTimer::TimePoint mLastTick;
-	std::vector<double> mFrameTimes;
+	std::vector<float> mFrameTimes;
 	uint64_t mFrameCount			   = 0;
-	static const uint64_t sFrameWindow = 10;
+	static const uint64_t sFrameWindow = 20;
 };
 
 KRR_NAMESPACE_END
