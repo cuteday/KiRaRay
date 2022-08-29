@@ -70,17 +70,31 @@ public:
 	Camera& getCamera() { return *mpCamera; }
 	CameraController& getCameraController() { return *mpCameraController; }
 
-	void setCamera(Camera::SharedPtr camera) { mpCamera = camera; }
-	void setCameraController(CameraController::SharedPtr cameraController) { mpCameraController = cameraController; }
+	void setCamera(const Camera &camera) { *mpCamera = camera; }
+	void setCameraController(const OrbitCameraController &cameraController) {
+		*mpCameraController = cameraController;
+	}
 	void addInfiniteLight(const InfiniteLight& infiniteLight);
+	void loadConfig(const json &config) { 
+		mpCamera = std::make_shared<Camera>(config.at("camera")); 
+		mpCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
+		mpCameraController->setCamera(mpCamera);
+	}
 
 	SceneData getSceneData() const { return mData; }
 	AABB getAABB() const { return mAABB; }
 
+	friend void to_json(json& j, const Scene& scene) { 
+		j = json{ 
+			{ "camera", *scene.mpCamera }, 
+			{ "cameraController", *std::dynamic_pointer_cast<OrbitCameraController>(scene.mpCameraController) }
+		};
+	}
+
 	std::vector<Mesh> meshes;
 	SceneData mData;
 	Camera::SharedPtr mpCamera;
-	CameraController::SharedPtr mpCameraController;
+	OrbitCameraController::SharedPtr mpCameraController;
 	AABB mAABB;
 	bool mHasChanges = false;
 };

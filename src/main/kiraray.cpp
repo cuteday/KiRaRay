@@ -21,10 +21,16 @@ extern "C" int main(int argc, char *argv[]) {
 	Log(Warning, "Running in debug mode, the performance may be extremely slow. "
                "Switch to Release build for normal performance!");
 #endif
-    string sceneFile = "common/assets/scenes/cbox/cbox.obj";
-    string iblFile   = "common/assets/textures/snowwhite.jpg";
 
-    try {
+    string configFile = "common/configs/cbox.json";
+    if (argc < 2){
+	    Log(Warning, "No config file specified, using default config file: %s", configFile.c_str());
+    } else {
+        configFile = argv[1];
+        Log(Info, "Using specified config file at %s", configFile.c_str());
+    }
+
+	try {
         gpContext = Context::SharedPtr(new Context());
 		RenderApp app(KRR_PROJECT_NAME, { 1280, 720 },
 					  { // RenderPass::SharedPtr(new PathTracer()),
@@ -32,12 +38,8 @@ extern "C" int main(int argc, char *argv[]) {
 						RenderPass::SharedPtr(new AccumulatePass()),
 						RenderPass::SharedPtr(new DenoisePass(false)),
 						RenderPass::SharedPtr(new ToneMappingPass())});
-        Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
-        scene->addInfiniteLight(InfiniteLight(iblFile));
-        AssimpImporter importer;
-        importer.import(sceneFile, scene);
-        app.setScene(scene);
-        app.run();
+		app.loadConfig(configFile);
+		app.run();
     } catch (std::exception e) {
         Log(Fatal, "Kiraray::Unhandled exception: %s\n", e.what());
     }

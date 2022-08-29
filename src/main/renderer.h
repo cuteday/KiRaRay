@@ -6,8 +6,12 @@
 #include "camera.h"
 #include "file.h"
 
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include "device/buffer.h"
 #include "device/context.h"
+#include "scene/importer.h"
 #include "render/profiler/ui.h"
 #include "render/profiler/fps.h"
 
@@ -18,13 +22,13 @@ public:
 	RenderApp(const char title[], Vector2i size) : WindowApp(title, size) { }
 	RenderApp(const char title[], Vector2i size, std::vector<RenderPass::SharedPtr> passes)
 		:WindowApp(title, size), mpPasses(passes) { }
-
+	
 	void resize(const Vector2i& size) override {
-		if (!mpScene) return;
 		WindowApp::resize(size);
 		for (auto p : mpPasses)
 			p->resize(size);
-		mpScene->getCamera().setAspectRatio((float)size[0] / size[1]);
+		if (mpScene) mpScene->getCamera().setAspectRatio((float)size[0] / size[1]);
+		CUDA_SYNC_CHECK();
 	}
 
 	// Process signals passed down from direct imgui callback (imgui do not capture it)
@@ -73,6 +77,38 @@ public:
 		if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
 	}
 
+	void run() override {
+		int width, height;
+		glfwGetFramebufferSize(handle, &width, &height);
+		resize(Vector2i(width, height));
+
+		while (!glfwWindowShouldClose(handle)) {
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
+
+			render();
+
+			draw();
+			renderUI();
+			{
+				PROFILE("Draw UI");
+				ImGui::Render();
+				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			}
+
+			glfwSwapBuffers(handle);
+			glfwPollEvents();
+		
+			mFrameCount++;
+			if (mSpp && mFrameCount >= mSpp) {
+				fs::path resultPath = fs::path(mConfigPath).replace_extension("exr");
+				captureFrame(false, resultPath);
+				break;
+			}
+		}
+	}
+
 	void renderUI() override {
 		static bool saveHdr{};
 		static bool showProfiler{};
@@ -96,8 +132,11 @@ public:
 				ui::EndMenu();
 			}
 			if (ui::BeginMenu("Tools")) {
+				if (ui::MenuItem("Save config"))
+					saveConfig();
 				ui::MenuItem("Save HDR", NULL, &saveHdr);
-				if (ui::MenuItem("Screen shot")) captureFrame();
+				if (ui::MenuItem("Screen shot")) 
+					captureFrame();
 				ui::EndMenu();
 			}
 			ui::EndMainMenuBar();
@@ -110,14 +149,17 @@ public:
 			ui::Checkbox("Save HDR", &saveHdr); ui::SameLine();
 			if (ui::Button("Screen shot"))
 				captureFrame(saveHdr);
-
-			if (ui::InputInt2("Frame size", (int*)&fbSize))
-				resize(fbSize);
-			
+			if (ui::CollapsingHeader("Configuration")) {
+				if (ui::InputInt2("Frame size", (int *) &fbSize))
+					resize(fbSize);
+				if (ui::Button("Load config"))
+					loadConfig("");
+				if (ui::Button("Save config"))
+					saveConfig();
+			}
 			//if (ui::CollapsingHeader("Performance")) {
 			//	mFrameRate.plotFrameTimeGraph();
 			//}
-
 			if (mpScene && ui::CollapsingHeader("Scene")) 
 				mpScene->renderUI();
 			for (auto p : mpPasses)
@@ -153,22 +195,75 @@ public:
 		WindowApp::draw();
 	}
 
-private:
-	void captureFrame(bool hdr = false) {
+	void captureFrame(bool hdr = false, fs::path filename = "") {
 		string extension = hdr ? ".exr" : ".png";
 		Image image(fbSize, Image::Format::RGBAfloat);
 		fbBuffer.copy_to_host(image.data(), fbSize[0] * fbSize[1] * 4 * sizeof(float));
-		fs::path filepath = File::resolve("common/images") / ("krr_" + Log::nowToString("%H_%M_%S") + extension);
+		fs::path filepath(filename);
+		if (filename.empty())		// use default path for screen shots
+			filepath = File::resolve("common/images") / ("screenshot_" + Log::nowToString("%H_%M_%S") + extension);
+		fs::path dirpath  = File::resolve("common/images"); 
+		if (!fs::exists(filepath.parent_path()))
+			fs::create_directories(filepath.parent_path());
 		image.saveImage(filepath);
 		logSuccess("Saved screenshot to " + filepath.string());
 	}
 
+	void saveConfig() {
+		fs::path dirpath = File::resolve("common/configs"); 
+		if (!fs::exists(dirpath))
+			fs::create_directories(dirpath);
+		fs::path filepath = dirpath / ("config_" + Log::nowToString("%H_%M_%S") + ".json");
+		std::ofstream ofs(filepath);
+		json config = mConfig;
+		config["resolution"] = fbSize;
+		config["scene"]		 = *mpScene;
+		ofs << config;
+		ofs.close();
+		logSuccess("Saved config file to " + filepath.string());
+	}
+
+	void loadConfig(fs::path path) {
+		if (!fs::exists(path)) {
+			logError("Config file not found at " + path.string());
+			return;
+		}
+		std::ifstream f(path);
+		json config = json::parse(f, nullptr, true);
+		mSpp		= config["spp"].get<int>();
+		if (config.contains("model")) {
+			string model		   = config["model"].get<string>();
+			Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
+			AssimpImporter().import(model, scene);
+			setScene(scene);
+		}
+		if (config.contains("environment")) {
+			if (!mpScene)
+				Log(Fatal, "Import a model before doing scene configurations!");
+			string env = config["environment"].get<string>();
+			mpScene->addInfiniteLight(InfiniteLight(env));
+		}
+		if (config.contains("scene")) {
+			if (!mpScene)
+				Log(Fatal, "Import a model before doing scene configurations!");
+			mpScene->loadConfig(config["scene"]);	
+		}
+		resize(config["resolution"].get<Vector2i>());
+		mConfig = config;
+		mConfigPath = path.string();
+	}
+
+private:
 	bool mShowUI{ true };
 	bool mPaused{ false };
+	int mFrameCount{ 0 };
+	int mSpp{ 0 };			// Samples needed tobe rendered, 0 means unlimited.
 	FrameRate mFrameRate;
 	std::vector<RenderPass::SharedPtr> mpPasses;
 	Scene::SharedPtr mpScene;
 	ProfilerUI::UniquePtr mpProfilerUI;
+	json mConfig{};
+	string mConfigPath{};
 };
 
 KRR_NAMESPACE_END

@@ -42,7 +42,8 @@ public:
 	KRR_CALLABLE Vector &operator=(const Eigen::MatrixBase<OtherDerived> &other) {
 		this->Eigen::Vector<T, Size>::operator=(other);
 		return *this;
-	}		
+	}
+
 };
 
 template <typename T>
@@ -81,6 +82,18 @@ public:
 		this->operator[](1) = v.y;
 	}
 #endif
+
+	friend void to_json(json &j, const Vector2<T> &v) {
+		for (int i = 0; i < 2; i++) {
+			j.push_back(v[i]);
+		}
+	}
+
+	friend void from_json(const json &j, Vector2<T> &v) {
+		for (int i = 0; i < 2; i++) {
+			v[i] = (T) j.at(i);
+		}
+	}
 };
 
 template <typename T>
@@ -127,6 +140,17 @@ public:
 	}
 #endif
 
+	friend void to_json(json &j, const Vector3<T> &v) {
+		for (int i = 0; i < 3; i++) {
+			j.push_back(v[i]);
+		}
+	}
+
+	friend void from_json(const json &j, Vector3<T> &v) {
+		for (int i = 0; i < 3; i++) {
+			v[i] = (T) j.at(i);
+		}
+	}
 };
 
 template <typename T>
@@ -160,6 +184,18 @@ public:
 		this->operator[](3) = v.w;
 	}
 #endif
+
+	friend void to_json(json &j, const Vector4<T> &v) {
+		for (int i = 0; i < 4; i++) {
+			j.push_back(v[i]);
+		}
+	}
+
+	friend void from_json(const json &j, Vector4<T> &v) {
+		for (int i = 0; i < 4; i++) {
+			v[i] = (T) j.at(i);
+		}
+	}
 };
 
 using Vector2f = Vector2<float>;
