@@ -42,12 +42,13 @@ class DenoisePass : public RenderPass {
 public:
 	using RenderPass::RenderPass;
 	using SharedPtr = std::shared_ptr<DenoisePass>;
+	KRR_REGISTER_PASS_DEC(DenoisePass);
 
 	void render(CUDABuffer &frame) override;
 	void renderUI() override;
 	void resize(const Vector2i& size) override;
 
-	string getName() const override { return "Denoiser"; }
+	string getName() const override { return "DenoisePass"; }
 
 private:
 	bool mUseGeometry{};

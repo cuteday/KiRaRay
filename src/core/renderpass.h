@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "window.h"
+#include "logger.h"
 #include "math/math.h"
 #include "device/buffer.h"
 #include "scene.h"
@@ -49,12 +50,54 @@ public:
 	virtual bool onMouseEvent(const io::MouseEvent& mouseEvent) { return false; }
 	virtual bool onKeyEvent(const io::KeyboardEvent& keyEvent) { return false; }
 
-	virtual string getName() const { return ""; }
+	virtual string getName() const { return "RenderPass"; }
 
 protected:
 	bool mEnable = true;
 	Vector2i mFrameSize;
 	Scene::SharedPtr mpScene = nullptr;
 };
+
+class RenderPassFactory {
+public:
+	typedef std::map<string, RenderPass::SharedPtr(*) ()> map_type;
+	
+	template <typename T> 
+	static RenderPass::SharedPtr create() { 
+		return RenderPass::SharedPtr(new T()); 
+	}
+
+	static RenderPass::SharedPtr createInstance(std::string const &s) {
+		map_type::iterator it = getMap()->find(s);
+		if (it == getMap()->end()) {
+			Log(Error, "Could not create instance for %s: check if the pass is registered.", s.c_str());
+			return 0;
+		}
+		return it->second();
+	}
+
+protected:
+	static std::shared_ptr<map_type> getMap() {
+		if (!map) { map.reset(new map_type); }
+		return map;
+	}
+
+private:
+	static std::shared_ptr<map_type> map;
+};
+
+template <typename T> 
+class RenderPassRegister : RenderPassFactory {
+public:
+	RenderPassRegister(const string &s) { 
+		getMap()->insert(std::make_pair(s, &RenderPassFactory::create<T>)); 
+	}
+
+private:
+};
+
+#define KRR_REGISTER_PASS_DEC(name) static RenderPassRegister<name> reg;										
+#define KRR_REGISTER_PASS_DEF(name) RenderPassRegister<name> name::reg(#name)                                                     
+
 
 KRR_NAMESPACE_END

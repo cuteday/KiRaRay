@@ -83,4 +83,5 @@ void ToneMappingPass::render(CUDABuffer& frame){
 	});
 }
 
+KRR_REGISTER_PASS_DEF(ToneMappingPass);
 KRR_NAMESPACE_END

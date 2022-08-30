@@ -12,12 +12,12 @@
 
 KRR_NAMESPACE_BEGIN
 
-class PathTracer: public RenderPass{
+class MegakernelPathTracer: public RenderPass{
 public:
-	using SharedPtr = std::shared_ptr<PathTracer>;
+	using SharedPtr = std::shared_ptr<MegakernelPathTracer>;
 
-	PathTracer();
-	~PathTracer();
+	MegakernelPathTracer();
+	~MegakernelPathTracer();
 
 	void createProgramGroups();
 	void createPipeline();
@@ -40,7 +40,7 @@ public:
 		logSuccess("Scene set...");
 	}
 
-	string getName() const override { return "Megakernel Pathtracer"; }
+	string getName() const override { return "MegakernelPathTracer"; }
 
 private:
 	OptixPipeline               pipeline;

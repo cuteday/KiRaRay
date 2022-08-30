@@ -1,12 +1,12 @@
 #include "logger.h"
 #include "context.h"
-
+#include "renderpass.h"
 
 KRR_NAMESPACE_BEGIN
 
 using namespace inter;
 Context::SharedPtr gpContext;
-
+std::shared_ptr<RenderPassFactory::map_type> RenderPassFactory::map = nullptr;
 CUDATrackedMemory CUDATrackedMemory::singleton;
 
 namespace {

@@ -235,4 +235,5 @@ void WavefrontPathTracer::renderUI(){
 	ui::Checkbox("Transparent background", &transparentBackground);
 }
 
+KRR_REGISTER_PASS_DEF(WavefrontPathTracer);
 KRR_NAMESPACE_END

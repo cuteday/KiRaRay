@@ -121,6 +121,7 @@ SET (KRR_SOURCE
 	render/profiler/profiler.cpp
 	render/profiler/ui.cpp
 	scene/importer.cpp
+	main/renderer.cpp
 	util/tables.cpp
 )
 

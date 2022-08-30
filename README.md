@@ -51,10 +51,10 @@ This project uses cmake to build, no additional setting is needed. Make sure cud
 
 #### Running
 
-Specify the json configuration file as command line argument to start the renderer. The example configuration will used if no argument is provided, example:
+Specify the json configuration file as command line argument to start the renderer. The sample configuration will used if no argument is provided, example:
 
 ~~~bash
-build/src/kiraray.exe common/configs/cbox.json
+build/src/kiraray.exe common/configs/example.json
 ~~~
 
 #### Usage

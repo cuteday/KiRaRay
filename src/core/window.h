@@ -61,7 +61,7 @@ public:
 
 	~WindowApp();
 
-	virtual void resize(const Vector2i &size);
+	virtual void resize(const Vector2i size);
 
 	virtual void run();
 

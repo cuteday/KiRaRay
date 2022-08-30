@@ -245,7 +245,7 @@ WindowApp::~WindowApp() {
 	glfwTerminate();
 }
 
-void WindowApp::resize(const Vector2i &size) {
+void WindowApp::resize(const Vector2i size) {
 	glfwMakeContextCurrent(handle);
 	glfwSetWindowSize(handle, size[0], size[1]);
 	fbBuffer.resize(sizeof(Color4f) * size[0] * size[1]);

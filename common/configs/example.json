@@ -5,6 +5,17 @@
 		750,
 		750
 	],
+	"passes": [
+		{
+			"name": "WavefrontPathTracer"
+		},
+		{
+			"name": "AccumulatePass"
+		},
+		{
+			"name": "ToneMappingPass"
+		}
+	],
 	"scene": {
 		"camera": {
 			"mData": {

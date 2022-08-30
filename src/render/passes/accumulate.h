@@ -12,6 +12,7 @@ KRR_NAMESPACE_BEGIN
 class AccumulatePass : public RenderPass {
 public:
 	using SharedPtr = std::shared_ptr<AccumulatePass>;
+	KRR_REGISTER_PASS_DEC(AccumulatePass);
 
 	AccumulatePass() = default;
 
@@ -26,7 +27,7 @@ public:
 		reset();
 	}
 
-	string getName() const override { return "Accumulator"; }
+	string getName() const override { return "AccumulatePass"; }
 
 	void render(CUDABuffer& frame);
 	CUDABuffer& result() { return *mAccumBuffer; }

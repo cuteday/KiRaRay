@@ -13,6 +13,15 @@
 
 KRR_NAMESPACE_BEGIN
 
+void registerRenderPasses() {
+    // just a temporary workaroud...
+	RenderPass::SharedPtr __MegakernelPathTracer(new MegakernelPathTracer());
+	RenderPass::SharedPtr __WavefrontPathTracer(new WavefrontPathTracer());
+	RenderPass::SharedPtr __AccumulatePass(new AccumulatePass());
+	RenderPass::SharedPtr __DenoisePass(new DenoisePass());
+	RenderPass::SharedPtr __ToneMappingPass(new ToneMappingPass());
+}
+
 extern "C" int main(int argc, char *argv[]) {
     std::filesystem::current_path(File::cwd());
     Log(Info, "Working directory: %s\n", KRR_PROJECT_DIR);
@@ -22,7 +31,7 @@ extern "C" int main(int argc, char *argv[]) {
                "Switch to Release build for normal performance!");
 #endif
 
-    string configFile = "common/configs/cbox.json";
+    string configFile = "common/configs/example.json";
     if (argc < 2){
 	    Log(Warning, "No config file specified, using default config file: %s", configFile.c_str());
     } else {
@@ -32,12 +41,8 @@ extern "C" int main(int argc, char *argv[]) {
 
 	try {
         gpContext = Context::SharedPtr(new Context());
-		RenderApp app(KRR_PROJECT_NAME, { 1280, 720 },
-					  { // RenderPass::SharedPtr(new PathTracer()),
-						RenderPass::SharedPtr(new WavefrontPathTracer()),
-						RenderPass::SharedPtr(new AccumulatePass()),
-						RenderPass::SharedPtr(new DenoisePass(false)),
-						RenderPass::SharedPtr(new ToneMappingPass())});
+		registerRenderPasses();
+		RenderApp app(KRR_PROJECT_NAME);
 		app.loadConfig(configFile);
 		app.run();
     } catch (std::exception e) {

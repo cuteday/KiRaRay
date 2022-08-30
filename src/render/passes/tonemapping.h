@@ -12,6 +12,7 @@ KRR_NAMESPACE_BEGIN
 class ToneMappingPass: public RenderPass {
 public:
 	using SharedPtr = std::shared_ptr<ToneMappingPass>;
+	KRR_REGISTER_PASS_DEC(ToneMappingPass);
 
 	enum class Operator {
 		Linear = 0,
@@ -31,7 +32,7 @@ public:
 	Operator getOperator() const { return mOperator; }
 	void render(CUDABuffer& frame) override;
 
-	string getName() const override { return "Tonemapper"; }
+	string getName() const override { return "ToneMappingPass"; }
 
 private:
 	bool mEnable{ true };

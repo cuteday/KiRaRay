@@ -30,7 +30,7 @@ public:
 
 	void initialize();
 
-	string getName() const override { return "Wavefront Pathtracer"; }
+	string getName() const override { return "WavefrontPathTracer"; }
 
 	// cuda utility functions
 	template <typename F>
@@ -83,6 +83,8 @@ public:
 	uint debugPixel{ };
 	bool enableClamp{ true };
 	float clampMax{ 100 };
+
+	KRR_REGISTER_PASS_DEC(WavefrontPathTracer);
 };
 
 KRR_NAMESPACE_END

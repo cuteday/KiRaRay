@@ -10,7 +10,7 @@ KRR_NAMESPACE_BEGIN
 
 extern "C" char PATHTRACER_PTX[];
 
-PathTracer::PathTracer() {
+MegakernelPathTracer::MegakernelPathTracer() {
 	logDebug("Setting up module ...");
 	module = OptiXBackend::createOptiXModule(gpContext->optixContext, PATHTRACER_PTX);
 	logDebug("Creating program groups ...");
@@ -22,11 +22,11 @@ PathTracer::PathTracer() {
 	logSuccess("Megakernel PathTracer::Optix context fully set up");
 }
 
-PathTracer::~PathTracer() {
+MegakernelPathTracer::~MegakernelPathTracer() {
 	gpContext->alloc->deallocate_object(launchParamsDevice);
 }
 
-void PathTracer::createProgramGroups() {
+void MegakernelPathTracer::createProgramGroups() {
 	// setup raygen program groups
 	raygenPGs.resize(1);;
 	raygenPGs[0] = OptiXBackend::createRaygenPG(gpContext->optixContext, module, "__raygen__Pathtracer");
@@ -45,7 +45,7 @@ void PathTracer::createProgramGroups() {
 	}
 }
 
-void PathTracer::createPipeline() {
+void MegakernelPathTracer::createPipeline() {
 	std::vector<OptixProgramGroup> programGroups;
 	for (auto pg : raygenPGs)
 		programGroups.push_back(pg);
@@ -76,7 +76,7 @@ void PathTracer::createPipeline() {
 }
 
 
-void PathTracer::buildSBT() {
+void MegakernelPathTracer::buildSBT() {
 	// build raygen records
 	for (int i = 0; i < raygenPGs.size(); i++) {
 		RaygenRecord rec;
@@ -111,12 +111,12 @@ void PathTracer::buildSBT() {
 	sbt.hitgroupRecordCount = hitgroupRecords.size();
 }
 
-void PathTracer::buildAS() {
+void MegakernelPathTracer::buildAS() {
 	OptixTraversableHandle& asHandle = launchParams.traversable;
 	asHandle = OptiXBackend::buildAccelStructure(gpContext->optixContext, gpContext->cudaStream, *mpScene);
 }
 
-void PathTracer::renderUI() {
+void MegakernelPathTracer::renderUI() {
 	ui::Text("Path tracing parameters");
 	ui::InputInt("Samples per pixel", &launchParams.spp);
 	ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
@@ -132,7 +132,7 @@ void PathTracer::renderUI() {
 	ui::InputInt2("Debug pixel", (int*)&launchParams.debugPixel);
 }
 
-void PathTracer::render(CUDABuffer& frame) {
+void MegakernelPathTracer::render(CUDABuffer& frame) {
 	if (mFrameSize[0] * mFrameSize[1] == 0) return;
 	PROFILE("Megakernel Path Tracer");
 	{

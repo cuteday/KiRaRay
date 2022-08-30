@@ -71,9 +71,9 @@ inline void logError(const std::string& msg, bool terminate = false) { Logger::l
 inline void logFatal(const std::string& msg, bool terminate = true) { Logger::log(Logger::Level::Fatal, msg, terminate); }
 
 #define Log(level, fmt, ...) do{				\
-		char s[256];							\
-		sprintf(s, fmt, ## __VA_ARGS__);		\
-		log ## level (s);						\
+		char _s[256];							\
+		sprintf(_s, fmt, ## __VA_ARGS__);		\
+		log ## level (_s);						\
 	} while (0)
 
 // util functions

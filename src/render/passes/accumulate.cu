@@ -46,4 +46,5 @@ void AccumulatePass::renderUI() {
 	}
 }
 
+KRR_REGISTER_PASS_DEF(AccumulatePass);
 KRR_NAMESPACE_END
