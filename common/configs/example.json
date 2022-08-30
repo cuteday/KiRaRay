@@ -7,12 +7,19 @@
 	],
 	"passes": [
 		{
+			"enable": true,
 			"name": "WavefrontPathTracer"
 		},
 		{
+			"enable": true,
 			"name": "AccumulatePass"
 		},
 		{
+			"enable": false,
+			"name": "DenoisePass"
+		},
+		{
+			"enable": true,
 			"name": "ToneMappingPass"
 		}
 	],

@@ -43,6 +43,7 @@ public:
 	using RenderPass::RenderPass;
 	using SharedPtr = std::shared_ptr<DenoisePass>;
 	KRR_REGISTER_PASS_DEC(DenoisePass);
+	KRR_CLASS_DEFINE(DenoisePass, mUseGeometry);
 
 	void render(CUDABuffer &frame) override;
 	void renderUI() override;

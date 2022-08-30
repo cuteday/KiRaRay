@@ -13,6 +13,7 @@ class ToneMappingPass: public RenderPass {
 public:
 	using SharedPtr = std::shared_ptr<ToneMappingPass>;
 	KRR_REGISTER_PASS_DEC(ToneMappingPass);
+	KRR_CLASS_DEFINE(ToneMappingPass, mExposureCompensation);
 
 	enum class Operator {
 		Linear = 0,

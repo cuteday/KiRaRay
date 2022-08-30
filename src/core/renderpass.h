@@ -1,4 +1,5 @@
 #pragma once
+#pragma init_seg(lib)
 
 #include "common.h"
 #include "window.h"
@@ -33,6 +34,7 @@ private:
 class RenderPass{
 public:
 	using SharedPtr = std::shared_ptr<RenderPass>;
+	KRR_CLASS_DEFINE(RenderPass, mEnable);
 
 	RenderPass() = default;
 	// Whether this pass is enabled by default
@@ -51,6 +53,7 @@ public:
 	virtual bool onKeyEvent(const io::KeyboardEvent& keyEvent) { return false; }
 
 	virtual string getName() const { return "RenderPass"; }
+	virtual bool enabled() const { return mEnable; }
 
 protected:
 	bool mEnable = true;
@@ -94,10 +97,23 @@ public:
 	}
 
 private:
+	struct exec_register {
+		exec_register() = default;
+		exec_register(const string &s) { 
+			getMap()->insert(std::make_pair(s, &RenderPassFactory::create<T>));
+		}
+	};
+	// will force instantiation of definition of static member
+	static exec_register register_object;
+	template <typename T, T> struct value {};
+	typedef value<exec_register &, register_object> value_user;
+	static_assert(&register_object);
 };
 
 #define KRR_REGISTER_PASS_DEC(name) static RenderPassRegister<name> reg;										
-#define KRR_REGISTER_PASS_DEF(name) RenderPassRegister<name> name::reg(#name)                                                     
+#define KRR_REGISTER_PASS_DEF(name)																		\
+	RenderPassRegister<name> name::reg(#name);															\
+	typename RenderPassRegister<name>::exec_register RenderPassRegister<name>::register_object(#name)                                                   
 
 
 KRR_NAMESPACE_END

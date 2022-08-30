@@ -199,6 +199,15 @@ void RenderApp::saveConfig() {
 	json config = mConfig;
 	config["resolution"] = fbSize;
 	config["scene"]		 = *mpScene;
+	json passes			 = {};
+	for (RenderPass::SharedPtr p : mpPasses) {
+		json p_cfg{ 
+			{ "name", p->getName() }, 
+			{ "enable", p->enabled() } 
+		};
+		passes.push_back(p_cfg);
+	}
+	config["passes"] = passes;
 	ofs << config;
 	ofs.close();
 	logSuccess("Saved config file to " + filepath.string());
@@ -221,6 +230,7 @@ void RenderApp::loadConfig(fs::path path) {
 			if (p.contains("parameters")) {
 				//*pass = p["parameters"];	
 			}
+			pass->setEnable(p.value("enable", true));
 			mpPasses.push_back(pass);
 		}
 	} else

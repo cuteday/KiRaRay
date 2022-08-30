@@ -160,4 +160,5 @@ void MegakernelPathTracer::render(CUDABuffer& frame) {
 	CUDA_SYNC_CHECK();
 }
 
+KRR_REGISTER_PASS_DEF(MegakernelPathTracer);
 KRR_NAMESPACE_END

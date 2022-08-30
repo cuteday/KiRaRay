@@ -13,6 +13,7 @@ class AccumulatePass : public RenderPass {
 public:
 	using SharedPtr = std::shared_ptr<AccumulatePass>;
 	KRR_REGISTER_PASS_DEC(AccumulatePass);
+	KRR_CLASS_DEFINE(AccumulatePass, mMovingAverage);
 
 	AccumulatePass() = default;
 
@@ -33,10 +34,9 @@ public:
 	CUDABuffer& result() { return *mAccumBuffer; }
 
 private:
-	bool mEnable{ true };
 	uint mAccumCount{ 0 };
 	bool mMovingAverage{ false };
-	uint mMaxAccumCount{ (uint)0 };
+	uint mMaxAccumCount{ 0U };
 	CUDABuffer *mAccumBuffer;
 };
 

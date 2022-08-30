@@ -15,6 +15,7 @@ KRR_NAMESPACE_BEGIN
 class MegakernelPathTracer: public RenderPass{
 public:
 	using SharedPtr = std::shared_ptr<MegakernelPathTracer>;
+	KRR_REGISTER_PASS_DEC(MegakernelPathTracer);
 
 	MegakernelPathTracer();
 	~MegakernelPathTracer();
