@@ -15,6 +15,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
+#include <json.hpp>
 
 #include "config.h"	
 
@@ -24,6 +25,7 @@
 
 using std::string;
 using std::to_string;
+using nlohmann::json;
 
 typedef uint32_t uint;
 typedef unsigned char uchar;
@@ -100,6 +102,8 @@ extern dim3 threadIdx, blockDim, blockIdx;
 #else
 # define KRR_ALIGN(alignment) __attribute__((aligned(alignment)))
 #endif
+
+#define KRR_CLASS_DEFINE NLOHMANN_DEFINE_TYPE_INTRUSIVE
 
 KRR_NAMESPACE_BEGIN
 

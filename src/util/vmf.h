@@ -57,13 +57,13 @@ public:
 
 	// sample and rotate to specified mu
 	// @param mu: cartesian coord of the mean direction
-	KRR_CALLABLE Vector3f sample(Vector2f u, Vector3f mu) { 
+	KRR_CALLABLE Vector3f sample(Vector2f u, Vector3f mu) const { 
 		return Frame(mu).toWorld(sample(u));
 	}
 	
 	// sample and rotate to specified mu
 	// @param mu: spherical coord [theta, phi] of the mean direction
-	KRR_CALLABLE Vector3f sample(Vector2f u, Vector2f mu) {
+	KRR_CALLABLE Vector3f sample(Vector2f u, Vector2f mu) const {
 		Vector3f dir = sample(u);
 		Vector3f mu_cartesian = utils::sphericalToCartesian(mu[0], mu[1]);
 		return Frame(mu_cartesian).toWorld(dir);

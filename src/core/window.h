@@ -63,7 +63,7 @@ public:
 
 	virtual void resize(const Vector2i &size);
 
-	void run();
+	virtual void run();
 
 	virtual void render() = 0;
 

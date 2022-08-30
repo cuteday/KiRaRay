@@ -93,5 +93,9 @@ void OrbitCameraController::renderUI() {
 	ui::DragFloat3("Target", (float*)&mData.target, 1e-1, -1e5f, 1e5f);
 }
 
-KRR_NAMESPACE_END
+void OrbitCameraController::setCamera(const Camera::SharedPtr &pCamera) { 
+	CameraController::setCamera(pCamera);
+	update();
+}
 
+KRR_NAMESPACE_END

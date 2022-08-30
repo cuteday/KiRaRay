@@ -63,6 +63,7 @@ void Scene::toDevice(){
 void Scene::processLights(){
 	// This function should be called AFTER all scene data are moved to device
 	mData.lights->clear();
+	cudaDeviceSynchronize();
 	uint nMeshes = meshes.size();
 	for (uint meshId = 0; meshId < nMeshes; meshId++) {
 		Mesh& mesh = meshes[meshId];
@@ -91,13 +92,23 @@ void Scene::processLights(){
 	logInfo("A total of " + to_string(mData.lights->size()) + " light(s) processed!");
 	if (mData.lightSampler.ptr()) 
 		gpContext->alloc->deallocate_object((UniformLightSampler*)mData.lightSampler.ptr());
-	mData.lightSampler = gpContext->alloc->new_object<UniformLightSampler>((inter::span<Light>) * mData.lights);
+	mData.lightSampler = gpContext->alloc->new_object<UniformLightSampler>((inter::span<Light>) *mData.lights);
 	CUDA_SYNC_CHECK();
 }
 
 void Scene::addInfiniteLight(const InfiniteLight& infiniteLight){
+	mData.lights->clear();
+	cudaDeviceSynchronize();
 	mData.infiniteLights->push_back(infiniteLight);
-	processLights();
+	for (Mesh& mesh : meshes) {
+		for (DiffuseAreaLight& light : mesh.lights)
+			mData.lights->push_back(Light(&light));
+	}
+	for (InfiniteLight& light : *mData.infiniteLights)
+		mData.lights->push_back(&light);
+	if (mData.lightSampler.ptr()) 
+		gpContext->alloc->deallocate_object((UniformLightSampler*)mData.lightSampler.ptr());
+	mData.lightSampler = gpContext->alloc->new_object<UniformLightSampler>((inter::span<Light>) *mData.lights);
 }
 
 bool Scene::onMouseEvent(const MouseEvent& mouseEvent){

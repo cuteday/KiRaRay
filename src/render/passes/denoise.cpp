@@ -134,8 +134,10 @@ void DenoisePass::render(CUDABuffer &frame) {
 void DenoisePass::renderUI() { 
 	ui::Checkbox("Enabled", &mEnable);
 	if (!mEnable) return;
-	if (ui::Checkbox("Use geometry buffer", &mUseGeometry))
+	if (ui::Checkbox("Use geometry buffer", &mUseGeometry)) {
+		Log(Fatal, "Denoising guided by geometry features is not implemented yet TaT");
 		mBackend.setHaveGeometry(mUseGeometry);
+	}	
 }
 
 void DenoisePass::resize(const Vector2i& size) { mBackend.resize(size); }

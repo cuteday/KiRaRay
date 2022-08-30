@@ -8,6 +8,8 @@ fs::path File::projectDir() { return cwd(); }
 fs::path File::dataDir() { return cwd() / "data"; }
 fs::path File::codeDir() { return cwd() / "src"; }
 
-fs::path File::resolve(const fs::path &name) { return File::cwd() / name; }
+fs::path File::resolve(const fs::path &name) { 
+	return name.is_absolute() ? name : File::cwd() / name; 
+}
 
 KRR_NAMESPACE_END

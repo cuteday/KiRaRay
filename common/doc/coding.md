@@ -1,5 +1,9 @@
 # Kirakira Coding
 
+### Setup
+
+[Here](https://drive.google.com/drive/folders/1KwLaaFa5qv642dzbKfez9csi4zDdnNXr?usp=sharing) is a backup of suitable versions of CUDA and OptiX for Windows.
+
 ### Components
 
 #### Render passes

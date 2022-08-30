@@ -18,7 +18,7 @@ public:
 	struct CameraData {
 		Vector2f filmSize{ 42.666667f, 24.0f };	// sensor size in mm [width, height]
 		float focalLength{ 21 };				// distance from sensor to lens, in mm
-		float focalDistance{ 10 };			// distance from length to focal point, in scene units (m)
+		float focalDistance{ 10 };				// distance from length to focal point, in scene units (m)
 		float lensRadius{ 0 };					// aperture radius, in mm
 		float aspectRatio{ 1.777777f };			// width divides height
 
@@ -28,7 +28,9 @@ public:
 
 		Vector3f u{ 1, 0, 0 };					// camera right		[dependent to aspect ratio]
 		Vector3f v{ 0, 1, 0 };					// camera up		[dependent to aspect ratio]
-		Vector3f w{ 0, 0, -1 };				// camera forward
+		Vector3f w{ 0, 0, -1 };					// camera forward
+	
+		KRR_CLASS_DEFINE(CameraData, pos, target, up, focalLength, focalDistance, lensRadius, aspectRatio);
 	};
 
 	Camera() = default;
@@ -52,15 +54,16 @@ public:
 	bool update();
 	void renderUI();
 
-	KRR_CALLABLE float getAspectRatio() { return mData.aspectRatio; }
-	KRR_CALLABLE Vector3f getPosition() { return mData.pos; }
-	KRR_CALLABLE Vector3f getTarget() { return mData.target; }
-	KRR_CALLABLE Vector3f getForward() { return normalize(mData.target - mData.pos); }
-	KRR_CALLABLE Vector3f getUp() { return normalize(mData.v); }
-	KRR_CALLABLE Vector3f getRight() { return normalize(mData.u); }
-	KRR_CALLABLE Vector2f getFilmSize() { return mData.filmSize; }
-	KRR_CALLABLE float getfocalDistance() { return mData.focalDistance; }
-	KRR_CALLABLE float getfocalLength() { return mData.focalLength; }
+	KRR_CALLABLE float getAspectRatio() const { return mData.aspectRatio; }
+	KRR_CALLABLE Vector3f getPosition() const { return mData.pos; }
+	KRR_CALLABLE Vector3f getTarget() const { return mData.target; }
+	KRR_CALLABLE Vector3f getForward() const { return normalize(mData.target - mData.pos); }
+	KRR_CALLABLE Vector3f getUp() const { return normalize(mData.v); }
+	KRR_CALLABLE Vector3f getRight() const { return normalize(mData.u); }
+	KRR_CALLABLE Vector2f getFilmSize() const { return mData.filmSize; }
+	KRR_CALLABLE float getfocalDistance() const { return mData.focalDistance; }
+	KRR_CALLABLE float getfocalLength() const { return mData.focalLength; }
+	KRR_CALLABLE CameraData getData() const { return mData; }
 
 	KRR_CALLABLE void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; }
 	KRR_CALLABLE void setFilmSize(Vector2f& size) { mData.filmSize = size; }
@@ -71,6 +74,7 @@ public:
 	KRR_CALLABLE void setUp(Vector3f& up) { mData.up = up; }
 
 protected:
+	KRR_CLASS_DEFINE(Camera, mData);
 	CameraData mData, mDataPrev;
 	bool mHasChanges = false;
 	bool mPreserveHeight = true;	// preserve sensor height on aspect ratio changes.
@@ -84,10 +88,15 @@ public:
 	virtual bool onMouseEvent(const MouseEvent& mouseEvent) = 0;
 	virtual bool onKeyEvent(const KeyboardEvent& keyEvent) = 0;
 	virtual void renderUI() {};
+	virtual void setCamera(const Camera::SharedPtr &pCamera) { mpCamera = pCamera; }
+		
 protected:
-	CameraController(const Camera::SharedPtr& pCamera) : mpCamera(pCamera) {}
+	CameraController() = default;
+	CameraController(const Camera::SharedPtr& pCamera){ 
+		setCamera(pCamera);
+	}
 
-	Camera::SharedPtr mpCamera;
+	Camera::SharedPtr mpCamera{};
 	float mSpeed = 1.f;
 };
 
@@ -100,8 +109,11 @@ public:
 		float radius = 5;
 		float pitch = 0;
 		float yaw = 0;
+		
+		KRR_CLASS_DEFINE(CameraControllerData, radius, pitch, yaw, target);
 	};
 
+	OrbitCameraController() = default;
 	OrbitCameraController(Camera::SharedPtr pCamera): CameraController(pCamera) {}
 	
 	static SharedPtr create(Camera::SharedPtr pCamera){
@@ -112,10 +124,11 @@ public:
 	virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
 	virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 	virtual void renderUI() override;
+	virtual void setCamera(const Camera::SharedPtr &pCamera) override;
 
 private:
+	KRR_CLASS_DEFINE(OrbitCameraController, mData);
 	CameraControllerData mData, mDataPrev;
-
 	Vector2f mLastMousePos;
 	float mDampling = 1;
 	bool mOrbiting = false;

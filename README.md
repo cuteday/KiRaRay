@@ -49,6 +49,14 @@ git clone --recursive --depth=1 https://github.com/cuteday/KiRaRay.git
 
 This project uses cmake to build, no additional setting is needed. Make sure cuda is installed and added to PATH. While it tries to guess the optix installation path, you may specify the `OptiX_INSTALL_DIR` environment variable manually in case it failed.
 
+#### Running
+
+Specify the json configuration file as command line argument to start the renderer. The example configuration will used if no argument is provided, example:
+
+~~~bash
+build/src/kiraray.exe common/configs/cbox.json
+~~~
+
 #### Usage
 
 **Camera controlling.** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
