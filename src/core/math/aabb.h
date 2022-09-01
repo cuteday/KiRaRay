@@ -21,6 +21,11 @@ public:
 		this->Eigen::AlignedBox<T, Size>::operator=(other);
 		return *this;
 	}
+
+	KRR_CALLABLE void inflate(T inflation) {
+		this->m_min -= VectorType::Constant(inflation);
+		this->m_max += VectorType::Constant(inflation);
+	}
 };
 	
 using AABB3f = AxisAligned<float, 3>;

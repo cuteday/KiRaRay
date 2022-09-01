@@ -20,7 +20,7 @@ public:
 	KRR_CALLABLE float getKappa(float kappa) const { return m_kappa; }
 
 	KRR_CALLABLE float eval(float cosTheta) const { 
-		if (m_kappa == 0.f)
+		if (m_kappa == 0)
 			return M_INV_4PI;
 		return expf(m_kappa * min(0.f, cosTheta - 1.f)) * m_kappa /
 			   (M_2PI * (1 - expf(-2 * m_kappa)));

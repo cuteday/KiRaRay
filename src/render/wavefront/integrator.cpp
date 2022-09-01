@@ -109,7 +109,7 @@ void WavefrontPathTracer::generateScatterRays(){
 				sw.a = w.thp * misWeight * bsdfVal / lightPdf;
 				sw.pixelId = w.pixelId;
 				sw.tMax = 1;
-				shadowRayQueue->push(sw);
+				if(any(sw.a)) shadowRayQueue->push(sw);
 			}
 		}
 
@@ -127,7 +127,7 @@ void WavefrontPathTracer::generateScatterRays(){
 			r.pixelId = w.pixelId;
 			r.depth = w.depth + 1;
 			r.thp = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf / probRR;
-			nextRayQueue(w.depth)->push(r);
+			if (any(r.thp)) nextRayQueue(w.depth)->push(r);
 		}
 	});
 }
