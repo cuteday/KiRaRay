@@ -30,6 +30,7 @@ public:
 	virtual void onKeyEvent(io::KeyboardEvent &keyEvent) override;
 
 	void setScene(Scene::SharedPtr scene);
+	void setPasses(const std::vector<RenderPass::SharedPtr> passes) { mpPasses = passes; }
 
 	void render() override;
 	void run() override;

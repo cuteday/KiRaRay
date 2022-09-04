@@ -17,10 +17,11 @@
 KRR_NAMESPACE_BEGIN
 
 namespace fs = std::filesystem;
+using namespace importer;
 
 namespace {
-static uint textureIdAllocator	= 0;
-static uint materialIdAllocator = 0;
+	static uint textureIdAllocator	= 0;
+	static uint materialIdAllocator = 0;
 } // namespace
 
 namespace assimp {

@@ -238,7 +238,7 @@ void RenderApp::loadConfig(fs::path path) {
 	if (config.contains("model")) {
 		string model		   = config["model"].get<string>();
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
-		AssimpImporter().import(model, scene);
+		importer::loadScene(model, scene);
 		setScene(scene);
 	}
 	if (config.contains("environment")) {

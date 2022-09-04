@@ -10,14 +10,16 @@
 
 KRR_NAMESPACE_BEGIN
 
-class MaterialLoader
-{
+namespace importer {
+
+class MaterialLoader {
 public:
 	using TextureType = Material::TextureType;
 
 	MaterialLoader(bool useSrgb = true) { mUseSrgb = useSrgb; };
-	~MaterialLoader() {};
-	void loadTexture(const Material::SharedPtr& pMaterial, TextureType type, const std::string& filename);
+	~MaterialLoader(){};
+	void loadTexture(const Material::SharedPtr &pMaterial, TextureType type,
+					 const std::string &filename);
 	void setSrgb(bool useSrgb) { mUseSrgb = useSrgb; }
 
 private:
@@ -34,20 +36,51 @@ public:
 		GLTF2,
 	};
 	AssimpImporter() = default;
-	bool import(const string& filepath, Scene::SharedPtr pScene);
+	bool import(const string &filepath, Scene::SharedPtr pScene);
 
 private:
-	void processMesh(aiMesh* mesh, aiMatrix4x4 transform);
-	void traverseNode(aiNode* node, aiMatrix4x4 transform);
-	void loadMaterials(const string& modelFolder);
+	AssimpImporter(const AssimpImporter &) = delete;
+	void operator=(const AssimpImporter &) = delete;
 
-	AssimpImporter(const AssimpImporter&) = delete;
-	void operator=(const AssimpImporter&) = delete;
+	void processMesh(aiMesh *mesh, aiMatrix4x4 transform);
+	void traverseNode(aiNode *node, aiMatrix4x4 transform);
+	void loadMaterials(const string &modelFolder);
 
 	ImportMode mImportMode = ImportMode::Default;
 	string mFilepath;
-	aiScene* mpAiScene = nullptr;
+	aiScene *mpAiScene = nullptr;
 	Scene::SharedPtr mpScene;
 };
+
+class PbrtImporter {
+public:
+	PbrtImporter() = default;
+	bool import(const string &filepath, Scene::SharedPtr pScene);
+
+private:
+	PbrtImporter(const PbrtImporter &) = delete;
+	void operator=(const PbrtImporter &) = delete;
+
+	string mFilepath;
+	Scene::SharedPtr mpScene;
+};
+
+inline bool loadScene(const fs::path filepath, Scene::SharedPtr pScene) {
+	bool success{};
+	string format = filepath.extension().string();
+	if (format == ".obj" || format == ".gltf" || format == ".glb" || format == ".fbx") {
+		success = AssimpImporter().import(filepath.string(), pScene);
+	} else if (format == ".pbrt") {
+		success = PbrtImporter().import(filepath.string(), pScene);
+	} else {
+		Log(Fatal, "Unsupported file format: %s...", format.c_str());
+		return false;
+	}
+	if (!success)
+		Log(Fatal, "Failed to load scene file from %ls...", filepath.c_str());
+	return false;
+}
+
+} // namespace importer
 
 KRR_NAMESPACE_END

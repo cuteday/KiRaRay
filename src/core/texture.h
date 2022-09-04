@@ -73,10 +73,10 @@ public:
 		mValid = mImage.loadImage(filepath, srgb);
 
 	}
-	__both__ bool isValid() const { return mValid; }
-	__both__ bool isOnDevice() const { return mCudaTexture != 0; }
+	KRR_CALLABLE bool isValid() const { return mValid; }
+	KRR_CALLABLE bool isOnDevice() const { return mCudaTexture != 0; }
 	
-	__both__ cudaTextureObject_t getCudaTexture()const { return mCudaTexture; }
+	KRR_CALLABLE cudaTextureObject_t getCudaTexture()const { return mCudaTexture; }
 	
 	__device__ Color tex(Vector2f uv) const {
 #ifdef __NVCC__ 
@@ -140,11 +140,11 @@ public:
 		return any(mMaterialParams.emissive) || mTextures[(int)TextureType::Emissive].isValid(); 
 	}
 
-	__both__ Texture getTexture(TextureType type) {
+	KRR_CALLABLE Texture getTexture(TextureType type) {
 		return mTextures[(uint)type];
 	}
 
-	__both__ cudaTextureObject_t getCudaTexture(TextureType type) {
+	KRR_CALLABLE cudaTextureObject_t getCudaTexture(TextureType type) {
 		return mTextures[(uint)type].getCudaTexture();
 	}
 

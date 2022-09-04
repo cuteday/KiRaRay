@@ -15,3 +15,6 @@
 [submodule "src/ext/eigen"]
 	path = src/ext/eigen
 	url = https://github.com/cuteday/Eigen.git
+[submodule "src/ext/pbrtparser"]
+	path = src/ext/pbrtparser
+	url = https://github.com/ingowald/pbrt-parser.git
