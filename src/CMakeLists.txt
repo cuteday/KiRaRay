@@ -23,6 +23,7 @@ SET ( KRR_INCLUDE_ALL
 	${JSON_INCLUDE_DIRS}
 	${EIGEN_INCLUDE_DIRS}
 	${IMAGEIO_INCLUDE_DIRS}
+	${PBRTPARSER_INCLUDE_DIRS}
 	${CUDA_INCLUDE_DIRS}
 	${OptiX_INCLUDE}
 )
@@ -120,7 +121,8 @@ SET (KRR_SOURCE
 	render/wavefront/backend.cpp
 	render/profiler/profiler.cpp
 	render/profiler/ui.cpp
-	scene/importer.cpp
+	scene/assimp.cpp
+	scene/pbrt.cpp
 	main/renderer.cpp
 	util/tables.cpp
 )
@@ -214,6 +216,7 @@ SET(KRR_LIBS_ALL
 	libglew_static
 	glfw
 	imgui
+	pbrtParser
 	zlibstatic
 	${OPENGL_gl_LIBRARY}
 	${CUDA_LIBRARIES}

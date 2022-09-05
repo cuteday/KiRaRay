@@ -73,8 +73,12 @@ void RenderApp::run() {
 		renderUI();
 		{
 			PROFILE("Draw UI");
-			ImGui::Render();
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			ui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ui::GetDrawData());
+			if (ui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+				ui::UpdatePlatformWindows();
+				ui::RenderPlatformWindowsDefault();
+			}
 		}
 
 		glfwSwapBuffers(handle);
@@ -238,7 +242,7 @@ void RenderApp::loadConfig(fs::path path) {
 	if (config.contains("model")) {
 		string model		   = config["model"].get<string>();
 		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
-		AssimpImporter().import(model, scene);
+		importer::loadScene(model, scene);
 		setScene(scene);
 	}
 	if (config.contains("environment")) {

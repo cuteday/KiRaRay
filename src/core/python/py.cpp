@@ -22,8 +22,7 @@ void run(const char scene_file[], const char env_file[] = nullptr) {
 					RenderPass::SharedPtr(new DenoisePass(false)) });
 	Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
 	if (env_file) scene->addInfiniteLight(InfiniteLight(env_file));
-	AssimpImporter importer;
-	importer.import(scene_file, scene);
+	importer::loadScene(scene_file, scene);
 	app.setScene(scene);
 	app.run();
 }

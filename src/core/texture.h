@@ -73,10 +73,10 @@ public:
 		mValid = mImage.loadImage(filepath, srgb);
 
 	}
-	__both__ bool isValid() const { return mValid; }
-	__both__ bool isOnDevice() const { return mCudaTexture != 0; }
+	KRR_CALLABLE bool isValid() const { return mValid; }
+	KRR_CALLABLE bool isOnDevice() const { return mCudaTexture != 0; }
 	
-	__both__ cudaTextureObject_t getCudaTexture()const { return mCudaTexture; }
+	KRR_CALLABLE cudaTextureObject_t getCudaTexture()const { return mCudaTexture; }
 	
 	__device__ Color tex(Vector2f uv) const {
 #ifdef __NVCC__ 
@@ -122,8 +122,9 @@ public:
 	};
 
 	struct MaterialParams {
-		Vector4f diffuse{ 0 };			 
-		Vector4f specular{ 0 };			// G-roughness B-metallic in MetalRough model
+		Vector4f diffuse{ 0 };			// RGB for base color and A (optional) for opacity 
+		Vector4f specular{ 0 };			// G-roughness B-metallic A-shininess in MetalRough model
+										// RGB - specular color (F0); A - shininess in SpecGloss model
 		Vector3f emissive{ 0 };
 		float IoR{ 1.5f };
 		float diffuseTransmission{ 0 };
@@ -140,11 +141,11 @@ public:
 		return any(mMaterialParams.emissive) || mTextures[(int)TextureType::Emissive].isValid(); 
 	}
 
-	__both__ Texture getTexture(TextureType type) {
+	KRR_CALLABLE Texture getTexture(TextureType type) {
 		return mTextures[(uint)type];
 	}
 
-	__both__ cudaTextureObject_t getCudaTexture(TextureType type) {
+	KRR_CALLABLE cudaTextureObject_t getCudaTexture(TextureType type) {
 		return mTextures[(uint)type].getCudaTexture();
 	}
 

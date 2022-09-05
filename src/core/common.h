@@ -51,19 +51,6 @@ typedef unsigned char uchar;
 #define KRR_DEVICE_CODE
 #endif
 
-#if defined(_MSC_VER)
-#  define __PRETTY_FUNCTION__ __FUNCTION__
-#endif
-
-#ifndef PRINT
-# define PRINT(var) std::cout << #var << "=" << var << std::endl;
-#ifdef __WIN32__
-# define PING std::cout << __FILE__ << "::" << __LINE__ << ": " << __FUNCTION__ << std::endl;
-#else
-# define PING std::cout << __FILE__ << "::" << __LINE__ << ": " << __PRETTY_FUNCTION__ << std::endl;
-#endif
-#endif
-
 #ifdef KRR_DEVICE_CODE
 # define KRR_DEVICE   __device__
 # define KRR_HOST     __host__
