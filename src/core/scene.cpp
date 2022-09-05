@@ -68,17 +68,16 @@ void Scene::processLights(){
 	for (uint meshId = 0; meshId < nMeshes; meshId++) {
 		Mesh& mesh = meshes[meshId];
 		Material& material = (*mData.materials)[mesh.materialId];
-		if (material.hasEmission()) {
+		if (material.hasEmission() || any(mesh.Le)) {
+			Vector3f Le		 = material.hasEmission() ? material.mMaterialParams.emissive : mesh.Le;
+			Texture &texture				= material.getTexture(Material::TextureType::Emissive);
 			logDebug("Emissive diffuse area light detected,"
 				" number of shapes: " + to_string(mesh.indices.size()) +
-				" constant emission(?) "+ to_string(length(material.mMaterialParams.emissive)));
+				" constant emission(?) "+ to_string(luminance(Le)));
 			std::vector<Triangle> triangles = mesh.createTriangles(&(*mData.meshes)[meshId]);
 			mesh.emissiveTriangles.assign(triangles.begin(), triangles.end());
-			for (Triangle& tri : mesh.emissiveTriangles) {
-				Vector3f Le = material.mMaterialParams.emissive;
-				Texture& texture = material.getTexture(Material::TextureType::Emissive);
+			for (Triangle& tri : mesh.emissiveTriangles) 
 				mesh.lights.push_back(DiffuseAreaLight(Shape(&tri), texture, Le, true, 1.f));
-			}
 			mesh.mData.lights = mesh.lights.data();
 			(*mData.meshes)[meshId] = mesh.mData;
 		}

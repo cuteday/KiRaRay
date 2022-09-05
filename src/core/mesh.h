@@ -29,6 +29,7 @@ struct MeshData {
 
 class Mesh {
 public:
+
 	void toDevice() {
 		mData.vertices = (VertexAttribute *) vertices.data();
 		mData.indices = (Vector3i*)indices.data();
@@ -44,8 +45,9 @@ public:
 	inter::vector<Triangle> emissiveTriangles;
 	inter::vector<DiffuseAreaLight> lights;
 
-	uint materialId = 0;
+	uint materialId{};
 	MeshData mData;
+	Color Le{};
 };
 
 KRR_NAMESPACE_END

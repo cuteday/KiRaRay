@@ -108,7 +108,7 @@ Mesh createMesh(pbrt::Shape::SP shape, const Transformf<> transform) {
 	int n_faces				 = m->getNumPrims();
 	Log(Debug, "The current mesh %s has %d vertices and %d faces", m->toString().c_str(), n_vertices, n_faces);
 	if (m->normal.size() < n_vertices)
-		Log(Info, "The current mesh has %zd normals but %d vertices, thus the normal(s) are ignored.",
+		Log(Debug, "The current mesh has %zd normals but %d vertices, thus the normal(s) are ignored.",
 			m->normal.size(), n_vertices);
 	Matrixf<3, 3> rot		 = transform.rotation().inverse().transpose();
 	mesh.vertices.reserve(n_vertices);
@@ -131,6 +131,15 @@ Mesh createMesh(pbrt::Shape::SP shape, const Transformf<> transform) {
 		mesh.indices.push_back(cast(m->index[i]));
 	}
 	return mesh;
+}
+
+void createAreaLight(Mesh& mesh, pbrt::AreaLight::SP areaLight) {
+	if (pbrt::DiffuseAreaLightRGB::SP l =
+			std::dynamic_pointer_cast<pbrt::DiffuseAreaLightRGB>(areaLight)) {
+		mesh.Le	 = cast(l->L);
+	} else {
+		Log(Warning, "Encountered unsupported area light: %s", areaLight->toString().c_str());
+	}
 }
 
 bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
@@ -159,14 +168,16 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 				if (m->material) { 
 					mesh.materialId = loadMaterial(pScene, m->material, pbrtMaterials, basepath);
 				}
+				if (m->areaLight) {
+					createAreaLight(mesh, m->areaLight);
+				}
 				pScene->meshes.push_back(mesh);
-				pScene->mAABB.extend(cast(m->bounds));
 			} else {
 				Log(Warning, "Encountered unsupported pbrt shape type: %s", geom->toString().c_str());
 			}
 		}
 	}
-
+	pScene->mAABB = cast(scene->getBounds());
 	return true;
 }
 

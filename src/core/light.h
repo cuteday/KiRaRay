@@ -25,6 +25,10 @@ public:
 
 	DiffuseAreaLight() = default;
 
+	DiffuseAreaLight(Shape &shape, Vector3f Le, 
+		bool twoSided = true, float scale = 1.f)
+		: shape(shape), Le(Le), twoSided(twoSided), scale(scale) {}
+
 	DiffuseAreaLight(Shape &shape, Texture &texture, Vector3f Le = {},
 		bool twoSided = true, float scale = 1.f) :
 		shape(shape),
