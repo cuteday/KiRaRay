@@ -17,4 +17,5 @@
 	url = https://github.com/cuteday/Eigen.git
 [submodule "src/ext/pbrtparser"]
 	path = src/ext/pbrtparser
-	url = https://github.com/ingowald/pbrt-parser.git
+	url = https://github.com/cuteday/pbrt-parser.git
+	branch = cute
