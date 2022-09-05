@@ -122,8 +122,9 @@ public:
 	};
 
 	struct MaterialParams {
-		Vector4f diffuse{ 0 };			 
-		Vector4f specular{ 0 };			// G-roughness B-metallic in MetalRough model
+		Vector4f diffuse{ 0 };			// RGB for base color and A (optional) for opacity 
+		Vector4f specular{ 0 };			// G-roughness B-metallic A-shininess in MetalRough model
+										// RGB - specular color (F0); A - shininess in SpecGloss model
 		Vector3f emissive{ 0 };
 		float IoR{ 1.5f };
 		float diffuseTransmission{ 0 };
