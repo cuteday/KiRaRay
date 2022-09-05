@@ -19,9 +19,10 @@ KRR_NAMESPACE_BEGIN
 
 class RenderApp : public WindowApp{
 public:
-	RenderApp(const char title[], Vector2i size={1280, 720}) : WindowApp(title, size) {}
+	RenderApp(const char title[], Vector2i size = { 1280, 720 })
+		: WindowApp(title, size, true, false) {}
 	RenderApp(const char title[], Vector2i size, std::vector<RenderPass::SharedPtr> passes)
-		:WindowApp(title, size), mpPasses(passes) { }
+		: WindowApp(title, size, true, false), mpPasses(passes) {}
 
 	void resize(const Vector2i size) override;
 

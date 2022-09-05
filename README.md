@@ -57,6 +57,8 @@ Specify the json configuration file as command line argument to start the render
 build/src/kiraray.exe common/configs/example.json
 ~~~
 
+One can also save the current parameters (including camera parameters, render passes and scene file path, etc.) to a configuration file via the option in main menu bar.
+
 #### Usage
 
 **Camera controlling.** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
@@ -93,6 +95,8 @@ Switch to *Release* build for normal performance! The megakernel pathtracer shou
 ### Epilogue
 
 Although the main purpose of this project is to let me (a beginner) learn c++ and optix, I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i'm acting like a lazy old uncle, trying to sleep as more as possible (\*/ω＼\*).
+
+For anyone that (accidentally) found this project: any questions, suggestions and bug reports are greatly appreciated!
 
 <details>
 <summary>blue archive meme</summary>

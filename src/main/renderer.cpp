@@ -73,8 +73,12 @@ void RenderApp::run() {
 		renderUI();
 		{
 			PROFILE("Draw UI");
-			ImGui::Render();
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			ui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ui::GetDrawData());
+			if (ui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+				ui::UpdatePlatformWindows();
+				ui::RenderPlatformWindowsDefault();
+			}
 		}
 
 		glfwSwapBuffers(handle);

@@ -49,8 +49,15 @@ void initUI(GLFWwindow *window) {
 		return;
 	ui::CreateContext();
 	ImGuiIO &io = ui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard 
+		|ImGuiConfigFlags_DockingEnable
+		|ImGuiConfigFlags_ViewportsEnable;
 	ui::StyleColorsLight();
+	ImGuiStyle &style = ui::GetStyle();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+		style.WindowRounding			  = 0.0f;
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}
 	ImGui_ImplOpenGL3_Init("#version 330");
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 }
@@ -72,7 +79,7 @@ public:
 
 	static void keyboardCallback(GLFWwindow *pGlfwWindow, int key, int scanCode, int action,
 								 int modifiers) {
-		if (ImGui::GetIO().WantCaptureKeyboard)
+		if (ui::GetIO().WantCaptureKeyboard)
 			return;
 		KeyboardEvent event;
 		if (prepareKeyboardEvent(key, action, modifiers, event)) {
@@ -84,7 +91,7 @@ public:
 	}
 
 	static void charInputCallback(GLFWwindow *pGlfwWindow, uint32_t input) {
-		if (ImGui::GetIO().WantCaptureKeyboard)
+		if (ui::GetIO().WantCaptureKeyboard)
 			return;
 		KeyboardEvent event;
 		event.type		= KeyboardEvent::Type::Input;
@@ -97,7 +104,7 @@ public:
 	}
 
 	static void mouseMoveCallback(GLFWwindow *pGlfwWindow, double mouseX, double mouseY) {
-		if (ImGui::GetIO().WantCaptureMouse)
+		if (ui::GetIO().WantCaptureMouse)
 			return;
 		WindowApp *pWindow = (WindowApp *) glfwGetWindowUserPointer(pGlfwWindow);
 		if (pWindow != nullptr) {
@@ -114,7 +121,7 @@ public:
 
 	static void mouseButtonCallback(GLFWwindow *pGlfwWindow, int button, int action,
 									int modifiers) {
-		if (ImGui::GetIO().WantCaptureMouse)
+		if (ui::GetIO().WantCaptureMouse)
 			return;
 		MouseEvent event;
 		// Prepare the mouse data
@@ -149,7 +156,7 @@ public:
 	}
 
 	static void mouseWheelCallback(GLFWwindow *pGlfwWindow, double scrollX, double scrollY) {
-		if (ImGui::GetIO().WantCaptureMouse)
+		if (ui::GetIO().WantCaptureMouse)
 			return;
 		WindowApp *pWindow = (WindowApp *) glfwGetWindowUserPointer(pGlfwWindow);
 		if (pWindow != nullptr) {
@@ -222,7 +229,7 @@ WindowApp::WindowApp(const char title[], Vector2i size, bool visible, bool enabl
 	glfwSetWindowUserPointer(handle, this); // so we can get current "this"
 											// pointer in callback
 	glfwMakeContextCurrent(handle);
-	glfwSwapInterval((enableVsync) ? 1 : 0);
+	glfwSwapInterval(enableVsync ? 1 : 0);
 
 	glfwSetWindowSizeCallback(handle, ApiCallbacks::windowSizeCallback);
 	glfwSetKeyCallback(handle, ApiCallbacks::keyboardCallback);
@@ -338,7 +345,7 @@ void WindowApp::run() {
 	while (!glfwWindowShouldClose(handle)) {
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
+		ui::NewFrame();
 
 		render();
 
@@ -346,8 +353,12 @@ void WindowApp::run() {
 		renderUI();
 		{
 			PROFILE("Draw UI");
-			ImGui::Render();
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			ui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ui::GetDrawData());
+			if (ui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+				ui::UpdatePlatformWindows();
+				ui::RenderPlatformWindowsDefault();
+			}
 		}
 
 		glfwSwapBuffers(handle);
