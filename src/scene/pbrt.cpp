@@ -10,17 +10,22 @@ static uint textureIdAllocator	= 0;
 static uint materialIdAllocator = 0;
 static MaterialLoader sMaterialLoader;
 
+// helper functions
 Matrixf<4, 4> cast(pbrt::affine3f xfm) {
 	return Matrixf<4, 4>{ { xfm.l.vx.x, xfm.l.vy.x, xfm.l.vz.x, xfm.p.x },
 						  { xfm.l.vx.y, xfm.l.vy.y, xfm.l.vz.y, xfm.p.y },
 						  { xfm.l.vx.z, xfm.l.vy.z, xfm.l.vz.z, xfm.p.z },
 						  { 0, 0, 0, 1 } };
 }
-
 Vector3i cast(const pbrt::vec3i &vec) { return { vec.x, vec.y, vec.z }; }
 Vector3f cast(const pbrt::vec3f &vec) { return { vec.x, vec.y, vec.z }; }
 Vector2f cast(const pbrt::vec2f &vec) { return { vec.x, vec.y }; }
 AABB cast(const pbrt::box3f& aabb) { return { cast(aabb.lower), cast(aabb.upper) }; }
+
+inline Vector3f eta_to_reflectivity(const Vector3f& eta, const Vector3f& eta_k) {
+	return ((eta - Vector3f(1)).cwiseProduct(eta - Vector3f(1)) + eta_k.cwiseProduct(eta_k)) /
+		   ((eta + Vector3f(1)).cwiseProduct(eta + Vector3f(1)) + eta_k.cwiseProduct(eta_k));
+}
 } 
 
 void loadTexture(Material::SharedPtr material,
@@ -49,49 +54,100 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	Material::MaterialParams &matParams = material->mMaterialParams;
 
 	if (auto m = std::dynamic_pointer_cast<pbrt::DisneyMaterial>(mat)) {
+		Log(Info, "Encountered disney material: %s", mat->name.c_str());
 		matParams.diffuse = Vector4f(m->color.x, m->color.y, m->color.z, matParams.diffuse[3]);
 		matParams.IoR			   = m->eta;
 		matParams.specular[2]	   = m->metallic;
 		matParams.specular[1]	   = m->roughness;
-
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::PlasticMaterial>(mat)) {
-		matParams.diffuse = Vector4f(m->kd.x, m->kd.y, m->kd.z, matParams.diffuse[3]);
+		Log(Info, "Encountered plastic material: %s", mat->name.c_str());
+		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
 		if (m->map_kd) {
-			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd)) {
-				matParams.diffuse = Vector4f(const_tex->value.x, const_tex->value.y,
-											 const_tex->value.z, matParams.diffuse[3]);
-			} else {
-				loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
-			}
+			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd))
+				matParams.diffuse = Vector4f(cast(const_tex->value), matParams.diffuse[3]);
+			else loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
 		}
-		const Vector3f ks(m->ks.x, m->ks.y, m->ks.z);
+		const Vector3f ks(cast(m->ks));
 		matParams.specular[3] = luminance(ks);
 		matParams.specular[1] = m->roughness;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MatteMaterial>(mat)) {
-		matParams.diffuse = Vector4f(m->kd.x, m->kd.y, m->kd.z, matParams.diffuse[3]);
+		Log(Info, "Encountered matte material: %s", mat->name.c_str());
+		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
 		if (m->map_kd) {
-			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd)) {
-				matParams.diffuse = Vector4f(const_tex->value.x, const_tex->value.y,
-											 const_tex->value.z, matParams.diffuse[3]);
-			} else {
-				loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
-			}
+			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd)) 
+				matParams.diffuse = Vector4f(cast(const_tex->value), matParams.diffuse[3]);
+			else loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
 		}
+		matParams.specular[1] = 1;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::SubstrateMaterial>(mat)) {
-		matParams.diffuse = Vector4f(m->kd.x, m->kd.y, m->kd.z, matParams.diffuse[3]);
+		Log(Info, "Encountered substrate material: %s", mat->name.c_str());
+		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
+		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
 		if (m->map_kd) {
-			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd)) {
-				matParams.diffuse = Vector4f(const_tex->value.x, const_tex->value.y,
-											 const_tex->value.z, matParams.diffuse[3]);
-			} else {
-				loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
-			}
+			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd)) 
+				matParams.diffuse = Vector4f(cast(const_tex->value), matParams.diffuse[3]);
+			else loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
 		}
-		const Vector3f ks(m->ks.x, m->ks.y, m->ks.z);
-		matParams.specular[3] = luminance(ks);
-		matParams.specular[1] = 1;		// max roughness
+		Vector3f ks(cast(m->ks));
+		float roughness = (m->uRoughness + m->vRoughness) / 2;
+		matParams.specular = Vector4f(ks, 1 - roughness);
+	} else if (auto m = std::dynamic_pointer_cast<pbrt::UberMaterial>(mat)) {
+		Log(Info, "Encountered uber material: %s", mat->name.c_str());
+		material->mShadingModel		   = Material::ShadingModel::SpecularGlossiness;
+		Vector3f diffuse		= cast(m->kd);
+		Vector3f specular		= cast(m->ks);
+		Vector3f transmission	= cast(m->kt);
+		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
+		matParams.diffuse		= Vector4f(diffuse, matParams.diffuse[3]);
+		matParams.specular		= Vector4f(specular, 1);
+		matParams.specularTransmission = luminance(transmission);
+		if (m->map_kd) {
+			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd)) 
+				matParams.diffuse = Vector4f(cast(const_tex->value), matParams.diffuse[3]);
+			else loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
+		}
+		if (m->map_ks) {
+			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_ks)) 
+				matParams.specular = Vector4f(cast(const_tex->value), matParams.specular[3]);
+			 else loadTexture(material, m->map_ks, Material::TextureType::Specular, basedir);
+		}
+		if (m->map_kt) {
+			// TODO: alpha-killing is currently not supported.
+			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_kt))
+				loadTexture(material, m->map_ks, Material::TextureType::Transmission, basedir);
+		}
+	} else if (auto m = std::dynamic_pointer_cast<pbrt::TranslucentMaterial>(mat)) {
+		Log(Warning, "Encountered not well-supported transluscent material: %s", mat->name.c_str());
+		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
+		if (m->map_kd) {
+			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd))
+				matParams.diffuse = Vector4f(cast(const_tex->value), matParams.diffuse[3]);
+			else
+				loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
+		}
+	} else if (auto m = std::dynamic_pointer_cast<pbrt::MirrorMaterial>(mat)) {
+		// TODO: needs to make disney mirror-reflect when 0-roughness.
+		Log(Info, "Encountered mirror material: %s", mat->name.c_str());
+		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
+		matParams.diffuse		= Vector4f(Vector3f(0), matParams.diffuse[3]);
+		matParams.specular		= Vector4f(cast(m->kr), 1);
+	} else if (auto m = std::dynamic_pointer_cast<pbrt::MetalMaterial>(mat)) {
+		Log(Warning, "Encountered not well-supported metal material: %s", mat->name.c_str());
+		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
+		Vector3f eta			= cast(m->eta);
+		Vector3f eta_k			= cast(m->k);
+		matParams.diffuse		= Vector4f(eta_to_reflectivity(eta, eta_k), matParams.diffuse[3]);
+		matParams.specular[1]	= m->roughness;
+	} else if (auto m = std::dynamic_pointer_cast<pbrt::GlassMaterial>(mat)) {
+		Log(Warning, "Encountered not well-supported glass material: %s", mat->name.c_str());
+		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
+		matParams.specularTransmission = luminance(cast(m->kt)) * 0.9;
+		matParams.diffuse			   = Vector4f(cast(m->kt), 1);
+		matParams.specular			   = Vector4f(Vector3f(0.35), 1);
+		matParams.IoR = 1.5;
 	} else {
-		Log(Warning, "Encountered unsupported pbrt material type: %s", mat->toString().c_str());
+		Log(Warning, "Encountered unsupported %s material: %s", 
+			mat->toString().c_str(), mat->name.c_str());
 		return 0;	// falling back to the default material 0...
 	}
 	material->toDevice();

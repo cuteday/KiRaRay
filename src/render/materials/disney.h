@@ -222,7 +222,7 @@ public:
 		float e = 1.5; //sd.IoR; // Some scene has corrupt IoR so we use all 1.5 instead...
 		float strans = sd.specularTransmission;
 		float diffuseWeight = (1 - metallicWeight) * (1 - strans);
-//		float dt = sd.diffuseTransmission;
+		float dt = sd.diffuseTransmission;
 		float rough = sd.roughness;
 		float lum = luminance(c);
 		// normalize lum. to isolate hue+sat
@@ -298,10 +298,10 @@ public:
 			if (thin) {
 				// Scale roughness based on IOR (Burley 2015, Figure 15).
 				assert(false);
-				//float rscaled = (0.65f * e - 0.35f) * rough;
-				//float ax = max(.001f, pow2(rscaled) / aspect);
-				//float ay = max(.001f, pow2(rscaled) * aspect);
-				//microfacetBtdf = MicrofacetBtdf(T, 1, e, ax, ay);
+				float rscaled = (0.65f * e - 0.35f) * rough;
+				float ax = max(.001f, pow2(rscaled) / aspect);
+				float ay = max(.001f, pow2(rscaled) * aspect);
+				microfacetBtdf = MicrofacetBtdf(T, 1, e, ax, ay);
 			}
 			else{
 				microfacetBtdf = MicrofacetBtdf(T, 1, e, ax, ay);
@@ -322,7 +322,6 @@ public:
 		pSpecTrans = components & DISNEY_SPEC_TRANSMISSION ? (1.f - approxFresnel) * (1 - sd.metallic) * sd.specularTransmission: 0;
 		float totalWt = pDiffuse + pSpecRefl + pSpecTrans;
 		if (totalWt > 0) pDiffuse /= totalWt, pSpecRefl /= totalWt, pSpecTrans /= totalWt;
-		//pDiffuse = 0.6, pSpecRefl = 0.4, pSpecTrans = 0;
 		//printf("pdiffuse: %f pspecreflect: %f pspectransmit: %f metallic: %f\n",
 		//	pDiffuse, pSpecRefl, pSpecTrans, metallicWeight);
 	}
