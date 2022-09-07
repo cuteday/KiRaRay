@@ -26,7 +26,7 @@ void OptiXWavefrontBackend::setScene(Scene& scene){
 	OptixProgramGroup raygenShadowPG = createRaygenPG("__raygen__Shadow");
 	OptixProgramGroup missClosestPG = createMissPG("__miss__Closest");
 	OptixProgramGroup missShadowPG = createMissPG("__miss__Shadow");
-	OptixProgramGroup hitClosestPG = createIntersectionPG("__closesthit__Closest", nullptr, nullptr);
+	OptixProgramGroup hitClosestPG = createIntersectionPG("__closesthit__Closest", "__anyhit__Closest", nullptr);
 	OptixProgramGroup hitShadowPG = createIntersectionPG(nullptr, "__anyhit__Shadow", nullptr);
 
 	std::vector<OptixProgramGroup> allPGs = {

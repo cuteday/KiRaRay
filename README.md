@@ -11,19 +11,12 @@
 > This project is only for learning purpose with very limited features, and not sure if it will continue developing.
 
 - [x] Orbit camera controlling & thin lens camera.
-- [x] Assimp as scene importer (OBJ and glTF2 scenes✅).
 - [x] Diffuse, microfacet, disney and fresnel-blended bsdfs.
 - [x] GPU path tracing (a megakernel version and a [wavefront](https://research.nvidia.com/publication/2013-07_megakernels-considered-harmful-wavefront-path-tracing-gpus) version).
 - [x] Next event estimation and multiple importance sampling.
 - [x] Post processing passes (e.g., tonemapping, accumulating and denoising).
+- [x] Basic support for multiple formats of scenes (e.g., OBJ, glTF2 and [pbrt-v3](https://github.com/mmp/pbrt-v3/)).
 - [x] Simple CPU/GPU performance profiling.
-
-If possible, more features will be added in the future, for example:
-
-- [ ] Spectral rendering.
-- [ ] More BSDFs and light sources.
-- [ ] Mesh instancing and scene animations.
-- [ ] Importer for pbrt or mitsuba scenes.
 
 ### Build and run
 
@@ -67,23 +60,20 @@ One can also save the current parameters (including camera parameters, render pa
 
 **Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11), including a wrapper of OptiX's built-in AI denoiser. See [scripts](scripts) for details.
 
-### Common Issues
+### Galleries
+
+<p align=center>
+<img src=common/demo/living-room.png width="800">
+
+### Issues
 
 #### Performance
 
 Switch to *Release* build for normal performance! The megakernel pathtracer should run at about 30 spp per second at 1920*1080 on an RTX 3070, if the average path length is less than 5. The wavefront pathtracer however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does run significantly faster when next event estimation is enabled though). 
 
-### Galleries
+#### Scene loading
 
-#### Bathroom
-
-<p align=center>
-<img src=common/demo/salle_de_bain.jpg width="700">
-
-#### Higokumaru by [MooKorea](https://skfb.ly/ourA9)
-
-<p align=center>
-<img src=common/demo/higokumaru.jpg width="700">
+*Kiraray* provided limited support for importing scenes like OBJ, glTF2 with [Assimp](https://github.com/assimp/assimp.git) as the default scene importer. Some commonly used material properties (e.g., roughness, metallic) and textures (normal, emission, opacity, etc.) are supported. [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import pbrt-v3 scenes, and all pbrt materials are roughly approximated with the Disney Principled BSDF. 
 
 ### Credits
 - The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).

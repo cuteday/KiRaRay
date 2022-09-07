@@ -73,8 +73,12 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	}
 }
 
+extern "C" __global__ void KRR_RT_AH(Closest)() { 
+	if (alphaKilled(launchParams.sceneData.materials))
+		optixIgnoreIntersection();
+}
+
 extern "C" __global__ void KRR_RT_MS(Closest)() {
-	//getPRD<ShadingData>()->miss = true;
 	launchParams.missRayQueue->push(getRayWorkItem());
 }
 
@@ -84,10 +88,14 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 	RayWorkItem r = getRayWorkItem();
 	ShadingData sd = {};
 	traceRay(launchParams.traversable, r.ray, KRR_RAY_TMAX,
-		0, OPTIX_RAY_FLAG_DISABLE_ANYHIT, (void*)&sd);
+		0, OPTIX_RAY_FLAG_NONE, (void*)&sd);
 }
 
 extern "C" __global__ void KRR_RT_AH(Shadow)() { 
+	if (alphaKilled(launchParams.sceneData.materials)) {
+		optixIgnoreIntersection();
+		return;
+	}
 	optixSetPayload_0(0); 
 	optixTerminateRay();
 }
@@ -100,7 +108,7 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	ShadowRayWorkItem r = getShadowRayWorkItem();
 	uint32_t miss{0};
 	traceRay(launchParams.traversable, r.ray, r.tMax, 0,
-			 OptixRayFlags(OPTIX_RAY_FLAG_DISABLE_ANYHIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
+			 OptixRayFlags( OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
 		miss);
 	if (miss) launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
 	

@@ -3,6 +3,7 @@
 #include "shared.h"
 #include "common.h"
 #include "math/math.h"
+#include "util/hash.h"
 #include "bsdf.h"
 
 #include <optix_device.h>
@@ -49,6 +50,32 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	hitInfo.hitKind = optixGetHitKind();
 	hitInfo.barycentric = { 1 - barycentric[0] - barycentric[1], barycentric[0], barycentric[1] };
 	return hitInfo;
+}
+
+KRR_DEVICE_FUNCTION bool alphaKilled(inter::vector<Material>* materials) {
+	HitInfo hitInfo			= getHitInfo();
+	Material &material		= (*materials)[hitInfo.mesh->materialId];
+	Texture &opaticyTexture = material.mTextures[(uint) Material::TextureType::Transmission];
+	if (!opaticyTexture.isValid())
+		return false;
+
+	Vector3f b				  = hitInfo.barycentric;
+	const MeshData &mesh	  = *hitInfo.mesh;
+	Vector3i v				  = mesh.indices[hitInfo.primitiveId];
+	const VertexAttribute &v0 = mesh.vertices[v[0]], v1 = mesh.vertices[v[1]],
+						  v2 = mesh.vertices[v[2]];
+	Vector2f uv				 = b[0] * v0.texcoord + b[1] * v1.texcoord + b[2] * v2.texcoord;
+
+	Vector3f opacity = sampleTexture(opaticyTexture, uv, Vector3f(1));
+	float alpha		 = 1 - luminance(opacity);
+	if (alpha >= 1)
+		return false;
+	if (alpha <= 0)
+		return true;
+	float3 o = optixGetWorldRayOrigin();
+	float3 d = optixGetWorldRayDirection();
+	float u	 = HashFloat(o, d);
+	return u > alpha;
 }
 
 KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitInfo,

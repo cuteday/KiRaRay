@@ -133,8 +133,8 @@ size_t loadMaterial(Scene::SharedPtr scene,
 			// TODO: alpha-killing is currently not supported.
 			Log(Info, "A opacity map is found for %s texture %s", m->toString().c_str(),
 				m->name.c_str());
-			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_kt))
-				loadTexture(material, m->map_ks, Material::TextureType::Transmission, basedir);
+			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_opacity))
+				loadTexture(material, m->map_opacity, Material::TextureType::Transmission, basedir);
 		}
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::TranslucentMaterial>(mat)) {
 		Log(Warning, "Encountered not well-supported transluscent material: %s", mat->name.c_str());
