@@ -40,15 +40,6 @@ template <typename T> KRR_CALLABLE constexpr T pow4(T x) { return x * x * x * x;
 template <typename T> KRR_CALLABLE constexpr T pow5(T x) { return x * x * x * x * x; }
 
 KRR_CALLABLE float sqrt(const float v) { return sqrtf(v); }
-KRR_CALLABLE Vector2f sqrt(const Vector2f v) {
-	return Vector2f(sqrtf(v[0]), sqrtf(v[1]));
-}
-KRR_CALLABLE Vector3f sqrt(const Vector3f v) {
-	return Vector3f(sqrtf(v[0]), sqrtf(v[1]), sqrtf(v[2]));
-}
-KRR_CALLABLE Vector4f sqrt(const Vector4f v) {
-	return Vector4f(sqrtf(v[0]), sqrtf(v[1]), sqrtf(v[2]), sqrtf(v[3]));
-}
 
 template <typename T> KRR_CALLABLE T mod(T a, T b) {
 	T result = a - (a / b) * b;

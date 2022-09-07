@@ -40,8 +40,9 @@ void MegakernelPathTracer::createProgramGroups() {
 	hitgroupPGs.resize(RAY_TYPE_COUNT);
 	for (int i = 0; i < RAY_TYPE_COUNT; i++) {
 		string chFuncName = "__closesthit__" + shaderProgramNames[i];
-		hitgroupPGs[i] = OptiXBackend::createIntersectionPG(gpContext->optixContext,
-			module, chFuncName.c_str(), nullptr, nullptr);
+		string ahFuncName = "__anyhit__" + shaderProgramNames[i];
+		hitgroupPGs[i]	  = OptiXBackend::createIntersectionPG(
+			   gpContext->optixContext, module, chFuncName.c_str(), ahFuncName.c_str(), nullptr);
 	}
 }
 

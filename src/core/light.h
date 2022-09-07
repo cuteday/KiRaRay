@@ -95,7 +95,7 @@ public:
 
 	__device__ inline LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
 		LightSample ls = {};
-		Vector3f wi = utils::latlongToWorld(u);
+		Vector3f wi = utils::sphericalToCartesian(M_PI * u[0], M_2PI * u[1]);
 		ls.intr = Interaction(ctx.p + wi * 1e7f);
 		ls.L = Li(wi);
 		ls.pdf = 0.25 * M_INV_PI;
@@ -109,11 +109,10 @@ public:
 	KRR_CALLABLE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const { return Vector3f::Zero(); }
 
 	__device__ inline Color Li(Vector3f wi) const {
-		Color L;
-		L = tint * scale;
+		Color L = tint * scale;
 
 		if (!image.isOnDevice()) return L;
-		Vector2f uv = utils::worldToLatLong(wi);
+		Vector2f uv = utils::cartesianToSphericalNormalized(wi);
 		uv[0] = fmod(uv[0] + rotation, 1.f);
 		L *= image.tex(uv);
 

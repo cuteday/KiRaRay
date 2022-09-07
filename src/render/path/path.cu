@@ -3,6 +3,7 @@
 #include "render/shared.h"
 #include "render/shading.h"
 #include "render/raytracing.cuh"
+#include "util/hash.h"
 
 #include <optix_device.h>
 
@@ -132,6 +133,27 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 	return true;
 }
 
+KRR_DEVICE_FUNCTION bool alphaKilled() {
+	HitInfo hitInfo	   = getHitInfo();
+	Material &material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
+	Texture &opaticyTexture = material.mTextures[(uint) Material::TextureType::Transmission];
+	if (!opaticyTexture.isValid()) return false;
+	
+	Vector3f b	   = hitInfo.barycentric;
+	const MeshData &mesh = *hitInfo.mesh;
+	Vector3i v	   = mesh.indices[hitInfo.primitiveId];
+	const VertexAttribute &v0 = mesh.vertices[v[0]], v1 = mesh.vertices[v[1]], v2 = mesh.vertices[v[2]];
+	Vector2f uv				 = b[0] * v0.texcoord + b[1] * v1.texcoord + b[2] * v2.texcoord;
+
+	float alpha = 1 - sampleTexture(opaticyTexture, uv, Vector4f(0))[0];
+	if (alpha >= 1) return false;
+	if (alpha <= 0) return true;
+	float3 o = optixGetWorldRayOrigin();
+	float3 d = optixGetWorldRayDirection();
+	float u	 = HashFloat(o, d);
+	return u > alpha;
+}
+
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo = getHitInfo();
 	ShadingData& sd = *getPRD<ShadingData>();
@@ -140,9 +162,17 @@ extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	prepareShadingData(sd, hitInfo, material);
 }
 
+extern "C" __global__ void KRR_RT_AH(Radiance)() {
+	if (alphaKilled()) optixIgnoreIntersection();
+}
+
 extern "C" __global__ void KRR_RT_MS(Radiance)() {
 	ShadingData &sd = *getPRD<ShadingData>();
 	sd.miss = true;
+}
+
+extern "C" __global__ void KRR_RT_AH(ShadowRay)() {
+	if (alphaKilled()) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_CH(ShadowRay)() {	//skipped
@@ -160,8 +190,9 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	// an alternate version of main loop
 	for (int &depth = path.depth; depth < launchParams.maxDepth; depth++) {
 		// ShadingData is updated in CH shader
+		// DONOT enable OPTIX_RAY_FLAG_DISABLE_ANYHIT if alpha-killing is enabled
 		traceRay(launchParams.traversable, { path.pos, path.dir }, KRR_RAY_TMAX,
-			RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_DISABLE_ANYHIT, (void*)&sd);
+			RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, (void*)&sd);
 
 		if (sd.miss) {			// incorporate emission from envmap, by escaped rays
 			handleMiss(sd, path); break;

@@ -108,6 +108,7 @@ SET(KRR_HEADERS
 	util/string.h
 	util/lowdiscrepancy.h
 	util/tables.h
+	util/hash.h
 	util/vmf.h
 	util/ema.h
 )

@@ -4,6 +4,7 @@
 #include "math/utils.h"
 #include "taggedptr.h"
 #include "util/lowdiscrepancy.h"
+#include "util/hash.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -27,7 +28,7 @@ public:
 	}
 
 	KRR_CALLABLE void setPixelSample(Vector2ui samplePixel, uint sampleIndex) {
-		uint s0 = utils::interleave_32bit(samplePixel);
+		uint s0 = interleave_32bit(samplePixel);
 		uint s1 = sampleIndex;
 		setSeed(s0, s1);
 	}
@@ -99,9 +100,9 @@ public:
 	KRR_CALLABLE void setSeed(uint seed) { state = seed; }
 
 	KRR_CALLABLE void setPixelSample(Vector2ui samplePixel, uint sampleIndex) {
-		uint v0 = utils::interleave_32bit(Vector2ui(samplePixel));
+		uint v0 = interleave_32bit(Vector2ui(samplePixel));
 		uint v1 = sampleIndex;
-		state	= utils::blockCipherTEA(v0, v1, 16)[0];
+		state	= blockCipherTEA(v0, v1, 16)[0];
 	}
 
 	// return u in [0, 1)

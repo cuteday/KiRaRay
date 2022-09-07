@@ -31,6 +31,8 @@ public:
 		this->Eigen::Array<T, Size, 1>::operator=(other);
 		return *this;
 	}
+
+	KRR_CALLABLE friend Array sqrt(const Array &arr) { return arr.sqrt(); }
 };
 
 template <typename T>

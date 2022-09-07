@@ -85,9 +85,6 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 	ShadingData sd = {};
 	traceRay(launchParams.traversable, r.ray, KRR_RAY_TMAX,
 		0, OPTIX_RAY_FLAG_DISABLE_ANYHIT, (void*)&sd);
-	//if (sd.miss) {	// push to miss ray queue
-	//	launchParams.missRayQueue->push(r);
-	//}
 }
 
 extern "C" __global__ void KRR_RT_AH(Shadow)() { 
@@ -105,9 +102,8 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	traceRay(launchParams.traversable, r.ray, r.tMax, 0,
 			 OptixRayFlags(OPTIX_RAY_FLAG_DISABLE_ANYHIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
 		miss);
-	if (miss) {
-		launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
-	}
+	if (miss) launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
+	
 }
 
 KRR_NAMESPACE_END

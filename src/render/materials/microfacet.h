@@ -20,34 +20,34 @@ public:
 
     KRR_CALLABLE bool isSpecular() { return max(alphax, alphay) < 1e-3f; }
 
-    __both__ static inline float RoughnessToAlpha(float roughness) {
+    static KRR_CALLABLE float RoughnessToAlpha(float roughness) {
         roughness = max(roughness, (float)1e-3);
         float x = log(roughness);
         return 1.62142f + 0.819955f * x + 0.1734f * x * x + 0.0171201f * x * x * x +
             0.000640711f * x * x * x * x;
     };
     
-    __both__ void setup(float ax, float ay, bool samplevis = true){
+    KRR_CALLABLE void setup(float ax, float ay, bool samplevis = true){
         sampleVisibleArea = samplevis;
         alphax = max(1e-4f, ax);
         alphay = max(1e-4f, ay);
     }
 
-    __both__ GGXMicrofacetDistribution(float alphax, float alphay,
+    KRR_CALLABLE GGXMicrofacetDistribution(float alphax, float alphay,
         bool samplevis = true)
         : sampleVisibleArea(samplevis),
         alphax(max(float(0.001), alphax)),
         alphay(max(float(0.001), alphay)) {}
 
-    __both__ float G1(const Vector3f& w) const {
+    KRR_CALLABLE float G1(const Vector3f& w) const {
         return 1 / (1 + Lambda(w));
     }
 
-    __both__ float G(const Vector3f& wo, const Vector3f& wi) const {
+    KRR_CALLABLE float G(const Vector3f& wo, const Vector3f& wi) const {
         return 1 / (1 + Lambda(wo) + Lambda(wi));
     }
 
-    __both__ float D(const Vector3f& wh) const {
+    KRR_CALLABLE float D(const Vector3f& wh) const {
         float tan2Theta = Tan2Theta(wh);
         if (isinf(tan2Theta)) return 0.;
         const float cos4Theta = Cos2Theta(wh) * Cos2Theta(wh);
@@ -57,7 +57,7 @@ public:
 
     KRR_CALLABLE Vector3f Sample(const Vector3f& wo, const Vector2f& u) const;
     
-    __both__ float Pdf(const Vector3f& wo, const Vector3f& wh) const {
+    KRR_CALLABLE float Pdf(const Vector3f& wo, const Vector3f& wh) const {
         if (sampleVisibleArea)
             return D(wh) * G1(wo) * fabs(dot(wo, wh)) / AbsCosTheta(wo);
         else
@@ -201,14 +201,14 @@ class MicrofacetBrdf {
 public:
     MicrofacetBrdf() = default;
 
-    __both__ MicrofacetBrdf(const Color &R, float eta, float alpha_x, float alpha_y)
+    KRR_CALLABLE MicrofacetBrdf(const Color &R, float eta, float alpha_x, float alpha_y)
         :R(R), eta(eta){
         distribution.setup(alpha_x, alpha_y);
     }
 
     _DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBrdf);
 
-    __both__ void setup(const ShadingData& sd) {
+    KRR_CALLABLE void setup(const ShadingData& sd) {
         R = sd.specular;
         float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
         alpha = pow2(sd.roughness);
@@ -216,12 +216,11 @@ public:
         distribution.setup(alpha, alpha, true);
     }
 
-    __both__ Color f(Vector3f wo, Vector3f wi) const {
+    KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
         float cosThetaO = AbsCosTheta(wo), cosThetaI = AbsCosTheta(wi);
         Vector3f wh = wi + wo;
         if (cosThetaI == 0 || cosThetaO == 0) return Vector3f::Zero();
-		if (!any(wh))
-			return Vector3f::Zero();
+		if (!any(wh))return Color::Zero();
         wh = normalize(wh);
 
         // fresnel is also on the microfacet (wrt to wh)
@@ -236,7 +235,7 @@ public:
             (4 * cosThetaI * cosThetaO);
     }
 
-    __both__  BSDFSample sample(Vector3f wo, Sampler& sg) const {
+    KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler& sg) const {
         BSDFSample sample = {};
         Vector3f wi, wh;
         Vector2f u = sg.get2D();
@@ -256,7 +255,7 @@ public:
 
     }
 
-    __both__ float pdf(Vector3f wo, Vector3f wi) const {
+    KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
         if (!SameHemisphere(wo, wi)) return 0;
         Vector3f wh = normalize(wo + wi);
         return distribution.Pdf(wo, wi) / (4 * dot(wo, wh));
@@ -279,24 +278,23 @@ class MicrofacetBtdf {
 public:
     MicrofacetBtdf() = default;
 
-    __both__ MicrofacetBtdf(const Color &T, float etaA, float etaB, float alpha_x, float alpha_y)
+    KRR_CALLABLE MicrofacetBtdf(const Color &T, float etaA, float etaB, float alpha_x, float alpha_y)
         :T(T), etaA(etaA), etaB(etaB) {
         distribution.setup(alpha_x, alpha_y, true);
     }
 
     _DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBtdf);
 
-    __both__ void setup(const ShadingData& sd) {
+    KRR_CALLABLE void setup(const ShadingData& sd) {
         T = sd.transmission;
         float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
         alpha = pow2(sd.roughness);
         // TODO: ETA=1 causes NaN, should switch to delta scattering
         etaA = 1; etaB = max(1.01f, sd.IoR);
-        etaB = 1.1;
         distribution.setup(alpha, alpha, true);
     }
 
-    __both__ Color f(Vector3f wo, Vector3f wi) const {
+    KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
 		if (SameHemisphere(wo, wi))
 			return 0;
 
@@ -311,8 +309,11 @@ public:
 
         // Same side?
         if (dot(wo, wh) * dot(wi, wh) > 0) return 0;
+#if KRR_USE_DISNEY
+		Color F = DisneyFresnel(disneyR0, metallic, etaB / etaA, dot(wo, wh)); // etaT / etaI
+#else 
 		Color F = FrDielectric(dot(wo, wh), etaB / etaA);
-
+#endif
         float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
         float factor = 1.f / eta;
 
@@ -322,7 +323,7 @@ public:
                 (cosThetaI * cosThetaO * sqrtDenom * sqrtDenom));
     }
 
-    __both__  BSDFSample sample(Vector3f wo, Sampler& sg) const {
+    KRR_CALLABLE  BSDFSample sample(Vector3f wo, Sampler& sg) const {
         BSDFSample sample = {};
         if (wo[2] == 0) return sample;
 
@@ -339,7 +340,7 @@ public:
         return sample;
     }
 
-    __both__ float pdf(Vector3f wo, Vector3f wi) const {
+    KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
         if (SameHemisphere(wo, wi)) return 0;
         float eta = CosTheta(wo) > 0 ? etaB / etaA : etaA / etaB;	// wo is outside?
         // wh = wo + eta * wi, eta = etaI / etaT
@@ -356,7 +357,13 @@ public:
 
     Color T{ 0 }; // specular reflectance
     float etaA{ 1 }, etaB{ 1.5 }				/* etaA: outside IoR, etaB: inside IoR */;
-    GGXMicrofacetDistribution distribution;
+#if KRR_USE_DISNEY
+	Color disneyR0;
+	float metallic;
+	DisneyMicrofacetDistribution distribution; // separable masking shadow model for disney
+#else
+	GGXMicrofacetDistribution distribution;
+#endif
 };
 
 KRR_NAMESPACE_END

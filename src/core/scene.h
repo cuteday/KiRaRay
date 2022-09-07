@@ -6,7 +6,6 @@
 #include "mesh.h"
 #include "light.h"
 #include "camera.h"
-#include "envmap.h"
 #include "texture.h"
 #include "kiraray.h"
 #include "interop.h"

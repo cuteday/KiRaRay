@@ -11,12 +11,11 @@ namespace bsdf {
 	using namespace math;
 
 	KRR_CALLABLE Color FrSchlick(Color f0, Color f90, float cosTheta) {
-		//return lerp(f0, f90, pow(max(1 - cosTheta, 0.f), 5.f));
-		return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0.f), 5.f); // clamp to avoid NaN if cosTheta = 1+epsilon
+		return f0 + (f90 - f0) * pow5(clamp(1 - fabs(cosTheta), 0.f, 1.f)); // clamp to avoid NaN if cosTheta = 1+epsilon
 	}
 
 	KRR_CALLABLE float FrSchlick(float f0, float f90, float cosTheta){
-		return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0.f), 5.f); // clamp to avoid NaN if cosTheta = 1+epsilon
+		return f0 + (f90 - f0) * pow5(clamp(1 - fabs(cosTheta), 0.f, 1.f)); // clamp to avoid NaN if cosTheta = 1+epsilon
 	}
 
 	// eta: just etaT/etaI if incident ray
@@ -63,39 +62,10 @@ namespace bsdf {
 		return result;
 	}
 
-	// eta: etaI/etaT if incident ray
+	// eta: etaT/etaI if incident ray (etaB / etaA)
 	KRR_CALLABLE Color DisneyFresnel(const Color &R0, float metallic, float eta, float cosI) {
 		return lerp(Color(FrDielectric(cosI, eta)), FrSchlick(R0, Color(1), cosI), metallic);
 	}
 
-#if 0
-	class FresnelDisney {
-		
-	};
-
-	class FresnelDielectric {
-
-		float etaI, etaT;
-	};
-
-	class FresnelConductor {
-
-		Vector3f etaI, etaT, k;
-	};
-
-	class FresnelNull {
-
-	};
-
-	class Fresnel : public TaggedPointer<FresnelNull, FresnelDisney, FresnelDielectric> {
-	public:
-		using TaggedPointer::TaggedPointer;
-
-		Vector3f eval(float cosThetaI) const {
-			auto eval = [&](auto ptr)->float {return ptr->eval(cosThetaI); };
-			return dispatch(eval);
-		}
-	};
-#endif
 }
 KRR_NAMESPACE_END

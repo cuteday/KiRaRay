@@ -44,6 +44,7 @@ public:
 		return *this;
 	}
 
+	KRR_CALLABLE friend Vector sqrt(const Vector &vec) { return vec.cwiseSqrt; }
 };
 
 template <typename T>

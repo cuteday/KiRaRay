@@ -38,15 +38,11 @@ public:
 	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
 		float Fo = SchlickWeight(AbsCosTheta(wo)),
 			Fi = SchlickWeight(AbsCosTheta(wi));
-
-		// Diffuse fresnel - go from 1 at normal incidence to .5 at grazing.
-		// Burley 2015, eq (4).
 		return R * M_INV_PI * (1 - Fo / 2) * (1 - Fi / 2);
 	}
 	KRR_CALLABLE Color rho(const Vector3f &, int, const Vector2f *) const { return R; }
 	KRR_CALLABLE Color rho(int, const Vector3f *, const Vector3f *) const { return R; }
 
-//private:
 	Color R;
 };
 
@@ -59,7 +55,7 @@ public:
 
 	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
 		Vector3f wh = wi + wo;
-		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vector3f(0.);
+		if (!wh.any()) return Vector3f(0);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -69,8 +65,7 @@ public:
 			Fi = SchlickWeight(AbsCosTheta(wi));
 		float Fss = lerp(1.f, Fss90, Fo) * lerp(1.f, Fss90, Fi);
 		// 1.25 scale is used to (roughly) preserve albedo
-		float ss =
-			1.25f * (Fss * (1 / (AbsCosTheta(wo) + AbsCosTheta(wi)) - .5f) + .5f);
+		float ss = 1.25f * (Fss * (1 / (AbsCosTheta(wo) + AbsCosTheta(wi)) - .5f) + .5f);
 
 		return R * M_INV_PI * ss;
 	};
@@ -114,7 +109,7 @@ public:
 	KRR_CALLABLE DisneySheen(const Vector3f& R): R(R) {}
 	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
 		Vector3f wh = wi + wo;
-		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vector3f(0.);
+		if (!wh.any()) return Vector3f(0.);
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -149,14 +144,13 @@ public:
 
 	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
 		Vector3f wh = wi + wo;
-		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Vector3f(0.);
+		if (!wh.any()) return Vector3f(0);
 		wh = normalize(wh);
 
 		float Dr = GTR1(AbsCosTheta(wh), gloss);
 		float Fr = FrSchlick(.04f, 1.f, dot(wo, wh));
 		// The geometric term always based on alpha = 0.25.
-		float Gr =
-			smithG_GGX(AbsCosTheta(wo), .25) * smithG_GGX(AbsCosTheta(wi), .25);
+		float Gr = smithG_GGX(AbsCosTheta(wo), .25) * smithG_GGX(AbsCosTheta(wi), .25);
 
 		return weight * Gr * Fr * Dr / 4;
 	};
@@ -164,19 +158,17 @@ public:
 	KRR_CALLABLE Color Sample_f(const Vector3f &wo, Vector3f *wi, const Vector2f &u,
 		float* pdf, BxDFType* sampledType) const {
 
-		if (wo[2] == 0)
-			return Color::Zero();
+		if (wo[2] == 0) return Color::Zero();
 
 		float alpha2 = gloss * gloss;
-		float cosTheta = sqrt(
-			max(float(0), (1 - pow(alpha2, 1 - u[0])) / (1 - alpha2)));
+		float cosTheta = sqrt(max(float(0), (1 - pow(alpha2, 1 - u[0])) / (1 - alpha2)));
 		float sinTheta = sqrt(max((float)0, 1 - cosTheta * cosTheta));
 		float phi = 2 * M_PI * u[1];
 		Vector3f wh = sphericalToCartesian(sinTheta, cosTheta, phi);
 		if (!SameHemisphere(wo, wh)) wh = -wh;
 
 		*wi = Reflect(wo, wh);
-		if (!SameHemisphere(wo, *wi)) return Vector3f(0.f);
+		if (!SameHemisphere(wo, *wi)) return Color(0);
 
 		*pdf = Pdf(wo, *wi);
 		return f(wo, *wi);
@@ -231,15 +223,13 @@ public:
 
 		float sheenWeight = 0;
 		Color Csheen;
-		if (sheenWeight > 0) {
-			assert(false);
+		if (sheenWeight > 0) {	//unused
 			float stint = 0;
 			Csheen		= lerp(Color(1), Ctint, stint);
 		}
 
 		if (diffuseWeight > 0) {
-			if (thin) {
-				assert(false);
+			if (thin) {			//unused
 				// Blend between DisneyDiffuse and fake subsurface based on flatness, weight using diffTrans.
 				//float flat = 0;
 				//disneyDiffuse = DisneyDiffuse(diffuseWeight * (1 - flat) * (1 - dt) * c));
@@ -251,7 +241,7 @@ public:
 					// No subsurface scattering; use regular (Fresnel modified) diffuse.
 					disneyDiffuse = DisneyDiffuse(diffuseWeight * c);
 					components |= DISNEY_DIFFUSE;
-				}
+				}	
 				else {
 					// TODO: use a BSSRDF instead.
 					assert(false);
@@ -261,8 +251,7 @@ public:
 			disneyRetro = DisneyRetro(diffuseWeight * c, rough);
 			components |= DISNEY_RETRO;
 
-			if (sheenWeight > 0) {
-				assert(false);
+			if (sheenWeight > 0) {	// unused
 				//disneySheen = DisneySheen(diffuseWeight * sheenWeight * Csheen);
 			}
 		}
@@ -274,7 +263,7 @@ public:
 		float ay = max(.001f, pow2(rough) * aspect);
 
 		// Specular is Trowbridge-Reitz with a modified Fresnel function.
-		float specTint = 0;
+		float specTint = 1;		// [unused] this is manually set to 1...
 		Color Cspec0   = sd.specular;
 		if (!any(sd.specular)) 
 			Cspec0 = lerp(SchlickR0FromEta(e) * lerp(Color::Ones(), Ctint, specTint), c, metallicWeight);
@@ -285,16 +274,10 @@ public:
 		microfacetBrdf.disneyR0 = Cspec0;
 		microfacetBrdf.metallic = sd.metallic;
 #endif
-		// Clearcoat
-		float cc = 0;
-		if (cc > 0) {
-			assert(false);
-		}
 
 		// specular BTDF if has transmission
 		if (strans > 0) {
-			//Vector3f T = strans * sqrt(c);
-			Color T = strans;
+			Color T = strans * sqrt(c);
 			if (thin) {
 				// Scale roughness based on IOR (Burley 2015, Figure 15).
 				assert(false);
@@ -305,6 +288,10 @@ public:
 			}
 			else{
 				microfacetBtdf = MicrofacetBtdf(T, 1, e, ax, ay);
+#if KRR_USE_DISNEY
+				microfacetBtdf.disneyR0 = Cspec0;
+				microfacetBtdf.metallic = sd.metallic;
+#endif
 			}
 			components |= DISNEY_SPEC_TRANSMISSION;
 		}
@@ -316,9 +303,8 @@ public:
 
 		// calculate sampling weights
 		float approxFresnel = luminance(DisneyFresnel(Cspec0, sd.metallic, e, AbsCosTheta(sd.wo)));
-		pDiffuse = components & DISNEY_DIFFUSE ? luminance(sd.diffuse) * (1 - sd.metallic) * (1 - sd.specularTransmission) : 0;
-		pSpecRefl = components & DISNEY_SPEC_REFLECTION ? luminance(lerp(sd.specular, Color::Ones(), approxFresnel)) * (1 - sd.specularTransmission) : 0;
-	//	pSpecTrans = components & DISNEY_SPEC_TRANSMISSION ? (1.f - approxFresnel) * (1 - sd.metallic) * sd.specularTransmission * luminance(sd.diffuse) : 0;
+		pDiffuse = components & DISNEY_DIFFUSE ? luminance(sd.diffuse) * (1 - sd.metallic) * (1.2 - sd.specularTransmission) : 0;
+		pSpecRefl = components & DISNEY_SPEC_REFLECTION ? luminance(lerp(sd.specular, Color::Ones(), approxFresnel)) * (1.2 - sd.specularTransmission) : 0;
 		pSpecTrans = components & DISNEY_SPEC_TRANSMISSION ? (1.f - approxFresnel) * (1 - sd.metallic) * sd.specularTransmission: 0;
 		float totalWt = pDiffuse + pSpecRefl + pSpecTrans;
 		if (totalWt > 0) pDiffuse /= totalWt, pSpecRefl /= totalWt, pSpecTrans /= totalWt;
