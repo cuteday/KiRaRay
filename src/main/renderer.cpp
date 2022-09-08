@@ -118,7 +118,7 @@ void RenderApp::renderUI() {
 		}
 		if (ui::BeginMenu("Tools")) {
 			if (ui::MenuItem("Save config"))
-				saveConfig();
+				saveConfig("");
 			ui::MenuItem("Save HDR", NULL, &saveHdr);
 			if (ui::MenuItem("Screen shot")) 
 				captureFrame();
@@ -135,12 +135,17 @@ void RenderApp::renderUI() {
 		if (ui::Button("Screen shot"))
 			captureFrame(saveHdr);
 		if (ui::CollapsingHeader("Configuration")) {
+			static char loadConfigBuf[512];
+			static char saveConfigBuf[512] = "common/configs/saved_config.json"; 
+			strcpy(loadConfigBuf, mConfigPath.c_str());
 			if (ui::InputInt2("Frame size", (int *) &fbSize))
 				resize(fbSize);
+			ui::InputText("Load path: ", loadConfigBuf, 1024); 
 			if (ui::Button("Load config"))
-				loadConfig("");
+				loadConfig(loadConfigBuf);
+			ui::InputText("Save path: ", saveConfigBuf, 1024);
 			if (ui::Button("Save config"))
-				saveConfig();
+				saveConfig(saveConfigBuf);
 		}
 		//if (ui::CollapsingHeader("Performance")) {
 		//	mFrameRate.plotFrameTimeGraph();
@@ -194,11 +199,11 @@ void RenderApp::captureFrame(bool hdr, fs::path filename) {
 	logSuccess("Rendering saved to " + filepath.string());
 }
 
-void RenderApp::saveConfig() {
+void RenderApp::saveConfig(string path) {
 	fs::path dirpath = File::resolve("common/configs"); 
 	if (!fs::exists(dirpath))
 		fs::create_directories(dirpath);
-	fs::path filepath = dirpath / ("config_" + Log::nowToString("%H_%M_%S") + ".json");
+	fs::path filepath = path.empty()? dirpath / ("config_" + Log::nowToString("%H_%M_%S") + ".json") : path;
 	std::ofstream ofs(filepath);
 	json config = mConfig;
 	config["resolution"] = fbSize;

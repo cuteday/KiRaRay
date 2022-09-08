@@ -47,7 +47,7 @@ namespace math
 
 		KRR_CALLABLE T real() { return re; }
 
-		KRR_CALLABLE T imag() { return re; }
+		KRR_CALLABLE T imag() { return im; }
 
 		KRR_CALLABLE T norm() { return re * re + im * im; }
 		

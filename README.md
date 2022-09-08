@@ -12,10 +12,10 @@
 
 - [x] Orbit camera controlling & thin lens camera.
 - [x] Diffuse, microfacet, disney and fresnel-blended bsdfs.
-- [x] GPU path tracing (a megakernel version and a [wavefront](https://research.nvidia.com/publication/2013-07_megakernels-considered-harmful-wavefront-path-tracing-gpus) version).
+- [x] GPU path tracing (a megakernel version and a wavefront version).
 - [x] Next event estimation and multiple importance sampling.
 - [x] Post processing passes (e.g., tonemapping, accumulating and denoising).
-- [x] Basic support for multiple formats of scenes (e.g., OBJ, glTF2 and [pbrt-v3](https://github.com/mmp/pbrt-v3/)).
+- [x] Basic support for multiple scenes formats (e.g., OBJ, glTF2 and [pbrt-v3](https://github.com/mmp/pbrt-v3/)).
 - [x] Simple CPU/GPU performance profiling.
 
 ### Build and run
@@ -63,17 +63,22 @@ One can also save the current parameters (including camera parameters, render pa
 ### Galleries
 
 <p align=center>
+<img src=common/demo/kitchen.png width="800">
+
+<p align=center>
 <img src=common/demo/living-room.png width="800">
+
+More visuals [here](https://cutesail.com/?p=493)!
 
 ### Issues
 
 #### Performance
 
-Switch to *Release* build for normal performance! The megakernel pathtracer should run at about 30 spp per second at 1920*1080 on an RTX 3070, if the average path length is less than 5. The wavefront pathtracer however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does run significantly faster when next event estimation is enabled though). 
+Switch to *Release* build for normal performance! The megakernel pathtracer should run at about 30 spp per second at 1920*1080 on an RTX 3070, if the average path length is less than 5. The [wavefront pathtracer](https://research.nvidia.com/publication/2013-07_megakernels-considered-harmful-wavefront-path-tracing-gpus) however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does run significantly faster when next event estimation is enabled though). 
 
 #### Scene loading
 
-*Kiraray* provided limited support for importing scenes like OBJ, glTF2 with [Assimp](https://github.com/assimp/assimp.git) as the default scene importer. Some commonly used material properties (e.g., roughness, metallic) and textures (normal, emission, opacity, etc.) are supported. [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import pbrt-v3 scenes, and all pbrt materials are roughly approximated with the Disney Principled BSDF. 
+*Kiraray* provided limited support for importing scenes like OBJ, glTF2 with [Assimp](https://github.com/assimp/assimp.git) as the default scene importer. Some commonly used material properties (e.g., roughness, metallic) and textures (normal, emission, opacity, etc.) are supported. [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import pbrt-v3 scenes, and all pbrt materials are roughly approximated with the Disney Principled BSDF. You can find pbrt-v3 scenes [here](https://pbrt.org/scenes-v3) or [here](https://benedikt-bitterli.me/resources/). Most of the scenes could be loaded, but some of the materials might be visually biased.
 
 ### Credits
 - The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).

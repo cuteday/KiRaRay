@@ -211,7 +211,7 @@ public:
 
 		Color c				 = sd.diffuse;
 		float metallicWeight = sd.metallic;
-		float e = 1.5; //sd.IoR; // Some scene has corrupt IoR so we use all 1.5 instead...
+		float e = sd.IoR; //sd.IoR; // Some scene has corrupt IoR so we use all 1.5 instead...
 		float strans = sd.specularTransmission;
 		float diffuseWeight = (1 - metallicWeight) * (1 - strans);
 		float dt = sd.diffuseTransmission;

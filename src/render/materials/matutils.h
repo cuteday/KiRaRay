@@ -24,6 +24,8 @@
 
 KRR_NAMESPACE_BEGIN
 
+using namespace math;
+
 namespace bsdf{
 	constexpr float minCosTheta = 1e-6f;
 	constexpr float epsilon = 1e-6f;

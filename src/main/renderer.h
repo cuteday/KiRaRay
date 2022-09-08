@@ -39,7 +39,7 @@ public:
 	void draw() override;
 
 	void captureFrame(bool hdr = false, fs::path filename = "");
-	void saveConfig();
+	void saveConfig(string path);
 	void loadConfig(fs::path path);
 
 private:

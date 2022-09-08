@@ -291,7 +291,7 @@ void Material::renderUI() {
 	static const char* bsdfTypes[] = {"Diffuse", "FresnelBlend", "Disney"};
 	ui::ListBox("Shading model", (int*)&mShadingModel, shadingModels, 2);
 	ui::ListBox("BSDF", (int*)&mBsdfType, bsdfTypes, (int)BsdfType::Count);
-	ui::DragFloat4("Diffuse", (float*)&mMaterialParams.diffuse, 1e-3, 0, 1);
+	ui::DragFloat4("Diffuse", (float*)&mMaterialParams.diffuse, 1e-3, 0, 5);
 	ui::DragFloat4("Specular", (float*)&mMaterialParams.specular, 1e-3, 0, 1);
 	ui::DragFloat3("Emissive", (float*)&mMaterialParams.emissive, 1e-3, 0, 1);
 	ui::DragFloat("Diffuse transmission", &mMaterialParams.diffuseTransmission, 1e-3, 0, 1);

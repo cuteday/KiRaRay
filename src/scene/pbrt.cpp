@@ -1,10 +1,12 @@
 #define STBI_MSC_SECURE_CRT
 #include <pbrtParser/Scene.h>
 #include "stb_image.h"
+#include "render/materials/fresnel.h"
 #include "importer.h"
 
 KRR_NAMESPACE_BEGIN
 
+using namespace math;
 using namespace importer;
 
 namespace {
@@ -61,81 +63,96 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		float x = log(roughness);
 		float val = 1.62142f + 0.819955f * x + 0.1734f * pow2(x) + 0.0171201f * pow3(x) +
 					0.000640711f * pow4(x);
-		return val;
+		return (val);
 	};
 
 	if (auto m = std::dynamic_pointer_cast<pbrt::DisneyMaterial>(mat)) {
 		Log(Info, "Encountered disney material: %s", mat->name.c_str());
-		matParams.diffuse = Vector4f(m->color.x, m->color.y, m->color.z, matParams.diffuse[3]);
+		matParams.diffuse = Vector4f(m->color.x, m->color.y, m->color.z, 1);
 		matParams.IoR			   = m->eta;
 		matParams.specular[2]	   = m->metallic;
 		matParams.specular[1]	   = m->roughness;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::PlasticMaterial>(mat)) {
 		Log(Info, "Encountered plastic material: %s", mat->name.c_str());
-		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
+		matParams.diffuse = Vector4f(cast(m->kd), 1);
 		if (m->map_kd) {
 			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd))
-				matParams.diffuse = Vector4f(cast(const_tex->value), matParams.diffuse[3]);
+				matParams.diffuse = Vector4f(cast(const_tex->value), 1);
 			else loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
 		}
 		const Vector3f ks(cast(m->ks));
 		matParams.specular[3] = luminance(ks);
 		float roughness		  = m->roughness;
 		if (m->remapRoughness) roughness = remap_roughness(roughness);
-		matParams.specular[1] = roughness;
+		matParams.specular[1] = sqrt(roughness);		// sqrt'ed
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MatteMaterial>(mat)) {
 		Log(Info, "Encountered matte material: %s", mat->name.c_str());
-		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
+		matParams.diffuse = Vector4f(cast(m->kd), 1);
 		if (m->map_kd) {
+			Log(Debug, "A diffuse texture is found for %s texture %s", m->toString().c_str(),
+				m->name.c_str());
 			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd)) 
-				matParams.diffuse = Vector4f(cast(const_tex->value), matParams.diffuse[3]);
+				matParams.diffuse = Vector4f(cast(const_tex->value), 1);
 			else loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
 		}
 		matParams.specular[1] = 0.9;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::SubstrateMaterial>(mat)) {
 		Log(Info, "Encountered substrate material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
-		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
+		matParams.diffuse = Vector4f(cast(m->kd), 1);
 		if (m->map_kd) {
 			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd)) 
-				matParams.diffuse = Vector4f(cast(const_tex->value), matParams.diffuse[3]);
+				matParams.diffuse = Vector4f(cast(const_tex->value), 1);
 			else loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
 		}
 		Vector3f ks(cast(m->ks));
 		float roughness = (m->uRoughness + m->vRoughness) / 2;
 		if (m->remapRoughness) roughness = remap_roughness(roughness);
-		matParams.specular = Vector4f(ks, 1 - roughness);
+		matParams.specular = Vector4f(ks, 1 - sqrt(roughness));		// sqrt'ed
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::UberMaterial>(mat)) {
 		Log(Info, "Encountered uber material: %s", mat->name.c_str());
-		material->mShadingModel		   = Material::ShadingModel::SpecularGlossiness;
 		Vector3f diffuse		= cast(m->kd);
 		Vector3f specular		= cast(m->ks);
 		Vector3f transmission	= cast(m->kt);
-		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
-		matParams.diffuse		= Vector4f(diffuse, matParams.diffuse[3]);
-		matParams.specular		= Vector4f(specular, 1 - m->roughness);
-		matParams.specularTransmission = luminance(transmission);
+		float roughness			= m->roughness;
+		//roughness				= remap_roughness(roughness);
 		if (m->map_kd) {
 			Log(Debug, "A diffuse texture is found for %s texture %s", m->toString().c_str(),
 				m->name.c_str());
 			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd)) 
-				matParams.diffuse = Vector4f(cast(const_tex->value), matParams.diffuse[3]);
+				diffuse = cast(const_tex->value);
 			else loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
 		}
 		if (m->map_ks) {
 			Log(Debug, "A specular texture is found for %s texture %s", m->toString().c_str(),
 				m->name.c_str());
 			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_ks)) 
-				matParams.specular = Vector4f(cast(const_tex->value), matParams.specular[3]);
+				specular = cast(const_tex->value);
 			 else loadTexture(material, m->map_ks, Material::TextureType::Specular, basedir);
 		}
 		if (m->map_opacity) {
-			// TODO: alpha-killing is currently not supported.
-			Log(Info, "A opacity map is found for %s texture %s", m->toString().c_str(),
+			Log(Info, "An opacity map is found for %s texture %s", m->toString().c_str(),
 				m->name.c_str());
-			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_opacity))
+			if (auto tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_opacity))
 				loadTexture(material, m->map_opacity, Material::TextureType::Transmission, basedir);
 		}
+		if (m->map_roughness) {
+			Log(Info, "A roughness map is found for %s texture %s", m->toString().c_str(),
+				m->name.c_str());
+			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_ks))
+				roughness = luminance(cast(const_tex->value));
+			else Log(Warning, "An image roughness map is currently not supported!");
+		} 
+		if (m->map_bump) {
+			Log(Info, "A bump map is found for %s texture %s", m->toString().c_str(),
+				m->name.c_str());
+			if (auto tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_opacity))
+				loadTexture(material, m->map_opacity, Material::TextureType::Normal, basedir);
+		}
+		material->mShadingModel		   = Material::ShadingModel::SpecularGlossiness;
+		matParams.diffuse			   = Vector4f(diffuse, matParams.diffuse[3]);
+		matParams.specular			   = Vector4f(specular, 1 - sqrt(roughness));	// sqrt'ed
+		matParams.specularTransmission = luminance(transmission);
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::TranslucentMaterial>(mat)) {
 		Log(Warning, "Encountered not well-supported transluscent material: %s", mat->name.c_str());
 		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
@@ -149,25 +166,27 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		// TODO: needs to make disney mirror-reflect when 0-roughness.
 		Log(Info, "Encountered mirror material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
-		matParams.diffuse		= Vector4f(Vector3f(0), matParams.diffuse[3]);
+		matParams.diffuse		= Vector4f(Vector3f(0), 1);
 		matParams.specular		= Vector4f(cast(m->kr), 1);
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MetalMaterial>(mat)) {
 		Log(Warning, "Encountered not well-supported metal material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		Vector3f eta			= cast(m->eta);
 		Vector3f eta_k			= cast(m->k);
-		matParams.diffuse		= Vector4f(eta_to_reflectivity(eta, eta_k), 0);
+		//matParams.diffuse		= Vector4f(eta_to_reflectivity(eta, eta_k), 0);
+		matParams.diffuse = Vector4f(bsdf::FrComplex(1, eta, eta_k), 0);
 		float roughness			= m->roughness;
+		roughness				= (m->uRoughness + m->vRoughness) / 2;
 		if (m->remapRoughness) roughness = remap_roughness(roughness);
-		matParams.specular[1] = roughness;
-		matParams.specular[2] = 0.8;		// manually set metallic
+		matParams.specular[1] = sqrt(roughness);	// sqrt'ed
+		matParams.specular[2] = 0.8;				// manually set metallic
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::GlassMaterial>(mat)) {
 		Log(Warning, "Encountered not well-supported glass material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
 		matParams.specularTransmission = luminance(cast(m->kt));
-		matParams.diffuse			   = Vector4f(cast(m->kr), 1);
-		matParams.specular			   = Vector4f(Vector3f(0.39), 1);
-		matParams.IoR = 1.5;
+		matParams.diffuse			   = Vector4f(cast(m->kt), 1);
+		matParams.specular			   = Vector4f(Vector3f(0.4), 1);
+		matParams.IoR				   = m->index;
 	} else {
 		Log(Warning, "Encountered unsupported %s material: %s", 
 			mat->toString().c_str(), mat->name.c_str());
