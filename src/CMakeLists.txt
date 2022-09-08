@@ -106,6 +106,7 @@ SET(KRR_HEADERS
 	main/renderer.h
 	util/check.h
 	util/string.h
+	util/image.h
 	util/lowdiscrepancy.h
 	util/tables.h
 	util/hash.h
@@ -126,6 +127,7 @@ SET (KRR_SOURCE
 	scene/pbrt.cpp
 	main/renderer.cpp
 	util/tables.cpp
+	util/image.cpp
 )
 
 SET(KRR_SHADER_MATERIALS

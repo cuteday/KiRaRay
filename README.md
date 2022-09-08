@@ -10,13 +10,11 @@
 > __Working in progress (?) project__  
 > This project is only for learning purpose with very limited features, and not sure if it will continue developing.
 
-- [x] Orbit camera controlling & thin lens camera.
-- [x] Diffuse, microfacet, disney and fresnel-blended bsdfs.
+- [x] Interactive orbit camera controlling.
 - [x] GPU path tracing (a megakernel version and a wavefront version).
-- [x] Next event estimation and multiple importance sampling.
 - [x] Post processing passes (e.g., tonemapping, accumulating and denoising).
-- [x] Basic support for multiple scenes formats (e.g., OBJ, glTF2 and [pbrt-v3](https://github.com/mmp/pbrt-v3/)).
-- [x] Simple CPU/GPU performance profiling.
+- [x] Basic support for multiple scenes formats (e.g., OBJ, glTF2 and pbrt-v3).
+- [x] Basic CPU/GPU performance profiling.
 
 ### Build and run
 
@@ -78,7 +76,7 @@ Switch to *Release* build for normal performance! The megakernel pathtracer shou
 
 #### Scene loading
 
-*Kiraray* provided limited support for importing scenes like OBJ, glTF2 with [Assimp](https://github.com/assimp/assimp.git) as the default scene importer. Some commonly used material properties (e.g., roughness, metallic) and textures (normal, emission, opacity, etc.) are supported. [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import pbrt-v3 scenes, and all pbrt materials are roughly approximated with the Disney Principled BSDF. You can find pbrt-v3 scenes [here](https://pbrt.org/scenes-v3) or [here](https://benedikt-bitterli.me/resources/). Most of the scenes could be loaded, but some of the materials might be visually biased.
+*Kiraray* provided limited support for importing scenes like OBJ, glTF2 with [Assimp](https://github.com/assimp/assimp.git) as the default scene importer. Some commonly used material properties (e.g., roughness, metallic) and textures (normal, emission, opacity, etc.) are supported. [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes, and all pbrt materials are roughly approximated with the Disney Principled BSDF. Most of the scenes [here](https://benedikt-bitterli.me/resources/) could be loaded, while some of the materials might be visually biased.
 
 ### Credits
 - The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).

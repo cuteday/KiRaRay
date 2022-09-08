@@ -61,7 +61,10 @@ private:
 	PbrtImporter(const PbrtImporter &) = delete;
 	void operator=(const PbrtImporter &) = delete;
 
+	string resolve(string path);
+
 	string mFilepath;
+	string mBasepath;
 	Scene::SharedPtr mpScene;
 };
 

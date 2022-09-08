@@ -9,83 +9,12 @@
 #include "tinyexr.h"
 
 #include <filesystem>
+#include <cstdio>
 
 #include "texture.h"
 #include "window.h"
 #include "logger.h"
-
-namespace tinyexr {
-	void save_exr(const float* data, int width, int height, int nChannels, int channelStride, const char* outfilename, bool flip = true) {
-		EXRHeader header;
-		InitEXRHeader(&header);
-
-		EXRImage image;
-		InitEXRImage(&image);
-
-		image.num_channels = nChannels;
-
-		std::vector<std::vector<float>> images(nChannels);
-		std::vector<float*> image_ptr(nChannels);
-		for (int i = 0; i < nChannels; ++i) {
-			images[i].resize((size_t)width * (size_t)height);
-		}
-
-		for (int i = 0; i < nChannels; ++i) {
-			image_ptr[i] = images[nChannels - i - 1].data();
-		}
-
-		for (int c = 0; c < nChannels; c++) {
-			for (int y = 0; y < height; y++) {
-				for (int x = 0; x < width; x++) {
-					// whether flip vertically? 
-					int ry = flip ? height - 1 - y : y;
-					int idx = y * width + x;
-					int ridx = ry * width + x;
-					images[c][ridx] = data[channelStride * idx + c];
-				}
-			}
-		}
-
-		image.images = (unsigned char**)image_ptr.data();
-		image.width = width;
-		image.height = height;
-
-		header.line_order = 1;
-		header.num_channels = nChannels;
-		header.channels = (EXRChannelInfo*)malloc(sizeof(EXRChannelInfo) * header.num_channels);
-		// Must be (A)BGR order, since most of EXR viewers expect this channel order.
-		strncpy(header.channels[0].name, "B", 255); header.channels[0].name[strlen("B")] = '\0';
-		if (nChannels > 1) {
-			strncpy(header.channels[1].name, "G", 255); header.channels[1].name[strlen("G")] = '\0';
-		}
-		if (nChannels > 2) {
-			strncpy(header.channels[2].name, "R", 255); header.channels[2].name[strlen("R")] = '\0';
-		}
-		if (nChannels > 3) {
-			strncpy(header.channels[3].name, "A", 255); header.channels[3].name[strlen("A")] = '\0';
-		}
-
-		header.pixel_types = (int*)malloc(sizeof(int) * header.num_channels);
-		header.requested_pixel_types = (int*)malloc(sizeof(int) * header.num_channels);
-		for (int i = 0; i < header.num_channels; i++) {
-			header.pixel_types[i] = TINYEXR_PIXELTYPE_FLOAT; // pixel type of input image
-			header.requested_pixel_types[i] = TINYEXR_PIXELTYPE_HALF; // pixel type of output image to be stored in .EXR
-		}
-
-		const char* err = NULL; // or nullptr in C++11 or later.
-		int ret = SaveEXRImageToFile(&image, &header, outfilename, &err);
-		if (ret != TINYEXR_SUCCESS) {
-			std::string error_message = std::string("Failed to save EXR image: ") + err;
-			FreeEXRErrorMessage(err); // free's buffer for an error message
-			throw std::runtime_error(error_message);
-		}
-		printf("Saved exr file. [ %s ] \n", outfilename);
-
-		free(header.channels);
-		free(header.pixel_types);
-		free(header.requested_pixel_types);
-	}
-}
+#include "util/image.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -105,6 +34,7 @@ bool Image::loadImage(const fs::path& filepath, bool srgb) {
 	Vector2i size;
 	int channels;
 	string filename = filepath.string();
+	string format	= filepath.extension().string();
 	uchar* data = nullptr;
 	if (IsEXR(filename.c_str()) == TINYEXR_SUCCESS) {
 		char* errMsg = nullptr;
@@ -124,8 +54,14 @@ bool Image::loadImage(const fs::path& filepath, bool srgb) {
 			return false;
 		}
 		mFormat = Format::RGBAfloat;
-	}
-	else {	// formats other than exr...
+	} else if (format == ".pfm") {
+		data = (uchar *)pfm::ReadImagePFM(filename, &size[0], &size[1]);
+		if (data == nullptr) {
+			logError("Failed to load PFM image at " + filename);
+			return false;
+		}
+		mFormat = Format::RGBAfloat;
+	} else{ // formats other than exr...
 		data = stbi_load(filename.c_str(), &size[0], &size[1], &channels, STBI_rgb_alpha);
 		if (data == nullptr) {
 			logError("Failed to load image at " + filename);

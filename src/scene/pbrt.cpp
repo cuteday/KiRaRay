@@ -220,8 +220,9 @@ Mesh createMesh(pbrt::Shape::SP shape, const Transformf<> transform) {
 			transformed_normal = rot * cast(m->normal[i]);
 		vertex.vertex				= transformed_vertex;
 		vertex.normal				= transformed_normal;
+		if (m->texcoord.size())
 		vertex.texcoord				= cast(m->texcoord[i]);
-		vertex.tangent				= getPerpendicular(vertex.normal);
+			vertex.tangent				= getPerpendicular(vertex.normal);
 		vertex.bitangent			= normalize(cross(vertex.normal, vertex.tangent));
 		mesh.vertices.push_back(vertex);
 	}
@@ -242,6 +243,8 @@ void createAreaLight(Mesh& mesh, pbrt::AreaLight::SP areaLight) {
 
 bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 	string basepath		  = fs::path(filepath).parent_path().string();
+	mBasepath			  = basepath;
+
 	Log(Info, "Attempting to load pbrt scene from %s...", filepath.c_str());
 	pbrt::Scene::SP scene = pbrt::importPBRT(filepath);
 	if (!scene) {
@@ -275,8 +278,20 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 			}
 		}
 	}
+
+	for (const pbrt::LightSource::SP light : scene->world->lightSources) {
+		if (auto l = std::dynamic_pointer_cast<pbrt::InfiniteLightSource>(light)) {
+			Log(Info, "Encountered infinite light source %s", l->mapName.c_str());
+			pScene->addInfiniteLight(InfiniteLight(resolve(l->mapName)));
+		}
+	}
+
 	pScene->mAABB = cast(scene->getBounds());
 	return true;
+}
+
+string PbrtImporter::resolve(string path) {
+	return (fs::path(mBasepath) / path).string();
 }
 
 KRR_NAMESPACE_END
