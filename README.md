@@ -83,7 +83,6 @@ Switch to *Release* build for normal performance! The megakernel pathtracer shou
 - Some of the code (e.g., bsdf evaluation, wavefront path) are adapted from [pbrt](https://github.com/mmp/pbrt-v4) and [Falcor](https://github.com/NVIDIAGameWorks/Falcor). 
 - *KiRaRay* implements a [tiny math library](https://github.com/cuteday/KiRaRay/tree/main/src/core/math) wrapper built upon [Eigen](http://eigen.tuxfamily.org/) for efficient vector/matrix arithmetic.
 - [ImGui](https://github.com/ocornut/imgui) is used to build simple user interfaces for this project. 
-- HDR environment images are from [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html), and OBJ scenes are from [McGuire's Archive](https://casual-effects.com/data/) for demo images.
 
 ### Epilogue
 

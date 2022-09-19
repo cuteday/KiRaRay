@@ -1,5 +1,4 @@
 ADD_SUBDIRECTORY(ext)
-ADD_SUBDIRECTORY(cuda)
 
 ###############################################################################
 # include files
@@ -137,7 +136,6 @@ SET(KRR_SHADER_MATERIALS
 	render/materials/fresnel.h
 	render/materials/microfacet.h
 	render/materials/disney.h
-	render/materials/falcor.h
 	render/materials/fresnelblend.h
 )
 
@@ -213,8 +211,9 @@ ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 # linking and executables
 ###############################################################################
 SET(KRR_LIBS_ALL
-	krr-cuda
 	assimp
+	cuda 
+	cublas
 	OpenGL::GL
 	libglew_static
 	glfw
@@ -224,7 +223,6 @@ SET(KRR_LIBS_ALL
 	${OPENGL_gl_LIBRARY}
 	${CUDA_LIBRARIES}
 	KRR_PTX
-	#KRR_CUDA_CODE
 	krr_cuda_cfg
 	krr_cuda_warning
 )
