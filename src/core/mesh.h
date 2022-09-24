@@ -4,7 +4,6 @@
 #include "math/math.h"
 #include "device/memory.h"
 #include "device/buffer.h"
-//#include "light.h"
 
 KRR_NAMESPACE_BEGIN
 

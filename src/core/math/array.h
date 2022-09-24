@@ -8,7 +8,6 @@ KRR_NAMESPACE_BEGIN
 template <typename T, int Size>
 class Array : public Eigen::Array<T, Size, 1> {
 public:
-	//using Eigen::Array<T, Size, 1>::Array;
 	enum {dim = Size};
 
 	KRR_CALLABLE Array(void) : Eigen::Array<T, Size, 1>(Eigen::Array<T, Size, 1>::Zero()) {}
@@ -32,7 +31,11 @@ public:
 		return *this;
 	}
 
+	KRR_CALLABLE friend Array max(const Array &arr1, const Array &arr2) { return arr1.max(arr2); }
+	KRR_CALLABLE friend Array min(const Array &arr1, const Array &arr2) { return arr1.min(arr2); }
+	KRR_CALLABLE friend Array abs(const Array &arr) { return arr.abs(); }
 	KRR_CALLABLE friend Array sqrt(const Array &arr) { return arr.sqrt(); }
+	KRR_CALLABLE friend Array inverse(const Array &arr) { return arr.inverse(); }
 };
 
 template <typename T>

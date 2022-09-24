@@ -2,7 +2,6 @@
 
 #include "common.h"
 #include <cuda.h>
-#include <cuda/common.h>
 #include <optix.h>
 #include <optix_stubs.h>
 #include "logger.h"
