@@ -100,7 +100,7 @@ public:
 
 	Color R;
 	float roughness;
-	BxDFType type{ BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE) };
+	BSDFType type{ BSDFType(BSDF_REFLECTION | BSDF_DIFFUSE) };
 };
 
 class DisneySheen{
@@ -120,7 +120,7 @@ public:
 	KRR_CALLABLE Color rho(int, const Vector2f *, const Vector2f *) const { return R; }
 
 	Color R;
-	BxDFType type{ BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE) };
+	BSDFType type{ BSDFType(BSDF_REFLECTION | BSDF_DIFFUSE) };
 };
 
 KRR_CALLABLE float GTR1(float cosTheta, float alpha) {
@@ -156,7 +156,7 @@ public:
 	};
 
 	KRR_CALLABLE Color Sample_f(const Vector3f &wo, Vector3f *wi, const Vector2f &u,
-		float* pdf, BxDFType* sampledType) const {
+		float* pdf, BSDFType* sampledType) const {
 
 		if (wo[2] == 0) return Color::Zero();
 
@@ -186,7 +186,7 @@ public:
 	};
 
 	float weight, gloss;
-	BxDFType type{ BxDFType(BSDF_REFLECTION | BSDF_GLOSSY) };
+	BSDFType type{ BSDFType(BSDF_REFLECTION | BSDF_GLOSSY) };
 };
 
 enum DisneyComponent{

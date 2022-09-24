@@ -62,7 +62,6 @@ SET ( KRR_CORE_HEADERS
 	core/renderpass.h
 	core/camera.h
 	core/scene.h
-	core/material.h
 	core/texture.h
 	core/sampler.h
 	# maths

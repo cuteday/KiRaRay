@@ -23,7 +23,7 @@ void registerRenderPasses() {
 }
 
 extern "C" int main(int argc, char *argv[]) {
-    std::filesystem::current_path(File::cwd());
+    fs::current_path(File::cwd());
     Log(Info, "Working directory: %s\n", KRR_PROJECT_DIR);
 	Log(Info, "Kiraray build type: %s", KRR_BUILD_TYPE);
 #ifdef KRR_DEBUG_BUILD
