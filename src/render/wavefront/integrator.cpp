@@ -48,7 +48,7 @@ void WavefrontPathTracer::handleHit(){
 		KRR_DEVICE_LAMBDA(const HitLightWorkItem & w){
 		Color Le = w.light.L(w.p, w.n, w.uv, w.wo);
 		float misWeight = 1;
-		if (enableNEE && w.depth) {
+		if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 			Light light = w.light;
 			Interaction intr(w.p, w.wo, w.n, w.uv);
 			float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(light);
@@ -68,7 +68,7 @@ void WavefrontPathTracer::handleMiss(){
 		Interaction intr(w.ray.origin);
 		for (const InfiniteLight& light : *sceneData.infiniteLights) {
 			float misWeight = 1;
-			if (enableNEE && w.depth) {
+			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				float bsdfPdf = w.pdf;
 				float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
 				misWeight = evalMIS(bsdfPdf, lightPdf);
@@ -88,7 +88,7 @@ void WavefrontPathTracer::generateScatterRays(){
 		Vector3f woLocal = sd.frame.toLocal(sd.wo);
 
 		/* sample direct lighting */
-		if (enableNEE) {
+		if (enableNEE && !(w.bsdfType & BSDF_SPECULAR)) {
 			float u = sampler.get1D();
 			SampledLight sampledLight = lightSampler.sample(u);
 			Light light = sampledLight.light;
@@ -120,13 +120,14 @@ void WavefrontPathTracer::generateScatterRays(){
 		if (sample.pdf && any(sample.f)) {
 			Vector3f wiWorld = sd.frame.toWorld(sample.wi);
 			RayWorkItem r = {};
-			Vector3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
-			r.pdf = sample.pdf, 1e-7f;
-			r.ray = { p, wiWorld };
-			r.ctx = { sd.pos, sd.frame.N };
-			r.pixelId = w.pixelId;
-			r.depth = w.depth + 1;
-			r.thp = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf / probRR;
+			Vector3f p		 = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
+			r.bsdfType		 = sample.flags;
+			r.pdf			 = sample.pdf;
+			r.ray			 = { p, wiWorld };
+			r.ctx			 = { sd.pos, sd.frame.N };
+			r.pixelId		 = w.pixelId;
+			r.depth			 = w.depth + 1;
+			r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf / probRR;
 			if (any(r.thp)) nextRayQueue(w.depth)->push(r);
 		}
 	});
@@ -222,15 +223,11 @@ void WavefrontPathTracer::renderUI(){
 	ui::Checkbox("Enable NEE", &enableNEE);
 	ui::Text("Debugging");
 	ui::Checkbox("Debug output", &debugOutput);
-	if (debugOutput) {
-		ui::SameLine();
+	if (debugOutput) 
 		ui::InputInt("Debug pixel:", (int*) &debugPixel);
-	}
 	ui::Checkbox("Clamping pixel value", &enableClamp);
-	if (enableClamp) {
-		ui::SameLine();
+	if (enableClamp) 
 		ui::DragFloat("Max:", &clampMax, 1, 1, 500);
-	}
 	ui::Text("Misc");
 	ui::Checkbox("Transparent background", &transparentBackground);
 }

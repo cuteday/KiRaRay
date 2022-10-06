@@ -59,7 +59,9 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 		LightSampleContext ctx = { path.pos, };	// should use pos of prev interaction
 		float bsdfPdf = path.pdf;
 		float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(light);
-		if (launchParams.MIS) weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
+		if (launchParams.MIS && !(path.bsdfType & BSDF_SPECULAR) ) 
+			weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
+		if (isnan(weight) || isinf(weight)) weight = 1;
 	}
 	path.L += Le * weight * path.throughput;
 }
@@ -72,10 +74,11 @@ KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 
 	for (InfiniteLight& light : *launchParams.sceneData.infiniteLights) {
 		float weight = 1.f;
-		if (path.depth&&launchParams.NEE) {
+		if (path.depth && launchParams.MIS) {
 			float bsdfPdf = path.pdf;
 			float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(&light);
-			if (launchParams.MIS) weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
+			weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
+			if (isnan(weight) || isinf(weight)) weight = 1;
 		}
 		path.L += path.throughput * weight * light.Li(wi);
 	}
@@ -94,16 +97,15 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 	Vector3f wiLocal = sd.frame.toLocal(wiWorld);
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
+	if (lightPdf == 0) return;	// TODO: check why?
 	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
 	Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
 	float misWeight = 1;
 
-	if (launchParams.MIS) misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
+	if (launchParams.MIS) 
+		misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
 	if (isnan(misWeight) || isinf(misWeight)) return;
-	//if (isnan(misWeight)) 
 	// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
-		//print("nee misWeight %f lightPdf %f bsdfPdf %f lightSelect %f lightSample %f\n",
-		//	misWeight, lightPdf, bsdfPdf, sampledLight.pdf, ls.pdf);
 	Vector3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 	Vector3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
 
@@ -113,6 +115,8 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 }
 
 KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
+	if (launchParams.MIS && (path.bsdfType & BSDF_SPECULAR))
+		return;
 	for (int i = 0; i < launchParams.lightSamples; i++) {
 		Ray shadowRay = {};
 		generateShadowRay(sd, path, shadowRay);
@@ -126,6 +130,7 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 	if (sample.pdf == 0 || !any(sample.f)) return false;
 
 	Vector3f wiWorld = sd.frame.toWorld(sample.wi);
+	path.bsdfType	 = sample.flags;
 	path.pos = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 	path.dir = wiWorld;
 	path.pdf = max(sample.pdf, 1e-7f);
@@ -170,7 +175,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	// an alternate version of main loop
 	for (int &depth = path.depth; depth < launchParams.maxDepth; depth++) {
 		// ShadingData is updated in CH shader
-		// DONOT enable OPTIX_RAY_FLAG_DISABLE_ANYHIT if alpha-killing is enabled
+		// DO NOT enable OPTIX_RAY_FLAG_DISABLE_ANYHIT if alpha-killing is enabled
 		traceRay(launchParams.traversable, { path.pos, path.dir }, KRR_RAY_TMAX,
 			RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, (void*)&sd);
 
@@ -190,7 +195,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 		if (!generateScatterRay(sd, path)) break;
 	}
 	// note that clamping also eliminates NaN and INF. 
-	path.L = clamp(path.L, 0.f, launchParams.clampThreshold);
+	//path.L = clamp(path.L, 0.f, launchParams.clampThreshold);
 }
 
 extern "C" __global__ void KRR_RT_RG(Pathtracer)(){

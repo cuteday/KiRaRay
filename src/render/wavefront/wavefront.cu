@@ -50,25 +50,27 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	prepareShadingData(sd, hitInfo, material);
 	if (sd.light) {		// push to hit ray queue if mesh has light
 		HitLightWorkItem w = {};
-		w.light = sd.light;
-		w.ctx = r.ctx;
-		w.p = sd.pos;
-		w.n = sd.frame.N;
-		w.wo = sd.wo;
-		w.uv = sd.uv;
-		w.depth = r.depth;
-		w.pixelId = r.pixelId;
-		w.thp = r.thp;
-		w.pdf = r.pdf;
+		w.light			   = sd.light;
+		w.ctx			   = r.ctx;
+		w.p				   = sd.pos;
+		w.n				   = sd.frame.N;
+		w.wo			   = sd.wo;
+		w.uv			   = sd.uv;
+		w.depth			   = r.depth;
+		w.pixelId		   = r.pixelId;
+		w.thp			   = r.thp;
+		w.pdf			   = r.pdf;
+		w.bsdfType		   = r.bsdfType;
 		launchParams.hitLightRayQueue->push(w);
 	}
 	// process material and push to material evaluation queue (if eligible)
 	if (any(r.thp)) {
 		ScatterRayWorkItem w = {};
-		w.pixelId = r.pixelId;
-		w.thp = r.thp;
-		w.sd = sd;
-		w.depth = r.depth;
+		w.pixelId			 = r.pixelId;
+		w.thp				 = r.thp;
+		w.sd				 = sd;
+		w.depth				 = r.depth;
+		w.bsdfType			 = r.bsdfType;
 		launchParams.scatterRayQueue->push(w);
 	}
 }

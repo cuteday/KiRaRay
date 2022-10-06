@@ -43,10 +43,11 @@ struct LaunchParamsPT
 struct PathData {
 	Color L{};					// total contribution to the current pixel
 	Color throughput;			// maintain the throughput of path
-	Vector3f pos;					// ray origin from last scattering event 
-	Vector3f dir;					// world space direction of last scatter
+	Vector3f pos;				// ray origin from last scattering event 
+	Vector3f dir;				// world space direction of last scatter
 	float pdf;					// BxDF sampling pdf from last scatter
 	int depth;					// number of vertices along the path
+	BSDFType bsdfType;		// the sampled type of the last scatter event
 	Sampler sampler;			// rng
 	LightSampler lightSampler;	// randomly choosing a light source
 };

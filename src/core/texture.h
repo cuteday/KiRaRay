@@ -157,14 +157,8 @@ public:
 
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
-#if KRR_USE_DISNEY
-	BsdfType mBsdfType = BsdfType::Disney;
-#elif KRR_USE_FRESNEL_BLEND
-	BsdfType mBsdfType = BsdfType::FresnelBlend;
-#else
-	BsdfType mBsdfType = BsdfType::Diffuse;
-#endif
-	ShadingModel mShadingModel = ShadingModel::MetallicRoughness;
+	BsdfType mBsdfType{ BsdfType::Disney };
+	ShadingModel mShadingModel{ ShadingModel::MetallicRoughness };
 	bool mDoubleSided = false;
 	uint mMaterialId;
 };

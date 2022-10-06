@@ -136,7 +136,7 @@ public:
     using WorkQueue::push;
 
     KRR_CALLABLE int push(RayWorkItem w) {
-        return push(MissRayWorkItem{ w.ray, w.ctx, w.pdf, w.thp, w.depth, w.pixelId });
+        return push(MissRayWorkItem{ w.ray, w.ctx, w.pdf, w.thp, w.bsdfType, w.depth, w.pixelId });
     }
 };
 

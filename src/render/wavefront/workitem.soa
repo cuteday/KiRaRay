@@ -1,6 +1,7 @@
 flat int;
 flat uint;
 flat float;
+flat BSDFType;
 flat bool;
 flat double;
 flat Light;
@@ -28,22 +29,22 @@ struct Frame {
 };
 
 struct ShadingData {
-		Vector3f pos;
-		Vector3f wo;
-		Vector2f uv;
-		Frame frame;
-		float IoR;
-		Color diffuse;
-		Color specular;
-		Color transmission; 
-		float diffuseTransmission;
-		float specularTransmission;
-		float roughness;		
-		float metallic;		
-		float anisotropic;
-		Light light;			
-		BsdfType bsdfType;
-		bool miss;
+	Vector3f pos;
+	Vector3f wo;
+	Vector2f uv;
+	Frame frame;
+	float IoR;
+	Color diffuse;
+	Color specular;
+	Color transmission; 
+	float diffuseTransmission;
+	float specularTransmission;
+	float roughness;		
+	float metallic;		
+	float anisotropic;
+	Light light;			
+	BsdfType bsdfType;
+	bool miss;
 };
 
 struct RayWorkItem {
@@ -51,6 +52,7 @@ struct RayWorkItem {
 	LightSampleContext ctx;
 	float pdf;
 	Color thp;
+	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
 };
@@ -60,6 +62,7 @@ struct MissRayWorkItem {
 	LightSampleContext ctx;
 	float pdf;
 	Color thp;
+	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
 };
@@ -73,6 +76,7 @@ struct HitLightWorkItem {
 	Vector3f n;
 	Vector2f uv;
 	Color thp;
+	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
 };
@@ -88,6 +92,7 @@ struct ShadowRayWorkItem {
 struct ScatterRayWorkItem {
 	Color thp;
 	ShadingData sd;
+	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
 };

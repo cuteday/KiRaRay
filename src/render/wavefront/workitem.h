@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include "math/math.h"
+#include "render/materials/bxdf.h"
 #include "raytracing.h"
 #include "render/shared.h"
 
@@ -20,6 +21,7 @@ struct RayWorkItem {
 	LightSampleContext ctx;
 	float pdf;
 	Color thp;
+	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
 };
@@ -29,6 +31,7 @@ struct MissRayWorkItem {
 	LightSampleContext ctx;
 	float pdf;
 	Color thp;
+	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
 };
@@ -42,6 +45,7 @@ struct HitLightWorkItem {
 	Vector3f n;
 	Vector2f uv;
 	Color thp;
+	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
 };
@@ -57,6 +61,7 @@ struct ShadowRayWorkItem {
 struct ScatterRayWorkItem {
 	Color thp;
 	ShadingData sd;
+	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
 };
