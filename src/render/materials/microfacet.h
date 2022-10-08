@@ -206,8 +206,6 @@ public:
 		distribution.setup(alpha_x, alpha_y);
 	}
 
-	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBrdf);
-
 	KRR_CALLABLE void setup(const ShadingData& sd) {
 		R = sd.specular;
 		float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
@@ -267,11 +265,15 @@ public:
 		// fresnel is also on the microfacet (wrt to wh)
 #if KRR_USE_DISNEY
 		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)); // etaT / etaI
-#elif KRR_USE_SCHLICK_FRESNEL
-		return = FrSchlick(R, Vector3f(1.f), dot(wo, wh)) / R;
 #else
+		return FrSchlick(R, Vector3f(1.f), dot(wo, wh)) / R;
 		return FrDielectric(dot(wo, wh), eta); // etaT / etaI
 #endif
+	}
+
+	KRR_CALLABLE BSDFType flags() const {
+		if (!R.any()) return BSDF_UNSET;
+		return distribution.isSpecular() ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
 	}
 	
 	Color R{ 1 };	            // specular reflectance
@@ -295,8 +297,6 @@ public:
 		:T(T), etaA(etaA), etaB(etaB) {
 		distribution.setup(alpha_x, alpha_y, true);
 	}
-
-	_DEFINE_BSDF_INTERNAL_ROUTINES(MicrofacetBtdf);
 
 	KRR_CALLABLE void setup(const ShadingData& sd) {
 		T = sd.transmission;
@@ -374,13 +374,17 @@ public:
 		return pdf * dwh_dwi;
 	}
 
+	KRR_CALLABLE BSDFType flags() const {
+		if (!T.any()) return BSDF_UNSET;
+		return distribution.isSpecular() ? BSDF_SPECULAR_TRANSMISSION : BSDF_GLOSSY_TRANSMISSION;
+	}
+
 	KRR_CALLABLE Color Fr(Vector3f wo, Vector3f wh) const {
 		float eta = etaB / etaA;
 #if KRR_USE_DISNEY
 		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)); // etaT / etaI
-#elif KRR_USE_SCHLICK_FRESNEL
-		return = FrSchlick(R, Vector3f(1.f), dot(wo, wh)) / R;
 #else
+		return = FrSchlick(R, Vector3f(1.f), dot(wo, wh)) / R;
 		return FrDielectric(dot(wo, wh), eta); // etaT / etaI
 #endif
 	}

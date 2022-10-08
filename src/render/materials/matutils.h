@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "math/math.h"
+#include "bxdf.h"
 
 #define _DEFINE_BSDF_INTERNAL_ROUTINES(bsdf_name)														\
 	KRR_CALLABLE static BSDFSample sampleInternal(const ShadingData &sd, Vector3f wo, Sampler & sg) {	\
@@ -10,17 +11,23 @@
 		return bsdf.sample(wo, sg);																		\
 	}																									\
 																										\
-	KRR_CALLABLE static Vector3f fInternal(const ShadingData& sd, Vector3f wo, Vector3f wi) {					\
+	KRR_CALLABLE static Vector3f fInternal(const ShadingData& sd, Vector3f wo, Vector3f wi) {			\
 		bsdf_name bsdf;																					\
 		bsdf.setup(sd);																					\
 		return bsdf.f(wo, wi);																			\
 	}																									\
 																										\
-	KRR_CALLABLE static float pdfInternal(const ShadingData& sd, Vector3f wo, Vector3f wi) {				\
+	KRR_CALLABLE static float pdfInternal(const ShadingData& sd, Vector3f wo, Vector3f wi) {			\
 		bsdf_name bsdf;																					\
 		bsdf.setup(sd);																					\
 		return bsdf.pdf(wo, wi);																		\
-	}	
+	}																									\
+																										\
+	KRR_CALLABLE static BSDFType flagsInternal(const ShadingData& sd){										\
+		bsdf_name bsdf;																					\
+		bsdf.setup(sd);																					\
+		return bsdf.flags();																		\
+	}
 
 KRR_NAMESPACE_BEGIN
 

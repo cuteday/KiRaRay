@@ -371,6 +371,11 @@ public:
 		return val;
 	}
 
+	KRR_CALLABLE BSDFType flags() const {
+		BSDFType type = pDiffuse > 0 ? BSDF_DIFFUSE_REFLECTION : BSDF_UNSET;
+		return type | (microfacetBrdf.flags() | microfacetBtdf.flags());
+	}
+
 	KRR_CALLABLE bool hasComponent(int comp) { return comp & components; }
 
 	//DisneySheen disneySheen;			// [optional] if sheen weight eligible

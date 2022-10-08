@@ -22,7 +22,7 @@ public:
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(FresnelBlendBrdf);
 
-	__both__ void setup(const ShadingData & sd) {
+	KRR_CALLABLE void setup(const ShadingData & sd) {
 		diffuse = sd.diffuse;
 		specular = sd.specular;
 		float alpha = ggx.RoughnessToAlpha(sd.roughness);
@@ -30,7 +30,7 @@ public:
 		ggx.setup(alpha, alpha, true);
 	}
 
-	__both__ Color f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
 		if (!SameHemisphere(wo, wi))
 			return Color::Zero();
 		Color diff = (28.f / (23.f * M_PI)) * diffuse * (Color::Ones() - specular)
@@ -46,7 +46,7 @@ public:
 		return diff + spec;
 	}
 
-	__both__ BSDFSample sample(Vector3f wo, Sampler & sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler & sg) const {
 		BSDFSample sample = {};
 		float comp = sg.get1D();
 		Vector2f u = sg.get2D();
@@ -66,7 +66,7 @@ public:
 		return sample;
 	}
 
-	__both__ float pdf(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
 		if (!SameHemisphere(wo, wi)) return 0;
 		float diffPdf = fabs(wi[2]) * M_INV_PI;
 
@@ -74,6 +74,13 @@ public:
 		float specPdf = ggx.Pdf(wo, wh) / (4 * dot(wo, wh));
 
 		return 0.5f * (diffPdf + specPdf);
+	}
+
+	KRR_CALLABLE BSDFType flags() const {
+		BSDFType type = diffuse.any() ? BSDF_DIFFUSE_REFLECTION : BSDF_UNSET;
+		if (specular.any())
+			type = type | (ggx.isSpecular() ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION);
+		return type;
 	}
 
 private:

@@ -22,7 +22,7 @@ public:
 		mLights(lights.begin(), lights.end()) {}
 
 	// assumes u in [0, 1)
-	__both__ SampledLight sample(float u)const {
+	KRR_CALLABLE SampledLight sample(float u)const {
 		SampledLight sl = {};
 		uint sampleId = u * mLights.size();
 		DCHECK_LT(sampleId, mLights.size());
@@ -31,11 +31,11 @@ public:
 		return sl;
 	}
 
-	__both__ float pdf(const Light& light)const {
+	KRR_CALLABLE float pdf(const Light& light)const {
 		return 1.f / mLights.size();
 	}
 
-	__both__ inter::vector<Light>* getLights() {
+	KRR_CALLABLE inter::vector<Light>* getLights() {
 		return &mLights;
 	}
 

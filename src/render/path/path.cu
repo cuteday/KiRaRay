@@ -85,7 +85,6 @@ KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 }
 
 KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path, Ray& shadowRay) {
-
 	Vector2f u = path.sampler.get2D();
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 
@@ -104,7 +103,7 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 
 	if (launchParams.MIS) 
 		misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
-	if (isnan(misWeight) || isinf(misWeight)) return;
+	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any()) return;
 	// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
 	Vector3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 	Vector3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
@@ -115,8 +114,10 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 }
 
 KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
-	if (launchParams.MIS && (path.bsdfType & BSDF_SPECULAR))
-		return;
+	//if (launchParams.MIS) { // Disable NEE on specular surfaces.
+	//	BSDFType bsdfType = BxDF::flags(sd, (int) sd.bsdfType);
+	//	if (!(bsdfType & BSDF_SMOOTH)) return;	
+	//}
 	for (int i = 0; i < launchParams.lightSamples; i++) {
 		Ray shadowRay = {};
 		generateShadowRay(sd, path, shadowRay);

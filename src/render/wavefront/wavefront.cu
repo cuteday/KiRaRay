@@ -70,7 +70,6 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 		w.thp				 = r.thp;
 		w.sd				 = sd;
 		w.depth				 = r.depth;
-		w.bsdfType			 = r.bsdfType;
 		launchParams.scatterRayQueue->push(w);
 	}
 }

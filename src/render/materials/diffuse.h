@@ -21,15 +21,15 @@ public:
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(DiffuseBrdf);
 
-	__both__ void setup(const ShadingData& sd) {
+	KRR_CALLABLE void setup(const ShadingData& sd) {
 		diffuse = sd.diffuse;
 	}
 
-	__both__ Color f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
 		return diffuse * M_INV_PI;
 	}
 
-	__both__ BSDFSample sample(Vector3f wo, Sampler& sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler& sg) const {
 		BSDFSample sample;
 		Vector2f u = sg.get2D();
 		Vector3f wi = cosineSampleHemisphere(u);
@@ -39,9 +39,13 @@ public:
 		return sample;
 	}
 
-	__both__ float pdf(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
 		if (!SameHemisphere(wo, wi)) return 0;
 		return fabs(wi[2]) * M_INV_PI;
+	}
+	
+	KRR_CALLABLE BSDFType flags() const {
+		return diffuse.any() ? BSDF_DIFFUSE : BSDF_UNSET;
 	}
 
 	Color diffuse;
@@ -52,9 +56,7 @@ public:
 
 	DiffuseBsdf() = default;
 
-	_DEFINE_BSDF_INTERNAL_ROUTINES(DiffuseBsdf);
-
-	__both__ void setup(const ShadingData& sd) {
+	KRR_CALLABLE void setup(const ShadingData& sd) {
 		// luminance as weight to sample different components?
 		reflection = sd.diffuse;
 		transmission = sd.transmission;
@@ -64,12 +66,12 @@ public:
 		}
 	}
 
-	__both__ Color f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
 		if (SameHemisphere(wo, wi)) return reflection * M_INV_PI;
 		return transmission * M_INV_PI;
 	}
 
-	__both__ BSDFSample sample(Vector3f wo, Sampler& sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler& sg) const {
 		BSDFSample sample;
 		float c = sg.get1D();
 		Vector2f u = sg.get2D();
@@ -88,7 +90,7 @@ public:
 		return sample;
 	}
 
-	__both__ float pdf(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
 		if (SameHemisphere(wo, wi))
 			return pR * fabs(wi[2]);
 		return pT * fabs(wi[2]);

@@ -30,6 +30,11 @@ public:
 		return dispatch(pdf, bsdfIndex);
 	}
 
+	KRR_CALLABLE static BSDFType flags(const ShadingData& sd, int bsdfIndex) {
+		auto flags = [&](auto ptr)->BSDFType {return ptr->flagsInternal(sd); };
+		return dispatch(flags, bsdfIndex);
+	}
+
 	KRR_CALLABLE void setup(const ShadingData &sd) {
 		auto setup = [&](auto ptr)->void {return ptr->setup(sd); };
 		return dispatch(setup);
@@ -37,7 +42,7 @@ public:
 
 	// [NOTE] f the cosine theta term in render equation is not contained in f().
 	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
-		auto f = [&](auto ptr)->Vector3f {return ptr->f(wo, wi); };
+		auto f = [&](auto ptr) -> Color { return ptr->f(wo, wi); };
 		return dispatch(f);
 	}
 
@@ -49,6 +54,11 @@ public:
 	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
 		auto pdf = [&](auto ptr)->float {return ptr->pdf(wo, wi); };
 		return dispatch(pdf);
+	}
+
+	KRR_CALLABLE BSDFType flags() const {
+		auto flags = [&](auto ptr) -> BSDFType { return ptr->flags(); };
+		return dispatch(flags);
 	}
 };
 
