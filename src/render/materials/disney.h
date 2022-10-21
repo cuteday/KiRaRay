@@ -36,6 +36,7 @@ public:
 
 	KRR_CALLABLE DisneyDiffuse(const Color &R) : R(R) {}
 	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
+		if (!SameHemisphere(wo, wi)) return 0;
 		float Fo = SchlickWeight(AbsCosTheta(wo)),
 			Fi = SchlickWeight(AbsCosTheta(wi));
 		return R * M_INV_PI * (1 - Fo / 2) * (1 - Fi / 2);
@@ -316,7 +317,7 @@ public:
 		Color val	 = Color::Zero();
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
-			if (components & DISNEY_DIFFUSE)val += disneyDiffuse.f(wo, wi);
+			if (components & DISNEY_DIFFUSE) val += disneyDiffuse.f(wo, wi);
 			if (components & DISNEY_RETRO) val += disneyRetro.f(wo, wi);
 		}
 		if (pSpecRefl > 0 && (components & DISNEY_SPEC_REFLECTION) && reflect) {

@@ -26,6 +26,7 @@ public:
 	}
 
 	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
+		if (!SameHemisphere(wo, wi)) return 0;
 		return diffuse * M_INV_PI;
 	}
 
@@ -36,6 +37,7 @@ public:
 		sample.wi = ToSameHemisphere(wi, wo);
 		sample.f = f(wo, sample.wi);
 		sample.pdf = pdf(wo, sample.wi);
+		sample.flags = BSDF_DIFFUSE_REFLECTION;
 		return sample;
 	}
 
