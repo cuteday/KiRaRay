@@ -95,15 +95,15 @@ public:
 
 	__device__ inline LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
 		LightSample ls = {};
-		Vector3f wi = utils::sphericalToCartesian(M_PI * u[0], M_2PI * u[1]);
-		ls.intr = Interaction(ctx.p + wi * 1e7f);
-		ls.L = Li(wi);
-		ls.pdf = 0.25 * M_INV_PI;
+		Vector3f wi	   = uniformSampleSphere(u);
+		ls.intr		   = Interaction(ctx.p + wi * 1e7f);
+		ls.L		   = Li(wi);
+		ls.pdf		   = M_INV_4PI;
 		return ls;
 	}
 
 	KRR_CALLABLE float pdfLi(Interaction& p, const LightSampleContext& ctx) const {
-		return 0.25 * M_INV_PI;
+		return M_INV_4PI;
 	}
 
 	KRR_CALLABLE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const { return Vector3f::Zero(); }

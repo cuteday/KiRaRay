@@ -48,7 +48,7 @@ void ToneMappingPass::renderUI() {
 	static const char *operators[] = { "Linear", "Reinhard", "Aces", "Uncharted2", "HejiHable" };
 	ui::Checkbox("Enabled", &mEnable);
 	if (mEnable) {
-		ui::DragFloat("Exposure compensation", &mExposureCompensation, 0.001, 0.001, 100, "%.3f");
+		ui::DragFloat("Exposure compensation", &mExposureCompensation, 0.01, 0.01, 100, "%.2f");
 		ui::Combo("Tonemap operator", (int *) &mOperator, operators, (int) Operator::NumsOperators);
 	}
 }

@@ -14,7 +14,7 @@
 KRR_NAMESPACE_BEGIN
 
 void registerRenderPasses() {
-    // just a temporary workaroud...
+	// just a temporary workaroud...
 	RenderPass::SharedPtr __MegakernelPathTracer(new MegakernelPathTracer());
 	RenderPass::SharedPtr __WavefrontPathTracer(new WavefrontPathTracer());
 	RenderPass::SharedPtr __AccumulatePass(new AccumulatePass());
@@ -40,7 +40,7 @@ extern "C" int main(int argc, char *argv[]) {
     }
 
 	try {
-        gpContext = Context::SharedPtr(new Context());
+        gpContext = std::make_shared<Context>();
 		registerRenderPasses();
 		RenderApp app(KRR_PROJECT_NAME);
 		app.loadConfig(configFile);
