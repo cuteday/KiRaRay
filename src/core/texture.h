@@ -157,7 +157,7 @@ public:
 
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
-	BsdfType mBsdfType{ BsdfType::Diffuse };
+	BsdfType mBsdfType{ BsdfType::Disney };
 	ShadingModel mShadingModel{ ShadingModel::MetallicRoughness };
 	bool mDoubleSided = false;
 	uint mMaterialId;

@@ -90,34 +90,33 @@ void WavefrontPathTracer::generateScatterRays(){
 		if (enableNEE) {
 			//BSDFType bsdfType = BxDF::flags(sd, (int) sd.bsdfType);
 			//if (bsdfType & BSDF_SMOOTH) {	// Disable NEE on specular surfaces
-				float u					  = sampler.get1D();
-				SampledLight sampledLight = lightSampler.sample(u);
-				Light light				  = sampledLight.light;
-				LightSample ls			  = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
-				Vector3f wiWorld		  = normalize(ls.intr.p - sd.pos);
-				Vector3f wiLocal		  = sd.frame.toLocal(wiWorld);
 
-				float lightPdf = sampledLight.pdf * ls.pdf;
-				float bsdfPdf  = BxDF::pdf(sd, woLocal, wiLocal, (int) sd.bsdfType);
-				Color bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType) * fabs(wiLocal[2]);
-				float misWeight = evalMIS(lightPdf, bsdfPdf);
-				// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
-				if (misWeight > 0 && !isnan(misWeight) && !isinf(misWeight)) {
-					Ray shadowRay		 = sd.getInteraction().spawnRay(ls.intr);
-					ShadowRayWorkItem sw = {};
-					sw.ray				 = shadowRay;
-					sw.Li				 = ls.L;
-					sw.a				 = w.thp * misWeight * bsdfVal / lightPdf;
-					sw.pixelId			 = w.pixelId;
-					sw.tMax				 = 1;
-					if (any(sw.a)) shadowRayQueue->push(sw);
-				}
+			SampledLight sampledLight = lightSampler.sample(sampler.get1D());
+			Light light				  = sampledLight.light;
+			LightSample ls			  = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
+			Vector3f wiWorld		  = normalize(ls.intr.p - sd.pos);
+			Vector3f wiLocal		  = sd.frame.toLocal(wiWorld);
+
+			float lightPdf = sampledLight.pdf * ls.pdf;
+			float bsdfPdf  = BxDF::pdf(sd, woLocal, wiLocal, (int) sd.bsdfType);
+			Color bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType) * fabs(wiLocal[2]);
+			float misWeight = evalMIS(lightPdf, bsdfPdf);
+			// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
+			if (misWeight > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
+				Ray shadowRay		 = sd.getInteraction().spawnRay(ls.intr);
+				ShadowRayWorkItem sw = {};
+				sw.ray				 = shadowRay;
+				sw.Li				 = ls.L;
+				sw.a				 = w.thp * misWeight * bsdfVal / lightPdf;
+				sw.pixelId			 = w.pixelId;
+				sw.tMax				 = 1;
+				if (sw.a.any()) shadowRayQueue->push(sw);
+			}
 			//}
 		}
 
 		/* sample BSDF */
-		float u = sampler.get1D();
-		if (u > probRR) return;		// Russian Roulette
+		if (sampler.get1D() >= probRR) return; // Russian Roulette
 		BSDFSample sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
 		if (sample.pdf && any(sample.f)) {
 			Vector3f wiWorld = sd.frame.toWorld(sample.wi);
@@ -180,7 +179,7 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 		Call(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
 		generateCameraRays(sampleId);
 		// [STEP#2] do radiance estimation recursively
-		for (int depth = 0; depth < maxDepth; depth++) {
+		for (int depth = 0; depth <= maxDepth; depth++) {
 			Call(KRR_DEVICE_LAMBDA() {
 				nextRayQueue(depth)->reset();
 				hitLightRayQueue->reset();
