@@ -59,8 +59,8 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 		LightSampleContext ctx = { path.pos, };	// should use pos of prev interaction
 		float bsdfPdf = path.pdf;
 		float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(light);
-		if (launchParams.MIS && !(path.bsdfType & BSDF_SPECULAR) ) 
-			weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
+		if (!(path.bsdfType & BSDF_SPECULAR)) 
+		weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
 		if (isnan(weight) || isinf(weight)) weight = 1;
 	}
 	path.L += Le * weight * path.throughput;
@@ -74,7 +74,7 @@ KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 
 	for (InfiniteLight& light : *launchParams.sceneData.infiniteLights) {
 		float weight = 1.f;
-		if (path.depth && launchParams.MIS) {
+		if (path.depth && launchParams.NEE) {
 			float bsdfPdf = path.pdf;
 			float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(&light);
 			weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
@@ -99,25 +99,19 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 	if (lightPdf == 0) return;	// TODO: check why?
 	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
 	Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
-	float misWeight = 1;
-
-	if (launchParams.MIS) 
-		misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
+	float misWeight = misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
 	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any()) return;
 	// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
-	Vector3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
-	Vector3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
 
-	shadowRay = { p, to - p };
+	shadowRay	 = sd.getInteraction().spawnRay(ls.intr);
 	bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1);
 	if (visible) path.L += path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
 }
 
 KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
-	//if (launchParams.MIS) { // Disable NEE on specular surfaces.
+	// Disable NEE on specular surfaces.
 	//	BSDFType bsdfType = BxDF::flags(sd, (int) sd.bsdfType);
 	//	if (!(bsdfType & BSDF_SMOOTH)) return;	
-	//}
 	for (int i = 0; i < launchParams.lightSamples; i++) {
 		Ray shadowRay = {};
 		generateShadowRay(sd, path, shadowRay);
@@ -126,7 +120,8 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 
 KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& path) {
 	// how to eliminate branches here to improve performance?
-	if (launchParams.probRR >= M_EPSILON && path.sampler.get1D() < launchParams.probRR) return;
+	if (launchParams.probRR >= M_EPSILON && path.sampler.get1D() < launchParams.probRR) 
+		return false;
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 	BSDFSample sample = BxDF::sample(sd, woLocal, path.sampler, (int)sd.bsdfType);
 	if (sample.pdf == 0 || !any(sample.f)) return false;
@@ -135,7 +130,7 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 	path.bsdfType	 = sample.flags;
 	path.pos = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 	path.dir = wiWorld;
-	path.pdf = max(sample.pdf, 1e-7f);
+	path.pdf = sample.pdf;
 	path.throughput *= sample.f * fabs(sample.wi[2]) / path.pdf / (1 - launchParams.probRR);
 	return true;
 }

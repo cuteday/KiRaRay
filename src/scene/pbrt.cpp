@@ -68,12 +68,14 @@ size_t loadMaterial(Scene::SharedPtr scene,
 
 	if (auto m = std::dynamic_pointer_cast<pbrt::DisneyMaterial>(mat)) {
 		Log(Info, "Encountered disney material: %s", mat->name.c_str());
+		material->mShadingModel	   = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(m->color.x, m->color.y, m->color.z, 1);
 		matParams.IoR			   = m->eta;
 		matParams.specular[2]	   = m->metallic;
 		matParams.specular[1]	   = m->roughness;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::PlasticMaterial>(mat)) {
 		Log(Info, "Encountered plastic material: %s", mat->name.c_str());
+		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(cast(m->kd), 1);
 		if (m->map_kd) {
 			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd))
@@ -87,6 +89,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		matParams.specular[1] = sqrt(roughness);		// sqrt'ed
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MatteMaterial>(mat)) {
 		Log(Info, "Encountered matte material: %s", mat->name.c_str());
+		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(cast(m->kd), 1);
 		if (m->map_kd) {
 			Log(Debug, "A diffuse texture is found for %s texture %s", m->toString().c_str(),
@@ -155,6 +158,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		matParams.specularTransmission = luminance(transmission);
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::TranslucentMaterial>(mat)) {
 		Log(Warning, "Encountered not well-supported transluscent material: %s", mat->name.c_str());
+		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
 		if (m->map_kd) {
 			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd))

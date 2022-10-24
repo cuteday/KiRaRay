@@ -68,8 +68,9 @@ void Scene::processLights(){
 	for (uint meshId = 0; meshId < nMeshes; meshId++) {
 		Mesh& mesh = meshes[meshId];
 		Material& material = (*mData.materials)[mesh.materialId];
-		if (material.hasEmission() || any(mesh.Le)) {
-			Vector3f Le		 = material.hasEmission() ? material.mMaterialParams.emissive : mesh.Le;
+		if (material.hasEmission() || mesh.Le.any()) {
+			Vector3f Le		 = material.hasEmission() ? material.mMaterialParams.emissive
+													  : material.mMaterialParams.emissive = mesh.Le;
 			Texture &texture				= material.getTexture(Material::TextureType::Emissive);
 			logDebug("Emissive diffuse area light detected,"
 				" number of shapes: " + to_string(mesh.indices.size()) +

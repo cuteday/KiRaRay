@@ -122,7 +122,7 @@ public:
 	};
 
 	struct MaterialParams {
-		Vector4f diffuse{ 0 };			// RGB for base color and A (optional) for opacity 
+		Vector4f diffuse{ 1 };			// RGB for base color and A (optional) for opacity 
 		Vector4f specular{ 0 };			// G-roughness B-metallic A-shininess in MetalRough model
 										// RGB - specular color (F0); A - shininess in SpecGloss model
 		Vector3f emissive{ 0 };
@@ -138,7 +138,7 @@ public:
 	bool determineSrgb(string filename, TextureType type);
 
 	bool hasEmission() { 
-		return any(mMaterialParams.emissive) || mTextures[(int)TextureType::Emissive].isValid(); 
+		return mMaterialParams.emissive.any() || mTextures[(int)TextureType::Emissive].isValid(); 
 	}
 
 	KRR_CALLABLE Texture getTexture(TextureType type) {

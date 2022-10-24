@@ -198,14 +198,11 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
 			handleHit();
 			if (depth || !transparentBackground) handleMiss();
-			// [STEP#2.3] evaluate materials & bsdfs
+			// [STEP#2.3] evaluate materials & bsdfs, and generate shadow rays
 			generateScatterRays();
 			// [STEP#2.4] trace shadow rays (next event estimation)
 			if (enableNEE)
-				backend->traceShadow(
-					maxQueueSize,
-					shadowRayQueue,
-					pixelState);
+				backend->traceShadow(maxQueueSize, shadowRayQueue, pixelState);
 		}
 	}
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){

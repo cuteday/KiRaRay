@@ -125,7 +125,6 @@ void MegakernelPathTracer::renderUI() {
 	ui::DragFloat("Radiance clip", &launchParams.clampThreshold, 0.1, 1, 500);
 	ui::Checkbox("Next event estimation", &launchParams.NEE);
 	if (launchParams.NEE) {
-		ui::Checkbox("Multiple importance sampling", &launchParams.MIS);
 		ui::InputInt("Light sample count", &launchParams.lightSamples);
 	}
 	ui::Text("Debugging");

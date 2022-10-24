@@ -23,9 +23,8 @@ struct LaunchParamsPT
 	bool debugOutput	= false;
 	Vector2i debugPixel = { 960, 540 };
 	// path tracing parameters
-	bool NEE = false; // enable next event estimation
-	bool MIS = true;  // enable multiple importance sampling. if disable but NEE enabled, "some types" of
-			  // the lights (i.e. area lights and env lights) will be counted twice.
+	bool NEE = false; // enable next event estimation (and multiple importance sampling)
+	
 	int maxDepth		 = 10;
 	float probRR		 = 0.2;
 	float clampThreshold = 10000; // clamp max radiance contrib per frame
