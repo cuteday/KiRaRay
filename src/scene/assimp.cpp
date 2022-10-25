@@ -343,7 +343,7 @@ void AssimpImporter::traverseNode(aiNode *node, aiMatrix4x4 transform) {
 
 void AssimpImporter::loadMaterials(const string &modelFolder) {
 	mpScene->mData.materials->reserve(mpAiScene->mNumMaterials + 1LL);
-	mpScene->mData.materials->push_back(Material());
+	mpScene->mData.materials->push_back(Material(0, "default material"));
 	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
 		const aiMaterial *aiMaterial  = mpAiScene->mMaterials[i];
 		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);

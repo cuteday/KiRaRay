@@ -142,17 +142,17 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// [SPECULAR] G - Roughness; B - Metallic
-		sd.diffuse = lerp(baseColor, Vector3f::Zero(), spec[2]);
+		sd.diffuse	 = lerp(baseColor, Vector3f::Zero(), spec[2]);
 		sd.specular	 = lerp(Vector3f::Zero(), baseColor, spec[2]);
 		sd.metallic	 = spec[2];
 		sd.roughness = spec[1];
 	}
 	else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		// [SPECULAR] RGB - Specular Color; A - Glossiness
-		sd.diffuse = baseColor;
-		sd.specular = (Vector3f)spec;			// specular reflectance
-		sd.roughness = 1.f - spec[3];			// 
-		sd.metallic = getMetallic(sd.diffuse, sd.specular);
+		sd.diffuse	 = baseColor;
+		sd.specular	 = (Vector3f) spec; 	// specular reflectance
+		sd.roughness = 1.f - spec[3];		// 
+		sd.metallic	 = getMetallic(sd.diffuse, sd.specular);
 	}
 	else {
 		assert(false);

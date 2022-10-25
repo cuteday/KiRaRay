@@ -152,7 +152,8 @@ public:
 	void toDevice();
 	void renderUI();
 	string getName() {
-		return mMaterialId ? texture::materialProps[mMaterialId].name : "unknown";
+		return texture::materialProps.count(mMaterialId) ? 
+			texture::materialProps[mMaterialId].name : "unknown";
 	}
 
 	MaterialParams mMaterialParams;

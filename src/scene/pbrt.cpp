@@ -257,7 +257,8 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 	}
 		
 	scene->makeSingleLevel();						// since currently kiraray supports only single gas...
-	pScene->mData.materials->push_back(Material());	// the default material for shapes without material
+	pScene->mData.materials->push_back(Material(0, "default material")); // the default material for shapes without
+														 // material
 
 	std::map<pbrt::Material::SP, size_t> pbrtMaterials; // loaded materials and its parametric id
 	
