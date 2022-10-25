@@ -36,13 +36,15 @@ public:
 		mData.lights = lights.data();
 	}
 
-	std::vector<Triangle> createTriangles(MeshData* mesh);
+	std::vector<Triangle> createTriangles(MeshData* mesh) const;
 	
 	inter::vector<VertexAttribute> vertices;
 	inter::vector<Vector3i> indices;
 
 	inter::vector<Triangle> emissiveTriangles;
 	inter::vector<DiffuseAreaLight> lights;
+
+	AABB getAABB() const;
 
 	uint materialId{};
 	MeshData mData;

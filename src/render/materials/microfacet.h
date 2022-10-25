@@ -264,10 +264,10 @@ public:
 	KRR_CALLABLE Color Fr(Vector3f wo, Vector3f wh) const {
 		// fresnel is also on the microfacet (wrt to wh)
 #if KRR_USE_DISNEY
-		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)); // etaT / etaI
+		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)); // etaT / etaI, auto inversion.
 #else
 		return FrSchlick(R, Vector3f(1.f), dot(wo, wh)) / R;
-		return FrDielectric(dot(wo, wh), eta); // etaT / etaI
+		return FrDielectric(dot(wo, wh), eta); // etaT / etaI.
 #endif
 	}
 
@@ -382,7 +382,7 @@ public:
 	KRR_CALLABLE Color Fr(Vector3f wo, Vector3f wh) const {
 		float eta = etaB / etaA;
 #if KRR_USE_DISNEY
-		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)); // etaT / etaI
+		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)); // etaT / etaI, auto inversion
 #else
 		return = FrSchlick(R, Vector3f(1.f), dot(wo, wh)) / R;
 		return FrDielectric(dot(wo, wh), eta); // etaT / etaI

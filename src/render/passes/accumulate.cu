@@ -7,6 +7,11 @@
 
 KRR_NAMESPACE_BEGIN
 
+void AccumulatePass::reset() {
+	mAccumCount = 0;
+	mStartTime = mCurrentTime = CpuTimer::getCurrentTimePoint();
+}
+
 void AccumulatePass::render(CUDABuffer& frame) {
 	if (!mEnable) return;
 	PROFILE("Accumulate pass");
@@ -30,15 +35,20 @@ void AccumulatePass::render(CUDABuffer& frame) {
 		else
 			currentBuffer[i] = accumBuffer[i] * currentWeight;
 	});
-	if (!mMaxAccumCount || mAccumCount < mMaxAccumCount)
+	if (!mMaxAccumCount || mAccumCount < mMaxAccumCount) {
 		mAccumCount++;
+		mCurrentTime = CpuTimer::getCurrentTimePoint();
+	}
+
 }
 
 void AccumulatePass::renderUI() {
 	if (ui::Checkbox("Enabled", &mEnable))
 		reset();
 	if (mEnable) {
-		ui::Text("Accumulate count: %d\n", mAccumCount);
+		ui::Text("Accumulate count: %d", mAccumCount);
+		ui::Text("Elapsed time: %.2f", 
+			CpuTimer::calcDuration(mStartTime, mCurrentTime) * 1e-3 );
 		if (ui::DragInt("Max accum count", (int *) &mMaxAccumCount, 1, 0, 1e9))
 			reset();
 		if (ui::Button("reset"))

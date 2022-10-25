@@ -266,6 +266,8 @@ bool AssimpImporter::import(const string &filepath, const Scene::SharedPtr pScen
 	logDebug("Start traversing scene nodes");
 	traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
 	logDebug("Total imported meshes: " + std::to_string(mpScene->meshes.size()));
+	//std::cout << "AABB: " << pScene->getAABB().center() << pScene->getAABB().diagonal()
+	//		  << std::endl;
 
 	Assimp::DefaultLogger::kill();
 	return true;

@@ -89,7 +89,6 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		matParams.specular[1] = sqrt(roughness);		// sqrt'ed
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MatteMaterial>(mat)) {
 		Log(Info, "Encountered matte material: %s", mat->name.c_str());
-		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(cast(m->kd), 1);
 		if (m->map_kd) {
 			Log(Debug, "A diffuse texture is found for %s texture %s", m->toString().c_str(),
@@ -98,7 +97,8 @@ size_t loadMaterial(Scene::SharedPtr scene,
 				matParams.diffuse = Vector4f(cast(const_tex->value), 1);
 			else loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
 		}
-		matParams.specular[1] = 0.9;
+		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
+		matParams.specular[3]	= 0;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::SubstrateMaterial>(mat)) {
 		Log(Info, "Encountered substrate material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
@@ -194,8 +194,10 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	} else {
 		Log(Warning, "Encountered unsupported %s material: %s", 
 			mat->toString().c_str(), mat->name.c_str());
-		return 0;	// falling back to the default material 0...
+		return 0;				// falling back to the default material 0...
 	}
+	if (matParams.IoR == 1)		// 1-ETA is not plausible for transmission
+		matParams.IoR = 1.001;
 	material->toDevice();
 	size_t materialId = scene->mData.materials->size();
 	scene->mData.materials->push_back(*material);
@@ -220,13 +222,13 @@ Mesh createMesh(pbrt::Shape::SP shape, const Transformf<> transform) {
 		Vector4f local_vertex(cast(m->vertex[i]), 1);
 		Vector4f transformed_vertex = transform * local_vertex;
 		Vector3f transformed_normal{};
-		if (m->normal.size())
-			transformed_normal = rot * cast(m->normal[i]);
+		//if (m->normal.size())
+		//	transformed_normal = rot * cast(m->normal[i]);
 		vertex.vertex				= transformed_vertex;
 		vertex.normal				= transformed_normal;
 		if (m->texcoord.size())
-		vertex.texcoord				= cast(m->texcoord[i]);
-			vertex.tangent				= getPerpendicular(vertex.normal);
+			vertex.texcoord			= cast(m->texcoord[i]);
+		vertex.tangent				= getPerpendicular(vertex.normal);
 		vertex.bitangent			= normalize(cross(vertex.normal, vertex.tangent));
 		mesh.vertices.push_back(vertex);
 	}
@@ -278,6 +280,7 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 					createAreaLight(mesh, m->areaLight);
 				}
 				pScene->meshes.push_back(mesh);
+				pScene->mAABB.extend(mesh.getAABB());
 			} else {
 				Log(Warning, "Encountered unsupported pbrt shape type: %s", geom->toString().c_str());
 			}
@@ -291,7 +294,8 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 		}
 	}
 
-	pScene->mAABB = cast(scene->getBounds());
+	std::cout << "AABB: " << pScene->getAABB().center()
+		<< pScene->getAABB().diagonal() << std::endl;
 	return true;
 }
 
