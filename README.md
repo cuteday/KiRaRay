@@ -90,17 +90,4 @@ Although the main purpose of this project is to let me (a beginner) learn c++ an
 
 For anyone that (accidentally) found this project: any questions, suggestions and bug reports are greatly appreciated!
 
-<details>
-<summary>blue archive meme</summary>
-
-I wish i was like: 
-
-<p align=center>
-<img src=https://cutesail.com/wp-content/uploads/2022/02/aris-meme.jpg width="500">
-
-But actually i'm like **sleeps all the time**:
-
-<p align=center>
-<img src=https://cutesail.com/wp-content/uploads/2022/02/hoshino-meme.png width="320">
-
 </details>

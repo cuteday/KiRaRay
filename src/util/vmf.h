@@ -48,10 +48,11 @@ public:
 	KRR_CALLABLE Vector3f sample(Vector2f u) const {
 		if (m_kappa < M_EPSILON)
 			return uniformSampleSphere(u);
-		float cosTheta = clamp(1 + log(u[0] + expf(-2 * m_kappa) * (1 - u[0])) / m_kappa, -1.f, 1.f);
+		float cosTheta = 1 + log1p(-u[0] + expf(-2 * m_kappa) * u[0]) / m_kappa;
 		float sinTheta = safe_sqrt(1 - cosTheta * cosTheta), sinPhi, cosPhi;
-		sinPhi		   = sin(M_2PI * u[1]);
-		cosPhi		   = cos(M_2PI * u[1]);
+		float phi	   = M_2PI * u[1];
+		sinPhi		   = sin(phi);
+		cosPhi		   = cos(phi);
 		return Vector3f(cosPhi * sinTheta, sinPhi * sinTheta, cosTheta);
 	}
 
