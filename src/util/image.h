@@ -22,4 +22,10 @@ Color4f *ReadImagePFM(const std::string &filename, int *xres, int *yres);
 
 } // namespace pfm
 
+namespace image {
+
+Color4f *convertEqualAeraOctahedralMappingToSpherical(Color4f *data, int width, int height);
+
+}
+
 KRR_NAMESPACE_END

@@ -52,6 +52,7 @@ public:
 	inline size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
 	int getChannels() const { return mChannels; }
 	uchar* data() { return mData; }
+	void reset(uchar *data) { mData = data; }
 	
 private:
 	bool mSrgb{ };
@@ -71,8 +72,9 @@ public:
 
 	void loadImage(const string& filepath, bool srgb = false) {
 		mValid = mImage.loadImage(filepath, srgb);
-
 	}
+	Image &getImage() { return mImage; }
+
 	KRR_CALLABLE bool isValid() const { return mValid; }
 	KRR_CALLABLE bool isOnDevice() const { return mCudaTexture != 0; }
 	
