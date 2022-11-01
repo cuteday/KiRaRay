@@ -85,27 +85,27 @@ KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 }
 
 KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path, Ray& shadowRay) {
-	Vector2f u = path.sampler.get2D();
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 
-	SampledLight sampledLight = path.lightSampler.sample(u[0]);
+	SampledLight sampledLight = path.lightSampler.sample(path.sampler.get1D());
 	Light& light = sampledLight.light;
-	LightSample ls = light.sampleLi(u, { sd.pos, sd.frame.N });
+	LightSample ls			  = light.sampleLi(path.sampler.get2D(), 
+									{ sd.pos, sd.frame.N });
 
 	Vector3f wiWorld = normalize(ls.intr.p - sd.pos);
 	Vector3f wiLocal = sd.frame.toLocal(wiWorld);
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
-	if (lightPdf == 0) return;	// TODO: check why?
+	if (lightPdf == 0) return;	// We have sampled on the primitive itself...
 	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
 	Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
-	float misWeight = misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
+	float misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
 	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any()) return;
-	// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
 
 	shadowRay	 = sd.getInteraction().spawnRay(ls.intr);
 	bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1);
-	if (visible) path.L += path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
+	if (visible) path.L += path.throughput * bsdfVal * misWeight / 
+		(launchParams.lightSamples * lightPdf) * ls.L;
 }
 
 KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
@@ -120,8 +120,6 @@ KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 
 KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& path) {
 	// how to eliminate branches here to improve performance?
-	if (launchParams.probRR >= M_EPSILON && path.sampler.get1D() < launchParams.probRR) 
-		return false;
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 	BSDFSample sample = BxDF::sample(sd, woLocal, path.sampler, (int)sd.bsdfType);
 	if (sample.pdf == 0 || !any(sample.f)) return false;
@@ -131,7 +129,7 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 	path.pos = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 	path.dir = wiWorld;
 	path.pdf = sample.pdf;
-	path.throughput *= sample.f * fabs(sample.wi[2]) / path.pdf / (1 - launchParams.probRR);
+	path.throughput *= sample.f * fabs(sample.wi[2]) / path.pdf;
 	return true;
 }
 
@@ -180,6 +178,14 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 			handleMiss(sd, path); break;
 		}
 		else if (sd.light) handleHit(sd, path);
+
+		/* If the path is terminated by this vertex, then NEE should not be evaluated
+		 * otherwise the MIS weight of this NEE action will be meaningless. */
+		if (depth > 0 &&
+			launchParams.probRR >= M_EPSILON && 
+			path.sampler.get1D() < launchParams.probRR)
+			break;
+		path.throughput /= 1 - launchParams.probRR;
 		
 		if (launchParams.NEE) evalDirect(sd, path);
 

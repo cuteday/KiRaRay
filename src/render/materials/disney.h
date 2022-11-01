@@ -281,11 +281,11 @@ public:
 		// calculate sampling weights
 		float approxFresnel =
 			luminance(DisneyFresnel(Cspec0, metallicWeight, e, AbsCosTheta(sd.wo)));
-		pDiffuse	  = components & DISNEY_DIFFUSE ? luminance(sd.diffuse) * (1 - metallicWeight) *
+		pDiffuse	  = components & DISNEY_DIFFUSE ? sd.diffuse.mean() * (1 - metallicWeight) *
 													  (1 - sd.specularTransmission)
 												: 0;
 		pSpecRefl	  = components & DISNEY_SPEC_REFLECTION
-								? luminance(lerp(sd.specular, Color::Ones(), approxFresnel)) *
+								? lerp(sd.specular, Color::Ones(), approxFresnel).mean() *
 							(1 - sd.specularTransmission * (1 - metallicWeight))
 								: 0;
 		pSpecTrans	  = components & DISNEY_SPEC_TRANSMISSION

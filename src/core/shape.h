@@ -35,7 +35,7 @@ public:
 			p1 = mesh->vertices[v[1]].vertex,
 			p2 = mesh->vertices[v[2]].vertex;
 		float s = 0.5f * length(cross(p1 - p0, p2 - p0));
-		assert(s > 0);
+		DCHECK(s > 0);
 		return s;
 	}
 
@@ -92,16 +92,17 @@ public:
 				p2 = mesh->vertices[v[2]].vertex;
 		// Use uniform area sampling for numerically unstable cases
 		float sr = solidAngle(ctx.p);
-		//if (sr < kMinSphericalSampleArea || sr > kMaxSphericalSampleArea) {
-			// Sample shape by area and compute incident direction _wi_
-			ShapeSample ss = sample(u);
-			Vector3f wi = normalize(ss.intr.p - ctx.p);
+		// Sample shape by area and compute incident direction _wi_
+		ShapeSample ss = sample(u);
+		Vector3f wi = normalize(ss.intr.p - ctx.p);
 
-			// Convert area sampling PDF in _ss_ to solid angle measure
-			ss.pdf /= abs(dot(ss.intr.n, wi)) / squaredLength(ctx.p - ss.intr.p);
-			if(isinf(ss.pdf)) ss.pdf = 0;
-			return ss;
-		//}
+		// Convert area sampling PDF in _ss_ to solid angle measure
+		ss.pdf /= abs(dot(ss.intr.n, wi)) / squaredLength(ctx.p - ss.intr.p);
+		if (isinf(ss.pdf)) {
+			/* We are sampling the primitive itself ?! */
+			ss.pdf = 0;
+		}
+		return ss;
 	}
 
 	KRR_CALLABLE float pdf(Interaction& sample) const {
@@ -110,19 +111,13 @@ public:
 
 	KRR_CALLABLE float pdf(Interaction& sample, ShapeSampleContext& ctx) const {
 		float sr = solidAngle(ctx.p);
-
-		// Return PDF based on uniform area sampling for challenging triangles
-		//if (sr < kMinSphericalSampleArea || sr > kMaxSphericalSampleArea) {
-
-			Vector3f wi = normalize(sample.p - ctx.p);
-			// Compute PDF in solid angle measure from shape intersection point
-			float pdf = (1 / area()) / (abs(sample.n.dot(-wi))) /
-				squaredLength(ctx.p - sample.p);
-			if (isinf(pdf))
-				pdf = 0;
-
-			return pdf;
-		//}
+		// Naive version: always return PDF based on uniform area sampling
+		Vector3f wi = normalize(sample.p - ctx.p);
+		// Compute PDF in solid angle measure from shape intersection point
+		float pdf = (1 / area()) / (abs(sample.n.dot(-wi))) /
+			squaredLength(ctx.p - sample.p);
+		if (isinf(pdf)) pdf = 0;
+		return pdf;
 	}
 
 	MeshData* getMesh() {
@@ -130,12 +125,9 @@ public:
 	}
 
 private:
-
 	friend class Mesh;
 	uint primId;
 	MeshData* mesh{nullptr};
-	static constexpr float kMinSphericalSampleArea = 3e-4;
-	static constexpr float kMaxSphericalSampleArea = 6.22;
 };
 
 

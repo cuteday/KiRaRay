@@ -82,8 +82,13 @@ void WavefrontPathTracer::handleMiss(){
 void WavefrontPathTracer::generateScatterRays(){
 	PROFILE("Generate scatter rays");
 	ForAllQueued(scatterRayQueue, maxQueueSize,
-		KRR_DEVICE_LAMBDA(const ScatterRayWorkItem & w) {
+		KRR_DEVICE_LAMBDA(ScatterRayWorkItem & w) {
 		Sampler sampler = &pixelState->sampler[w.pixelId];
+		/*  Russian Roulette: If the path is terminated by this vertex, 
+			then NEE should not be evaluated */
+		if (sampler.get1D() >= probRR) return;  
+		w.thp /= probRR;
+
 		const ShadingData& sd = w.sd;
 		Vector3f woLocal = sd.frame.toLocal(sd.wo);
 		/* sample direct lighting */
@@ -100,14 +105,13 @@ void WavefrontPathTracer::generateScatterRays(){
 
 			float lightPdf = sampledLight.pdf * ls.pdf;
 			float bsdfPdf  = BxDF::pdf(sd, woLocal, wiLocal, (int) sd.bsdfType);
-			Color bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType) * fabs(wiLocal[2]);
+			Color bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType);
 			float misWeight = evalMIS(lightPdf, bsdfPdf);
-			// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
 			if (misWeight > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
 				ShadowRayWorkItem sw = {};
 				sw.ray				 = shadowRay;
 				sw.Li				 = ls.L;
-				sw.a				 = w.thp * misWeight * bsdfVal / lightPdf;
+				sw.a				 = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
 				sw.pixelId			 = w.pixelId;
 				sw.tMax				 = 1;
 				if (sw.a.any()) shadowRayQueue->push(sw);
@@ -116,7 +120,6 @@ void WavefrontPathTracer::generateScatterRays(){
 		}
 
 		/* sample BSDF */
-		if (sampler.get1D() >= probRR) return; // Russian Roulette
 		BSDFSample sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
 		if (sample.pdf && any(sample.f)) {
 			Vector3f wiWorld = sd.frame.toWorld(sample.wi);
@@ -128,7 +131,7 @@ void WavefrontPathTracer::generateScatterRays(){
 			r.ctx			 = { sd.pos, sd.frame.N };
 			r.pixelId		 = w.pixelId;
 			r.depth			 = w.depth + 1;
-			r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf / probRR;
+			r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf;
 			if (any(r.thp)) nextRayQueue(w.depth)->push(r);
 		}
 	});
