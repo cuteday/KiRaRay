@@ -168,7 +168,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	ShadingData sd = {};
 
 	// an alternate version of main loop
-	for (int &depth = path.depth; depth < launchParams.maxDepth; depth++) {
+	for (int &depth = path.depth; true; depth++) {
 		// ShadingData is updated in CH shader
 		// DO NOT enable OPTIX_RAY_FLAG_DISABLE_ANYHIT if alpha-killing is enabled
 		traceRay(launchParams.traversable, { path.pos, path.dir }, KRR_RAY_TMAX,
@@ -181,9 +181,9 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 
 		/* If the path is terminated by this vertex, then NEE should not be evaluated
 		 * otherwise the MIS weight of this NEE action will be meaningless. */
-		if (depth > 0 &&
+		if (depth == launchParams.maxDepth || (depth > 0 &&
 			launchParams.probRR >= M_EPSILON && 
-			path.sampler.get1D() < launchParams.probRR)
+			path.sampler.get1D() < launchParams.probRR))
 			break;
 		path.throughput /= 1 - launchParams.probRR;
 		

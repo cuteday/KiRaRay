@@ -182,7 +182,7 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 		Call(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
 		generateCameraRays(sampleId);
 		// [STEP#2] do radiance estimation recursively
-		for (int depth = 0; depth <= maxDepth; depth++) {
+		for (int depth = 0; true; depth++) {
 			Call(KRR_DEVICE_LAMBDA() {
 				nextRayQueue(depth)->reset();
 				hitLightRayQueue->reset();
@@ -201,6 +201,8 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
 			handleHit();
 			if (depth || !transparentBackground) handleMiss();
+			// Break on maximum depth, but incorprate contribution from emissive hits.
+			if (depth == maxDepth) break;
 			// [STEP#2.3] evaluate materials & bsdfs, and generate shadow rays
 			generateScatterRays();
 			// [STEP#2.4] trace shadow rays (next event estimation)
