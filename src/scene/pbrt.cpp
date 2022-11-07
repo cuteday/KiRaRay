@@ -305,9 +305,6 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 #endif
 		}
 	}
-
-	std::cout << "AABB: " << pScene->getAABB().center()
-		<< pScene->getAABB().diagonal() << std::endl;
 	return true;
 }
 

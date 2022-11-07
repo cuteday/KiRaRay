@@ -30,6 +30,9 @@ inline int GetBlockSize(F kernel) {
 template <typename F>
 void GPUParallelFor(int nElements, F func, CUstream stream = 0);
 
+template <typename F> 
+void GPUCall(F &&func);
+
 template <typename K, typename T, typename... Types>
 void LinearKernelShmem(K kernel, uint32_t shmemSize, cudaStream_t stream, T n_elements,
 						  Types... args);
@@ -55,6 +58,11 @@ inline void GPUParallelFor(int nElements, F func, CUstream stream) {
 #ifdef KRR_DEBUG_BUILD
 	CUDA_SYNC_CHECK();
 #endif
+}
+
+template <typename F> 
+void GPUCall(F &&func) {
+	GPUParallelFor(1, [=] KRR_DEVICE(int) mutable { func(); });
 }
 
 template <typename K, typename T, typename... Types>

@@ -67,7 +67,7 @@ struct ScatterRayWorkItem {
 
 #pragma warning (push, 0)
 #pragma warning (disable: ALL_CODE_ANALYSIS_WARNINGS)
-#include "workitem_soa.h"
+#include "render/wavefront/workitem_soa.h"
 #pragma warning (pop)
 
 KRR_NAMESPACE_END

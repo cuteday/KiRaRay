@@ -32,19 +32,12 @@ public:
 
 	string getName() const override { return "WavefrontPathTracer"; }
 
-	// cuda utility functions
-	template <typename F>
-	void Call(F&& func) {
-		GPUParallelFor(1, [=] KRR_DEVICE(int) mutable { func(); });
-	}
-
 	template <typename F>
 	void ParallelFor(int nElements, F&& func) {
 		DCHECK_GT(nElements, 0);
 		GPUParallelFor(nElements, func);
 	}
 
-	// extended lambda cannot have private or protected access within its class
 	void handleHit();
 	void handleMiss();
 	void generateScatterRays();

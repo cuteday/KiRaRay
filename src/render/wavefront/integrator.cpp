@@ -179,11 +179,11 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 	Color4f *frameBuffer = (Color4f *) frame.data();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
-		Call(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
+		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
 		generateCameraRays(sampleId);
 		// [STEP#2] do radiance estimation recursively
 		for (int depth = 0; true; depth++) {
-			Call(KRR_DEVICE_LAMBDA() {
+			GPUCall(KRR_DEVICE_LAMBDA() {
 				nextRayQueue(depth)->reset();
 				hitLightRayQueue->reset();
 				missRayQueue->reset();
@@ -231,8 +231,9 @@ void WavefrontPathTracer::renderUI(){
 	ui::Checkbox("Clamping pixel value", &enableClamp);
 	if (enableClamp) 
 		ui::DragFloat("Max:", &clampMax, 1, 1, 500);
-	ui::Text("Misc");
-	ui::Checkbox("Transparent background", &transparentBackground);
+	if (ui::CollapsingHeader("Misc")) {
+		ui::Checkbox("Transparent background", &transparentBackground);
+	}
 }
 
 KRR_REGISTER_PASS_DEF(WavefrontPathTracer);
