@@ -1,5 +1,5 @@
 #pragma once
-
+#define NOMINMAX
 #include <cstdio>
 #include <iostream>
 #include <stdexcept>

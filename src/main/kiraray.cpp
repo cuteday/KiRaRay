@@ -49,7 +49,7 @@ extern "C" int main(int argc, char *argv[]) {
         Log(Fatal, "Kiraray::Unhandled exception: %s\n", e.what());
     }
 
-    return EXIT_SUCCESS;
+    exit(EXIT_SUCCESS);
 }
 
 KRR_NAMESPACE_END
