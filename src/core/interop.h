@@ -802,39 +802,6 @@ namespace inter {
 			nStored = 0;
 		}
 
-		iterator insert(const_iterator, const T& value) {
-			// TODO
-			logFatal("TODO");
-		}
-		iterator insert(const_iterator, T&& value) {
-			// TODO
-			logFatal("TODO");
-		}
-		iterator insert(const_iterator pos, size_type count, const T& value) {
-			// TODO
-			logFatal("TODO");
-		}
-		template <class InputIt>
-		iterator insert(const_iterator pos, InputIt first, InputIt last) {
-			if (pos == end()) {
-				size_t firstOffset = size();
-				for (auto iter = first; iter != last; ++iter)
-					push_back(*iter);
-				return begin() + firstOffset;
-			}
-			else
-				logFatal("TODO");
-		}
-		iterator insert(const_iterator pos, std::initializer_list<T> init) {
-			// TODO
-			logFatal("TODO");
-		}
-
-		template <class... Args>
-		iterator emplace(const_iterator pos, Args &&...args) {
-			// TODO
-			logFatal("TODO");
-		}
 		template <class... Args>
 		void emplace_back(Args &&...args) {
 			if (nAlloc == nStored)
@@ -842,15 +809,6 @@ namespace inter {
 
 			alloc.construct(ptr + nStored, std::forward<Args>(args)...);
 			++nStored;
-		}
-
-		iterator erase(const_iterator pos) {
-			// TODO
-			logFatal("TODO");
-		}
-		iterator erase(const_iterator first, const_iterator last) {
-			// TODO
-			logFatal("TODO");
 		}
 
 		void push_back(const T& value) {
@@ -889,10 +847,6 @@ namespace inter {
 					alloc.construct(ptr + i);
 			}
 			nStored = n;
-		}
-		void resize(size_type count, const value_type& value) {
-			// TODO
-			logFatal("TODO");
 		}
 
 		void swap(vector& other) {

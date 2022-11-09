@@ -8,7 +8,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-/*! simple wrapper for creating, and managing a device-side CUDA buffer */
+/* simple wrapper for creating, and managing a device-side CUDA buffer */
 class CUDABuffer {
 public:
 	CUDABuffer() = default;
@@ -110,11 +110,48 @@ private:
 template <typename T>
 class TypedBuffer {
 public:
+	TypedBuffer() = default;
+	KRR_HOST TypedBuffer(size_t size) { resize(size); }
+	~TypedBuffer() {};
+	/* copy constructor */
+	TypedBuffer(const TypedBuffer& other) {
+		alloc_and_copy_from_device(other.d_ptr, other.m_size);
+	}
+	/* move constructor */
+	TypedBuffer(TypedBuffer &&other) {
+		m_size = other.m_size;
+		d_ptr  = other.d_ptr;
+
+		other.m_size = 0;
+		other.d_ptr	 = nullptr;
+	}
+	/* copy assignment */
+	TypedBuffer &operator=(const TypedBuffer &other) { 
+		clear();
+		alloc_and_copy_from_device(other.d_ptr, other.m_size);
+		return *this;
+	}
+	/* move assignment */
+	TypedBuffer &operator=(TypedBuffer &&other) {
+		clear();
+		m_size = other.m_size;
+		d_ptr  = other.d_ptr;
+
+		other.m_size = 0;
+		other.d_ptr	 = nullptr;
+		return *this;
+	}
+
 	KRR_CALLABLE T* data() const { return d_ptr; }
 
-	KRR_CALLABLE T& operator [] (uint index) { 
-		assert(index < m_size);
+	KRR_CALLABLE const T& operator [] (size_t index) const { 
+		DCHECK_LT(index, m_size);
 		return d_ptr[index]; 
+	}
+
+	KRR_CALLABLE T &operator [] (size_t index) {
+		DCHECK_LT(index, m_size);
+		return d_ptr[index];
 	}
 
 	KRR_CALLABLE size_t size() const { return m_size; }
@@ -123,13 +160,13 @@ public:
 
 	inline void resize(size_t new_size) {
 		if (m_size == new_size) return;
-		if (d_ptr) clear();
+		clear();
 		m_size = new_size;
 		CUDA_CHECK(cudaMalloc((void**)&d_ptr, new_size * sizeof(T)));
 	}
 
 	inline void clear(){
-		CUDA_CHECK(cudaFree(d_ptr));
+		if (d_ptr) CUDA_CHECK(cudaFree(d_ptr));
 		d_ptr = nullptr;
 		m_size = 0;
 	}
@@ -151,51 +188,51 @@ public:
 	void alloc_and_copy_from_host(const T* t, size_t count)
 	{
 		if (count == 0) return;
-		resize(count * sizeof(T));
+		resize(count);
 		copy_from_host((const T*)t, count);
 	}
 
 	void alloc_and_copy_from_device(const T* t, size_t count)
 	{
 		if (count == 0) return;
-		resize(count * sizeof(T));
+		resize(count);
 		copy_from_device((const T*)t, count);
 	}
 
 	void copy_from_host(const T* t, size_t count)
 	{
-		assert(d_ptr);
-		assert(m_size >= count);
+		CHECK(d_ptr);
+		CHECK(m_size >= count);
 		CUDA_CHECK(cudaMemcpy(d_ptr, (void*)t,
 			count * sizeof(T), cudaMemcpyHostToDevice));
 	}
 
 	void copy_to_host(T* t, size_t count)
 	{
-		assert(d_ptr);
-		assert(m_size >= count);
+		CHECK(d_ptr);
+		CHECK(m_size >= count);
 		CUDA_CHECK(cudaMemcpy((void*)t, d_ptr,
 			count * sizeof(T), cudaMemcpyDeviceToHost));
 	}
 
 	void copy_from_device(const T* t, size_t count)
 	{
-		assert(d_ptr);
-		assert(m_size >= count);
+		CHECK(d_ptr);
+		CHECK(m_size >= count);
 		CUDA_CHECK(cudaMemcpy(d_ptr, (void*)t,
 			count * sizeof(T), cudaMemcpyDeviceToDevice));
 	}
 
 	void copy_to_device(T* t, size_t count)
 	{
-		assert(d_ptr);
-		assert(m_size >= count);
+		CHECK(d_ptr);
+		CHECK(m_size >= count);
 		CUDA_CHECK(cudaMemcpy((void*)t, d_ptr,
 			count * sizeof(T), cudaMemcpyDeviceToDevice));
 	}
 
 private:
-	size_t m_size;
+	size_t m_size{ 0 };
 	T* d_ptr{ nullptr };
 };
 
