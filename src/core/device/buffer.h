@@ -110,9 +110,9 @@ private:
 template <typename T>
 class TypedBuffer {
 public:
-	TypedBuffer() = default;
+	KRR_CALLABLE TypedBuffer() = default;
 	KRR_HOST TypedBuffer(size_t size) { resize(size); }
-	~TypedBuffer() {};
+	KRR_CALLABLE ~TypedBuffer(){};
 	/* copy constructor */
 	TypedBuffer(const TypedBuffer& other) {
 		alloc_and_copy_from_device(other.d_ptr, other.m_size);
