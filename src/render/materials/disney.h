@@ -228,16 +228,10 @@ public:
 		}
 
 		if (diffuseWeight > 0) {
-			Vector3f scatterDistance = Vector3f::Zero();
-			if (!any(scatterDistance)) {
-				// No subsurface scattering; use regular (Fresnel modified) diffuse.
-				disneyDiffuse = DisneyDiffuse(diffuseWeight * c);
-				components |= DISNEY_DIFFUSE;
-			}	
-			else {
-				// TODO: use a BSSRDF instead.
-				assert(false);
-			}
+
+			// No subsurface scattering; use regular (Fresnel modified) diffuse.
+			disneyDiffuse = DisneyDiffuse(diffuseWeight * c);
+			components |= DISNEY_DIFFUSE;
 			
 			disneyRetro = DisneyRetro(diffuseWeight * c, roughness);
 			components |= DISNEY_RETRO;

@@ -64,6 +64,27 @@ namespace shader {
 		KRR_CALLABLE Interaction getInteraction() const {
 			return Interaction(pos, wo, frame.N, uv);
 		}
+
+		/* This is a faster routine to get the bsdf type bypassing different bsdf implementations. */
+		KRR_CALLABLE BSDFType getBsdfType() const {
+			BSDFType type = BSDFType::BSDF_UNSET;
+			switch (bsdfType) {
+				case MaterialType::Diffuse:
+					type = BSDFType::BSDF_DIFFUSE_REFLECTION;
+					break;
+				case MaterialType::Disney:
+					type = roughness <= 1e-3f ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
+					if (diffuse.any())
+						type = type | BSDFType::BSDF_DIFFUSE_REFLECTION;
+					if (specularTransmission > 0)
+						type = type | BSDF_TRANSMISSION;
+					break;
+				default:
+					printf("This should not happen...\n");
+			}
+
+			return type;
+		}
 	};
 
 	// the following routines are used to encode 64-bit payload pointers

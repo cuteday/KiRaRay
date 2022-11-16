@@ -110,11 +110,12 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 
 KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
 	// Disable NEE on specular surfaces.
-	//	BSDFType bsdfType = BxDF::flags(sd, (int) sd.bsdfType);
-	//	if (!(bsdfType & BSDF_SMOOTH)) return;	
-	for (int i = 0; i < launchParams.lightSamples; i++) {
-		Ray shadowRay = {};
-		generateShadowRay(sd, path, shadowRay);
+	BSDFType bsdfType = sd.getBsdfType();
+	if (bsdfType & BSDF_SMOOTH) {
+		for (int i = 0; i < launchParams.lightSamples; i++) {
+			Ray shadowRay = {};
+			generateShadowRay(sd, path, shadowRay);
+		}
 	}
 }
 
@@ -181,7 +182,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 
 		/* If the path is terminated by this vertex, then NEE should not be evaluated
 		 * otherwise the MIS weight of this NEE action will be meaningless. */
-		if (depth == launchParams.maxDepth || (depth > 0 &&
+		if (depth == launchParams.maxDepth || (
 			launchParams.probRR >= M_EPSILON && 
 			path.sampler.get1D() < launchParams.probRR))
 			break;
@@ -191,8 +192,6 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 
 		if (!generateScatterRay(sd, path)) break;
 	}
-	// note that clamping also eliminates NaN and INF. 
-	//path.L = clamp(path.L, 0.f, launchParams.clampThreshold);
 }
 
 extern "C" __global__ void KRR_RT_RG(Pathtracer)(){

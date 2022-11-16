@@ -48,7 +48,7 @@ void WavefrontPathTracer::handleHit(){
 		KRR_DEVICE_LAMBDA(const HitLightWorkItem & w){
 		Color Le = w.light.L(w.p, w.n, w.uv, w.wo);
 		float misWeight = 1;
-		if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
+		if (enableNEE && w.depth && (w.bsdfType & BSDF_SMOOTH)) {
 			Light light = w.light;
 			Interaction intr(w.p, w.wo, w.n, w.uv);
 			float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(light);
@@ -68,7 +68,7 @@ void WavefrontPathTracer::handleMiss(){
 		Interaction intr(w.ray.origin);
 		for (const InfiniteLight& light : *sceneData.infiniteLights) {
 			float misWeight = 1;
-			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
+			if (enableNEE && w.depth && (w.bsdfType & BSDF_SMOOTH)) {
 				float bsdfPdf = w.pdf;
 				float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
 				misWeight = evalMIS(bsdfPdf, lightPdf);
@@ -91,11 +91,9 @@ void WavefrontPathTracer::generateScatterRays(){
 
 		const ShadingData& sd = w.sd;
 		Vector3f woLocal = sd.frame.toLocal(sd.wo);
+		BSDFType bsdfType	  = sd.getBsdfType();
 		/* sample direct lighting */
-		if (enableNEE) {
-			//BSDFType bsdfType = BxDF::flags(sd, (int) sd.bsdfType);
-			//if (bsdfType & BSDF_SMOOTH) {	// Disable NEE on specular surfaces
-
+		if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
 			SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 			Light light				  = sampledLight.light;
 			LightSample ls			  = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
@@ -116,7 +114,6 @@ void WavefrontPathTracer::generateScatterRays(){
 				sw.tMax				 = 1;
 				if (sw.a.any()) shadowRayQueue->push(sw);
 			}
-			//}
 		}
 
 		/* sample BSDF */

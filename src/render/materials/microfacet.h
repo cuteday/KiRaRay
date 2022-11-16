@@ -18,7 +18,7 @@ class GGXMicrofacetDistribution {
 public:
 	GGXMicrofacetDistribution() = default;
 
-	KRR_CALLABLE bool isSpecular() const { return max(alphax, alphay) <= 2e-3f; }
+	KRR_CALLABLE bool isSpecular() const { return max(alphax, alphay) <= 1e-3f; }
 
 	static KRR_CALLABLE float RoughnessToAlpha(float roughness) {
 		roughness = max(roughness, (float)1e-3);
