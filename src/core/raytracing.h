@@ -6,7 +6,7 @@
 #include "math/utils.h"
 
 #define KRR_RAY_TMAX	(1e20f)
-#define KRR_RAY_EPS		(1e-4f)
+#define KRR_RAY_EPS		(1e-5f)
 
 KRR_NAMESPACE_BEGIN
 
@@ -15,7 +15,7 @@ using namespace math;
 class Material;
 class Light;
 
-enum class BsdfType {
+enum class MaterialType {
 	Diffuse = 0,
 	FresnelBlend,
 	Disney,
@@ -39,7 +39,14 @@ KRR_CALLABLE Vector3f offsetRayOrigin(Vector3f p, Vector3f n, Vector3f w) {
 	Vector3f offset = n * KRR_RAY_EPS;
 	if (dot(n, w) < 0.f)
 		offset = -offset;
-	return p + offset;
+	Vector3f po = p + offset;
+	//for (int i = 0; i < Vector3f::dim; i++) {
+	//	if (offset[i] > 0)
+	//		po[i] = utils::nextFloatUp(po[i]);
+	//	else if (offset[i] < 0)
+	//		po[i] = utils::nextFloatDown(po[i]);
+	//}
+	return po;
 }
 
 struct Frame {

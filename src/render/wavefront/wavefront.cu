@@ -93,12 +93,8 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(Shadow)() { 
-	if (alphaKilled(launchParams.sceneData.materials)) {
+	if (alphaKilled(launchParams.sceneData.materials))
 		optixIgnoreIntersection();
-		return;
-	}
-	optixSetPayload_0(0); 
-	optixTerminateRay();
 }
 
 extern "C" __global__ void KRR_RT_MS(Shadow)() { optixSetPayload_0(1); }

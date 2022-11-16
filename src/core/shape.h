@@ -35,7 +35,7 @@ public:
 			p1 = mesh->vertices[v[1]].vertex,
 			p2 = mesh->vertices[v[2]].vertex;
 		float s = 0.5f * length(cross(p1 - p0, p2 - p0));
-		assert(s > 0);
+		DCHECK(s > 0);
 		return s;
 	}
 
@@ -82,7 +82,7 @@ public:
 	}
 
 	// TODO: Direct sampling on the projeced area to the sphere.
-	KRR_CALLABLE ShapeSample sample(Vector2f u, ShapeSampleContext& ctx) const {
+	KRR_CALLABLE ShapeSample sample(Vector2f u, const ShapeSampleContext &ctx) const {
 		// sample w.r.t. the reference point,
 		// also the pdf counted is in solid angle.
 		
@@ -92,37 +92,31 @@ public:
 				p2 = mesh->vertices[v[2]].vertex;
 		// Use uniform area sampling for numerically unstable cases
 		float sr = solidAngle(ctx.p);
-		//if (sr < kMinSphericalSampleArea || sr > kMaxSphericalSampleArea) {
-			// Sample shape by area and compute incident direction _wi_
-			ShapeSample ss = sample(u);
-			Vector3f wi = normalize(ss.intr.p - ctx.p);
+		// Sample shape by area and compute incident direction _wi_
+		ShapeSample ss = sample(u);
+		Vector3f wi	   = normalize(ss.intr.p - ctx.p);
 
-			// Convert area sampling PDF in _ss_ to solid angle measure
-			ss.pdf /= abs(dot(ss.intr.n, wi)) / squaredLength(ctx.p - ss.intr.p);
-			if(isinf(ss.pdf)) ss.pdf = 0;
-			return ss;
-		//}
+		// Convert area sampling PDF in _ss_ to solid angle measure
+		ss.pdf /= fabs(dot(ss.intr.n, wi)) / squaredLength(ctx.p - ss.intr.p);
+		if (wi.norm() == 0 || isinf(ss.pdf)) 
+			/* We are sampling the primitive itself ?! */
+			ss.pdf = 0;
+		return ss;
 	}
 
-	KRR_CALLABLE float pdf(Interaction& sample) const {
+	KRR_CALLABLE float pdf(const Interaction &sample) const {
 		return 1 / area();
 	}
 
-	KRR_CALLABLE float pdf(Interaction& sample, ShapeSampleContext& ctx) const {
+	KRR_CALLABLE float pdf(const Interaction &sample, const ShapeSampleContext &ctx) const {
 		float sr = solidAngle(ctx.p);
-
-		// Return PDF based on uniform area sampling for challenging triangles
-		//if (sr < kMinSphericalSampleArea || sr > kMaxSphericalSampleArea) {
-
-			Vector3f wi = normalize(sample.p - ctx.p);
-			// Compute PDF in solid angle measure from shape intersection point
-			float pdf = (1 / area()) / (abs(sample.n.dot(-wi))) /
-				squaredLength(ctx.p - sample.p);
-			if (isinf(pdf))
-				pdf = 0;
-
-			return pdf;
-		//}
+		// Naive version: always return PDF based on uniform area sampling
+		Vector3f wi = normalize(sample.p - ctx.p);
+		// Compute PDF in solid angle measure from shape intersection point
+		float pdf = (1 / area()) / (fabs(sample.n.dot(-wi)) / squaredLength(ctx.p - sample.p));
+		if (wi.norm() == 0 || isinf(pdf))
+			pdf = 0;
+		return pdf;
 	}
 
 	MeshData* getMesh() {
@@ -130,12 +124,9 @@ public:
 	}
 
 private:
-
 	friend class Mesh;
 	uint primId;
 	MeshData* mesh{nullptr};
-	static constexpr float kMinSphericalSampleArea = 3e-4;
-	static constexpr float kMaxSphericalSampleArea = 6.22;
 };
 
 
@@ -153,17 +144,17 @@ public:
 		return dispatch(sample);
 	}
 
-	KRR_CALLABLE ShapeSample sample(Vector2f u, ShapeSampleContext& ctx) const {
+	KRR_CALLABLE ShapeSample sample(Vector2f u, const ShapeSampleContext &ctx) const {
 		auto sample = [&](auto ptr) ->ShapeSample {return ptr->sample(u, ctx); };
 		return dispatch(sample);
 	}
 
-	KRR_CALLABLE float pdf( Interaction& sample) const {
+	KRR_CALLABLE float pdf(const Interaction &sample) const {
 		auto pdf = [&](auto ptr) ->float {return ptr->pdf(sample); };
 		return dispatch(pdf);
 	}
 
-	KRR_CALLABLE float pdf(Interaction& sample, ShapeSampleContext& ctx) const {
+	KRR_CALLABLE float pdf(const Interaction &sample, const ShapeSampleContext &ctx) const {
 		auto pdf = [&](auto ptr) ->float {return ptr->pdf(sample, ctx); };
 		return dispatch(pdf);
 	}

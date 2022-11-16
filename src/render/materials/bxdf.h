@@ -30,7 +30,6 @@ enum BSDFType {
 KRR_CALLABLE BSDFType operator|(BSDFType a, BSDFType b) { return BSDFType((int) a | (int) b); }
 KRR_CALLABLE BSDFType operator&(BSDFType a, BSDFType b) { return BSDFType((int) a & (int) b); }
 
-
 struct BSDFSample {
 	Color f{};
 	Vector3f wi;

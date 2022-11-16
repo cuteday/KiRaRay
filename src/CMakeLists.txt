@@ -173,10 +173,10 @@ add_executable (krr::soac ALIAS soac)
 target_compile_options(soac PUBLIC ${CMAKE_CXX_FLAGS})
 set_target_properties (soac PROPERTIES OUTPUT_NAME soac)
 
-add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/workitem_soa.h
-    COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/workitem_soa.h
+add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/render/wavefront/workitem_soa.h
+    COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/render/wavefront/workitem_soa.h
     DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa)
-set (KRR_SOA_GENERATED ${CMAKE_CURRENT_BINARY_DIR}/include/workitem_soa.h)
+set (KRR_SOA_GENERATED ${CMAKE_CURRENT_BINARY_DIR}/include/render/wavefront/workitem_soa.h)
 
 add_custom_target (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
 

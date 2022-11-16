@@ -31,7 +31,7 @@ public:
 		return mElapsedTime.count();
 	}
 
-	/** Calculate the duration in milliseconds between 2 time points
+	/** Calculate the duration in milliseconds between 2 time points (in micro seconds).
 	*/
 	static double calcDuration(TimePoint start, TimePoint end) {
 		auto delta = end.time_since_epoch() - start.time_since_epoch();

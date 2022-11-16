@@ -5,6 +5,7 @@
 #include "window.h"
 #include "renderpass.h"
 #include "math/math.h"
+#include "host/timer.h"
 #include "device/buffer.h"
 
 KRR_NAMESPACE_BEGIN
@@ -19,7 +20,7 @@ public:
 
 	void renderUI() override;
 
-	void reset() { mAccumCount = 0; }
+	void reset();
 
 	void resize(const Vector2i& size) override {
 		mFrameSize = size;
@@ -38,6 +39,7 @@ private:
 	bool mMovingAverage{ false };
 	uint mMaxAccumCount{ 0U };
 	CUDABuffer *mAccumBuffer;
+	CpuTimer::TimePoint mStartTime, mCurrentTime;
 };
 
 KRR_NAMESPACE_END

@@ -52,6 +52,7 @@ public:
 	inline size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
 	int getChannels() const { return mChannels; }
 	uchar* data() { return mData; }
+	void reset(uchar *data) { mData = data; }
 	
 private:
 	bool mSrgb{ };
@@ -71,8 +72,9 @@ public:
 
 	void loadImage(const string& filepath, bool srgb = false) {
 		mValid = mImage.loadImage(filepath, srgb);
-
 	}
+	Image &getImage() { return mImage; }
+
 	KRR_CALLABLE bool isValid() const { return mValid; }
 	KRR_CALLABLE bool isOnDevice() const { return mCudaTexture != 0; }
 	
@@ -122,7 +124,7 @@ public:
 	};
 
 	struct MaterialParams {
-		Vector4f diffuse{ 0 };			// RGB for base color and A (optional) for opacity 
+		Vector4f diffuse{ 1 };			// RGB for base color and A (optional) for opacity 
 		Vector4f specular{ 0 };			// G-roughness B-metallic A-shininess in MetalRough model
 										// RGB - specular color (F0); A - shininess in SpecGloss model
 		Vector3f emissive{ 0 };
@@ -138,7 +140,7 @@ public:
 	bool determineSrgb(string filename, TextureType type);
 
 	bool hasEmission() { 
-		return any(mMaterialParams.emissive) || mTextures[(int)TextureType::Emissive].isValid(); 
+		return mMaterialParams.emissive.any() || mTextures[(int)TextureType::Emissive].isValid(); 
 	}
 
 	KRR_CALLABLE Texture getTexture(TextureType type) {
@@ -152,12 +154,13 @@ public:
 	void toDevice();
 	void renderUI();
 	string getName() {
-		return mMaterialId ? texture::materialProps[mMaterialId].name : "unknown";
+		return texture::materialProps.count(mMaterialId) ? 
+			texture::materialProps[mMaterialId].name : "unknown";
 	}
 
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
-	BsdfType mBsdfType{ BsdfType::Diffuse };
+	MaterialType mBsdfType{ MaterialType::Disney };
 	ShadingModel mShadingModel{ ShadingModel::MetallicRoughness };
 	bool mDoubleSided = false;
 	uint mMaterialId;

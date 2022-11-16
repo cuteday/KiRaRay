@@ -28,12 +28,11 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 template <typename... Args>
 KRR_DEVICE_FUNCTION bool traceShadowRay(OptixTraversableHandle traversable,
 										Ray ray, float tMax) {
-	ShadowRayData sd	= { false };
-	OptixRayFlags flags = (OptixRayFlags) (OPTIX_RAY_FLAG_DISABLE_ANYHIT);
-	uint u0, u1;
-	packPointer(&sd, u0, u1);
-	traceRay(traversable, ray, tMax, (int) SHADOW_RAY_TYPE, flags, u0, u1);
-	return sd.visible;
+	OptixRayFlags flags =
+		(OptixRayFlags) (OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT);
+	uint32_t miss{0};
+	traceRay(traversable, ray, tMax, (int) SHADOW_RAY_TYPE, flags, miss);
+	return miss;
 }
 
 template <typename... Args>
@@ -47,19 +46,15 @@ KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 	
 	const Light& light = sd.light;
-	Interaction intr(sd.pos, sd.wo, sd.frame.N, sd.uv);
+	Interaction intr = sd.getInteraction();
 	Color Le = sd.light.L(sd.pos, sd.frame.N, sd.uv, sd.wo);
 
-	if (path.depth == 0) {
-		path.L = Le; return;
-	}
-	
 	float weight{ 1 };
-	if (launchParams.NEE) {
-		LightSampleContext ctx = { path.pos, };	// should use pos of prev interaction
+	if (launchParams.NEE && path.depth > 0) {
+		LightSampleContext ctx = { path.pos, /* use pos of prev interaction */ };	
 		float bsdfPdf = path.pdf;
 		float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(light);
-		if (launchParams.MIS && !(path.bsdfType & BSDF_SPECULAR) ) 
+		if (!(path.bsdfType & BSDF_SPECULAR))
 			weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
 		if (isnan(weight) || isinf(weight)) weight = 1;
 	}
@@ -69,14 +64,11 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 	Vector3f wi = normalize(path.dir);
 
-	LightSampleContext ctx = { sd.pos, sd.frame.N };
-	Interaction intr(sd.pos);
-
 	for (InfiniteLight& light : *launchParams.sceneData.infiniteLights) {
-		float weight = 1.f;
-		if (path.depth && launchParams.MIS) {
+		float weight{ 1 };
+		if (launchParams.NEE && path.depth > 0) {
 			float bsdfPdf = path.pdf;
-			float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(&light);
+			float lightPdf = light.pdfLi({ }, { }) * path.lightSampler.pdf(&light);
 			weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
 			if (isnan(weight) || isinf(weight)) weight = 1;
 		}
@@ -85,42 +77,36 @@ KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 }
 
 KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path, Ray& shadowRay) {
-	Vector2f u = path.sampler.get2D();
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 
-	SampledLight sampledLight = path.lightSampler.sample(u[0]);
+	SampledLight sampledLight = path.lightSampler.sample(path.sampler.get1D());
 	Light& light = sampledLight.light;
-	LightSample ls = light.sampleLi(u, { sd.pos, sd.frame.N });
+	LightSample ls			  = light.sampleLi(path.sampler.get2D(), 
+									{ sd.pos, sd.frame.N });
 
 	Vector3f wiWorld = normalize(ls.intr.p - sd.pos);
 	Vector3f wiLocal = sd.frame.toLocal(wiWorld);
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
-	if (lightPdf == 0) return;	// TODO: check why?
+	if (lightPdf == 0) return;	// We have sampled on the primitive itself...
 	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
 	Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
-	float misWeight = 1;
-
-	if (launchParams.MIS) 
-		misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
+	float misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
 	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any()) return;
-	// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
-	Vector3f p = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
-	Vector3f to = ls.intr.offsetRayOrigin(p - ls.intr.p);
 
-	shadowRay = { p, to - p };
-	bool visible = traceShadowRay(launchParams.traversable, shadowRay, 1);
-	if (visible) path.L += path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
+	shadowRay	 = sd.getInteraction().spawnRay(ls.intr);
+	if (traceShadowRay(launchParams.traversable, shadowRay, 1)) 
+		path.L += path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
 }
 
 KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
-	//if (launchParams.MIS) { // Disable NEE on specular surfaces.
-	//	BSDFType bsdfType = BxDF::flags(sd, (int) sd.bsdfType);
-	//	if (!(bsdfType & BSDF_SMOOTH)) return;	
-	//}
-	for (int i = 0; i < launchParams.lightSamples; i++) {
-		Ray shadowRay = {};
-		generateShadowRay(sd, path, shadowRay);
+	// Disable NEE on specular surfaces.
+	BSDFType bsdfType = sd.getBsdfType();
+	if (bsdfType & BSDF_SMOOTH) {
+		for (int i = 0; i < launchParams.lightSamples; i++) {
+			Ray shadowRay = {};
+			generateShadowRay(sd, path, shadowRay);
+		}
 	}
 }
 
@@ -134,8 +120,8 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 	path.bsdfType	 = sample.flags;
 	path.pos = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 	path.dir = wiWorld;
-	path.pdf = max(sample.pdf, 1e-7f);
-	path.throughput *= sample.f * fabs(sample.wi[2]) / path.pdf;
+	path.pdf = sample.pdf;
+	path.throughput *= sample.f * fabs(sample.wi[2]) / sample.pdf;
 	return true;
 }
 
@@ -148,7 +134,8 @@ extern "C" __global__ void KRR_RT_CH(Radiance)(){
 }
 
 extern "C" __global__ void KRR_RT_AH(Radiance)() {
-	if (alphaKilled(launchParams.sceneData.materials)) optixIgnoreIntersection();
+	if (alphaKilled(launchParams.sceneData.materials)) 
+		optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_MS(Radiance)() {
@@ -161,42 +148,34 @@ extern "C" __global__ void KRR_RT_AH(ShadowRay)() {
 		optixIgnoreIntersection();
 }
 
-extern "C" __global__ void KRR_RT_CH(ShadowRay)() {	//skipped
-	return;
-}
+extern "C" __global__ void KRR_RT_CH(ShadowRay)() {} /* skipped */
 
-extern "C" __global__ void KRR_RT_MS(ShadowRay)() {
-	ShadowRayData& sd = *getPRD<ShadowRayData>();
-	sd.visible = true;
-}
+extern "C" __global__ void KRR_RT_MS(ShadowRay)() { optixSetPayload_0(1); }
 
 KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	ShadingData sd = {};
 
-	// an alternate version of main loop
-	for (int &depth = path.depth; depth < launchParams.maxDepth; depth++) {
-		// ShadingData is updated in CH shader
-		// DO NOT enable OPTIX_RAY_FLAG_DISABLE_ANYHIT if alpha-killing is enabled
+	for (int &depth = path.depth; true; depth++) {
 		traceRay(launchParams.traversable, { path.pos, path.dir }, KRR_RAY_TMAX,
 			RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, (void*)&sd);
 
-		if (sd.miss) {			// incorporate emission from envmap, by escaped rays
-			handleMiss(sd, path); break;
+		if (sd.miss) {
+			handleMiss(sd, path); 
+			break;
 		}
 		else if (sd.light) handleHit(sd, path);
+
+		/* If the path is terminated by this vertex, then NEE should not be evaluated
+		 * otherwise the MIS weight of this NEE action will be meaningless. */
+		if (depth == launchParams.maxDepth || 
+			(launchParams.probRR > 0 && path.sampler.get1D() < launchParams.probRR))
+			break;
+		path.throughput /= 1 - launchParams.probRR;
 		
 		if (launchParams.NEE) evalDirect(sd, path);
-		
-		if (launchParams.RR) {
-			float u = path.sampler.get1D();
-			if (u < launchParams.probRR) break;
-			path.throughput /= 1.f - launchParams.probRR;
-		}
 
 		if (!generateScatterRay(sd, path)) break;
 	}
-	// note that clamping also eliminates NaN and INF. 
-	//path.L = clamp(path.L, 0.f, launchParams.clampThreshold);
 }
 
 extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
@@ -211,7 +190,6 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	sampler.setPixelSample(pixel, frameID);
 	sampler.advance(fbIndex * 256);
 
-	// primary ray 
 	Ray cameraRay = camera.getRay(pixel, launchParams.fbSize, &sampler);
 	
 	PathData path = {};

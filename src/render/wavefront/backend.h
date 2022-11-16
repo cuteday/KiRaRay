@@ -1,3 +1,4 @@
+#pragma once
 #include "common.h"
 
 #include "scene.h"
@@ -27,12 +28,11 @@ public:
 		PixelStateBuffer* pixelState);
 
 protected:
-	OptixProgramGroup createRaygenPG(const char* entrypoint) const;
-	OptixProgramGroup createMissPG(const char* entrypoint) const;
-	OptixProgramGroup createIntersectionPG(const char* closest, const char* any,
-		const char* intersect) const;
+	OptixProgramGroup createRaygenPG(const char *entrypoint) const;
+	OptixProgramGroup createMissPG(const char *entrypoint) const;
+	OptixProgramGroup createIntersectionPG(const char *closest, const char *any,
+										   const char *intersect) const;
 
-private:
 	OptixModule optixModule;
 	OptixPipeline optixPipeline;
 	OptixDeviceContext optixContext;
@@ -43,7 +43,6 @@ private:
 	OptixTraversableHandle optixTraversable{};
 
 	Scene::SceneData sceneData{};
-	LaunchParams* launchParams{};
 
 	inter::vector<RaygenRecord> raygenClosestRecords;
 	inter::vector<HitgroupRecord> hitgroupClosestRecords;

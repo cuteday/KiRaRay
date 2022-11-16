@@ -1,6 +1,8 @@
 #include "image.h"
 #include "logger.h"
 #include "tinyexr.h"
+#include "math/math.h"
+#include "math/utils.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -228,5 +230,51 @@ fail:
 }
 } // namespace pfm
 
+namespace image {
+	using namespace math;
+
+Vector2f ndir_to_oct_equal_area_unorm(Vector3f n) {
+	// Use atan2 to avoid explicit div-by-zero check in atan(y/x).
+	float r	  = sqrt(1.f - abs(n[2]));
+	float phi = atan2(abs(n[1]), abs(n[0]));
+
+	// Compute p = (u,v) in the first quadrant.
+	Vector2f p;
+	p[1] = r * phi * M_2PI;
+	p[0] = r - p[1];
+
+	// Reflect p over the diagonals, and move to the correct quadrant.
+	if (n[2] < 0.f)
+		p = Vector2f{ 1 - p[1], 1 - p[0] };
+	p[0] = copysignf(p[0], n[0]);
+	p[1] = copysignf(p[1], n[1]);
+	return p * 0.5f + Vector2f(0.5f);
+}
+	
+Color4f* convertEqualAeraOctahedralMappingToSpherical(Color4f *data, int width, int height) {
+	CHECK_EQ(width, height);
+	if (width != height)
+		logError(
+			"Converting an image that may not be an equal-area octahedral mapping environment!");
+	Color4f *rgb = new Color4f[2 * width * height];
+	Vector2i size{ width, height };
+	Vector2i dstSize{ width * 2, height };
+	for (int r = 0; r < height; r++) {
+		for (int c = 0; c < width * 2; c++) {
+			Vector2f pixel{ (float) c, (float) r };
+			Vector2f latlong = (pixel + Vector2f(0.5f)).cwiseQuotient(Vector2f(dstSize));
+			Vector3f dir	 = utils::latlongToWorld(latlong);
+			Vector2i oct	 = ndir_to_oct_equal_area_unorm(dir).cwiseProduct(Vector2f(size)).cast<int>();
+			oct				 = oct.cwiseMin(size - Vector2i(1)).cwiseMax(0);
+			uint srcPixel	 = oct[0] + oct[1] * width;
+			uint dstPixel	 = c + r * width * 2;
+			rgb[dstPixel]	 = data[srcPixel];
+		}
+	}
+	return rgb;
+}
+
+}
 
 KRR_NAMESPACE_END
+

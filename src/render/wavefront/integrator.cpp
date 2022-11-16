@@ -48,7 +48,7 @@ void WavefrontPathTracer::handleHit(){
 		KRR_DEVICE_LAMBDA(const HitLightWorkItem & w){
 		Color Le = w.light.L(w.p, w.n, w.uv, w.wo);
 		float misWeight = 1;
-		if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
+		if (enableNEE && w.depth && (w.bsdfType & BSDF_SMOOTH)) {
 			Light light = w.light;
 			Interaction intr(w.p, w.wo, w.n, w.uv);
 			float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(light);
@@ -68,7 +68,7 @@ void WavefrontPathTracer::handleMiss(){
 		Interaction intr(w.ray.origin);
 		for (const InfiniteLight& light : *sceneData.infiniteLights) {
 			float misWeight = 1;
-			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
+			if (enableNEE && w.depth && (w.bsdfType & BSDF_SMOOTH)) {
 				float bsdfPdf = w.pdf;
 				float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
 				misWeight = evalMIS(bsdfPdf, lightPdf);
@@ -82,42 +82,41 @@ void WavefrontPathTracer::handleMiss(){
 void WavefrontPathTracer::generateScatterRays(){
 	PROFILE("Generate scatter rays");
 	ForAllQueued(scatterRayQueue, maxQueueSize,
-		KRR_DEVICE_LAMBDA(const ScatterRayWorkItem & w) {
+		KRR_DEVICE_LAMBDA(ScatterRayWorkItem & w) {
 		Sampler sampler = &pixelState->sampler[w.pixelId];
+		/*  Russian Roulette: If the path is terminated by this vertex, 
+			then NEE should not be evaluated */
+		if (sampler.get1D() >= probRR) return;  
+		w.thp /= probRR;
+
 		const ShadingData& sd = w.sd;
 		Vector3f woLocal = sd.frame.toLocal(sd.wo);
+		BSDFType bsdfType	  = sd.getBsdfType();
 		/* sample direct lighting */
-		if (enableNEE) {
-			//BSDFType bsdfType = BxDF::flags(sd, (int) sd.bsdfType);
-			//if (bsdfType & BSDF_SMOOTH) {	// Disable NEE on specular surfaces
-				float u					  = sampler.get1D();
-				SampledLight sampledLight = lightSampler.sample(u);
-				Light light				  = sampledLight.light;
-				LightSample ls			  = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
-				Vector3f wiWorld		  = normalize(ls.intr.p - sd.pos);
-				Vector3f wiLocal		  = sd.frame.toLocal(wiWorld);
+		if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
+			SampledLight sampledLight = lightSampler.sample(sampler.get1D());
+			Light light				  = sampledLight.light;
+			LightSample ls			  = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
+			Ray shadowRay			  = sd.getInteraction().spawnRay(ls.intr);
+			Vector3f wiWorld		  = normalize(shadowRay.dir);
+			Vector3f wiLocal		  = sd.frame.toLocal(wiWorld);
 
-				float lightPdf = sampledLight.pdf * ls.pdf;
-				float bsdfPdf  = BxDF::pdf(sd, woLocal, wiLocal, (int) sd.bsdfType);
-				Color bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType) * fabs(wiLocal[2]);
-				float misWeight = evalMIS(lightPdf, bsdfPdf);
-				// TODO: check why ls.pdf (shape_sample.pdf) can potentially be zero.
-				if (misWeight > 0 && !isnan(misWeight) && !isinf(misWeight)) {
-					Ray shadowRay		 = sd.getInteraction().spawnRay(ls.intr);
-					ShadowRayWorkItem sw = {};
-					sw.ray				 = shadowRay;
-					sw.Li				 = ls.L;
-					sw.a				 = w.thp * misWeight * bsdfVal / lightPdf;
-					sw.pixelId			 = w.pixelId;
-					sw.tMax				 = 1;
-					if (any(sw.a)) shadowRayQueue->push(sw);
-				}
-			//}
+			float lightPdf = sampledLight.pdf * ls.pdf;
+			float bsdfPdf  = BxDF::pdf(sd, woLocal, wiLocal, (int) sd.bsdfType);
+			Color bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType);
+			float misWeight = evalMIS(lightPdf, bsdfPdf);
+			if (misWeight > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
+				ShadowRayWorkItem sw = {};
+				sw.ray				 = shadowRay;
+				sw.Li				 = ls.L;
+				sw.a				 = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
+				sw.pixelId			 = w.pixelId;
+				sw.tMax				 = 1;
+				if (sw.a.any()) shadowRayQueue->push(sw);
+			}
 		}
 
 		/* sample BSDF */
-		float u = sampler.get1D();
-		if (u > probRR) return;		// Russian Roulette
 		BSDFSample sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
 		if (sample.pdf && any(sample.f)) {
 			Vector3f wiWorld = sd.frame.toWorld(sample.wi);
@@ -129,7 +128,7 @@ void WavefrontPathTracer::generateScatterRays(){
 			r.ctx			 = { sd.pos, sd.frame.N };
 			r.pixelId		 = w.pixelId;
 			r.depth			 = w.depth + 1;
-			r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf / probRR;
+			r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf;
 			if (any(r.thp)) nextRayQueue(w.depth)->push(r);
 		}
 	});
@@ -177,11 +176,11 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 	Color4f *frameBuffer = (Color4f *) frame.data();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
-		Call(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
+		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
 		generateCameraRays(sampleId);
 		// [STEP#2] do radiance estimation recursively
-		for (int depth = 0; depth < maxDepth; depth++) {
-			Call(KRR_DEVICE_LAMBDA() {
+		for (int depth = 0; true; depth++) {
+			GPUCall(KRR_DEVICE_LAMBDA() {
 				nextRayQueue(depth)->reset();
 				hitLightRayQueue->reset();
 				missRayQueue->reset();
@@ -199,14 +198,13 @@ void WavefrontPathTracer::render(CUDABuffer& frame){
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
 			handleHit();
 			if (depth || !transparentBackground) handleMiss();
-			// [STEP#2.3] evaluate materials & bsdfs
+			// Break on maximum depth, but incorprate contribution from emissive hits.
+			if (depth == maxDepth) break;
+			// [STEP#2.3] evaluate materials & bsdfs, and generate shadow rays
 			generateScatterRays();
 			// [STEP#2.4] trace shadow rays (next event estimation)
 			if (enableNEE)
-				backend->traceShadow(
-					maxQueueSize,
-					shadowRayQueue,
-					pixelState);
+				backend->traceShadow(maxQueueSize, shadowRayQueue, pixelState);
 		}
 	}
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
@@ -230,8 +228,9 @@ void WavefrontPathTracer::renderUI(){
 	ui::Checkbox("Clamping pixel value", &enableClamp);
 	if (enableClamp) 
 		ui::DragFloat("Max:", &clampMax, 1, 1, 500);
-	ui::Text("Misc");
-	ui::Checkbox("Transparent background", &transparentBackground);
+	if (ui::CollapsingHeader("Misc")) {
+		ui::Checkbox("Transparent background", &transparentBackground);
+	}
 }
 
 KRR_REGISTER_PASS_DEF(WavefrontPathTracer);

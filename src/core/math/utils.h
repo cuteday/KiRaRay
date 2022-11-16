@@ -10,9 +10,67 @@ KRR_NAMESPACE_BEGIN
 namespace math {
 namespace utils {
 /*******************************************************
+ * Numerical
+ ********************************************************/
+
+template <class To, class From>
+KRR_CALLABLE
+	typename std::enable_if_t<sizeof(To) == sizeof(From) && std::is_trivially_copyable_v<From> &&
+								  std::is_trivially_copyable_v<To>, To>
+	bit_cast(const From &src) noexcept {
+	static_assert(std::is_trivially_constructible_v<To>,
+				  "This implementation requires the destination type to be trivially "
+				  "constructible");
+	To dst;
+	std::memcpy(&dst, &src, sizeof(To));
+	return dst;
+}
+
+KRR_CALLABLE uint64_t floatToBits(double f) {
+#ifdef KRR_DEVICE_CODE
+	return __double_as_longlong(f);
+#else
+	return bit_cast<uint64_t>(f);
+#endif
+}
+
+KRR_CALLABLE double bitsToFloat(uint64_t ui) {
+#ifdef KRR_DEVICE_CODE
+	return __longlong_as_double(ui);
+#else
+	return bit_cast<double>(ui);
+#endif
+}
+
+KRR_CALLABLE float nextFloatUp(float v) {
+	// Handle infinity and negative zero for _NextFloatUp()_
+	if (isinf(v) && v > 0.f)
+		return v;
+	if (v == -0.f) v = 0.f;
+	// Advance _v_ to next higher float
+	uint32_t ui = floatToBits(v);
+	if (v >= 0) ++ui;
+	else --ui;
+	return bitsToFloat(ui);
+}
+
+KRR_CALLABLE float nextFloatDown(float v) {
+	// Handle infinity and positive zero for _NextFloatDown()_
+	if (isinf(v) && v < 0.f)
+		return v;
+	if (v == 0.f) v = -0.f;
+	uint32_t ui = floatToBits(v);
+	if (v > 0) --ui;
+	else ++ui;
+	return bitsToFloat(ui);
+}
+	
+/*******************************************************
  * colors
  ********************************************************/
-KRR_CALLABLE float luminance(Color3f color) { return dot(Vector3f(color), Vector3f(0.299, 0.587, 0.114)); }
+KRR_CALLABLE float luminance(Color3f color) {
+	return dot(Vector3f(color), Vector3f(0.299, 0.587, 0.114));
+}
 
 KRR_CALLABLE float srgb2linear(float sRGBColor) {
 	if (sRGBColor <= 0.04045)
@@ -110,11 +168,12 @@ KRR_CALLABLE Vector3f latlongToWorld(Vector2f latlong) {
 }
 
 // caetesian, or local frame => z-up
-// @returns 
+// @returns
 //	theta: [0, pi], phi: [0, 2pi]
 KRR_CALLABLE Vector2f cartesianToSpherical(const Vector3f &v) {
 	Vector2f sph{ acos(v[2]), atan2(v[1], v[0]) };
-	if (sph[1] < 0) sph[1] += M_2PI;
+	if (sph[1] < 0)
+		sph[1] += M_2PI;
 	return sph;
 }
 
@@ -146,7 +205,6 @@ KRR_CALLABLE float sphericalPhi(const Vector3f &v) {
 	float p = atan2(v[1], v[0]);
 	return (p < 0) ? (p + 2 * M_PI) : p;
 }
-
 
 /*******************************************************
  * bitmask operations

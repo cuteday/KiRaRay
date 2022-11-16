@@ -6,6 +6,7 @@
 
 KRR_NAMESPACE_BEGIN
 extern "C" char WAVEFRONT_PTX[];
+LaunchParams *launchParams{};
 
 OptiXWavefrontBackend::OptiXWavefrontBackend(Scene& scene){
 	setScene(scene);

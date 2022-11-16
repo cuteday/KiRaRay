@@ -266,6 +266,8 @@ bool AssimpImporter::import(const string &filepath, const Scene::SharedPtr pScen
 	logDebug("Start traversing scene nodes");
 	traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
 	logDebug("Total imported meshes: " + std::to_string(mpScene->meshes.size()));
+	//std::cout << "AABB: " << pScene->getAABB().center() << pScene->getAABB().diagonal()
+	//		  << std::endl;
 
 	Assimp::DefaultLogger::kill();
 	return true;
@@ -343,7 +345,7 @@ void AssimpImporter::traverseNode(aiNode *node, aiMatrix4x4 transform) {
 
 void AssimpImporter::loadMaterials(const string &modelFolder) {
 	mpScene->mData.materials->reserve(mpAiScene->mNumMaterials + 1LL);
-	mpScene->mData.materials->push_back(Material());
+	mpScene->mData.materials->push_back(Material(0, "default material"));
 	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
 		const aiMaterial *aiMaterial  = mpAiScene->mMaterials[i];
 		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);

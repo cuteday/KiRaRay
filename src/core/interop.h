@@ -32,7 +32,7 @@ namespace inter {
 	}
 
 	template <class To, class From>
-	__both__ typename std::enable_if_t<sizeof(To) == sizeof(From) &&
+	KRR_CALLABLE typename std::enable_if_t<sizeof(To) == sizeof(From) &&
 		std::is_trivially_copyable_v<From> &&
 		std::is_trivially_copyable_v<To>,
 		To>
@@ -59,42 +59,42 @@ namespace inter {
 
 		array() = default;
 
-		__both__
+		KRR_CALLABLE
 			void fill(const T& v) { assert(!"should never be called"); }
 
-		__both__
+		KRR_CALLABLE
 			bool operator==(const array<T, 0>& a) const { return true; }
-		__both__
+		KRR_CALLABLE
 			bool operator!=(const array<T, 0>& a) const { return false; }
 
-		__both__
+		KRR_CALLABLE
 			iterator begin() { return nullptr; }
-		__both__
+		KRR_CALLABLE
 			iterator end() { return nullptr; }
-		__both__
+		KRR_CALLABLE
 			const_iterator begin() const { return nullptr; }
-		__both__
+		KRR_CALLABLE
 			const_iterator end() const { return nullptr; }
 
-		__both__
+		KRR_CALLABLE
 			size_t size() const { return 0; }
 
-		__both__
+		KRR_CALLABLE
 			T& operator[](size_t i) {
 			assert(!"should never be called");
 			static T t;
 			return t;
 		}
-		__both__
+		KRR_CALLABLE
 			const T& operator[](size_t i) const {
 			assert(!"should never be called");
 			static T t;
 			return t;
 		}
 
-		__both__
+		KRR_CALLABLE
 			T* data() { return nullptr; }
-		__both__
+		KRR_CALLABLE
 			const T* data() const { return nullptr; }
 	};
 
@@ -107,49 +107,49 @@ namespace inter {
 		using size_t = std::size_t;
 
 		array() = default;
-		__both__
+		KRR_CALLABLE
 			array(std::initializer_list<T> v) {
 			size_t i = 0;
 			for (const T& val : v)
 				values[i++] = val;
 		}
 
-		__both__
+		KRR_CALLABLE
 			void fill(const T& v) {
 			for (int i = 0; i < N; ++i)
 				values[i] = v;
 		}
 
-		__both__
+		KRR_CALLABLE
 			bool operator==(const array<T, N>& a) const {
 			for (int i = 0; i < N; ++i)
 				if (values[i] != a.values[i])
 					return false;
 			return true;
 		}
-		__both__
+		KRR_CALLABLE
 			bool operator!=(const array<T, N>& a) const { return !(*this == a); }
 
-		__both__
+		KRR_CALLABLE
 			iterator begin() { return values; }
-		__both__
+		KRR_CALLABLE
 			iterator end() { return values + N; }
-		__both__
+		KRR_CALLABLE
 			const_iterator begin() const { return values; }
-		__both__
+		KRR_CALLABLE
 			const_iterator end() const { return values + N; }
 
-		__both__
+		KRR_CALLABLE
 			size_t size() const { return N; }
 
-		__both__
+		KRR_CALLABLE
 			T& operator[](size_t i) { return values[i]; }
-		__both__
+		KRR_CALLABLE
 			const T& operator[](size_t i) const { return values[i]; }
 
-		__both__
+		KRR_CALLABLE
 			T* data() { return values; }
-		__both__
+		KRR_CALLABLE
 			const T* data() const { return values; }
 
 	private:
@@ -162,16 +162,16 @@ namespace inter {
 		using value_type = T;
 
 		optional() = default;
-		__both__
+		KRR_CALLABLE
 			optional(const T& v) : set(true) { new (ptr()) T(v); }
-		__both__
+		KRR_CALLABLE
 			optional(T&& v) : set(true) { new (ptr()) T(std::move(v)); }
-		__both__
+		KRR_CALLABLE
 			optional(const optional& v) : set(v.has_value()) {
 			if (v.has_value())
 				new (ptr()) T(v.value());
 		}
-		__both__
+		KRR_CALLABLE
 			optional(optional&& v) : set(v.has_value()) {
 			if (v.has_value()) {
 				new (ptr()) T(std::move(v.value()));
@@ -179,21 +179,21 @@ namespace inter {
 			}
 		}
 
-		__both__
+		KRR_CALLABLE
 			optional& operator=(const T& v) {
 			reset();
 			new (ptr()) T(v);
 			set = true;
 			return *this;
 		}
-		__both__
+		KRR_CALLABLE
 			optional& operator=(T&& v) {
 			reset();
 			new (ptr()) T(std::move(v));
 			set = true;
 			return *this;
 		}
-		__both__
+		KRR_CALLABLE
 			optional& operator=(const optional& v) {
 			reset();
 			if (v.has_value()) {
@@ -202,7 +202,7 @@ namespace inter {
 			}
 			return *this;
 		}
-		__both__
+		KRR_CALLABLE
 			optional& operator=(optional&& v) {
 			reset();
 			if (v.has_value()) {
@@ -213,35 +213,35 @@ namespace inter {
 			return *this;
 		}
 
-		__both__
+		KRR_CALLABLE
 			~optional() { reset(); }
 
-		__both__
+		KRR_CALLABLE
 			explicit operator bool() const { return set; }
 
-		__both__
+		KRR_CALLABLE
 			T value_or(const T& alt) const { return set ? value() : alt; }
 
-		__both__
+		KRR_CALLABLE
 			T* operator->() { return &value(); }
-		__both__
+		KRR_CALLABLE
 			const T* operator->() const { return &value(); }
-		__both__
+		KRR_CALLABLE
 			T& operator*() { return value(); }
-		__both__
+		KRR_CALLABLE
 			const T& operator*() const { return value(); }
-		__both__
+		KRR_CALLABLE
 			T& value() {
 			CHECK(set);
 			return *ptr();
 		}
-		__both__
+		KRR_CALLABLE
 			const T& value() const {
 			CHECK(set);
 			return *ptr();
 		}
 
-		__both__
+		KRR_CALLABLE
 			void reset() {
 			if (set) {
 				value().~T();
@@ -249,20 +249,20 @@ namespace inter {
 			}
 		}
 
-		__both__
+		KRR_CALLABLE
 			bool has_value() const { return set; }
 
 	private:
 #ifdef __NVCC__
 		// Work-around NVCC bug
-		__both__
+		KRR_CALLABLE
 			T* ptr() { return reinterpret_cast<T*>(&optionalValue); }
-		__both__
+		KRR_CALLABLE
 			const T* ptr() const { return reinterpret_cast<const T*>(&optionalValue); }
 #else
-		__both__
+		KRR_CALLABLE
 			T* ptr() { return std::launder(reinterpret_cast<T*>(&optionalValue)); }
-		__both__
+		KRR_CALLABLE
 			const T* ptr() const {
 			return std::launder(reinterpret_cast<const T*>(&optionalValue));
 		}
@@ -339,20 +339,20 @@ namespace inter {
 		using iterator = T*;
 		using const_iterator = const T*;
 
-		__both__
+		KRR_CALLABLE
 			span() : ptr(nullptr), n(0) {}
-		__both__
+		KRR_CALLABLE
 			span(T* ptr, size_t n) : ptr(ptr), n(n) {}
 		template <size_t N>
-		__both__ span(T(&a)[N]) : span(a, N) {}
-		__both__
+		KRR_CALLABLE span(T(&a)[N]) : span(a, N) {}
+		KRR_CALLABLE
 			span(std::initializer_list<value_type> v) : span(v.begin(), v.size()) {}
 
 		// Explicit reference constructor for a mutable `span<T>` type. Can be
 		// replaced with MakeSpan() to infer the type parameter.
 		template <typename V, typename X = EnableIfConvertibleFrom<V>,
 			typename Y = EnableIfMutableView<V>>
-			__both__ explicit span(V& v) noexcept : span(v.data(), v.size()) {}
+			KRR_CALLABLE explicit span(V& v) noexcept : span(v.data(), v.size()) {}
 
 		// Hack: explicit constructors for std::vector to work around warnings
 		// about calling a host function (e.g. vector::size()) form a
@@ -365,55 +365,55 @@ namespace inter {
 		// Implicit reference constructor for a read-only `span<const T>` type
 		template <typename V, typename X = EnableIfConvertibleFrom<V>,
 			typename Y = EnableIfConstView<V>>
-			__both__ constexpr span(const V& v) noexcept : span(v.data(), v.size()) {}
+			KRR_CALLABLE constexpr span(const V& v) noexcept : span(v.data(), v.size()) {}
 
-		__both__
+		KRR_CALLABLE
 			iterator begin() { return ptr; }
-		__both__
+		KRR_CALLABLE
 			iterator end() { return ptr + n; }
-		__both__
+		KRR_CALLABLE
 			const_iterator begin() const { return ptr; }
-		__both__
+		KRR_CALLABLE
 			const_iterator end() const { return ptr + n; }
 
-		__both__
+		KRR_CALLABLE
 			T& operator[](size_t i) {
 			DCHECK_LT(i, size());
 			return ptr[i];
 		}
-		__both__
+		KRR_CALLABLE
 			const T& operator[](size_t i) const {
 			DCHECK_LT(i, size());
 			return ptr[i];
 		}
 
-		__both__
+		KRR_CALLABLE
 			size_t size() const { return n; };
-		__both__
+		KRR_CALLABLE
 			bool empty() const { return size() == 0; }
-		__both__
+		KRR_CALLABLE
 			T* data() { return ptr; }
-		__both__
+		KRR_CALLABLE
 			const T* data() const { return ptr; }
 
-		__both__
+		KRR_CALLABLE
 			T front() const { return ptr[0]; }
-		__both__
+		KRR_CALLABLE
 			T back() const { return ptr[n - 1]; }
 
-		__both__
+		KRR_CALLABLE
 			void remove_prefix(size_t count) {
 			// assert(size() >= count);
 			ptr += count;
 			n -= count;
 		}
-		__both__
+		KRR_CALLABLE
 			void remove_suffix(size_t count) {
 			// assert(size() > = count);
 			n -= count;
 		}
 
-		__both__
+		KRR_CALLABLE
 			span subspan(size_t pos, size_t count = dynamic_extent) {
 			size_t np = count < (size() - pos) ? count : (size() - pos);
 			return span(ptr + pos, np);
@@ -620,6 +620,7 @@ namespace inter {
 			nStored = count;
 		}
 		vector(size_t count, const Allocator& alloc = {}) : vector(count, T{}, alloc) {}
+		/* Copy constructor */
 		vector(const vector& other, const Allocator& alloc = {}) : alloc(alloc) {
 			reserve(other.size());
 			for (size_t i = 0; i < other.size(); ++i)
@@ -634,6 +635,7 @@ namespace inter {
 				this->alloc.template construct<T>(ptr + i, *iter);
 			nStored = nAlloc;
 		}
+		/* Move constructor */
 		vector(vector&& other) : alloc(other.alloc) {
 			nStored = other.nStored;
 			nAlloc = other.nAlloc;
@@ -673,6 +675,7 @@ namespace inter {
 
 			return *this;
 		}
+
 		vector& operator=(vector&& other) {
 			if (this == &other)
 				return *this;
@@ -712,6 +715,7 @@ namespace inter {
 		template <class InputIt>
 		void assign(InputIt first, InputIt last) {
 			clear();
+			reserve(last - first);
 			for (InputIt iter = first; iter != last; ++iter)
 				push_back(*iter);
 		}
@@ -722,36 +726,36 @@ namespace inter {
 			alloc.deallocate_object(ptr, nAlloc);
 		}
 
-		__both__
+		KRR_CALLABLE
 			iterator begin() { return ptr; }
-		__both__
+		KRR_CALLABLE
 			iterator end() { return ptr + nStored; }
-		__both__
+		KRR_CALLABLE
 			const_iterator begin() const { return ptr; }
-		__both__
+		KRR_CALLABLE
 			const_iterator end() const { return ptr + nStored; }
-		__both__
+		KRR_CALLABLE
 			const_iterator cbegin() const { return ptr; }
-		__both__
+		KRR_CALLABLE
 			const_iterator cend() const { return ptr + nStored; }
 
-		__both__
+		KRR_CALLABLE
 			reverse_iterator rbegin() { return reverse_iterator(end()); }
-		__both__
+		KRR_CALLABLE
 			reverse_iterator rend() { return reverse_iterator(begin()); }
-		__both__
+		KRR_CALLABLE
 			const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-		__both__
+		KRR_CALLABLE
 			const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
 
 		allocator_type get_allocator() const { return alloc; }
-		__both__
+		KRR_CALLABLE
 			size_t size() const { return nStored; }
-		__both__
+		KRR_CALLABLE
 			bool empty() const { return size() == 0; }
-		__both__
+		KRR_CALLABLE
 			size_t max_size() const { return (size_t)-1; }
-		__both__
+		KRR_CALLABLE
 			size_t capacity() const { return nAlloc; }
 		void reserve(size_t n) {
 			if (nAlloc >= n)
@@ -769,23 +773,23 @@ namespace inter {
 		}
 		// TODO: shrink_to_fit
 
-		__both__
+		KRR_CALLABLE
 			reference operator[](size_type index) {
 			DCHECK_LT(index, size());
 			return ptr[index];
 		}
-		__both__
+		KRR_CALLABLE
 			const_reference operator[](size_type index) const {
 			DCHECK_LT(index, size());
 			return ptr[index];
 		}
-		__both__
+		KRR_CALLABLE
 			reference front() { return ptr[0]; }
-		__both__
+		KRR_CALLABLE
 			const_reference front() const { return ptr[0]; }
-		__both__
+		KRR_CALLABLE
 			reference back() { return ptr[nStored - 1]; }
-		__both__
+		KRR_CALLABLE
 			const_reference back() const { return ptr[nStored - 1]; }
 		KRR_CALLABLE
 			pointer data() { return ptr; }
@@ -798,39 +802,6 @@ namespace inter {
 			nStored = 0;
 		}
 
-		iterator insert(const_iterator, const T& value) {
-			// TODO
-			logFatal("TODO");
-		}
-		iterator insert(const_iterator, T&& value) {
-			// TODO
-			logFatal("TODO");
-		}
-		iterator insert(const_iterator pos, size_type count, const T& value) {
-			// TODO
-			logFatal("TODO");
-		}
-		template <class InputIt>
-		iterator insert(const_iterator pos, InputIt first, InputIt last) {
-			if (pos == end()) {
-				size_t firstOffset = size();
-				for (auto iter = first; iter != last; ++iter)
-					push_back(*iter);
-				return begin() + firstOffset;
-			}
-			else
-				logFatal("TODO");
-		}
-		iterator insert(const_iterator pos, std::initializer_list<T> init) {
-			// TODO
-			logFatal("TODO");
-		}
-
-		template <class... Args>
-		iterator emplace(const_iterator pos, Args &&...args) {
-			// TODO
-			logFatal("TODO");
-		}
 		template <class... Args>
 		void emplace_back(Args &&...args) {
 			if (nAlloc == nStored)
@@ -838,15 +809,6 @@ namespace inter {
 
 			alloc.construct(ptr + nStored, std::forward<Args>(args)...);
 			++nStored;
-		}
-
-		iterator erase(const_iterator pos) {
-			// TODO
-			logFatal("TODO");
-		}
-		iterator erase(const_iterator first, const_iterator last) {
-			// TODO
-			logFatal("TODO");
 		}
 
 		void push_back(const T& value) {
@@ -885,10 +847,6 @@ namespace inter {
 					alloc.construct(ptr + i);
 			}
 			nStored = n;
-		}
-		void resize(size_type count, const value_type& value) {
-			// TODO
-			logFatal("TODO");
 		}
 
 		void swap(vector& other) {
@@ -934,7 +892,7 @@ namespace inter {
 	tuple(Ts &&...)->tuple<std::decay_t<Ts>...>;
 
 	template <size_t I, typename T, typename... Ts>
-	__both__ auto& get(tuple<T, Ts...>& t) {
+	KRR_CALLABLE auto& get(tuple<T, Ts...>& t) {
 		if constexpr (I == 0)
 			return t.value;
 		else
@@ -942,7 +900,7 @@ namespace inter {
 	}
 
 	template <size_t I, typename T, typename... Ts>
-	__both__ const auto& get(const tuple<T, Ts...>& t) {
+	KRR_CALLABLE const auto& get(const tuple<T, Ts...>& t) {
 		if constexpr (I == 0)
 			return t.value;
 		else
@@ -950,7 +908,7 @@ namespace inter {
 	}
 
 	template <typename Req, typename T, typename... Ts>
-	__both__ auto& get(tuple<T, Ts...>& t) {
+	KRR_CALLABLE auto& get(tuple<T, Ts...>& t) {
 		if constexpr (std::is_same_v<Req, T>)
 			return t.value;
 		else
@@ -958,7 +916,7 @@ namespace inter {
 	}
 
 	template <typename Req, typename T, typename... Ts>
-	__both__ const auto& get(const tuple<T, Ts...>& t) {
+	KRR_CALLABLE const auto& get(const tuple<T, Ts...>& t) {
 		if constexpr (std::is_same_v<Req, T>)
 			return t.value;
 		else

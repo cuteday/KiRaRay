@@ -1,6 +1,7 @@
 #define STBI_MSC_SECURE_CRT
 #include <pbrtParser/Scene.h>
 #include "stb_image.h"
+#include "util/image.h"
 #include "render/materials/fresnel.h"
 #include "importer.h"
 
@@ -55,7 +56,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		return materials[mat];
 
 	Material::SharedPtr material = Material::SharedPtr(new Material(++materialIdAllocator, mat->name));
-	material->mBsdfType			 = BsdfType::Disney;
+	material->mBsdfType			 = MaterialType::Disney;
 	material->mShadingModel		 = Material::ShadingModel::MetallicRoughness;
 	Material::MaterialParams &matParams = material->mMaterialParams;
 
@@ -68,12 +69,14 @@ size_t loadMaterial(Scene::SharedPtr scene,
 
 	if (auto m = std::dynamic_pointer_cast<pbrt::DisneyMaterial>(mat)) {
 		Log(Info, "Encountered disney material: %s", mat->name.c_str());
+		material->mShadingModel	   = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(m->color.x, m->color.y, m->color.z, 1);
 		matParams.IoR			   = m->eta;
 		matParams.specular[2]	   = m->metallic;
 		matParams.specular[1]	   = m->roughness;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::PlasticMaterial>(mat)) {
 		Log(Info, "Encountered plastic material: %s", mat->name.c_str());
+		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(cast(m->kd), 1);
 		if (m->map_kd) {
 			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd))
@@ -95,7 +98,8 @@ size_t loadMaterial(Scene::SharedPtr scene,
 				matParams.diffuse = Vector4f(cast(const_tex->value), 1);
 			else loadTexture(material, m->map_kd, Material::TextureType::Diffuse, basedir);
 		}
-		matParams.specular[1] = 0.9;
+		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
+		matParams.specular[3]	= 0;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::SubstrateMaterial>(mat)) {
 		Log(Info, "Encountered substrate material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
@@ -155,6 +159,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		matParams.specularTransmission = luminance(transmission);
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::TranslucentMaterial>(mat)) {
 		Log(Warning, "Encountered not well-supported transluscent material: %s", mat->name.c_str());
+		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
 		if (m->map_kd) {
 			if (auto const_tex = std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd))
@@ -190,8 +195,10 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	} else {
 		Log(Warning, "Encountered unsupported %s material: %s", 
 			mat->toString().c_str(), mat->name.c_str());
-		return 0;	// falling back to the default material 0...
+		return 0;				// falling back to the default material 0...
 	}
+	if (matParams.IoR == 1)		// 1-ETA is not plausible for transmission
+		matParams.IoR = 1.001;
 	material->toDevice();
 	size_t materialId = scene->mData.materials->size();
 	scene->mData.materials->push_back(*material);
@@ -221,8 +228,8 @@ Mesh createMesh(pbrt::Shape::SP shape, const Transformf<> transform) {
 		vertex.vertex				= transformed_vertex;
 		vertex.normal				= transformed_normal;
 		if (m->texcoord.size())
-		vertex.texcoord				= cast(m->texcoord[i]);
-			vertex.tangent				= getPerpendicular(vertex.normal);
+			vertex.texcoord			= cast(m->texcoord[i]);
+		vertex.tangent				= getPerpendicular(vertex.normal);
 		vertex.bitangent			= normalize(cross(vertex.normal, vertex.tangent));
 		mesh.vertices.push_back(vertex);
 	}
@@ -253,7 +260,8 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 	}
 		
 	scene->makeSingleLevel();						// since currently kiraray supports only single gas...
-	pScene->mData.materials->push_back(Material());	// the default material for shapes without material
+	pScene->mData.materials->push_back(Material(0, "default material")); // the default material for shapes without
+														 // material
 
 	std::map<pbrt::Material::SP, size_t> pbrtMaterials; // loaded materials and its parametric id
 	
@@ -273,6 +281,7 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 					createAreaLight(mesh, m->areaLight);
 				}
 				pScene->meshes.push_back(mesh);
+				pScene->mAABB.extend(mesh.getAABB());
 			} else {
 				Log(Warning, "Encountered unsupported pbrt shape type: %s", geom->toString().c_str());
 			}
@@ -282,11 +291,20 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 	for (const pbrt::LightSource::SP light : scene->world->lightSources) {
 		if (auto l = std::dynamic_pointer_cast<pbrt::InfiniteLightSource>(light)) {
 			Log(Info, "Encountered infinite light source %s", l->mapName.c_str());
+			//Texture image;
+			//image.loadImage(resolve(l->mapName));
+			//Vector2i size = image.getImage().getSize();
+			//Color4f* rgba = image::convertEqualAeraOctahedralMappingToSpherical((Color4f *) image.getImage().data(),
+			//													size[0], size[1]);
+			//delete[] image.getImage().data();
+			//image.getImage().reset((uchar *) rgba);
+			//image.toDevice();
+			//pScene->addInfiniteLight(InfiniteLight(image));
+#ifdef USE_PBRT_ENVMAP
 			pScene->addInfiniteLight(InfiniteLight(resolve(l->mapName)));
+#endif
 		}
 	}
-
-	pScene->mAABB = cast(scene->getBounds());
 	return true;
 }
 

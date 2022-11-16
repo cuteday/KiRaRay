@@ -101,7 +101,6 @@ public:
 
 	Color R;
 	float roughness;
-	BSDFType type{ BSDFType(BSDF_REFLECTION | BSDF_DIFFUSE) };
 };
 
 class DisneySheen{
@@ -121,7 +120,6 @@ public:
 	KRR_CALLABLE Color rho(int, const Vector2f *, const Vector2f *) const { return R; }
 
 	Color R;
-	BSDFType type{ BSDFType(BSDF_REFLECTION | BSDF_DIFFUSE) };
 };
 
 KRR_CALLABLE float GTR1(float cosTheta, float alpha) {
@@ -187,7 +185,6 @@ public:
 	};
 
 	float weight, gloss;
-	BSDFType type{ BSDFType(BSDF_REFLECTION | BSDF_GLOSSY) };
 };
 
 enum DisneyComponent{
@@ -202,22 +199,23 @@ enum DisneyComponent{
 };
 
 class DisneyBsdf {
+	/* Thin surface is not supported. */
+	/* The clearcoat lobe is not added, since its optional and controlled by an additional intensity. */
 public:
 	DisneyBsdf() = default;
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(DisneyBsdf);
 
 	KRR_CALLABLE void setup(const ShadingData& sd) {
-		constexpr bool thin = 0;
 
 		Color c				 = sd.diffuse;
 		float metallicWeight = sd.metallic;
-		float e = sd.IoR; //sd.IoR; // Some scene has corrupt IoR so we use all 1.5 instead...
-		float strans = sd.specularTransmission;
-		float diffuseWeight = (1 - metallicWeight) * (1 - strans);
-		float dt = sd.diffuseTransmission;
-		float rough = sd.roughness;
-		float lum = luminance(c);
+		float e				 = sd.IoR;
+		float strans		 = sd.specularTransmission;
+		float diffuseWeight	 = (1 - metallicWeight) * (1 - strans);
+		float dt			 = sd.diffuseTransmission;
+		float roughness		 = sd.roughness;
+		float lum			 = luminance(c);
 		// normalize lum. to isolate hue+sat
 		Color Ctint = Color::Ones();
 		if (lum > 0) Ctint = c / lum;
@@ -230,26 +228,12 @@ public:
 		}
 
 		if (diffuseWeight > 0) {
-			if (thin) {			//unused
-				// Blend between DisneyDiffuse and fake subsurface based on flatness, weight using diffTrans.
-				//float flat = 0;
-				//disneyDiffuse = DisneyDiffuse(diffuseWeight * (1 - flat) * (1 - dt) * c));
-				//disneyFakeSS = DisneyFakeSS(diffuseWeight * flat * (1 - dt) * c, rough);
-			}
-			else {
-				Vector3f scatterDistance = Vector3f::Zero();
-				if (!any(scatterDistance)) {
-					// No subsurface scattering; use regular (Fresnel modified) diffuse.
-					disneyDiffuse = DisneyDiffuse(diffuseWeight * c);
-					components |= DISNEY_DIFFUSE;
-				}	
-				else {
-					// TODO: use a BSSRDF instead.
-					assert(false);
-				}
-			}
 
-			disneyRetro = DisneyRetro(diffuseWeight * c, rough);
+			// No subsurface scattering; use regular (Fresnel modified) diffuse.
+			disneyDiffuse = DisneyDiffuse(diffuseWeight * c);
+			components |= DISNEY_DIFFUSE;
+			
+			disneyRetro = DisneyRetro(diffuseWeight * c, roughness);
 			components |= DISNEY_RETRO;
 
 			if (sheenWeight > 0) {	// unused
@@ -260,8 +244,8 @@ public:
 		// Create the microfacet distribution for metallic and/or specular
 		// transmission.
 		float aspect = sqrt(1 - sd.anisotropic * .9);
-		float ax = max(.001f, pow2(rough) / aspect);
-		float ay = max(.001f, pow2(rough) * aspect);
+		float ax	 = max(.001f, pow2(roughness) / aspect);
+		float ay	 = max(.001f, pow2(roughness) * aspect);
 
 		// Specular is Trowbridge-Reitz with a modified Fresnel function.
 		float specTint = 1;		// [unused] this is manually set to 1...
@@ -273,44 +257,36 @@ public:
 		components |= DISNEY_SPEC_REFLECTION;
 #if KRR_USE_DISNEY
 		microfacetBrdf.disneyR0 = Cspec0;
-		microfacetBrdf.metallic = sd.metallic;
+		microfacetBrdf.metallic = metallicWeight;
 #endif
 
 		// specular BTDF if has transmission
 		if (strans > 0) {
 			Color T = strans * sqrt(c);
-			if (thin) {
-				// Scale roughness based on IOR (Burley 2015, Figure 15).
-				assert(false);
-				float rscaled = (0.65f * e - 0.35f) * rough;
-				float ax = max(.001f, pow2(rscaled) / aspect);
-				float ay = max(.001f, pow2(rscaled) * aspect);
-				microfacetBtdf = MicrofacetBtdf(T, 1, e, ax, ay);
-			}
-			else{
-				microfacetBtdf = MicrofacetBtdf(T, 1, e, ax, ay);
+
+			microfacetBtdf = MicrofacetBtdf(T, 1, e, ax, ay);
 #if KRR_USE_DISNEY
-				microfacetBtdf.disneyR0 = Cspec0;
-				microfacetBtdf.metallic = sd.metallic;
+			microfacetBtdf.disneyR0 = Cspec0;
+			microfacetBtdf.metallic = metallicWeight;
 #endif
-			}
 			components |= DISNEY_SPEC_TRANSMISSION;
 		}
 
-		if (thin) {
-			// TODO: add lambertian transmission, weighted by (1 - diffTrans)
-			assert(false);
-		}
-
 		// calculate sampling weights
-		float approxFresnel = luminance(DisneyFresnel(Cspec0, sd.metallic, e, AbsCosTheta(sd.wo)));
-		pDiffuse = components & DISNEY_DIFFUSE ? luminance(sd.diffuse) * (1 - sd.metallic) * (1.2 - sd.specularTransmission) : 0;
-		pSpecRefl = components & DISNEY_SPEC_REFLECTION ? luminance(lerp(sd.specular, Color::Ones(), approxFresnel)) * (1.2 - sd.specularTransmission) : 0;
-		pSpecTrans = components & DISNEY_SPEC_TRANSMISSION ? (1.f - approxFresnel) * (1 - sd.metallic) * sd.specularTransmission: 0;
+		float approxFresnel =
+			luminance(DisneyFresnel(Cspec0, metallicWeight, e, AbsCosTheta(sd.wo)));
+		pDiffuse	  = components & DISNEY_DIFFUSE ? sd.diffuse.mean() * (1 - metallicWeight) *
+													  (1 - sd.specularTransmission)
+												: 0;
+		pSpecRefl	  = components & DISNEY_SPEC_REFLECTION
+								? lerp(sd.specular, Color::Ones(), approxFresnel).mean() *
+							(1 - sd.specularTransmission * (1 - metallicWeight))
+								: 0;
+		pSpecTrans	  = components & DISNEY_SPEC_TRANSMISSION
+							? (1 - approxFresnel) * (1 - metallicWeight) * sd.specularTransmission
+							: 0;
 		float totalWt = pDiffuse + pSpecRefl + pSpecTrans;
 		if (totalWt > 0) pDiffuse /= totalWt, pSpecRefl /= totalWt, pSpecTrans /= totalWt;
-		//printf("pdiffuse: %f pspecreflect: %f pspectransmit: %f metallic: %f\n",
-		//	pDiffuse, pSpecRefl, pSpecTrans, metallicWeight);
 	}
 
 	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
@@ -338,6 +314,7 @@ public:
 			sample.pdf = pdf(wo, wi);
 			sample.f = f(wo, wi);
 			sample.wi = wi;
+			sample.flags = BSDF_DIFFUSE_REFLECTION;
 		}
 		else if (comp < pDiffuse + pSpecRefl) {
 			sample = microfacetBrdf.sample(wo, sg);
@@ -374,7 +351,7 @@ public:
 
 	KRR_CALLABLE BSDFType flags() const {
 		BSDFType type = pDiffuse > 0 ? BSDF_DIFFUSE_REFLECTION : BSDF_UNSET;
-		return type | (microfacetBrdf.flags() | microfacetBtdf.flags());
+		return type | microfacetBrdf.flags() | microfacetBtdf.flags();
 	}
 
 	KRR_CALLABLE bool hasComponent(int comp) { return comp & components; }
@@ -392,24 +369,6 @@ public:
 	float pSpecTrans{ 0 };
 	float pSpecRefl{ 0 };
 
-#if 0
-	Color color{ 1 };
-	float metallic{ 0 };
-	float eta{ 1.5 };
-	float roughness{ 1 };
-	float specularTint{ 0 };
-	float anisotropic{ 0 };
-	float sheen{ 0 };
-	float sheenTint{ 0 };
-	float clearcoat{ 0 };
-	float clearcoatGloss{ 0 };
-	float specTrans{ 0 };
-	float scatterDistance{ 0 };
-	bool thin{ 0 };
-	float flatness{ 0 };
-	float diffuseTrans{ 0 };
-	float bumpMap{ 0 };
-#endif
 };
 
 KRR_NAMESPACE_END
