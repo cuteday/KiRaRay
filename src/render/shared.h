@@ -58,7 +58,7 @@ namespace shader {
 		float anisotropic{ 0 };		// 
 
 		Light light{ nullptr };
-		BsdfType bsdfType;
+		MaterialType bsdfType;
 		bool miss{ };
 
 		KRR_CALLABLE Interaction getInteraction() const {

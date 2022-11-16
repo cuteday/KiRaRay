@@ -15,7 +15,7 @@ using namespace math;
 class Material;
 class Light;
 
-enum class BsdfType {
+enum class MaterialType {
 	Diffuse = 0,
 	FresnelBlend,
 	Disney,

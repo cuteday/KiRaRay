@@ -56,7 +56,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		return materials[mat];
 
 	Material::SharedPtr material = Material::SharedPtr(new Material(++materialIdAllocator, mat->name));
-	material->mBsdfType			 = BsdfType::Disney;
+	material->mBsdfType			 = MaterialType::Disney;
 	material->mShadingModel		 = Material::ShadingModel::MetallicRoughness;
 	Material::MaterialParams &matParams = material->mMaterialParams;
 
@@ -199,6 +199,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	}
 	if (matParams.IoR == 1)		// 1-ETA is not plausible for transmission
 		matParams.IoR = 1.001;
+	material->mBsdfType = MaterialType::Diffuse;
 	material->toDevice();
 	size_t materialId = scene->mData.materials->size();
 	scene->mData.materials->push_back(*material);

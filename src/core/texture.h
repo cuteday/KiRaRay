@@ -160,7 +160,7 @@ public:
 
 	MaterialParams mMaterialParams;
 	Texture mTextures[5];
-	BsdfType mBsdfType{ BsdfType::Disney };
+	MaterialType mBsdfType{ MaterialType::Disney };
 	ShadingModel mShadingModel{ ShadingModel::MetallicRoughness };
 	bool mDoubleSided = false;
 	uint mMaterialId;
