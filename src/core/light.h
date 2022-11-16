@@ -64,7 +64,7 @@ public:
 		}
 	}
 
-	KRR_CALLABLE float pdfLi(Interaction& p, const LightSampleContext& ctx) const {
+	KRR_CALLABLE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
 		ShapeSampleContext shapeCtx = { ctx.p, ctx.n };
 		return shape.pdf(p, shapeCtx);
 	}
@@ -102,7 +102,7 @@ public:
 		return ls;
 	}
 
-	KRR_CALLABLE float pdfLi(Interaction& p, const LightSampleContext& ctx) const {
+	KRR_CALLABLE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
 		return M_INV_4PI;
 	}
 
@@ -155,7 +155,7 @@ public:
 		return dispatch(L);
 	}
 	
-	KRR_CALLABLE float pdfLi(Interaction& p, const LightSampleContext& ctx) const {
+	KRR_CALLABLE float pdfLi(const Interaction& p, const LightSampleContext& ctx) const {
 		auto pdf = [&](auto ptr) -> float { return ptr->pdfLi(p, ctx); };
 		return dispatch(pdf);
 	}

@@ -199,7 +199,6 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	}
 	if (matParams.IoR == 1)		// 1-ETA is not plausible for transmission
 		matParams.IoR = 1.001;
-	material->mBsdfType = MaterialType::Diffuse;
 	material->toDevice();
 	size_t materialId = scene->mData.materials->size();
 	scene->mData.materials->push_back(*material);
@@ -224,8 +223,8 @@ Mesh createMesh(pbrt::Shape::SP shape, const Transformf<> transform) {
 		Vector4f local_vertex(cast(m->vertex[i]), 1);
 		Vector4f transformed_vertex = transform * local_vertex;
 		Vector3f transformed_normal{};
-		//if (m->normal.size())
-		//	transformed_normal = rot * cast(m->normal[i]);
+		if (m->normal.size())
+			transformed_normal = rot * cast(m->normal[i]);
 		vertex.vertex				= transformed_vertex;
 		vertex.normal				= transformed_normal;
 		if (m->texcoord.size())
