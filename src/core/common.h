@@ -47,11 +47,11 @@ typedef unsigned char uchar;
 #define KRR_INTERFACE
 #define KRR_RESTRICT	__restrict
 
-#if defined(__NVCC__)
+#if defined(__CUDA_ARCH__)
 #define KRR_DEVICE_CODE
 #endif
 
-#ifdef KRR_DEVICE_CODE
+#if defined(__CUDACC__)
 # define KRR_DEVICE   __device__
 # define KRR_HOST     __host__
 # define KRR_FORCEINLINE __forceinline__
