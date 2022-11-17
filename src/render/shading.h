@@ -112,9 +112,10 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	Vector2f uv[3] = { v0.texcoord, v1.texcoord, v2.texcoord };
 	sd.uv = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
 
-	if (mesh.lights) {
+	if (mesh.lights)
 		sd.light = &mesh.lights[hitInfo.primitiveId];
-	}
+	else
+		sd.light = nullptr;
 
 	Material::MaterialParams& materialParams = material.mMaterialParams;
 	

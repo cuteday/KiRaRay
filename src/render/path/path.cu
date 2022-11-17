@@ -44,69 +44,66 @@ KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 }
 
 KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
-	
-	const Light& light = sd.light;
-	Interaction intr = sd.getInteraction();
-	Color Le = sd.light.L(sd.pos, sd.frame.N, sd.uv, sd.wo);
+	const Light &light = sd.light;
+	Interaction intr   = sd.getInteraction();
+	Color Le		   = light.L(intr.p, intr.n, intr.uv, intr.wo);
 
 	float weight{ 1 };
 	if (launchParams.NEE && path.depth > 0) {
-		LightSampleContext ctx = { path.pos, /* use pos of prev interaction */ };	
-		float bsdfPdf = path.pdf;
-		float lightPdf = light.pdfLi(intr, ctx) * path.lightSampler.pdf(light);
+		float bsdfPdf		   = path.pdf;
+		float lightPdf		   = light.pdfLi(intr, path.ctx) * path.lightSampler.pdf(light);
 		if (!(path.bsdfType & BSDF_SPECULAR))
 			weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
-		if (isnan(weight) || isinf(weight)) weight = 1;
+		if (isnan(weight) || isinf(weight))
+			weight = 1;
 	}
 	path.L += Le * weight * path.throughput;
 }
 
 KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
-	Vector3f wi = normalize(path.dir);
-
-	for (InfiniteLight& light : *launchParams.sceneData.infiniteLights) {
+	for (InfiniteLight &light : *launchParams.sceneData.infiniteLights) {
 		float weight{ 1 };
 		if (launchParams.NEE && path.depth > 0) {
-			float bsdfPdf = path.pdf;
-			float lightPdf = light.pdfLi({ }, { }) * path.lightSampler.pdf(&light);
-			weight = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
-			if (isnan(weight) || isinf(weight)) weight = 1;
+			float bsdfPdf  = path.pdf;
+			float lightPdf = light.pdfLi({}, path.ctx) * path.lightSampler.pdf(&light);
+			weight		   = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
+			if (isnan(weight) || isinf(weight))
+				weight = 1;
 		}
-		path.L += path.throughput * weight * light.Li(wi);
+		path.L += path.throughput * weight * light.Li(path.ray.dir);
 	}
 }
 
-KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path, Ray& shadowRay) {
+KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path) {
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 
 	SampledLight sampledLight = path.lightSampler.sample(path.sampler.get1D());
-	Light& light = sampledLight.light;
-	LightSample ls			  = light.sampleLi(path.sampler.get2D(), 
-									{ sd.pos, sd.frame.N });
+	Light &light			  = sampledLight.light;
+	LightSample ls			  = light.sampleLi(path.sampler.get2D(), { sd.pos, sd.frame.N });
 
 	Vector3f wiWorld = normalize(ls.intr.p - sd.pos);
 	Vector3f wiLocal = sd.frame.toLocal(wiWorld);
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
-	if (lightPdf == 0) return;	// We have sampled on the primitive itself...
-	float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
-	Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType) * fabs(wiLocal[2]);
+	if (lightPdf == 0)
+		return; // We have sampled on the primitive itself...
+	float bsdfPdf	= BxDF::pdf(sd, woLocal, wiLocal, (int) sd.bsdfType);
+	Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType) * fabs(wiLocal[2]);
 	float misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
-	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any()) return;
+	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any())
+		return;
 
-	shadowRay	 = sd.getInteraction().spawnRay(ls.intr);
-	if (traceShadowRay(launchParams.traversable, shadowRay, 1)) 
-		path.L += path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
+	Ray shadowRay = sd.getInteraction().spawnRay(ls.intr);
+	if (traceShadowRay(launchParams.traversable, shadowRay, 1))
+		path.L +=
+			path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
 }
 
 KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
-	// Disable NEE on specular surfaces.
 	BSDFType bsdfType = sd.getBsdfType();
-	if (bsdfType & BSDF_SMOOTH) {
-		for (int i = 0; i < launchParams.lightSamples; i++) {
-			Ray shadowRay = {};
-			generateShadowRay(sd, path, shadowRay);
-		}
+	if (bsdfType & BSDF_SMOOTH) {	/* Disable NEE on specular surfaces. */
+		for (int i = 0; i < launchParams.lightSamples; i++) 
+			generateShadowRay(sd, path);
 	}
 }
 
@@ -117,19 +114,20 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 	if (sample.pdf == 0 || !any(sample.f)) return false;
 
 	Vector3f wiWorld = sd.frame.toWorld(sample.wi);
+	Vector3f po		 = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
 	path.bsdfType	 = sample.flags;
-	path.pos = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
-	path.dir = wiWorld;
-	path.pdf = sample.pdf;
+	path.ray		 = { po, wiWorld };
+	path.ctx		 = { sd.pos, sd.frame.N };
+	path.pdf		 = sample.pdf;
 	path.throughput *= sample.f * fabs(sample.wi[2]) / sample.pdf;
-	return true;
+	return path.throughput.any();
 }
 
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
-	HitInfo hitInfo = getHitInfo();
-	ShadingData& sd = *getPRD<ShadingData>();
-	sd.miss = false;
-	Material& material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
+	HitInfo hitInfo	   = getHitInfo();
+	ShadingData &sd	   = *getPRD<ShadingData>();
+	sd.miss			   = false;
+	Material &material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
 	prepareShadingData(sd, hitInfo, material);
 }
 
@@ -156,7 +154,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	ShadingData sd = {};
 
 	for (int &depth = path.depth; true; depth++) {
-		traceRay(launchParams.traversable, { path.pos, path.dir }, KRR_RAY_TMAX,
+		traceRay(launchParams.traversable, path.ray, KRR_RAY_TMAX,
 			RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, (void*)&sd);
 
 		if (sd.miss) {
@@ -190,18 +188,15 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	sampler.setPixelSample(pixel, frameID);
 	sampler.advance(fbIndex * 256);
 
-	Ray cameraRay = camera.getRay(pixel, launchParams.fbSize, &sampler);
-	
-	PathData path = {};
+	PathData path	  = {};
 	path.lightSampler = launchParams.sceneData.lightSampler;
-	path.sampler = &sampler;
+	path.sampler	  = &sampler;
 
 	Color color = Color::Zero();
 	for (int i = 0; i < launchParams.spp; i++) {
 		path.throughput = Color::Ones();
 		path.L			= Color::Zero();
-		path.pos = cameraRay.origin;
-		path.dir = cameraRay.dir;
+		path.ray		= camera.getRay(pixel, launchParams.fbSize, &sampler);
 
 		tracePath(path);
 		color += path.L;
