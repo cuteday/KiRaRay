@@ -1,6 +1,6 @@
 # KiRaRay
 
-*KiRaRay* is a simple interactive ray-tracing renderer using optix. It is mainly for personal learning purpose, with currently very limited features and some bugs.
+*KiRaRay* is a simple interactive ray-tracing renderer using optix. It is mainly for personal learning purpose with limited features.
 
 <p align=center>
 <img src=common/demo/kirara.jpg width="800">
