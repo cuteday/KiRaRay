@@ -237,7 +237,7 @@ public:
 		if (wo[2] == 0) return sample;     
 		if (distribution.isSpecular()) {
 			return BSDFSample(Fr(wo, { 0, 0, 1 }) / AbsCosTheta(wo), { -wo[0], -wo[1], wo[2] }, 
-				1, BSDF_SPECULAR_REFLECTION);
+				1 /* delta pdf */, BSDF_SPECULAR_REFLECTION /* bsdf type */);
 		}
 		
 		wh = distribution.Sample(wo, u);
@@ -258,7 +258,7 @@ public:
 		if (distribution.isSpecular()) return 0;
 		if (!SameHemisphere(wo, wi)) return 0;
 		Vector3f wh = normalize(wo + wi);
-		return distribution.Pdf(wo, wi) / (4 * dot(wo, wh));
+		return distribution.Pdf(wo, wh) / (4 * dot(wo, wh));
 	}
 
 	KRR_CALLABLE Color Fr(Vector3f wo, Vector3f wh) const {
