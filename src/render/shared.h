@@ -74,7 +74,7 @@ namespace shader {
 					break;
 				case MaterialType::Disney:
 					type = roughness <= 1e-3f ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
-					if (diffuse.any())
+					if (diffuse.any() && specularTransmission < 1 && metallic < 1)
 						type = type | BSDFType::BSDF_DIFFUSE_REFLECTION;
 					if (specularTransmission > 0)
 						type = type | BSDF_TRANSMISSION;
