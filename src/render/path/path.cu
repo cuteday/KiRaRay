@@ -196,7 +196,7 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	for (int i = 0; i < launchParams.spp; i++) {
 		path.throughput = Color::Ones();
 		path.L			= Color::Zero();
-		path.ray		= camera.getRay(pixel, launchParams.fbSize, &sampler);
+		path.ray		= camera.getRay(pixel, launchParams.fbSize, path.sampler);
 
 		tracePath(path);
 		color += path.L;

@@ -207,7 +207,7 @@ public:
 			count * sizeof(T), cudaMemcpyHostToDevice));
 	}
 
-	void copy_to_host(T* t, size_t count)
+	void copy_to_host(T* t, size_t count) const 
 	{
 		CHECK(d_ptr);
 		CHECK(m_size >= count);
@@ -223,7 +223,7 @@ public:
 			count * sizeof(T), cudaMemcpyDeviceToDevice));
 	}
 
-	void copy_to_device(T* t, size_t count)
+	void copy_to_device(T* t, size_t count) const 
 	{
 		CHECK(d_ptr);
 		CHECK(m_size >= count);
