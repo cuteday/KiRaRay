@@ -68,12 +68,18 @@ public:
 	using Format = Image::Format;
 
 	Texture() = default; 
+	Texture(Color4f value) { setConstant(value); }
 	Texture(const string& filepath, bool srgb = false, uint id = 0);
 
+	void setConstant(const Color4f value){ 
+		mValid = true;
+		mValue = value;
+	};
 	void loadImage(const string& filepath, bool srgb = false) {
 		mValid = mImage.loadImage(filepath, srgb);
 	}
 	Image &getImage() { return mImage; }
+	KRR_CALLABLE Color4f getConstant() const { return mValue; }
 
 	KRR_CALLABLE bool isValid() const { return mValid; }
 	KRR_CALLABLE bool isOnDevice() const { return mCudaTexture != 0; }
@@ -98,7 +104,8 @@ public:
 	}
 	static Texture::SharedPtr createFromFile(const string& filepath, bool srgb = false);
 
-	bool mValid = false;
+	bool mValid{ false };
+	Color4f mValue{};	 /* If this is a constant texture, the value should be set. */
 	Image mImage;
 	cudaTextureObject_t mCudaTexture = 0;
 	cudaArray_t mCudaArray = 0;
@@ -124,10 +131,10 @@ public:
 	};
 
 	struct MaterialParams {
-		Vector4f diffuse{ 1 };			// RGB for base color and A (optional) for opacity 
-		Vector4f specular{ 0 };			// G-roughness B-metallic A-shininess in MetalRough model
+		Color4f diffuse{ 1 };			// RGB for base color and A (optional) for opacity 
+		Color4f specular{ 0 };			// G-roughness B-metallic A-shininess in MetalRough model
 										// RGB - specular color (F0); A - shininess in SpecGloss model
-		Vector3f emissive{ 0 };
+		Color3f emissive{ 0 };
 		float IoR{ 1.5f };
 		float diffuseTransmission{ 0 };
 		float specularTransmission{ 0 };
@@ -137,6 +144,7 @@ public:
 	Material(uint id, const string& name);
 
 	void setTexture(TextureType type, Texture& texture);
+	void setConstantTexture(TextureType type, const Color4f color);
 	bool determineSrgb(string filename, TextureType type);
 
 	bool hasEmission() { 

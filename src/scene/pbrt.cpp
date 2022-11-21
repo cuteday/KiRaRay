@@ -139,6 +139,10 @@ size_t loadMaterial(Scene::SharedPtr scene,
 				m->name.c_str());
 			if (auto tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_opacity))
 				loadTexture(material, m->map_opacity, Material::TextureType::Transmission, basedir);
+		} 
+		else if (cast(m->opacity) != Vector3f(1)) {
+			Color3f transmission = Vector3f(1) - cast(m->opacity);
+			material->setConstantTexture(Material::TextureType::Transmission, Color4f(transmission, 1));	
 		}
 		if (m->map_roughness) {
 			Log(Info, "A roughness map is found for %s texture %s", m->toString().c_str(),
@@ -150,8 +154,9 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		if (m->map_bump) {
 			Log(Info, "A bump map is found for %s texture %s", m->toString().c_str(),
 				m->name.c_str());
-			if (auto tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_opacity))
-				loadTexture(material, m->map_opacity, Material::TextureType::Normal, basedir);
+			if (auto tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_bump))
+				loadTexture(material, m->map_bump, Material::TextureType::Normal, basedir);
+
 		}
 		material->mShadingModel		   = Material::ShadingModel::SpecularGlossiness;
 		matParams.diffuse			   = Vector4f(diffuse, matParams.diffuse[3]);
@@ -190,7 +195,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
 		matParams.specularTransmission = luminance(cast(m->kt));
 		matParams.diffuse			   = Vector4f(cast(m->kt), 1);
-		matParams.specular			   = Vector4f(Vector3f(0.4), 1);
+		matParams.specular			   = Vector4f(Vector3f(0.35), 1);
 		matParams.IoR				   = m->index;
 	} else {
 		Log(Warning, "Encountered unsupported %s material: %s", 

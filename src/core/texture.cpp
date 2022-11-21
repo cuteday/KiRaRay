@@ -197,6 +197,10 @@ void Material::setTexture(TextureType type, Texture& texture) {
 	mTextures[(uint)type] = texture;
 }
 
+void Material::setConstantTexture(TextureType type, const Color4f color) { 
+	mTextures[(uint) type].setConstant(color);
+}
+
 bool Material::determineSrgb(string filename, TextureType type) {
 	if (Image::isHdr(filename)) return false;
 	switch (type) {

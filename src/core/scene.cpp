@@ -69,7 +69,7 @@ void Scene::processLights(){
 		Mesh& mesh = meshes[meshId];
 		Material& material = (*mData.materials)[mesh.materialId];
 		if (material.hasEmission() || mesh.Le.any()) {
-			Vector3f Le		 = material.hasEmission() ? material.mMaterialParams.emissive
+			Color3f Le		 = material.hasEmission() ? material.mMaterialParams.emissive
 													  : material.mMaterialParams.emissive = mesh.Le;
 			Texture &texture				= material.getTexture(Material::TextureType::Emissive);
 			logDebug("Emissive diffuse area light detected,"
@@ -77,6 +77,7 @@ void Scene::processLights(){
 				" constant emission(?) "+ to_string(luminance(Le)));
 			std::vector<Triangle> triangles = mesh.createTriangles(&(*mData.meshes)[meshId]);
 			mesh.emissiveTriangles.assign(triangles.begin(), triangles.end());
+			mesh.lights.clear();
 			for (Triangle& tri : mesh.emissiveTriangles) 
 				mesh.lights.push_back(DiffuseAreaLight(Shape(&tri), texture, Le, true, 1.f));
 			mesh.mData.lights = mesh.lights.data();
@@ -90,7 +91,7 @@ void Scene::processLights(){
 	for (InfiniteLight& light : *mData.infiniteLights)
 		mData.lights->push_back(&light);
 	logInfo("A total of " + to_string(mData.lights->size()) + " light(s) processed!");
-	if (mData.lightSampler.ptr()) 
+	if (mData.lightSampler) 
 		gpContext->alloc->deallocate_object((UniformLightSampler*)mData.lightSampler.ptr());
 	mData.lightSampler = gpContext->alloc->new_object<UniformLightSampler>((inter::span<Light>) *mData.lights);
 	CUDA_SYNC_CHECK();

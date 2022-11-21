@@ -32,9 +32,13 @@ KRR_DEVICE_FUNCTION Color rgbToNormal(Color rgb) { return 2 * rgb - Color::Ones(
 
 template <typename T>
 KRR_DEVICE_FUNCTION T sampleTexture(Texture &texture, Vector2f uv, T fallback) {
-	cudaTextureObject_t cudaTexture = texture.getCudaTexture();
-	if (cudaTexture) {
-		return tex2D<float4>(cudaTexture, uv[0], uv[1]);
+	if (texture.isValid()) {
+		if (texture.isOnDevice()) {
+			cudaTextureObject_t cudaTexture = texture.getCudaTexture();
+			return tex2D<float4>(cudaTexture, uv[0], uv[1]);
+		} 
+		else
+			return texture.getConstant();
 	}
 	return fallback;
 }
@@ -65,7 +69,7 @@ KRR_DEVICE_FUNCTION bool alphaKilled(inter::vector<Material> *materials) {
 						  v2 = mesh.vertices[v[2]];
 	Vector2f uv				 = b[0] * v0.texcoord + b[1] * v1.texcoord + b[2] * v2.texcoord;
 
-	Vector3f opacity = sampleTexture(opaticyTexture, uv, Vector3f(1));
+	Vector3f opacity = sampleTexture(opaticyTexture, uv, Color3f(1));
 	float alpha		 = 1 - luminance(opacity);
 	if (alpha >= 1)
 		return false;
@@ -132,7 +136,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	Vector3f baseColor = (Vector3f) diff;
 
 	if (normalTexture.isValid()) { // be cautious if we have the tangent space TBN
-		Vector3f normal = sampleTexture(normalTexture, sd.uv, Vector3f{ 0, 0, 1 });
+		Vector3f normal = sampleTexture(normalTexture, sd.uv, Color3f{ 0, 0, 1 });
 		normal			= rgbToNormal(normal);
 
 		sd.frame.N =

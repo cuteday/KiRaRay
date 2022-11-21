@@ -54,8 +54,37 @@ public:
 	}
 
 #ifdef __CUDACC__
-	KRR_CALLABLE operator float2() const { return make_float2(this->operator[](0), this->operator[](1)); }
+	KRR_CALLABLE operator float2() const {
+		return make_float2(this->operator[](0), this->operator[](1));
+	}
+	
+	KRR_CALLABLE Array2(const float2 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+	}
+
+	KRR_CALLABLE Array2(const uint2 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+	}
+
+	KRR_CALLABLE Array2(const uint3 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+	}
 #endif
+
+	friend void to_json(json &j, const Array2<T> &v) {
+		for (int i = 0; i < 2; i++) {
+			j.push_back(v[i]);
+		}
+	}
+
+	friend void from_json(const json &j, Array2<T> &v) {
+		for (int i = 0; i < 2; i++) {
+			v[i] = (T) j.at(i);
+		}
+	}
 };
 
 template <typename T>
@@ -76,10 +105,41 @@ public:
 	}
 
 #ifdef __CUDACC__
+
 	KRR_CALLABLE operator float3() const {
 		return make_float3(this->operator[](0), this->operator[](1), this->operator[](2));
 	}
+
+	KRR_CALLABLE Array3(const float3 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+		this->operator[](2) = v.z;
+	}
+
+	KRR_CALLABLE Array3(const uint3 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+		this->operator[](2) = v.z;
+	}
+
+	KRR_CALLABLE Array3(const float4 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+		this->operator[](2) = v.z;
+	}
 #endif
+
+	friend void to_json(json &j, const Array3<T> &v) {
+		for (int i = 0; i < 3; i++) {
+			j.push_back(v[i]);
+		}
+	}
+
+	friend void from_json(const json &j, Array3<T> &v) {
+		for (int i = 0; i < 3; i++) {
+			v[i] = (T) j.at(i);
+		}
+	}
 };
 
 template <typename T>
@@ -103,9 +163,29 @@ public:
 
 #ifdef __CUDACC__
 	KRR_CALLABLE operator float4() const {
-		return make_float4(this->operator[](0), this->operator[](1), this->operator[](2), this->operator[](3));
+		return make_float4(this->operator[](0), this->operator[](1), this->operator[](2),
+						   this->operator[](3));
+	}
+
+	KRR_CALLABLE Array4(const float4 &v) {
+		this->operator[](0) = v.x;
+		this->operator[](1) = v.y;
+		this->operator[](2) = v.z;
+		this->operator[](3) = v.w;
 	}
 #endif
+
+	friend void to_json(json &j, const Array4<T> &v) {
+		for (int i = 0; i < 4; i++) {
+			j.push_back(v[i]);
+		}
+	}
+
+	friend void from_json(const json &j, Array4<T> &v) {
+		for (int i = 0; i < 4; i++) {
+			v[i] = (T) j.at(i);
+		}
+	}
 };
 
 using Array2i = Array2<int>;
