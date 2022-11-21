@@ -256,23 +256,25 @@ void RenderApp::loadConfig(fs::path path) {
 		}
 	} else
 		logWarning("No specified render pass in configuration!");
+	Scene::SharedPtr scene{};
 	if (config.contains("model")) {
-		string model		   = config["model"].get<string>();
-		Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
+		scene		 = std::make_shared<Scene>();
+		string model = config["model"].get<string>();
 		importer::loadScene(model, scene);
-		setScene(scene);
 	}
 	if (config.contains("environment")) {
-		if (!mpScene)
+		if (!scene)
 			Log(Fatal, "Import a model before doing scene configurations!");
 		string env = config["environment"].get<string>();
-		mpScene->addInfiniteLight(InfiniteLight(env));
+		scene->addInfiniteLight(InfiniteLight(env));
 	}
 	if (config.contains("scene")) {
-		if (!mpScene)
+		if (!scene)
 			Log(Fatal, "Import a model before doing scene configurations!");
-		mpScene->loadConfig(config["scene"]);
+		scene->loadConfig(config["scene"]);
 	}
+	if (scene)
+		setScene(scene);
 	if (config.contains("resolution"))
 		resize(config.value("resolution", fbSize));
 	mConfig		= config;
