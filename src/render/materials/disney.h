@@ -132,6 +132,7 @@ KRR_CALLABLE float smithG_GGX(float cosTheta, float alpha) {
 	float alpha2 = alpha * alpha;
 	float cosTheta2 = cosTheta * cosTheta;
 	return 1 / (cosTheta + sqrt(alpha2 + cosTheta2 - alpha2 * cosTheta2));
+	//return 2 / (1 + sqrt(1 + alpha2 * (1 - cosTheta2) / cosTheta2));
 }
 
 class DisneyClearcoat{
@@ -311,12 +312,11 @@ public:
 		if (comp < pDiffuse) {
 			Vector3f wi = cosineSampleHemisphere(sg.get2D());
 			if (wo[2] < 0) wi[2] *= -1;
-			sample.pdf = pdf(wo, wi);
-			sample.f = f(wo, wi);
-			sample.wi = wi;
+			sample.pdf	 = pdf(wo, wi);
+			sample.f	 = f(wo, wi);
+			sample.wi	 = wi;
 			sample.flags = BSDF_DIFFUSE_REFLECTION;
-		}
-		else if (comp < pDiffuse + pSpecRefl) {
+		} else if (comp < pDiffuse + pSpecRefl) {
 			sample = microfacetBrdf.sample(wo, sg);
 			sample.pdf *= pSpecRefl;
 			if (pDiffuse) {
@@ -326,8 +326,7 @@ public:
 					sample.f += disneyRetro.f(wo, sample.wi);
 				sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
 			}
-		}
-		else if (pSpecTrans > 0) {
+		} else if (pSpecTrans > 0) {
 			sample = microfacetBtdf.sample(wo, sg);
 			sample.pdf *= pSpecTrans;
 		}

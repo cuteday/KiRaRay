@@ -236,7 +236,8 @@ public:
 
 		if (wo[2] == 0) return sample;     
 		if (distribution.isSpecular()) {
-			return BSDFSample(Fr(wo, { 0, 0, 1 }) / AbsCosTheta(wo), { -wo[0], -wo[1], wo[2] }, 
+			return BSDFSample(Fr(wo, { 0, 0, 1 }) / AbsCosTheta(wo), 
+				{ -wo[0], -wo[1], wo[2] }, 
 				1 /* delta pdf */, BSDF_SPECULAR_REFLECTION /* bsdf type */);
 		}
 		
@@ -342,8 +343,9 @@ public:
 			Vector3f wi, wh = { 0, 0, copysignf(1, wo[2]) };
 			if (!Refract(wo, wh, eta, &wi)) return {};
 			
-			Color f = (Color::Ones() - Fr(wo, wh)) / AbsCosTheta(wi);
-			return BSDFSample(f, wi, 1, BSDF_SPECULAR_TRANSMISSION);
+			//Color ft = (Color::Ones() - Fr(wo, wh)) / AbsCosTheta(wi);
+			Color ft = T / AbsCosTheta(wi);
+			return BSDFSample(ft, wi, 1, BSDF_SPECULAR_TRANSMISSION);
 		}
 
 		Vector2f u = sg.get2D();
@@ -369,9 +371,7 @@ public:
 		// Compute change of variables _dwh\_dwi_ for microfacet transmission
 		float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
 		float dwh_dwi = fabs((eta * eta * dot(wi, wh)) / (sqrtDenom * sqrtDenom));
-		float pdf = distribution.Pdf(wo, wh);
-		//printf("wh pdf: %.6f, dwh_dwi: %.6f\n", pdf, dwh_dwi);
-		return pdf * dwh_dwi;
+		return distribution.Pdf(wo, wh) * dwh_dwi;
 	}
 
 	KRR_CALLABLE BSDFType flags() const {
