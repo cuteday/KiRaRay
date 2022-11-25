@@ -7,6 +7,8 @@
 #include "materials/microfacet.h"
 #include "materials/fresnelblend.h"
 #include "materials/disney.h"
+#include "materials/dielectric.h"
+#include "materials/principled.h"
 
 KRR_NAMESPACE_BEGIN
 using namespace shader;

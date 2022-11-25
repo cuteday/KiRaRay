@@ -13,7 +13,6 @@ KRR_NAMESPACE_BEGIN
 using namespace bsdf;
 using namespace shader;
 
-// GGX
 class GGXMicrofacetDistribution { 
 public:
 	GGXMicrofacetDistribution() = default;

@@ -276,7 +276,8 @@ public:
 		// calculate sampling weights
 		float approxFresnel =
 			luminance(DisneyFresnel(Cspec0, metallicWeight, e, AbsCosTheta(sd.wo)));
-		pDiffuse	  = components & DISNEY_DIFFUSE ? sd.diffuse.mean() * (1 - metallicWeight) *
+		pDiffuse	  = components & (DISNEY_DIFFUSE | DISNEY_RETRO)
+							? sd.diffuse.mean() * (1 - metallicWeight) *
 													  (1 - sd.specularTransmission)
 												: 0;
 		pSpecRefl	  = components & DISNEY_SPEC_REFLECTION
@@ -336,13 +337,13 @@ public:
 	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
 		float val = 0;
 		bool reflect = SameHemisphere(wo, wi);
-		if (pDiffuse > 0 && (components & (DISNEY_DIFFUSE | DISNEY_RETRO)) && reflect) {
+		if (pDiffuse > 0 && reflect) {
 			val += pDiffuse * AbsCosTheta(wi) * M_INV_PI;
 		}
-		if (pSpecRefl > 0 && (components & DISNEY_SPEC_REFLECTION) && reflect) {
+		if (pSpecRefl > 0 && reflect) {
 			val += pSpecRefl * microfacetBrdf.pdf(wo, wi);
 		}
-		if (pSpecTrans > 0 && (components & DISNEY_SPEC_TRANSMISSION) && !reflect) {
+		if (pSpecTrans > 0 && !reflect) {
 			val += pSpecTrans * microfacetBtdf.pdf(wo, wi);
 		}
 		return val;
