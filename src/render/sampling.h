@@ -44,12 +44,6 @@ KRR_CALLABLE Vector3f uniformSampleHemisphere(const Vector2f &u) {
 }
 
 KRR_CALLABLE Vector2f uniformSampleDisk(const Vector2f &u) {
-#ifdef SAMPLE_DISK_MARGINAL
-	// simpler method derived using marginal distribution...
-	 float r = sqrt(u[0]);
-	 float theta = 2 * M_PI * u[1];
-	 return Vector2f(r * cos(theta), r * sin(theta));
-#else
 	// the concentric method
 	Vector2f uOffset = 2.f * u - Vector2f(1, 1);
 	if (uOffset[0] == 0 && uOffset[1] == 0)
@@ -63,8 +57,14 @@ KRR_CALLABLE Vector2f uniformSampleDisk(const Vector2f &u) {
 		theta = M_PI / 2 - M_PI / 4 * (uOffset[0] / uOffset[1]);
 	}
 	return r * Vector2f(cos(theta), sin(theta));
-#endif
 }
+
+KRR_CALLABLE Vector2f uniformSampleDiskPolar(const Vector2f &u) {
+	float r		= sqrt(u[0]);
+	float theta = M_2PI * u[1];
+	return Vector2f(r * cos(theta), r * sin(theta));
+}
+
 
 KRR_CALLABLE Vector3f cosineSampleHemisphere(const Vector2f &u) {
 	Vector2f d = uniformSampleDisk(u);

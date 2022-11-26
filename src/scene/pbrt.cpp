@@ -55,9 +55,10 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	if (materials.count(mat))	// already loaded...
 		return materials[mat];
 
-	Material::SharedPtr material = Material::SharedPtr(new Material(++materialIdAllocator, mat->name));
-	material->mBsdfType			 = MaterialType::Disney;
-	material->mShadingModel		 = Material::ShadingModel::MetallicRoughness;
+	Material::SharedPtr material =
+		Material::SharedPtr(new Material(++materialIdAllocator, mat->name));
+	material->mBsdfType					= MaterialType::Disney;
+	material->mShadingModel				= Material::ShadingModel::MetallicRoughness;
 	Material::MaterialParams &matParams = material->mMaterialParams;
 
 	auto remap_roughness = [](const float &roughness) {
@@ -193,6 +194,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::GlassMaterial>(mat)) {
 		Log(Warning, "Encountered not well-supported glass material: %s", mat->name.c_str());
 		material->mShadingModel		   = Material::ShadingModel::MetallicRoughness;
+		material->mBsdfType			   = MaterialType::Dielectric;
 		matParams.specularTransmission = luminance(cast(m->kt));
 		matParams.diffuse			   = Vector4f(cast(m->kt), 1);
 		matParams.specular			   = Vector4f{ 0, 0, 0.2, 0 };

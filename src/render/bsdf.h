@@ -13,7 +13,11 @@
 KRR_NAMESPACE_BEGIN
 using namespace shader;
 
-class BxDF :public TaggedPointer<DiffuseBrdf, FresnelBlendBrdf, DisneyBsdf>{
+class BxDF :public TaggedPointer<DiffuseBrdf, 
+	FresnelBlendBrdf, 
+	DielectricBsdf,
+	DisneyBsdf, 
+	PrincipledBsdf>{
 public:
 	using TaggedPointer::TaggedPointer;
 

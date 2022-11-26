@@ -254,7 +254,7 @@ public:
 		if (!any(sd.specular)) 
 			Cspec0 = lerp(SchlickR0FromEta(e) * lerp(Color::Ones(), Ctint, specTint), c, metallicWeight);
 
-		microfacetBrdf = MicrofacetBrdf(Color::Ones(), e, ax, ay);
+		microfacetBrdf = MicrofacetBrdf(Color(1), e, ax, ay);
 		components |= DISNEY_SPEC_REFLECTION;
 #if KRR_USE_DISNEY
 		microfacetBrdf.disneyR0 = Cspec0;
@@ -265,7 +265,7 @@ public:
 		if (strans > 0) {
 			Color T = strans * sqrt(c);
 
-			microfacetBtdf = MicrofacetBtdf(T, 1, e, ax, ay);
+			microfacetBtdf = MicrofacetBtdf(T, e, ax, ay);
 #if KRR_USE_DISNEY
 			microfacetBtdf.disneyR0 = Cspec0;
 			microfacetBtdf.metallic = metallicWeight;
@@ -295,13 +295,13 @@ public:
 		Color val	 = Color::Zero();
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
-			if (components & DISNEY_DIFFUSE) val += disneyDiffuse.f(wo, wi);
-			if (components & DISNEY_RETRO) val += disneyRetro.f(wo, wi);
+			val += disneyDiffuse.f(wo, wi);
+			val += disneyRetro.f(wo, wi);
 		}
-		if (pSpecRefl > 0 && (components & DISNEY_SPEC_REFLECTION) && reflect) {
+		if (pSpecRefl > 0 && reflect) {
 			val += microfacetBrdf.f(wo, wi);
 		}
-		if (pSpecTrans > 0 && (components & DISNEY_SPEC_TRANSMISSION) && !reflect) {
+		if (pSpecTrans > 0 && !reflect) {
 			val += microfacetBtdf.f(wo, wi);
 		}
 		return val;
@@ -321,10 +321,8 @@ public:
 			sample = microfacetBrdf.sample(wo, sg);
 			sample.pdf *= pSpecRefl;
 			if (pDiffuse) {
-				if (components & DISNEY_DIFFUSE)
-					sample.f += disneyDiffuse.f(wo, sample.wi);
-				if (components & DISNEY_RETRO)
-					sample.f += disneyRetro.f(wo, sample.wi);
+				sample.f += disneyDiffuse.f(wo, sample.wi);
+				sample.f += disneyRetro.f(wo, sample.wi);
 				sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
 			}
 		} else if (pSpecTrans > 0) {

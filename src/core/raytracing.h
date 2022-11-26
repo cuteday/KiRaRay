@@ -18,7 +18,9 @@ class Light;
 enum class MaterialType {
 	Diffuse = 0,
 	FresnelBlend,
+	Dielectric,
 	Disney,
+	Principled,
 	Count
 };
 

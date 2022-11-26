@@ -67,7 +67,12 @@ struct ShadingData { // for use as per ray data, generated from ch
 			case MaterialType::Diffuse:
 				type = BSDFType::BSDF_DIFFUSE_REFLECTION;
 				break;
+			case MaterialType::Dielectric:
+				type = roughness <= 1e-3f ? BSDF_SPECULAR : BSDF_GLOSSY;
+				type = type | BSDF_REFLECTION | BSDF_TRANSMISSION;
+				break;
 			case MaterialType::Disney:
+			case MaterialType::Principled:
 				type = roughness <= 1e-3f ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
 				if (diffuse.any() && specularTransmission < 1 && metallic < 1)
 					type = type | BSDFType::BSDF_DIFFUSE_REFLECTION;
