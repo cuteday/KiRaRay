@@ -23,11 +23,11 @@ public:
 	_DEFINE_BSDF_INTERNAL_ROUTINES(FresnelBlendBrdf);
 
 	KRR_CALLABLE void setup(const ShadingData & sd) {
-		diffuse = sd.diffuse;
-		specular = sd.specular;
+		diffuse		= sd.diffuse;
+		specular	= sd.specular;
 		float alpha = ggx.RoughnessToAlpha(sd.roughness);
-		alpha = sd.roughness * sd.roughness;
-		ggx.setup(alpha, alpha, true);
+		alpha		= sd.roughness * sd.roughness;
+		ggx			= { alpha, alpha };
 	}
 
 	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {

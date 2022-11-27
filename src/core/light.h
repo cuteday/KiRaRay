@@ -56,7 +56,7 @@ public:
 	__device__ inline Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
 		if (!twoSided && dot(n, w) < 0.f) return Vector3f::Zero();	// hit backface
 
-		if (texture.isValid()) {
+		if (texture.isOnDevice()) {
 			return scale * texture.tex(uv);
 		}
 		else {

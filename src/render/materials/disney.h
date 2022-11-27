@@ -132,6 +132,7 @@ KRR_CALLABLE float smithG_GGX(float cosTheta, float alpha) {
 	float alpha2 = alpha * alpha;
 	float cosTheta2 = cosTheta * cosTheta;
 	return 1 / (cosTheta + sqrt(alpha2 + cosTheta2 - alpha2 * cosTheta2));
+	//return 2 / (1 + sqrt(1 + alpha2 * (1 - cosTheta2) / cosTheta2));
 }
 
 class DisneyClearcoat{
@@ -213,7 +214,6 @@ public:
 		float e				 = sd.IoR;
 		float strans		 = sd.specularTransmission;
 		float diffuseWeight	 = (1 - metallicWeight) * (1 - strans);
-		float dt			 = sd.diffuseTransmission;
 		float roughness		 = sd.roughness;
 		float lum			 = luminance(c);
 		// normalize lum. to isolate hue+sat
@@ -253,7 +253,7 @@ public:
 		if (!any(sd.specular)) 
 			Cspec0 = lerp(SchlickR0FromEta(e) * lerp(Color::Ones(), Ctint, specTint), c, metallicWeight);
 
-		microfacetBrdf = MicrofacetBrdf(Color::Ones(), e, ax, ay);
+		microfacetBrdf = MicrofacetBrdf(Color(1), e, ax, ay);
 		components |= DISNEY_SPEC_REFLECTION;
 #if KRR_USE_DISNEY
 		microfacetBrdf.disneyR0 = Cspec0;
@@ -264,7 +264,7 @@ public:
 		if (strans > 0) {
 			Color T = strans * sqrt(c);
 
-			microfacetBtdf = MicrofacetBtdf(T, 1, e, ax, ay);
+			microfacetBtdf = MicrofacetBtdf(T, e, ax, ay);
 #if KRR_USE_DISNEY
 			microfacetBtdf.disneyR0 = Cspec0;
 			microfacetBtdf.metallic = metallicWeight;
@@ -275,7 +275,8 @@ public:
 		// calculate sampling weights
 		float approxFresnel =
 			luminance(DisneyFresnel(Cspec0, metallicWeight, e, AbsCosTheta(sd.wo)));
-		pDiffuse	  = components & DISNEY_DIFFUSE ? sd.diffuse.mean() * (1 - metallicWeight) *
+		pDiffuse	  = components & (DISNEY_DIFFUSE | DISNEY_RETRO)
+							? sd.diffuse.mean() * (1 - metallicWeight) *
 													  (1 - sd.specularTransmission)
 												: 0;
 		pSpecRefl	  = components & DISNEY_SPEC_REFLECTION
@@ -293,13 +294,13 @@ public:
 		Color val	 = Color::Zero();
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
-			if (components & DISNEY_DIFFUSE) val += disneyDiffuse.f(wo, wi);
-			if (components & DISNEY_RETRO) val += disneyRetro.f(wo, wi);
+			val += disneyDiffuse.f(wo, wi);
+			val += disneyRetro.f(wo, wi);
 		}
-		if (pSpecRefl > 0 && (components & DISNEY_SPEC_REFLECTION) && reflect) {
+		if (pSpecRefl > 0 && reflect) {
 			val += microfacetBrdf.f(wo, wi);
 		}
-		if (pSpecTrans > 0 && (components & DISNEY_SPEC_TRANSMISSION) && !reflect) {
+		if (pSpecTrans > 0 && !reflect) {
 			val += microfacetBtdf.f(wo, wi);
 		}
 		return val;
@@ -311,23 +312,19 @@ public:
 		if (comp < pDiffuse) {
 			Vector3f wi = cosineSampleHemisphere(sg.get2D());
 			if (wo[2] < 0) wi[2] *= -1;
-			sample.pdf = pdf(wo, wi);
-			sample.f = f(wo, wi);
-			sample.wi = wi;
+			sample.pdf	 = pdf(wo, wi);
+			sample.f	 = f(wo, wi);
+			sample.wi	 = wi;
 			sample.flags = BSDF_DIFFUSE_REFLECTION;
-		}
-		else if (comp < pDiffuse + pSpecRefl) {
+		} else if (comp < pDiffuse + pSpecRefl) {
 			sample = microfacetBrdf.sample(wo, sg);
 			sample.pdf *= pSpecRefl;
 			if (pDiffuse) {
-				if (components & DISNEY_DIFFUSE)
-					sample.f += disneyDiffuse.f(wo, sample.wi);
-				if (components & DISNEY_RETRO)
-					sample.f += disneyRetro.f(wo, sample.wi);
+				sample.f += disneyDiffuse.f(wo, sample.wi);
+				sample.f += disneyRetro.f(wo, sample.wi);
 				sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
 			}
-		}
-		else if (pSpecTrans > 0) {
+		} else if (pSpecTrans > 0) {
 			sample = microfacetBtdf.sample(wo, sg);
 			sample.pdf *= pSpecTrans;
 		}
@@ -337,13 +334,13 @@ public:
 	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
 		float val = 0;
 		bool reflect = SameHemisphere(wo, wi);
-		if (pDiffuse > 0 && (components & (DISNEY_DIFFUSE | DISNEY_RETRO)) && reflect) {
+		if (pDiffuse > 0 && reflect) {
 			val += pDiffuse * AbsCosTheta(wi) * M_INV_PI;
 		}
-		if (pSpecRefl > 0 && (components & DISNEY_SPEC_REFLECTION) && reflect) {
+		if (pSpecRefl > 0 && reflect) {
 			val += pSpecRefl * microfacetBrdf.pdf(wo, wi);
 		}
-		if (pSpecTrans > 0 && (components & DISNEY_SPEC_TRANSMISSION) && !reflect) {
+		if (pSpecTrans > 0 && !reflect) {
 			val += pSpecTrans * microfacetBtdf.pdf(wo, wi);
 		}
 		return val;

@@ -35,7 +35,7 @@ public:
 
 	Camera() = default;
 
-	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler sampler) {
+	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler& sampler) {
 		Ray ray;
 		Vector2f p = (Vector2f)pixel + Vector2f(0.5f) + sampler.get2D(); // uniform sample + box filter
 		Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2

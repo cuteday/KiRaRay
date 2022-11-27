@@ -90,21 +90,42 @@ namespace bsdf{
 		return -wo + 2 * dot(wo, n) * n;
 	}
 
-	// eta: etaI/etaT when incident ray (flipped )
+	// eta: etaT/etaI when incident ray (relative IoR along ray to the caller)
+	/*	 \  /
+	 *	  \/   etaI
+	 *	------------
+	 *	 media etaT
+	 */			
 	KRR_CALLABLE bool Refract(const Vector3f& wi, const Vector3f& n, float eta,
 		Vector3f* wt) {
 		// Compute $\cos \theta_\roman{t}$ using Snell's law
 		float cosThetaI = dot(n, wi);
-		float sin2ThetaI = max(float(0), float(1 - cosThetaI * cosThetaI));
-		float sin2ThetaT = eta * eta * sin2ThetaI;
+		float sin2ThetaI = max(float(0), float(1 - pow2(cosThetaI)));
+		float sin2ThetaT = sin2ThetaI / pow2(eta);
 
 		// Handle total internal reflection for transmission
 		if (sin2ThetaT >= 1) return false;
 		float cosThetaT = sqrt(1 - sin2ThetaT);
-		*wt = - eta * wi + (eta * cosThetaI - cosThetaT) * n;
+		*wt				= -wi / eta + (cosThetaI / eta - cosThetaT) * n;
 		return true;
 	}
 
+	// eta: absolute eta (eta_inside / eta_outside), *etap is optional.
+	KRR_CALLABLE bool Refract(const Vector3f &wi, Vector3f &n, float eta, float* etap, Vector3f *wt) {
+		// Compute $\cos \theta_\roman{t}$ using Snell's law
+		float cosThetaI	 = dot(n, wi);
+		// Potentially flip interface orientation for Snell's law
+		if (wi[2] < 0) eta = 1 / eta;
+		float sin2ThetaI = max(float(0), float(1 - pow2(cosThetaI)));
+		float sin2ThetaT = sin2ThetaI / pow2(eta);
+
+		// Handle total internal reflection for transmission
+		if (sin2ThetaT >= 1) return false;
+		float cosThetaT = sqrt(1 - sin2ThetaT);
+		*wt				= - wi / eta + (cosThetaI / eta- cosThetaT) * n;
+		if (etap) *etap = eta;
+		return true;
+	}
 
 }
 

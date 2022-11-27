@@ -197,6 +197,10 @@ void Material::setTexture(TextureType type, Texture& texture) {
 	mTextures[(uint)type] = texture;
 }
 
+void Material::setConstantTexture(TextureType type, const Color4f color) { 
+	mTextures[(uint) type].setConstant(color);
+}
+
 bool Material::determineSrgb(string filename, TextureType type) {
 	if (Image::isHdr(filename)) return false;
 	switch (type) {
@@ -224,13 +228,11 @@ void Texture::renderUI() {
 void Material::renderUI() {
 	static const char* shadingModels[] = { "MetallicRoughness", "SpecularGlossiness"};
 	static const char* textureTypes[] = { "Diffuse", "Specular", "Emissive", "Normal", "Transmission" };
-	static const char* bsdfTypes[] = {"Diffuse", "FresnelBlend", "Disney"};
+	static const char *bsdfTypes[]	   = { "Diffuse", "FresnelBlend", "Dielectric", "Disney", "Principled" };
 	ui::ListBox("Shading model", (int*)&mShadingModel, shadingModels, 2);
 	ui::ListBox("BSDF", (int*)&mBsdfType, bsdfTypes, (int)MaterialType::Count);
 	ui::DragFloat4("Diffuse", (float*)&mMaterialParams.diffuse, 1e-3, 0, 5);
 	ui::DragFloat4("Specular", (float*)&mMaterialParams.specular, 1e-3, 0, 1);
-	ui::DragFloat3("Emissive", (float*)&mMaterialParams.emissive, 1e-3, 0, 1);
-	ui::DragFloat("Diffuse transmission", &mMaterialParams.diffuseTransmission, 1e-3, 0, 1);
 	ui::DragFloat("Specular transmission", &mMaterialParams.specularTransmission, 1e-3, 0, 1);
 	ui::Checkbox("Double sided", &mDoubleSided);
 	if (ui::CollapsingHeader("Texture slots")) {

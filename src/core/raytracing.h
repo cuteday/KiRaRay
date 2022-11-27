@@ -18,7 +18,9 @@ class Light;
 enum class MaterialType {
 	Diffuse = 0,
 	FresnelBlend,
+	Dielectric,
 	Disney,
+	Principled,
 	Count
 };
 
@@ -40,12 +42,6 @@ KRR_CALLABLE Vector3f offsetRayOrigin(Vector3f p, Vector3f n, Vector3f w) {
 	if (dot(n, w) < 0.f)
 		offset = -offset;
 	Vector3f po = p + offset;
-	//for (int i = 0; i < Vector3f::dim; i++) {
-	//	if (offset[i] > 0)
-	//		po[i] = utils::nextFloatUp(po[i]);
-	//	else if (offset[i] < 0)
-	//		po[i] = utils::nextFloatDown(po[i]);
-	//}
 	return po;
 }
 

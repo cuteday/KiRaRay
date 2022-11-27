@@ -171,7 +171,9 @@ KRR_CALLABLE Vector3f latlongToWorld(Vector2f latlong) {
 // @returns
 //	theta: [0, pi], phi: [0, 2pi]
 KRR_CALLABLE Vector2f cartesianToSpherical(const Vector3f &v) {
-	Vector2f sph{ acos(v[2]), atan2(v[1], v[0]) };
+	/* caution! acos(val) produces NaN when val is out of [-1, 1]. */
+	const Vector3f vn = v.normalized();
+	Vector2f sph{ acos(vn[2]), atan2(vn[1], vn[0]) };
 	if (sph[1] < 0)
 		sph[1] += M_2PI;
 	return sph;

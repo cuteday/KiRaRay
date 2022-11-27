@@ -7,11 +7,17 @@
 #include "materials/microfacet.h"
 #include "materials/fresnelblend.h"
 #include "materials/disney.h"
+#include "materials/dielectric.h"
+#include "materials/principled.h"
 
 KRR_NAMESPACE_BEGIN
 using namespace shader;
 
-class BxDF :public TaggedPointer<DiffuseBrdf, FresnelBlendBrdf, DisneyBsdf>{
+class BxDF :public TaggedPointer<DiffuseBrdf, 
+	FresnelBlendBrdf, 
+	DielectricBsdf,
+	DisneyBsdf, 
+	PrincipledBsdf>{
 public:
 	using TaggedPointer::TaggedPointer;
 

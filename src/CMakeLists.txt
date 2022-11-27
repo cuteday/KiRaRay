@@ -136,6 +136,8 @@ SET(KRR_SHADER_MATERIALS
 	render/materials/microfacet.h
 	render/materials/disney.h
 	render/materials/fresnelblend.h
+	render/materials/principled.h
+	render/materials/dielectric.h
 )
 
 SET ( KRR_SHADERS

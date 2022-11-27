@@ -17,12 +17,15 @@ using namespace types;
 
 extern "C" __constant__ LaunchParamsPT launchParams;
 
-KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
+/* @returns: whether this ray is missed */
+KRR_DEVICE_FUNCTION bool traceRay(OptixTraversableHandle traversable, Ray ray,
 								  float tMax, int rayType, OptixRayFlags flags,
 								  void *payload) {
 	uint u0, u1;
+	uint miss{ 0 };
 	packPointer(payload, u0, u1);
-	traceRay(traversable, ray, tMax, rayType, flags, u0, u1);
+	traceRay(traversable, ray, tMax, rayType, flags, u0, u1, miss);
+	return !miss;
 }
 
 template <typename... Args>
@@ -30,7 +33,7 @@ KRR_DEVICE_FUNCTION bool traceShadowRay(OptixTraversableHandle traversable,
 										Ray ray, float tMax) {
 	OptixRayFlags flags =
 		(OptixRayFlags) (OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT);
-	uint32_t miss{0};
+	uint32_t miss{ 0 };
 	traceRay(traversable, ray, tMax, (int) SHADOW_RAY_TYPE, flags, miss);
 	return miss;
 }
@@ -126,7 +129,6 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo	   = getHitInfo();
 	ShadingData &sd	   = *getPRD<ShadingData>();
-	sd.miss			   = false;
 	Material &material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
 	prepareShadingData(sd, hitInfo, material);
 }
@@ -137,8 +139,7 @@ extern "C" __global__ void KRR_RT_AH(Radiance)() {
 }
 
 extern "C" __global__ void KRR_RT_MS(Radiance)() {
-	ShadingData &sd = *getPRD<ShadingData>();
-	sd.miss = true;
+	optixSetPayload_2(1);
 }
 
 extern "C" __global__ void KRR_RT_AH(ShadowRay)() {
@@ -154,14 +155,13 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	ShadingData sd = {};
 
 	for (int &depth = path.depth; true; depth++) {
-		traceRay(launchParams.traversable, path.ray, KRR_RAY_TMAX,
-			RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, (void*)&sd);
-
-		if (sd.miss) {
-			handleMiss(sd, path); 
+		if(!traceRay(launchParams.traversable, path.ray, KRR_RAY_TMAX, RADIANCE_RAY_TYPE,
+					  OPTIX_RAY_FLAG_NONE, (void *) &sd)) {
+			handleMiss(sd, path);
 			break;
 		}
-		else if (sd.light) handleHit(sd, path);
+		
+		if (sd.light) handleHit(sd, path);
 
 		/* If the path is terminated by this vertex, then NEE should not be evaluated
 		 * otherwise the MIS weight of this NEE action will be meaningless. */
@@ -196,7 +196,7 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	for (int i = 0; i < launchParams.spp; i++) {
 		path.throughput = Color::Ones();
 		path.L			= Color::Zero();
-		path.ray		= camera.getRay(pixel, launchParams.fbSize, &sampler);
+		path.ray		= camera.getRay(pixel, launchParams.fbSize, path.sampler);
 
 		tracePath(path);
 		color += path.L;

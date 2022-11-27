@@ -60,8 +60,8 @@ public:
 
 	KRR_CALLABLE void setup(const ShadingData& sd) {
 		// luminance as weight to sample different components?
-		reflection = sd.diffuse;
-		transmission = sd.transmission;
+		reflection = (1 - sd.specularTransmission) * sd.diffuse;
+		transmission = sd.specularTransmission * sd.diffuse;
 		if (any(reflection) || any(transmission)) {
 			pR = luminance(reflection) / luminance(reflection) + luminance(transmission);
 			pT = luminance(transmission) / luminance(reflection) + luminance(transmission);

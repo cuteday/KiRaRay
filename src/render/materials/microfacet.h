@@ -13,7 +13,7 @@ KRR_NAMESPACE_BEGIN
 using namespace bsdf;
 using namespace shader;
 
-// GGX
+/* Trowbridge-Reitz distribution */
 class GGXMicrofacetDistribution { 
 public:
 	GGXMicrofacetDistribution() = default;
@@ -21,23 +21,15 @@ public:
 	KRR_CALLABLE bool isSpecular() const { return max(alphax, alphay) <= 1e-3f; }
 
 	static KRR_CALLABLE float RoughnessToAlpha(float roughness) {
-		roughness = max(roughness, (float)1e-3);
+		roughness = max(roughness, (float)1e-3f);
 		float x = log(roughness);
 		return 1.62142f + 0.819955f * x + 0.1734f * x * x + 0.0171201f * x * x * x +
 			0.000640711f * x * x * x * x;
 	};
-	
-	KRR_CALLABLE void setup(float ax, float ay, bool samplevis = true){
-		sampleVisibleArea = samplevis;
-		alphax = max(1e-4f, ax);
-		alphay = max(1e-4f, ay);
-	}
 
-	KRR_CALLABLE GGXMicrofacetDistribution(float alphax, float alphay,
-		bool samplevis = true)
-		: sampleVisibleArea(samplevis),
-		alphax(max(float(0.001), alphax)),
-		alphay(max(float(0.001), alphay)) {}
+	KRR_CALLABLE GGXMicrofacetDistribution(float alphax, float alphay):
+		alphax(max(float(1e-3f), alphax)), 
+		alphay(max(float(1e-3f), alphay)) {}
 
 	KRR_CALLABLE float G1(const Vector3f& w) const {
 		return 1 / (1 + Lambda(w));
@@ -50,18 +42,15 @@ public:
 	KRR_CALLABLE float D(const Vector3f& wh) const {
 		float tan2Theta = Tan2Theta(wh);
 		if (isinf(tan2Theta)) return 0.;
-		const float cos4Theta = Cos2Theta(wh) * Cos2Theta(wh);
-		float e = (Cos2Phi(wh) / (alphax * alphax) + Sin2Phi(wh) / (alphay * alphay)) * tan2Theta;
-		return 1 / (M_PI * alphax * alphay * cos4Theta * (1 + e) * (1 + e));
+		const float cos4Theta = pow2(Cos2Theta(wh));
+		float e = (pow2(CosPhi(wh) / alphax) + pow2(SinPhi(wh) / alphay)) * tan2Theta;
+		return 1 / (M_PI * alphax * alphay * cos4Theta * pow2(1 + e));
 	}
 
 	KRR_CALLABLE Vector3f Sample(const Vector3f& wo, const Vector2f& u) const;
 	
 	KRR_CALLABLE float Pdf(const Vector3f& wo, const Vector3f& wh) const {
-		if (sampleVisibleArea)
-			return D(wh) * G1(wo) * fabs(dot(wo, wh)) / AbsCosTheta(wo);
-		else
-			return D(wh) * AbsCosTheta(wh);
+		return D(wh) * G1(wo) * fabs(dot(wo, wh)) / AbsCosTheta(wo);
 	};
 
 private:
@@ -72,13 +61,12 @@ private:
 		// Compute _alpha_ for direction _w_
 		float alpha =
 			sqrt(Cos2Phi(w) * alphax * alphax + Sin2Phi(w) * alphay * alphay);
-		float alpha2Tan2Theta = (alpha * absTanTheta) * (alpha * absTanTheta);
+		float alpha2Tan2Theta = pow2(alpha * absTanTheta);
 		return (-1 + sqrt(1.f + alpha2Tan2Theta)) / 2;
 	};
 
 	// GGXMicrofacetDistribution Private Data
 	float alphax, alphay;
-	bool sampleVisibleArea;
 };
 
 
@@ -165,36 +153,38 @@ KRR_CALLABLE static Vector3f GGXSample(const Vector3f& wi, float alpha_x,
 	return normalize(Vector3f(-slope_x, -slope_y, 1.));
 }
 
+/* @returns: sampled microfacet normal that always face towards wo. */
 inline Vector3f GGXMicrofacetDistribution::Sample(const Vector3f& wo,
 	const Vector2f& u) const {
-	Vector3f wh;
-	if (!sampleVisibleArea) {
-		float cosTheta = 0, phi = (2 * M_PI) * u[1];
-		if (alphax == alphay) {
-			float tanTheta2 = alphax * alphax * u[0] / (1.0f - u[0]);
-			cosTheta = 1 / sqrt(1 + tanTheta2);
-		}
-		else {
-			phi =
-				atan(alphay / alphax * tan(2 * M_PI * u[1] + .5f * M_PI));
-			if (u[1] > .5f) phi += M_PI;
-			float sinPhi = sin(phi), cosPhi = cos(phi);
-			const float alphax2 = alphax * alphax, alphay2 = alphay * alphay;
-			const float alpha2 =
-				1 / (cosPhi * cosPhi / alphax2 + sinPhi * sinPhi / alphay2);
-			float tanTheta2 = alpha2 * u[0] / (1 - u[0]);
-			cosTheta = 1 / sqrt(1 + tanTheta2);
-		}
-		float sinTheta = sqrt(max(0.f, 1.f - cosTheta * cosTheta));
-		wh = sphericalToCartesian(sinTheta, cosTheta, phi);
-		if (!SameHemisphere(wo, wh)) wh = -wh;
-	}
-	else {
-		bool flip = wo[2] < 0;
-		wh = GGXSample(flip ? -wo : wo, alphax, alphay, u[0], u[1]);
-		if (flip) wh = -wh;
-	}
+#define KRR_GGX_SAMPLE_LEGACY
+	
+#ifdef KRR_GGX_SAMPLE_LEGACY
+	bool flip = wo[2] < 0;
+	Vector3f wh = GGXSample(flip ? -wo : wo, alphax, alphay, u[0], u[1]);
+	if (flip) wh = -wh;
 	return wh;
+#else
+	Vector3f wh = normalize(Vector3f(alphax * wo[0], alphay * wo[1], wo[2]));
+	if (wh[2] < 0)
+		wh = -wh;
+
+	// Find orthonormal basis for visible normal sampling
+	Vector3f T1 = (wh[2] < 0.99999f) ? normalize(cross(Vector3f(0, 0, 1), wh)) 
+		: Vector3f(1, 0, 0);
+	Vector3f T2 = cross(wh, T1);
+
+	// Generate uniformly distributed points on the unit disk
+	Point2f p = uniformSampleDiskPolar(u);
+
+	// Warp hemispherical projection for visible normal sampling
+	float h = std::sqrt(1 - pow2(p[0]));
+	p[1]		= lerp((1 + wh[2]) / 2, h, p[1]);
+
+	// Reproject to hemisphere and transform normal to ellipsoid configuration
+	float pz	= sqrt(max(0.f, 1.f - Vector2f(p).squaredNorm()));
+	Vector3f nh = p[0] * T1 + p[1] * T2 + pz * wh;
+	return normalize(Vector3f(alphax * nh[0], alphay * nh[1], max(1e-6f, nh[2])));
+#endif
 }
 
 class MicrofacetBrdf {
@@ -203,15 +193,14 @@ public:
 
 	KRR_CALLABLE MicrofacetBrdf(const Color &R, float eta, float alpha_x, float alpha_y)
 		:R(R), eta(eta){
-		distribution.setup(alpha_x, alpha_y);
+		distribution = { alpha_x, alpha_y };
 	}
 
-	KRR_CALLABLE void setup(const ShadingData& sd) {
-		R = sd.specular;
-		float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
-		alpha = pow2(sd.roughness);
-		eta = sd.IoR;
-		distribution.setup(alpha, alpha, true);
+	KRR_CALLABLE void setup(const ShadingData &sd) {
+		R			 = sd.specular;
+		float alpha	 = pow2(sd.roughness);
+		eta			 = sd.IoR;
+		distribution = { alpha, alpha };
 	}
 
 	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
@@ -225,7 +214,7 @@ public:
 		wh = normalize(wh);
 		Color F = Fr(wo, wh);
 
-		return R * distribution.D(wh) * distribution.G(wo, wi) * F /
+		return distribution.D(wh) * distribution.G(wo, wi) * F /
 			(4 * cosThetaI * cosThetaO);
 	}
 
@@ -236,7 +225,8 @@ public:
 
 		if (wo[2] == 0) return sample;     
 		if (distribution.isSpecular()) {
-			return BSDFSample(Fr(wo, { 0, 0, 1 }) / AbsCosTheta(wo), { -wo[0], -wo[1], wo[2] }, 
+			return BSDFSample(Fr(wo, { 0, 0, 1 }) / AbsCosTheta(wo), 
+				{ -wo[0], -wo[1], wo[2] }, 
 				1 /* delta pdf */, BSDF_SPECULAR_REFLECTION /* bsdf type */);
 		}
 		
@@ -264,9 +254,10 @@ public:
 	KRR_CALLABLE Color Fr(Vector3f wo, Vector3f wh) const {
 		// fresnel is also on the microfacet (wrt to wh)
 #if KRR_USE_DISNEY
-		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)); // etaT / etaI, auto inversion.
+		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)) *
+			   R; // etaT / etaI, auto inversion.
 #else
-		return FrSchlick(R, Vector3f(1.f), dot(wo, wh)) / R;
+		return FrSchlick(R, Color3f(1.f), dot(wo, wh));
 		return FrDielectric(dot(wo, wh), eta); // etaT / etaI.
 #endif
 	}
@@ -293,18 +284,17 @@ class MicrofacetBtdf {
 public:
 	MicrofacetBtdf() = default;
 
-	KRR_CALLABLE MicrofacetBtdf(const Color &T, float etaA, float etaB, float alpha_x, float alpha_y)
-		:T(T), etaA(etaA), etaB(etaB) {
-		distribution.setup(alpha_x, alpha_y, true);
+	KRR_CALLABLE MicrofacetBtdf(const Color &T, float eta, float alpha_x, float alpha_y)
+		: T(T), etaT(eta) {
+		distribution = { alpha_x, alpha_y };
 	}
 
 	KRR_CALLABLE void setup(const ShadingData& sd) {
-		T = sd.transmission;
-		float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
-		alpha = pow2(sd.roughness);
+		T = sd.diffuse * sd.specularTransmission;
+		float alpha = pow2(sd.roughness);
 		// TODO: ETA=1 causes NaN, should switch to delta scattering
-		etaA = 1; etaB = max(1.01f, sd.IoR);
-		distribution.setup(alpha, alpha, true);
+		etaT = max(1.01f, sd.IoR);
+		distribution = { alpha, alpha };
 	}
 
 	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
@@ -315,7 +305,7 @@ public:
 		if (cosThetaI == 0 || cosThetaO == 0) return 0;
 
 		// Compute $\wh$ from $\wo$ and $\wi$ for microfacet transmission
-		float eta = CosTheta(wo) > 0 ? etaB / etaA : etaA / etaB;
+		float eta = CosTheta(wo) > 0 ? etaT : 1 / etaT;
 		Vector3f wh = normalize(wo + wi * eta);
 		if (wh[2] < 0) wh = -wh;
 
@@ -324,33 +314,31 @@ public:
 		Color F = Fr(wo, wh);
 		
 		float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
-		float factor = 1.f / eta;
 
 		return (Color::Ones() - F) * T *
-			fabs(distribution.D(wh) * distribution.G(wo, wi) * eta * eta *
-				AbsDot(wi, wh) * AbsDot(wo, wh) * factor * factor /
-				(cosThetaI * cosThetaO * sqrtDenom * sqrtDenom));
+			fabs(distribution.D(wh) * distribution.G(wo, wi) *
+				AbsDot(wi, wh) * AbsDot(wo, wh)  /
+				(cosThetaI * cosThetaO * pow2(sqrtDenom)));
 	}
 
 	KRR_CALLABLE  BSDFSample sample(Vector3f wo, Sampler& sg) const {
 		BSDFSample sample = {};
 		if (wo[2] == 0) return sample;
 
-		float eta = CosTheta(wo) > 0 ? etaA / etaB : etaB / etaA;
-		
+		float eta;
 		if (distribution.isSpecular()) {
 			Vector3f wi, wh = { 0, 0, copysignf(1, wo[2]) };
-			if (!Refract(wo, wh, eta, &wi)) return {};
+			if (!Refract(wo, wh, etaT, &eta, &wi))
+				return {};
 			
-			Color f = (Color::Ones() - Fr(wo, wh)) / AbsCosTheta(wi);
-			return BSDFSample(f, wi, 1, BSDF_SPECULAR_TRANSMISSION);
+			Color ft = (Color::Ones() - Fr(wo, wh)) * T / AbsCosTheta(wi);
+			return BSDFSample(ft, wi, 1, BSDF_SPECULAR_TRANSMISSION);
 		}
 
 		Vector2f u = sg.get2D();
 		Vector3f wh = distribution.Sample(wo, u);
-		if (dot(wo, wh) < 0) return {};  // Should be rare
 		
-		if (!Refract(wo, wh, eta, &sample.wi)) return {};   // etaI / etaT
+		if (!Refract(wo, wh, etaT, &eta, &sample.wi)) return {};   // etaI / etaT
 
 		sample.pdf = pdf(wo, sample.wi);
 		sample.f = f(wo, sample.wi);
@@ -361,7 +349,7 @@ public:
 	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
 		if (distribution.isSpecular()) return 0;
 		if (SameHemisphere(wo, wi)) return 0;
-		float eta = CosTheta(wo) > 0 ? etaB / etaA : etaA / etaB;	// wo is outside?
+		float eta = CosTheta(wo) > 0 ? etaT : 1 / etaT;
 		// wh = wo + eta * wi, eta = etaI / etaT
 		Vector3f wh = normalize(wo + wi * eta);	// eta=etaI/etaT
 
@@ -369,9 +357,7 @@ public:
 		// Compute change of variables _dwh\_dwi_ for microfacet transmission
 		float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
 		float dwh_dwi = fabs((eta * eta * dot(wi, wh)) / (sqrtDenom * sqrtDenom));
-		float pdf = distribution.Pdf(wo, wh);
-		//printf("wh pdf: %.6f, dwh_dwi: %.6f\n", pdf, dwh_dwi);
-		return pdf * dwh_dwi;
+		return distribution.Pdf(wo, wh) * dwh_dwi;
 	}
 
 	KRR_CALLABLE BSDFType flags() const {
@@ -380,17 +366,16 @@ public:
 	}
 
 	KRR_CALLABLE Color Fr(Vector3f wo, Vector3f wh) const {
-		float eta = etaB / etaA;
 #if KRR_USE_DISNEY
-		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)); // etaT / etaI, auto inversion
+		return DisneyFresnel(disneyR0, metallic, etaT, dot(wo, wh)); // etaT / etaI, auto inversion
 #else
-		return = FrSchlick(R, Vector3f(1.f), dot(wo, wh)) / R;
-		return FrDielectric(dot(wo, wh), eta); // etaT / etaI
+		return FrSchlick(R, Vector3f(1.f), dot(wo, wh)) / R;
+		return FrDielectric(dot(wo, wh), wo[2]), etaT);
 #endif
 	}
 
 	Color T{ 0 }; // specular reflectance
-	float etaA{ 1 }, etaB{ 1.5 }				/* etaA: outside IoR, etaB: inside IoR */;
+	float etaT{ 1.5 }				/* etaA: outside IoR, etaB: inside IoR */;
 #if KRR_USE_DISNEY
 	Color disneyR0;
 	float metallic;

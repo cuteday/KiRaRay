@@ -55,9 +55,10 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	if (materials.count(mat))	// already loaded...
 		return materials[mat];
 
-	Material::SharedPtr material = Material::SharedPtr(new Material(++materialIdAllocator, mat->name));
-	material->mBsdfType			 = MaterialType::Disney;
-	material->mShadingModel		 = Material::ShadingModel::MetallicRoughness;
+	Material::SharedPtr material =
+		Material::SharedPtr(new Material(++materialIdAllocator, mat->name));
+	material->mBsdfType					= MaterialType::Disney;
+	material->mShadingModel				= Material::ShadingModel::MetallicRoughness;
 	Material::MaterialParams &matParams = material->mMaterialParams;
 
 	auto remap_roughness = [](const float &roughness) {
@@ -139,6 +140,10 @@ size_t loadMaterial(Scene::SharedPtr scene,
 				m->name.c_str());
 			if (auto tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_opacity))
 				loadTexture(material, m->map_opacity, Material::TextureType::Transmission, basedir);
+		} 
+		else if (cast(m->opacity) != Vector3f(1)) {
+			Color3f transmission = Vector3f(1) - cast(m->opacity);
+			material->setConstantTexture(Material::TextureType::Transmission, Color4f(transmission, 1));	
 		}
 		if (m->map_roughness) {
 			Log(Info, "A roughness map is found for %s texture %s", m->toString().c_str(),
@@ -150,8 +155,9 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		if (m->map_bump) {
 			Log(Info, "A bump map is found for %s texture %s", m->toString().c_str(),
 				m->name.c_str());
-			if (auto tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_opacity))
-				loadTexture(material, m->map_opacity, Material::TextureType::Normal, basedir);
+			if (auto tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_bump))
+				loadTexture(material, m->map_bump, Material::TextureType::Normal, basedir);
+
 		}
 		material->mShadingModel		   = Material::ShadingModel::SpecularGlossiness;
 		matParams.diffuse			   = Vector4f(diffuse, matParams.diffuse[3]);
@@ -187,11 +193,15 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		matParams.specular[2] = 0.8;				// manually set metallic
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::GlassMaterial>(mat)) {
 		Log(Warning, "Encountered not well-supported glass material: %s", mat->name.c_str());
-		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
+		Log(Info, "Glass material %s has an index of %f", mat->name.c_str(), m->index);
+		material->mShadingModel		   = Material::ShadingModel::MetallicRoughness;
+		material->mBsdfType			   = MaterialType::Dielectric;
 		matParams.specularTransmission = luminance(cast(m->kt));
-		matParams.diffuse			   = Vector4f(cast(m->kt), 1);
-		matParams.specular			   = Vector4f(Vector3f(0.4), 1);
-		matParams.IoR				   = m->index;
+		/* For unknown reasons/bugs, the glass looks unreasonably dark in dielectric materials. */
+		/* So we manually scale its BSDF value by 1.5x as a temporary workaround.  */
+		matParams.diffuse			   = Vector4f(1.2 * cast(m->kt), 1);
+		matParams.specular			   = Vector4f{ 0, 0, 0.2, 0 };
+		matParams.IoR				   = m->index == 1 ? 1.01 : m->index;
 	} else {
 		Log(Warning, "Encountered unsupported %s material: %s", 
 			mat->toString().c_str(), mat->name.c_str());
