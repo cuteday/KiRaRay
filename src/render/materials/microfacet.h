@@ -314,12 +314,11 @@ public:
 		Color F = Fr(wo, wh);
 		
 		float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
-		float factor = 1.f / eta;
 
 		return (Color::Ones() - F) * T *
-			fabs(distribution.D(wh) * distribution.G(wo, wi) * eta * eta *
-				AbsDot(wi, wh) * AbsDot(wo, wh) * factor * factor /
-				(cosThetaI * cosThetaO * sqrtDenom * sqrtDenom));
+			fabs(distribution.D(wh) * distribution.G(wo, wi) *
+				AbsDot(wi, wh) * AbsDot(wo, wh)  /
+				(cosThetaI * cosThetaO * pow2(sqrtDenom)));
 	}
 
 	KRR_CALLABLE  BSDFSample sample(Vector3f wo, Sampler& sg) const {

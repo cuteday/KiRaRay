@@ -197,7 +197,9 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		material->mShadingModel		   = Material::ShadingModel::MetallicRoughness;
 		material->mBsdfType			   = MaterialType::Dielectric;
 		matParams.specularTransmission = luminance(cast(m->kt));
-		matParams.diffuse			   = Vector4f(cast(m->kt), 1);
+		/* For unknown reasons/bugs, the glass looks unreasonably dark in dielectric materials. */
+		/* So we manually scale its BSDF value by 1.5x as a temporary workaround.  */
+		matParams.diffuse			   = Vector4f(1.2 * cast(m->kt), 1);
 		matParams.specular			   = Vector4f{ 0, 0, 0.2, 0 };
 		matParams.IoR				   = m->index == 1 ? 1.01 : m->index;
 	} else {

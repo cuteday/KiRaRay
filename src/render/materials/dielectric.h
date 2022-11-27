@@ -56,7 +56,7 @@ public:
 			return 0;
 
 		float F	  = FrDielectric(copysignf(dot(wo, wm), wo[2]), eta);
-		Color3f R = baseColor * F, T = sqrt(baseColor) * (1 - F);
+		Color3f R = baseColor * F, T = baseColor * (1 - F);
 		if (reflect) {
 			// Compute reflection at rough dielectric interface
 			return Color3f(distribution.D(wm) * distribution.G(wo, wi) * R /
@@ -78,7 +78,7 @@ public:
 		if (eta == 1 || distribution.isSpecular()) {
 			// Sample perfectly specular dielectric BSDF
 			float F = FrDielectric(CosTheta(wo), eta);
-			Color3f R = baseColor * F, T = sqrt(baseColor) * (1 - F);
+			Color3f R = baseColor * F, T = baseColor * (1 - F);
 			// Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
 			float pr = R.mean(), pt = T.mean();
 			if (pr == 0 && pt == 0)
@@ -110,7 +110,7 @@ public:
 			// Sample rough dielectric BSDF
 			Vector3f wm = distribution.Sample(wo, sg.get2D());
 			float F		= FrDielectric(copysignf(dot(wo, wm), wo[2]), eta);
-			Color3f R = baseColor * F, T = sqrt(baseColor) * (1 - F);
+			Color3f R = baseColor * F, T = baseColor * (1 - F);
 			// Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
 			float pr = R.mean(), pt = T.mean();
 			if (pr == 0 && pt == 0)
@@ -172,7 +172,7 @@ public:
 
 		// Determine Fresnel reflectance of rough dielectric boundary
 		float F	  = FrDielectric(CosTheta(wo), eta);
-		Color3f R = baseColor * F, T = sqrt(baseColor) * (1 - F);
+		Color3f R = baseColor * F, T = baseColor * (1 - F);
 
 		// Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
 		float pr = R.mean(), pt = T.mean();
