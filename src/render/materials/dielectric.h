@@ -32,7 +32,7 @@ public:
 	KRR_CALLABLE void setup(const ShadingData &sd) { 
 		baseColor	 = sd.diffuse * sd.specularTransmission;
 		eta			 = sd.IoR;
-		float alpha	 = sd.roughness;
+		float alpha	 = pow2(sd.roughness);
 		distribution = { alpha, alpha };
 	}
 
@@ -55,7 +55,7 @@ public:
 		if (dot(wm, wi) * cosTheta_i < 0 || dot(wm, wo) * cosTheta_o < 0)
 			return 0;
 
-		float F = FrDielectric(dot(wo, wm), eta);
+		float F	  = FrDielectric(copysignf(dot(wo, wm), wo[2]), eta);
 		Color3f R = baseColor * F, T = sqrt(baseColor) * (1 - F);
 		if (reflect) {
 			// Compute reflection at rough dielectric interface
@@ -95,7 +95,7 @@ public:
 				// Compute ray direction for specular transmission
 				Vector3f wi;
 				float etap;
-				bool valid = Refract(wo, Vector3f(0, 0, 1), eta, &etap, &wi);
+				bool valid = Refract(wo, Vector3f(0, 0, copysignf(1, wo[2])), eta, &etap, &wi);
 				if (!valid)
 					return {};
 
@@ -109,7 +109,7 @@ public:
 		} else {
 			// Sample rough dielectric BSDF
 			Vector3f wm = distribution.Sample(wo, sg.get2D());
-			float F		= FrDielectric(dot(wo, wm), eta);
+			float F		= FrDielectric(copysignf(dot(wo, wm), wo[2]), eta);
 			Color3f R = baseColor * F, T = sqrt(baseColor) * (1 - F);
 			// Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
 			float pr = R.mean(), pt = T.mean();

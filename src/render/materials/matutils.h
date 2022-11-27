@@ -115,11 +115,7 @@ namespace bsdf{
 		// Compute $\cos \theta_\roman{t}$ using Snell's law
 		float cosThetaI	 = dot(n, wi);
 		// Potentially flip interface orientation for Snell's law
-		if (cosThetaI < 0) {
-			eta		   = 1 / eta;
-			cosThetaI = -cosThetaI;
-			n		   = -n;
-		}
+		if (wi[2] < 0) eta = 1 / eta;
 		float sin2ThetaI = max(float(0), float(1 - pow2(cosThetaI)));
 		float sin2ThetaT = sin2ThetaI / pow2(eta);
 

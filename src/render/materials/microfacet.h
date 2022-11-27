@@ -42,9 +42,9 @@ public:
 	KRR_CALLABLE float D(const Vector3f& wh) const {
 		float tan2Theta = Tan2Theta(wh);
 		if (isinf(tan2Theta)) return 0.;
-		const float cos4Theta = Cos2Theta(wh) * Cos2Theta(wh);
-		float e = (Cos2Phi(wh) / (alphax * alphax) + Sin2Phi(wh) / (alphay * alphay)) * tan2Theta;
-		return 1 / (M_PI * alphax * alphay * cos4Theta * (1 + e) * (1 + e));
+		const float cos4Theta = pow2(Cos2Theta(wh));
+		float e = (pow2(CosPhi(wh) / alphax) + pow2(SinPhi(wh) / alphay)) * tan2Theta;
+		return 1 / (M_PI * alphax * alphay * cos4Theta * pow2(1 + e));
 	}
 
 	KRR_CALLABLE Vector3f Sample(const Vector3f& wo, const Vector2f& u) const;
@@ -61,7 +61,7 @@ private:
 		// Compute _alpha_ for direction _w_
 		float alpha =
 			sqrt(Cos2Phi(w) * alphax * alphax + Sin2Phi(w) * alphay * alphay);
-		float alpha2Tan2Theta = (alpha * absTanTheta) * (alpha * absTanTheta);
+		float alpha2Tan2Theta = pow2(alpha * absTanTheta);
 		return (-1 + sqrt(1.f + alpha2Tan2Theta)) / 2;
 	};
 
@@ -153,6 +153,7 @@ KRR_CALLABLE static Vector3f GGXSample(const Vector3f& wi, float alpha_x,
 	return normalize(Vector3f(-slope_x, -slope_y, 1.));
 }
 
+/* @returns: sampled microfacet normal that always face towards wo. */
 inline Vector3f GGXMicrofacetDistribution::Sample(const Vector3f& wo,
 	const Vector2f& u) const {
 #define KRR_GGX_SAMPLE_LEGACY
@@ -196,10 +197,9 @@ public:
 	}
 
 	KRR_CALLABLE void setup(const ShadingData &sd) {
-		R			= sd.specular;
-		float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
-		//alpha		= pow2(sd.roughness);
-		eta			= sd.IoR;
+		R			 = sd.specular;
+		float alpha	 = pow2(sd.roughness);
+		eta			 = sd.IoR;
 		distribution = { alpha, alpha };
 	}
 
@@ -291,8 +291,7 @@ public:
 
 	KRR_CALLABLE void setup(const ShadingData& sd) {
 		T = sd.diffuse * sd.specularTransmission;
-		float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
-		alpha = pow2(sd.roughness);
+		float alpha = pow2(sd.roughness);
 		// TODO: ETA=1 causes NaN, should switch to delta scattering
 		etaT = max(1.01f, sd.IoR);
 		distribution = { alpha, alpha };
@@ -327,21 +326,20 @@ public:
 		BSDFSample sample = {};
 		if (wo[2] == 0) return sample;
 
-		float eta = CosTheta(wo) > 0 ? etaT : 1 / etaT;
+		float eta;
 		if (distribution.isSpecular()) {
 			Vector3f wi, wh = { 0, 0, copysignf(1, wo[2]) };
-			if (!Refract(wo, wh, eta, &wi)) return {};
+			if (!Refract(wo, wh, etaT, &eta, &wi))
+				return {};
 			
-			//Color ft = (Color::Ones() - Fr(wo, wh)) / AbsCosTheta(wi);
-			Color ft = T / AbsCosTheta(wi);
+			Color ft = (Color::Ones() - Fr(wo, wh)) * T / AbsCosTheta(wi);
 			return BSDFSample(ft, wi, 1, BSDF_SPECULAR_TRANSMISSION);
 		}
 
 		Vector2f u = sg.get2D();
 		Vector3f wh = distribution.Sample(wo, u);
-		if (dot(wo, wh) < 0) return {};  // Should be rare
 		
-		if (!Refract(wo, wh, eta, &sample.wi)) return {};   // etaI / etaT
+		if (!Refract(wo, wh, etaT, &eta, &sample.wi)) return {};   // etaI / etaT
 
 		sample.pdf = pdf(wo, sample.wi);
 		sample.f = f(wo, sample.wi);
@@ -373,7 +371,7 @@ public:
 		return DisneyFresnel(disneyR0, metallic, etaT, dot(wo, wh)); // etaT / etaI, auto inversion
 #else
 		return FrSchlick(R, Vector3f(1.f), dot(wo, wh)) / R;
-		return FrDielectric(dot(wo, wh), etaT); 
+		return FrDielectric(dot(wo, wh), wo[2]), etaT);
 #endif
 	}
 
