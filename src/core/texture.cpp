@@ -233,8 +233,6 @@ void Material::renderUI() {
 	ui::ListBox("BSDF", (int*)&mBsdfType, bsdfTypes, (int)MaterialType::Count);
 	ui::DragFloat4("Diffuse", (float*)&mMaterialParams.diffuse, 1e-3, 0, 5);
 	ui::DragFloat4("Specular", (float*)&mMaterialParams.specular, 1e-3, 0, 1);
-	ui::DragFloat3("Emissive", (float*)&mMaterialParams.emissive, 1e-3, 0, 1);
-	ui::DragFloat("Diffuse transmission", &mMaterialParams.diffuseTransmission, 1e-3, 0, 1);
 	ui::DragFloat("Specular transmission", &mMaterialParams.specularTransmission, 1e-3, 0, 1);
 	ui::Checkbox("Double sided", &mDoubleSided);
 	if (ui::CollapsingHeader("Texture slots")) {

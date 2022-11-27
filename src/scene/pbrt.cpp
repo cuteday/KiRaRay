@@ -193,12 +193,13 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		matParams.specular[2] = 0.8;				// manually set metallic
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::GlassMaterial>(mat)) {
 		Log(Warning, "Encountered not well-supported glass material: %s", mat->name.c_str());
+		Log(Info, "Glass material %s has an index of %f", mat->name.c_str(), m->index);
 		material->mShadingModel		   = Material::ShadingModel::MetallicRoughness;
 		material->mBsdfType			   = MaterialType::Dielectric;
 		matParams.specularTransmission = luminance(cast(m->kt));
 		matParams.diffuse			   = Vector4f(cast(m->kt), 1);
 		matParams.specular			   = Vector4f{ 0, 0, 0.2, 0 };
-		matParams.IoR				   = m->index;
+		matParams.IoR				   = m->index == 1 ? 1.01 : m->index;
 	} else {
 		Log(Warning, "Encountered unsupported %s material: %s", 
 			mat->toString().c_str(), mat->name.c_str());

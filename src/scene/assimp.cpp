@@ -153,8 +153,10 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 
 	// Emissive color
 	if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
-		Vector3f emissive					= Vector3f(color[0], color[1], color[2]);
-		pMaterial->mMaterialParams.emissive = emissive;
+		Color3f emissive					= Vector3f(color[0], color[1], color[2]);
+		if (emissive.any()) {
+			pMaterial->setConstantTexture(Material::TextureType::Emissive, Color4f(emissive, 1));
+		}
 	}
 
 	// Double-Sided

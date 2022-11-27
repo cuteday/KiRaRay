@@ -39,24 +39,18 @@ struct ShadingData { // for use as per ray data, generated from ch
 	Vector3f pos;
 	Vector3f wo; // view direction
 	Vector2f uv; // texture coords
-
 	Frame frame;
 
 	float IoR{ 1.5 };
-	Color diffuse;	// diffuse reflectance
-	Color specular; // specular reflectance
-
-	Color transmission{ 1 }; // transmission color (shared by diffuse and specular for now)
-	float diffuseTransmission{ 0 };
+	Color diffuse;			// diffuse reflectance
+	Color specular;			// specular reflectance
 	float specularTransmission{ 0 };
-
 	float roughness{ 1 };	// linear roughness (alpha=roughness^2)
 	float metallic{ 0 };	//
 	float anisotropic{ 0 }; //
 
 	Light light{ nullptr };
 	MaterialType bsdfType;
-	bool miss{};
 
 	KRR_CALLABLE Interaction getInteraction() const { return Interaction(pos, wo, frame.N, uv); }
 
@@ -80,7 +74,7 @@ struct ShadingData { // for use as per ray data, generated from ch
 					type = type | BSDF_TRANSMISSION;
 				break;
 			default:
-				printf("This should not happen...\n");
+				printf("[ShadingData::getBsdfType] Unsupported BSDF.\n");
 		}
 
 		return type;

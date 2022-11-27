@@ -124,7 +124,6 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 
 	sd.IoR					= materialParams.IoR;
 	sd.bsdfType				= material.mBsdfType;
-	sd.diffuseTransmission	= materialParams.diffuseTransmission;
 	sd.specularTransmission = materialParams.specularTransmission;
 
 	Texture &diffuseTexture	 = material.mTextures[(uint) Material::TextureType::Diffuse];

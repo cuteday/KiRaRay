@@ -62,7 +62,7 @@ class Vector2 : public Vector<T, 2> {
 public:
 	using Vector<T, 2>::Vector;
 
-	KRR_CALLABLE Vector2(Vector<T, 3>& v) {
+	KRR_CALLABLE Vector2(const Vector<T, 3>& v) {
 		this->operator[](0) = v.operator[](0);
 		this->operator[](1) = v.operator[](1);
 	}
@@ -112,7 +112,7 @@ class Vector3 : public Vector<T, 3> {
 public:
 	using Vector<T, 3>::Vector;
 
-	KRR_CALLABLE Vector3(Vector<T, 4>& v) {
+	KRR_CALLABLE Vector3(const Vector<T, 4>& v) {
 		this->operator[](0) = v.operator[](0);
 		this->operator[](1) = v.operator[](1);
 		this->operator[](2) = v.operator[](2);
@@ -169,7 +169,7 @@ class Vector4 : public Vector<T, 4> {
 public:
 	using Vector<T, 4>::Vector;
 
-	KRR_CALLABLE Vector4(Vector3<T>& v, T w) {
+	KRR_CALLABLE Vector4(const Vector3<T>& v, T w) {
 		this->operator[](0) = v.operator[](0);
 		this->operator[](1) = v.operator[](1);
 		this->operator[](2) = v.operator[](2);

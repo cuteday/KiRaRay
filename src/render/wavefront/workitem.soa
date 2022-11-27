@@ -36,15 +36,12 @@ struct ShadingData {
 	float IoR;
 	Color diffuse;
 	Color specular;
-	Color transmission; 
-	float diffuseTransmission;
 	float specularTransmission;
 	float roughness;		
 	float metallic;		
 	float anisotropic;
 	Light light;			
 	MaterialType bsdfType;
-	bool miss;
 };
 
 struct RayWorkItem {

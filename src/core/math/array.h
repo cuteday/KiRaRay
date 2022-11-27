@@ -43,7 +43,7 @@ class Array2 : public Array<T, 2> {
 public:
 	using Array<T, 2>::Array;
 
-	KRR_CALLABLE Array2(Array<T, 3>& v) {
+	KRR_CALLABLE Array2(const Array<T, 3>& v) {
 		this->operator[](0) = v.operator[](0);
 		this->operator[](1) = v.operator[](1);
 	}
@@ -92,7 +92,7 @@ class Array3 : public Array<T, 3> {
 public:
 	using Array<T, 3>::Array;
 
-	KRR_CALLABLE Array3(Array<T, 4>& v) {
+	KRR_CALLABLE Array3(const Array<T, 4>& v) {
 		this->operator[](0) = v.operator[](0);
 		this->operator[](1) = v.operator[](1);
 		this->operator[](2) = v.operator[](2);
@@ -147,7 +147,7 @@ class Array4 : public Array<T, 4> {
 public:
 	using Array<T, 4>::Array;
 
-	KRR_CALLABLE Array4(Array<T, 3>& v, T w) {
+	KRR_CALLABLE Array4(const Array<T, 3>& v, T w) {
 		this->operator[](0) = v.operator[](0);
 		this->operator[](1) = v.operator[](1);
 		this->operator[](2) = v.operator[](2);

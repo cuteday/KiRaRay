@@ -48,7 +48,7 @@ public:
 
 	uint materialId{};
 	MeshData mData;
-	Color Le{};
+	Color Le{};		/* A mesh-specific area light, used when importing pbrt formats. */
 };
 
 KRR_NAMESPACE_END

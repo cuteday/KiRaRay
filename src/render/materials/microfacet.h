@@ -290,7 +290,7 @@ public:
 	}
 
 	KRR_CALLABLE void setup(const ShadingData& sd) {
-		T = sd.transmission;
+		T = sd.diffuse * sd.specularTransmission;
 		float alpha = GGXMicrofacetDistribution::RoughnessToAlpha(sd.roughness);
 		alpha = pow2(sd.roughness);
 		// TODO: ETA=1 causes NaN, should switch to delta scattering

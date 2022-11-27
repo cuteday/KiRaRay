@@ -76,7 +76,6 @@ public:
 		float e				 = sd.IoR;
 		float strans		 = sd.specularTransmission;
 		float diffuseWeight	 = (1 - metallicWeight) * (1 - strans);
-		float dt			 = sd.diffuseTransmission;
 		float roughness		 = sd.roughness;
 		float lum			 = luminance(c);
 		// normalize lum. to isolate hue+sat
