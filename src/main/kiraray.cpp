@@ -9,6 +9,7 @@
 #include "render/passes/denoise.h"
 #include "render/path/pathtracer.h"
 #include "render/wavefront/integrator.h"
+#include "render/ppg/integrator.h"
 #include "scene/importer.h"
 
 KRR_NAMESPACE_BEGIN
@@ -20,6 +21,7 @@ void registerRenderPasses() {
 	RenderPass::SharedPtr __AccumulatePass(new AccumulatePass());
 	RenderPass::SharedPtr __DenoisePass(new DenoisePass());
 	RenderPass::SharedPtr __ToneMappingPass(new ToneMappingPass());
+	RenderPass::SharedPtr __PPGPathTracer(new PPGPathTracer());
 }
 
 extern "C" int main(int argc, char *argv[]) {

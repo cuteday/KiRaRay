@@ -7,7 +7,7 @@
 	"passes": [
 		{
 			"enable": true,
-			"name": "WavefrontPathTracer"
+			"name": "PPGPathTracer"
 		},
 		{
 			"enable": true,
