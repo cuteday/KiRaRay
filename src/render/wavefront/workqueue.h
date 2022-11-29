@@ -4,17 +4,9 @@
 
 #include "math/math.h"
 #include "device/cuda.h"
+#include "device/atomic.h"
 #include "logger.h"
 #include "workitem.h"
-
-#define KRR_LEGACY_CUDA_ATOMICS
-#ifdef KRR_DEVICE_CODE
-#if (__CUDA_ARCH__ < 700)
-#define KRR_LEGACY_CUDA_ATOMICS
-#else 
-#include <cuda/atomic>
-#endif
-#endif
 
 KRR_NAMESPACE_BEGIN
 
@@ -36,73 +28,33 @@ template <typename WorkItem>
 class WorkQueue : public SOA<WorkItem> {
 public:
     WorkQueue() = default;
-    WorkQueue(int n, Allocator alloc) : SOA<WorkItem>(n, alloc) {}
-    WorkQueue& operator=(const WorkQueue& w) {
+	KRR_HOST WorkQueue(int n, Allocator alloc) : SOA<WorkItem>(n, alloc) {}
+    KRR_HOST WorkQueue& operator=(const WorkQueue& w) {
         SOA<WorkItem>::operator=(w);
-#if defined(KRR_DEVICE_CODE) && defined(KRR_LEGACY_CUDA_ATOMICS)
-		m_size = w.m_size;
-#else
-        m_size.store(w.m_size.load());
-#endif
+		m_size.store(w.m_size);
         return *this;
     }
 
-    KRR_CALLABLE
-        int size() const {
-#ifdef KRR_DEVICE_CODE
-#ifdef KRR_LEGACY_CUDA_ATOMICS
-        return m_size;
-#else
-        return m_size.load(cuda::std::memory_order_relaxed);
-#endif
-#else
-        return m_size.load(std::memory_order_relaxed);
-#endif
+    KRR_CALLABLE int size() const {
+		return m_size.load();
     }
-    KRR_CALLABLE
-        void reset() {
-#ifdef KRR_DEVICE_CODE
-#ifdef KRR_LEGACY_CUDA_ATOMICS
-        m_size = 0;
-#else
-        m_size.store(0, cuda::std::memory_order_relaxed);
-#endif
-#else
-        m_size.store(0, std::memory_order_relaxed);
-#endif
+    KRR_CALLABLE void reset() {
+		m_size.store(0);
     }
 
-    KRR_CALLABLE
-        int push(WorkItem w) {
+    KRR_CALLABLE int push(WorkItem w) {
         int index = allocateEntry();
         (*this)[index] = w;
         return index;
     }
 
 protected:
-    KRR_CALLABLE
-        int allocateEntry() {
-#ifdef KRR_DEVICE_CODE
-#ifdef KRR_LEGACY_CUDA_ATOMICS
-        return atomicAdd(&m_size, 1);
-#else
-        return m_size.fetch_add(1, cuda::std::memory_order_relaxed);
-#endif
-#else
-        return m_size.fetch_add(1, std::memory_order_relaxed);
-#endif
+    KRR_CALLABLE int allocateEntry() {
+		return m_size.fetch_add(1);
     }
 
 private:
-#ifdef KRR_DEVICE_CODE
-#ifdef KRR_LEGACY_CUDA_ATOMICS
-    int m_size{ 0 };
-#else
-    cuda::atomic<int, cuda::thread_scope_device> m_size{ 0 };
-#endif
-#else
-    std::atomic<int> m_size{ 0 };
-#endif 
+	atomic<int> m_size{ 0 };
 };
 
 template <typename F, typename WorkItem>
