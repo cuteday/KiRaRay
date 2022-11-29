@@ -8,6 +8,15 @@ SET (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 SET(KRR_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 ###############################################################################
+# Options
+###############################################################################
+
+OPTION (KRR_BUILD_STARLIGHT 
+	"Build some additional code implementation of fancy algorithms."
+	OFF
+)
+
+###############################################################################
 # Build type and C++ compiler setup
 ###############################################################################
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
