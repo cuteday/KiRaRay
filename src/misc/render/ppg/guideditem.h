@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include "render/wavefront/workitem.h"
+#include "render/wavefront/workqueue.h"
 #include "tree.h"
 
 KRR_NAMESPACE_BEGIN

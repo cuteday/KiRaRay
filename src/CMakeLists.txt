@@ -27,8 +27,6 @@ SET ( KRR_INCLUDE_ALL
 	${OptiX_INCLUDE}
 )
 
-SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
-
 SET ( KRR_CORE_SOURCE
 	core/scene.cpp
 	core/camera.cpp
@@ -80,6 +78,7 @@ SET ( KRR_CORE_HEADERS
 	core/host/memory.h
 	core/host/synchronize.h
 	core/host/timer.h
+	core/device/atomic.h
 	core/device/memory.h
 	core/device/context.h
 	core/device/buffer.h
@@ -258,8 +257,6 @@ ENDIF()
 ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
 
 #TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
-
-TARGET_INCLUDE_DIRECTORIES (kiraray PUBLIC 
-	${KRR_MISC_INCLUDE_ALL} 
-)
 TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib krr_starlight_lib)
+
+SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} ${KRR_MISC_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
