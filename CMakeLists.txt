@@ -8,6 +8,15 @@ SET (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 SET(KRR_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 ###############################################################################
+# Options
+###############################################################################
+
+OPTION (KRR_BUILD_STARLIGHT 
+	"Build some additional code implementation of fancy algorithms."
+	OFF
+)
+
+###############################################################################
 # Build type and C++ compiler setup
 ###############################################################################
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -147,4 +156,6 @@ INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/FindOptiX.cmake)
 find_package(OpenGL REQUIRED)
 
 ADD_SUBDIRECTORY (src)
-SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_DIRS} PARENT_SCOPE)	# exporting KRR_INCLUDE_DIRS to parent scope
+if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+	SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_DIRS} PARENT_SCOPE)	# exporting KRR_INCLUDE_DIRS to parent scope
+endif()

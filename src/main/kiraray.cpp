@@ -11,6 +11,10 @@
 #include "render/wavefront/integrator.h"
 #include "scene/importer.h"
 
+#if KRR_BUILD_STARLIGHT
+#include "render/ppg/integrator.h"
+#endif
+
 KRR_NAMESPACE_BEGIN
 
 void registerRenderPasses() {
@@ -20,6 +24,9 @@ void registerRenderPasses() {
 	RenderPass::SharedPtr __AccumulatePass(new AccumulatePass());
 	RenderPass::SharedPtr __DenoisePass(new DenoisePass());
 	RenderPass::SharedPtr __ToneMappingPass(new ToneMappingPass());
+#if KRR_BUILD_STARLIGHT
+	RenderPass::SharedPtr __PPGPathTracer(new PPGPathTracer());
+#endif
 }
 
 extern "C" int main(int argc, char *argv[]) {

@@ -27,8 +27,6 @@ SET ( KRR_INCLUDE_ALL
 	${OptiX_INCLUDE}
 )
 
-SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
-
 SET ( KRR_CORE_SOURCE
 	core/scene.cpp
 	core/camera.cpp
@@ -80,6 +78,7 @@ SET ( KRR_CORE_HEADERS
 	core/host/memory.h
 	core/host/synchronize.h
 	core/host/timer.h
+	core/device/atomic.h
 	core/device/memory.h
 	core/device/context.h
 	core/device/buffer.h
@@ -162,10 +161,6 @@ SET_SOURCE_FILES_PROPERTIES (
 	PROPERTIES LANGUAGE CUDA
 )
 
-FILE ( GLOB KRR_SOURCE_ALL
-	main/*
-)
-
 ###############################################################################
 # automatically creating definitions of structure of arrays (soa)
 ###############################################################################
@@ -233,9 +228,8 @@ ADD_LIBRARY ( krr_lib STATIC
 	${KRR_CORE_HEADERS}
 	${KRR_SOURCE}
 	${KRR_HEADERS}
-	${KRR_SOURCE_ALL}
 	${KRR_SHADERS}
-	# SOA
+	# SOA (for dependency need, generate soa file before building libraray)
 	${KRR_SOA_GENERATED}
 	# PTX
 	${PATHTRACER_PTX}
@@ -249,6 +243,7 @@ TARGET_COMPILE_DEFINITIONS (krr_lib PUBLIC ${KRR_DEFINITIONS})
 TARGET_INCLUDE_DIRECTORIES (krr_lib SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE})
 TARGET_LINK_LIBRARIES(krr_lib PUBLIC ${KRR_LIBS_ALL})
 
+
 IF (KRR_ENABLE_PYTHON)
 	ADD_LIBRARY(pykrr SHARED core/python/py.cpp)
 	TARGET_INCLUDE_DIRECTORIES(pykrr SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE} ${pybind11_INCLUDE_DIR} ${PYTHON_INCLUDE_DIRS})
@@ -260,3 +255,15 @@ ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
 
 #TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
 TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib)
+SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE)
+
+# The additional implementation of algorithms (in the static libraray "krr_starlight_lib") is not built by default
+# You can turn this on via CMake options (-DKRR_BUILD_STARLIGHT=ON)
+if (KRR_BUILD_STARLIGHT)
+set(KRR_BUILD_STARLIGHT 1)
+# ADD LIBRARY FROM MISC  (a.k.a. kirara startlight)
+ADD_SUBDIRECTORY (misc)
+MESSAGE ("KRR Starlight Include: ${KRR_MISC_INCLUDE_ALL}")
+TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_starlight_lib)
+SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} ${KRR_MISC_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
+endif()

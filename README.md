@@ -18,8 +18,8 @@
 
 ### Build and run
 
-| *MSVC@Windows* | [![Building](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml/badge.svg)](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml) |
-| -------------- | ------------------------------------------------- |
+| *Windows* | [![Building](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml/badge.svg)](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml) |
+| --------- | ------------------------------------------------------------ |
 
 #### Requirements
 
@@ -68,6 +68,27 @@ One can also save the current parameters (including camera parameters, render pa
 
 More visuals [here](https://cutesail.com/?p=493)!
 
+### Algorithms
+
+I tried to implement some algorithms designed for path tracing, during me playing with my toy renderer. Check it out at the [misc](src/misc) directory. Expend the entry below for details. 
+<details>
+<summary>Click to expand (・ω< )★ </summary>
+
+I collapsed this since they are not relevant to the main purpose to the main feature of *KiRaRay*, and is not interesting at all to people like me. Please do note that these code is just for playing (while I sadly find it not interesting while implementing them). These code is not performance-optimized, and will not be maintained. Also,  no guarantee for correctness, since I'm a just little noob on graphics \_(:з」∠)\_.
+
+These additional implementation of algorithms is not built along with *KiRaRay* by default. Turn a strange CMake option `KRR_BUILD_STARLIGHT` on (`-DKRR_BUILD_STARLIGHT=ON`) if one want to build them.
+
+#### Path Guiding
+
+This implements [Practical Path Guiding](https://github.com/search?q=practical+path), which is a path guiding algorithm targeted for offline rendering (and not that "practical" for real-time applications). What I did is largely to simply move the original implementation from CPU to GPU, and this makes its performance far from optimized. The operations that modifying the spatio-directional tree are still on host code (maybe this should be parallelized on GPU). The performance is not quite satisfying (about 70% more time per frame). 
+
+<p align=center>
+<img src="common/demo/pt_ppg.jpg" alt="pt_ppg" width="500" />
+
+The above image shows an 1spp rendering of a somewhat challenging scene, where PPG is trained using MC estimates of ~500spp. The noise got reduced (maybe not much of them), but the performance also dropped drastically (only 20fps@720p on my device). The code is located [here](src/misc/render/ppg).
+
+</details>
+
 ### Additional Information
 
 #### Performance
@@ -85,7 +106,7 @@ Currently, both of the two versions of the pathtracers (Megakernel / Wavefront),
 ### Epilogue
 
 Although the main purpose of this project is to let me (a beginner) learn c++ and optix, 
-I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i'm acting like a lazy old uncle, trying to sleep as more as possible (\*/ω＼\*).
+I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i am so lazy, trying to sleep as more as possible (\*/ω＼\*).
 
 For anyone that (accidentally) found this project: any questions, suggestions and bug reports are greatly appreciated!
 
