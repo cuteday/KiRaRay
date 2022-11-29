@@ -73,9 +73,10 @@ More visuals [here](https://cutesail.com/?p=493)!
 I tried to implement some algorithms designed for path tracing, during me playing with my toy renderer. Check it out at the [misc](src/misc) directory. Expend the entry below for details. 
 <details>
 <summary>Click to expand (・ω< )★ </summary>
+
 I collapsed this since they are not relevant to the main purpose to the main feature of *KiRaRay*, and is not interesting at all to people like me. Please do note that these code is just for playing (while I sadly find it not interesting while implementing them). These code is not performance-optimized, and will not be maintained. Also,  no guarantee for correctness, since I'm a just little noob on graphics \_(:з」∠)\_.
 
-These addition implementation of algorithms is not built along with *KiRaRay* by default. Turn a strange option `KRR_BUILD_STARLIGHT` on (`-DKRR_BUILD_STARLIGHT=ON`) if one want to build them,.
+These additional implementation of algorithms is not built along with *KiRaRay* by default. Turn a strange CMake option `KRR_BUILD_STARLIGHT` on (`-DKRR_BUILD_STARLIGHT=ON`) if one want to build them.
 
 #### Path Guiding
 

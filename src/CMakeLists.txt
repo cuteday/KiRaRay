@@ -257,6 +257,8 @@ ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
 TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib)
 SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE)
 
+# The additional implementation of algorithms (in the static libraray "krr_starlight_lib") is not built by default
+# You can turn this on via CMake options (-DKRR_BUILD_STARLIGHT=ON)
 if (KRR_BUILD_STARLIGHT)
 set(KRR_BUILD_STARLIGHT 1)
 # ADD LIBRARY FROM MISC  (a.k.a. kirara startlight)
