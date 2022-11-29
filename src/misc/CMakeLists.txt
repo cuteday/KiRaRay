@@ -37,6 +37,7 @@ add_library(KRR_MISC_PTX STATIC
 	# peseudo target for SOA generation priority
 	${PPG_PTX}
 )
+add_dependencies(KRR_MISC_PTX krr_misc_soa_generated)
 
 set ( KRR_MISC_LIBS_ALL
 	krr_lib
@@ -51,7 +52,7 @@ add_library (krr_starlight_lib STATIC
 	# PTX
 	${PPG_PTX}
 )
-add_dependencies(KRR_MISC_PTX krr_misc_soa_generated)
+add_dependencies(krr_starlight_lib krr_misc_soa_generated)
 set_property(TARGET krr_starlight_lib PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 target_link_libraries (krr_starlight_lib PRIVATE ${KRR_MISC_LIBS_ALL})
 target_include_directories(krr_starlight_lib PUBLIC ${KRR_MISC_INCLUDE_ALL})
