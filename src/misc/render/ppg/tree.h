@@ -2,9 +2,6 @@
 #include <atomic>
 #include <array>
 #include <stack>
-#ifdef KRR_DEVICE_CODE
-#include <cuda/atomic>
-#endif
 
 #include "common.h"
 #include "sampler.h"
