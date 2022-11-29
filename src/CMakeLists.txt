@@ -229,7 +229,7 @@ ADD_LIBRARY ( krr_lib STATIC
 	${KRR_SOURCE}
 	${KRR_HEADERS}
 	${KRR_SHADERS}
-	# SOA
+	# SOA (for dependency need, generate soa file before building libraray)
 	${KRR_SOA_GENERATED}
 	# PTX
 	${PATHTRACER_PTX}

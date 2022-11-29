@@ -44,8 +44,12 @@ set ( KRR_MISC_LIBS_ALL
 	krr_cuda_warning
 	KRR_MISC_PTX
 )
-add_library (krr_starlight_lib
+add_library (krr_starlight_lib STATIC
 	${KRR_PPG_PT}
+	# SOA
+	${KRR_MISC_SOA_GENERATED}
+	# PTX
+	${PPG_PTX}
 )
 add_dependencies(KRR_MISC_PTX krr_misc_soa_generated)
 set_property(TARGET krr_starlight_lib PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
