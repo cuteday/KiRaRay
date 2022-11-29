@@ -66,6 +66,7 @@ struct ShadingData { // for use as per ray data, generated from ch
 				type = type | BSDF_REFLECTION | BSDF_TRANSMISSION;
 				break;
 			case MaterialType::Disney:
+				[[fallthrough]];
 			case MaterialType::Principled:
 				type = roughness <= 1e-3f ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
 				if (diffuse.any() && specularTransmission < 1 && metallic < 1)

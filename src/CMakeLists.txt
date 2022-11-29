@@ -162,10 +162,6 @@ SET_SOURCE_FILES_PROPERTIES (
 	PROPERTIES LANGUAGE CUDA
 )
 
-FILE ( GLOB KRR_SOURCE_ALL
-	main/*
-)
-
 ###############################################################################
 # automatically creating definitions of structure of arrays (soa)
 ###############################################################################
@@ -233,7 +229,6 @@ ADD_LIBRARY ( krr_lib STATIC
 	${KRR_CORE_HEADERS}
 	${KRR_SOURCE}
 	${KRR_HEADERS}
-	${KRR_SOURCE_ALL}
 	${KRR_SHADERS}
 	# SOA
 	${KRR_SOA_GENERATED}
@@ -249,6 +244,10 @@ TARGET_COMPILE_DEFINITIONS (krr_lib PUBLIC ${KRR_DEFINITIONS})
 TARGET_INCLUDE_DIRECTORIES (krr_lib SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE})
 TARGET_LINK_LIBRARIES(krr_lib PUBLIC ${KRR_LIBS_ALL})
 
+# ADD LIBRARY FROM MISC  (a.k.a. kirara startlight)
+ADD_SUBDIRECTORY (misc)
+MESSAGE ("KRR Starlight Include: ${KRR_MISC_INCLUDE_ALL}")
+
 IF (KRR_ENABLE_PYTHON)
 	ADD_LIBRARY(pykrr SHARED core/python/py.cpp)
 	TARGET_INCLUDE_DIRECTORIES(pykrr SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE} ${pybind11_INCLUDE_DIR} ${PYTHON_INCLUDE_DIRS})
@@ -259,4 +258,8 @@ ENDIF()
 ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
 
 #TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
-TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib)
+
+TARGET_INCLUDE_DIRECTORIES (kiraray PUBLIC 
+	${KRR_MISC_INCLUDE_ALL} 
+)
+TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib krr_starlight_lib)
