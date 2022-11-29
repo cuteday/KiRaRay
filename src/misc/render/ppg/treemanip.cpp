@@ -12,7 +12,7 @@ KRR_NAMESPACE_BEGIN
 KRR_HOST void QuadTreeNode::initialize() {
 	for (size_t i = 0; i < 4/*m_sum.size()*/; ++i) {
 		m_children[i] = 0;
-		storeAtomic(m_sum[i], (AtomicType) 0.0);
+		m_sum[i].store((AtomicType) 0);
 	}
 }
 
@@ -57,8 +57,8 @@ KRR_HOST void QuadTreeNode::build(std::vector<QuadTreeNode>& nodes) {		// [calle
 }
 
 KRR_HOST void DTree::initialize() {
-	storeAtomic(m_sum, (AtomicType) 0.0);
-	storeAtomic(m_statisticalWeight, (AtomicType) 0.0);
+	m_sum.store(0);
+	m_statisticalWeight.store(0);
 	m_maxDepth = 0;
 	std::vector<QuadTreeNode> nodes(1);
 	nodes.front().initialize();
@@ -97,8 +97,8 @@ KRR_HOST void DTree::reset(const DTree& previousDTree, int newMaxDepth, float su
 	/* Do the adaptive subdivision on host-side. */
 	std::vector<QuadTreeNode> this_nodes(1);
 	std::vector<QuadTreeNode> other_nodes(previousDTree.m_nodes.size());
-	storeAtomic(m_sum, (AtomicType) 0.0);
-	storeAtomic(m_statisticalWeight, (AtomicType) 0.0);
+	m_sum.store(0);
+	m_statisticalWeight.store(0);
 	m_maxDepth = 0;
 	this_nodes.back().initialize();
 	previousDTree.m_nodes.copy_to_host(other_nodes.data(), previousDTree.m_nodes.size());
@@ -170,7 +170,7 @@ KRR_HOST void DTree::build() {
 	for (int i = 0; i < 4; ++i) {
 		sum += root.sum(i);
 	}
-	storeAtomic(m_sum, (AtomicType) sum);
+	m_sum.store((AtomicType) sum);
 	m_nodes.copy_from_host(nodes.data(), n_nodes);
 }
 

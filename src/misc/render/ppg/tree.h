@@ -12,6 +12,7 @@
 #include "interop.h"
 #include "device/context.h"
 #include "device/cuda.h"
+#include "device/atomic.h"
 #include "host/synchronize.h"
 #include "math/math.h"
 #include "util/check.h"
@@ -19,44 +20,6 @@
 KRR_NAMESPACE_BEGIN
 using namespace math;
 using AtomicType = double;	/* The type used for storing atomic data, e.g., per-node irradiance. */
-
-template <typename T>
-#ifdef KRR_DEVICE_CODE
-KRR_CALLABLE void storeAtomic(cuda::atomic<T, cuda::thread_scope_device>& var, T val) {
-	var.store(val, cuda::std::memory_order_relaxed);
-}
-#else
-KRR_CALLABLE void storeAtomic(std::atomic<T>& var, T val) {
-	var.store(val, std::memory_order_relaxed);
-}
-#endif
-
-template <typename T>
-#ifdef KRR_DEVICE_CODE
-KRR_CALLABLE T loadAtomic(const cuda::atomic<T, cuda::thread_scope_device>& var) {
-	return var.load(cuda::std::memory_order_relaxed);
-}
-#else
-KRR_CALLABLE T loadAtomic(const std::atomic<T>& var) {
-	return var.load(std::memory_order_relaxed);
-}
-#endif
-
-#ifdef KRR_DEVICE_CODE
-template <typename T>
-KRR_DEVICE static T addToAtomicfloat(cuda::atomic<T, cuda::thread_scope_device>& var, T val) {
-	T* var_addr = (T*)&var;
-	return atomicAdd(var_addr, val);
-} 
-#else
-template <typename T>
-KRR_CALLABLE static T addToAtomicfloat(std::atomic<T>& var, T val) {
-	auto cur = var.load();
-	/* keep trying adding that atomic float, until no one has changed it in between. */
-	while (!var.compare_exchange_weak(cur, cur + val));
-	return cur;
-}
-#endif
 
 enum class ESampleCombination {
 	EDiscard,
@@ -88,11 +51,11 @@ public:
 	KRR_HOST void initialize();
 	
 	KRR_CALLABLE void setSum(int index, float val) {
-		storeAtomic(m_sum[index], (AtomicType) val);
+		m_sum[index].store((AtomicType) val);
 	}
 
 	KRR_CALLABLE float sum(int index) const {
-		return loadAtomic(m_sum[index]);
+		return m_sum[index].load();
 	}
 
 	KRR_HOST void copyFrom(const QuadTreeNode& arg);
@@ -233,7 +196,8 @@ public:
 		int index = childIndex(p);
 
 		if (isLeaf(index)) {
-			float prevRadiance = addToAtomicfloat(m_sum[index], (AtomicType) irradiance);
+			//float prevRadiance = addToAtomicfloat(m_sum[index], (AtomicType) irradiance);
+			float prevRadiance = m_sum[index].fetch_add((AtomicType) irradiance);
 			//if (prevRadiance < M_EPSILON)
 			//	printf("Recording irradiance %f to node %d, change it %f -> %f\n", 
 			//		irradiance, index, prevRadiance, sum(index));
@@ -267,7 +231,8 @@ public:
 				childOrigin, childOrigin + Vector2f(childSize));
 			if (w > 0.0f) {
 				if (isLeaf(i)) {
-					addToAtomicfloat(m_sum[i], (AtomicType) value * w);
+					//addToAtomicfloat(m_sum[i], (AtomicType) value * w);
+					m_sum[i].fetch_add((AtomicType) value * w);
 				}
 				else {
 					nodes[child(i)].record(origin, size, childOrigin, childSize, value, nodes);
@@ -287,11 +252,7 @@ public:
 private:
 	friend class DTree;
 
-#ifdef KRR_DEVICE_CODE
-	cuda::atomic<AtomicType, cuda::thread_scope_device> m_sum[4]{ 0 };
-#else 
-	std::atomic<AtomicType> m_sum[4]{ 0 };
-#endif
+	atomic<AtomicType> m_sum[4]{ 0 };
 	uint16_t m_children[4]{};
 };
 
@@ -304,41 +265,40 @@ public:
 
 	KRR_HOST void clear();
 
-	KRR_HOST DTree& operator = (const DTree& other);
+	KRR_HOST DTree &operator=(const DTree &other);
 
-	KRR_HOST DTree(const DTree& other);
+	KRR_HOST DTree(const DTree &other);
 
-	KRR_CALLABLE const QuadTreeNode& node(size_t i) const {
-		return m_nodes[i];
-	}
+	KRR_CALLABLE const QuadTreeNode &node(size_t i) const { return m_nodes[i]; }
 
 	KRR_CALLABLE float mean() const {
-		float statisticalWeight = loadAtomic(m_statisticalWeight);
+		float statisticalWeight = m_statisticalWeight.load();
 		if (statisticalWeight == 0) {
 			return 0;
 		}
 		const float factor = 1 / (M_4PI * statisticalWeight);
-		return factor * loadAtomic(m_sum);
+		return factor * m_sum.load();
 	}
 
 	/* Irradiance is radiance/woPdf, statistical weight is generally a constant value. */
-	KRR_DEVICE void recordIrradiance(Vector2f p, float irradiance, float statisticalWeight, EDirectionalFilter directionalFilter) {
+	KRR_DEVICE void recordIrradiance(Vector2f p, float irradiance, float statisticalWeight,
+									 EDirectionalFilter directionalFilter) {
 		if (!isinf(statisticalWeight) && statisticalWeight > 0) {
-			float prevStatWeight = addToAtomicfloat(m_statisticalWeight, (AtomicType)statisticalWeight);
-			
-			if (!isinf(irradiance) && irradiance > 0) {
+			float prevStatWeight = m_statisticalWeight.fetch_add((AtomicType) statisticalWeight);
+
+		   if (!isinf(irradiance) && irradiance > 0) {
 				if (directionalFilter == EDirectionalFilter::ENearest) {
 					m_nodes[0].record(p, irradiance * statisticalWeight, m_nodes);
-				}
-				else {
+				} else {
 					printf("DTree::recordIrradiance: this should not get called...\n");
-					int depth = depthAt(p);
+					int depth  = depthAt(p);
 					float size = pow(0.5f, depth);
 
 					Vector2f origin = p;
 					origin[0] -= size / 2;
 					origin[1] -= size / 2;
-					m_nodes[0].record(origin, size, Vector2f(0.0f), 1.0f, irradiance * statisticalWeight / (size * size), m_nodes);
+					m_nodes[0].record(origin, size, Vector2f(0.0f), 1.0f,
+									  irradiance * statisticalWeight / (size * size), m_nodes);
 				}
 			}
 		}
@@ -351,37 +311,29 @@ public:
 		return m_nodes[0].pdf(p, m_nodes) * M_INV_4PI;
 	}
 
-	KRR_CALLABLE int depthAt(Vector2f p) const {
-		return m_nodes[0].depthAt(p, m_nodes);
-	}
+	KRR_CALLABLE int depthAt(Vector2f p) const { return m_nodes[0].depthAt(p, m_nodes); }
 
-	KRR_CALLABLE int depth() const {
-		return m_maxDepth;
-	}
+	KRR_CALLABLE int depth() const { return m_maxDepth; }
 
-	KRR_CALLABLE Vector2f sample(Sampler& sampler) const {
-		if (!(mean() > 0)) {	/* This d-tree has no radiance records. */
+	KRR_CALLABLE Vector2f sample(Sampler &sampler) const {
+		if (!(mean() > 0)) { /* This d-tree has no radiance records. */
 			return sampler.get2D();
 		}
-		//else printf("SAMPLE:: nodes have mean: %f\n", mean());
 		Vector2f res = m_nodes[0].sample(sampler, m_nodes);
 		return clamp(res, 0.f, 1.f);
 	}
 
-	KRR_CALLABLE size_t numNodes() const {
-		return m_nodes.size();
-	}
+	KRR_CALLABLE size_t numNodes() const { return m_nodes.size(); }
 
-	KRR_CALLABLE float statisticalWeight() const { 
-		return loadAtomic(m_statisticalWeight);
-	}
+	KRR_CALLABLE float statisticalWeight() const { return m_statisticalWeight.load(); }
 
 	KRR_CALLABLE void setStatisticalWeight(float statisticalWeight) {
-		storeAtomic(m_statisticalWeight, (AtomicType) statisticalWeight);
+		m_statisticalWeight.store((AtomicType) statisticalWeight);
 	}
 
-	/* This function adaptively subdivides / prunes the D-Tree, recursively in a sequential manner. */
-	KRR_HOST void reset(const DTree& previousDTree, int newMaxDepth, float subdivisionThreshold);
+	/* This function adaptively subdivides / prunes the D-Tree, recursively in a sequential manner.
+	 */
+	KRR_HOST void reset(const DTree &previousDTree, int newMaxDepth, float subdivisionThreshold);
 
 	KRR_CALLABLE size_t approxMemoryFootprint() const {
 		return m_nodes.sizeInBytes() * sizeof(QuadTreeNode) + sizeof(*this);
@@ -390,18 +342,8 @@ public:
 	KRR_HOST void build();
 
 private:
-#ifdef KRR_DEVICE_CODE
-	cuda::atomic<AtomicType, cuda::thread_scope_device> m_statisticalWeight{ 0 };
-#else
-	/* The statistical weight, usually linear to the sample count within this node. */
-	std::atomic<AtomicType> m_statisticalWeight{ 0 };
-#endif
-#ifdef KRR_DEVICE_CODE
-	cuda::atomic<AtomicType, cuda::thread_scope_device> m_sum{ 0 };
-#else
-	/* The sum of all the irradiance value from the 4 children. */
-	std::atomic<AtomicType> m_sum{ 0 };
-#endif
+	atomic<AtomicType> m_statisticalWeight{ 0 };
+	atomic<AtomicType> m_sum{ 0 };
 
 	int m_maxDepth{ 0 };
 	/* These data resides the device memory, on the device-side S-Tree. */
@@ -431,10 +373,6 @@ public:
 		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss) {
 		if (!rec.isDelta) {
 			float irradiance = rec.radiance / rec.woPdf;
-			//if (irradiance > 1e-2f)
-			//	printf("Recording an seemingly unreasonably large irradiance value %f from: radiance = %f, "
-			//		   "pdf = %f\n",
-			//		   irradiance, rec.radiance, rec.woPdf);
 			building.recordIrradiance(dirToCanonical(rec.d), irradiance, rec.statisticalWeight, directionalFilter);
 		}
 	}
