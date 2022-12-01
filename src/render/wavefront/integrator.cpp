@@ -250,7 +250,7 @@ void WavefrontPathTracer::renderUI() {
 		ui::InputInt("Debug pixel:", (int *) &debugPixel);
 	ui::Checkbox("Clamping pixel value", &enableClamp);
 	if (enableClamp)
-		ui::DragFloat("Max:", &clampMax, 1, 1, 500);
+		ui::DragFloat("Max:", &clampMax, 1, 1, 50000, ".1f");
 	if (ui::CollapsingHeader("Misc")) {
 		ui::Checkbox("Transparent background", &transparentBackground);
 	}

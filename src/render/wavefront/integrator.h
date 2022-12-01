@@ -75,7 +75,7 @@ public:
 	bool debugOutput{ };
 	uint debugPixel{ };
 	bool enableClamp{ true };
-	float clampMax{ 100 };
+	float clampMax{ 1000 };
 
 	KRR_REGISTER_PASS_DEC(WavefrontPathTracer);
 };

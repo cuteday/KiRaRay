@@ -61,31 +61,27 @@ One can also save the current parameters (including camera parameters, render pa
 ### Galleries
 
 <p align=center>
-<img src=common/demo/kitchen.png width="800">
-
-<p align=center>
-<img src=common/demo/living-room.png width="800">
-
-More visuals [here](https://cutesail.com/?p=493)!
+<img src=common/demo/gallery.png width="800">
 
 ### Algorithms
 
-I tried to implement some algorithms designed for path tracing, during me playing with my toy renderer. Check it out at the [misc](src/misc) directory. Expend the entry below for details. 
+I tried to implement some algorithms designed for path tracing, during me playing with my toy renderer. Check it out at the [misc](src/misc) directory. Expand the entry below for details. 
 <details>
 <summary>Click to expand (・ω< )★ </summary>
 
-I collapsed this since they are not relevant to the main purpose to the main feature of *KiRaRay*, and is not interesting at all to people like me. Please do note that these code is just for playing (while I sadly find it not interesting while implementing them). These code is not performance-optimized, and will not be maintained. Also,  no guarantee for correctness, since I'm a just little noob on graphics \_(:з」∠)\_.
+I collapsed this since they are not relevant to the main feature of *KiRaRay*, and are not interesting at all to people like me. Please do note that these code is just for playing (while I sadly find it not interesting when implementing them). These code is not performance-optimized, nor it will be maintained. Also, no guarantee for correctness, since I'm just a little noob on graphics \_(:з」∠)\_.
 
-These additional implementation of algorithms is not built along with *KiRaRay* by default. Turn a strange CMake option `KRR_BUILD_STARLIGHT` on (`-DKRR_BUILD_STARLIGHT=ON`) if one want to build them.
+These additional implementations as such is not built along with *KiRaRay* by default. Turn a strange CMake option `KRR_BUILD_STARLIGHT` on (`-DKRR_BUILD_STARLIGHT=ON`) if one want to build them.
 
 #### Path Guiding
 
-This implements [Practical Path Guiding](https://github.com/search?q=practical+path), which is a path guiding algorithm targeted for offline rendering (and not that "practical" for real-time applications). What I did is largely to simply move the original implementation from CPU to GPU, and this makes its performance far from optimized. The operations that modifying the spatio-directional tree are still on host code (maybe this should be parallelized on GPU). The performance is not quite satisfying (about 70% more time per frame). 
+This implements [Practical Path Guiding](https://github.com/Tom94/practical-path-guiding), which is a path guiding algorithm targeted for offline rendering (and not that "practical" for real-time applications). What I did is largely to simply move the original implementation from CPU to GPU, and this makes its performance far from optimized. The operations that modifying the spatio-directional tree are still on host code (maybe this should be parallelized on GPU). The performance is not quite satisfying (about 70% more time per frame). 
 
 <p align=center>
-<img src="common/demo/pt_ppg.jpg" alt="pt_ppg" width="500" />
+<img src="common/demo/pt_ppg.jpg" alt="pt_ppg" width="600" />
 
-The above image shows an 1spp rendering of a somewhat challenging scene, where PPG is trained using MC estimates of ~500spp. The noise got reduced (maybe not much of them), but the performance also dropped drastically (only 20fps@720p on my device). The code is located [here](src/misc/render/ppg).
+
+The above image shows an 1spp rendering of a somewhat challenging scene (*veach-ajar*), where PPG is trained using MC estimates of ~500spp. The noise got reduced (maybe not much of them), but the performance also dropped drastically (only <20fps@720p on my device). The code is located [here](src/misc/render/ppg). The `PGGPathTracer` could be invoked with the configuration at [configs/misc](common/configs/misc/ppg.json).
 
 </details>
 
