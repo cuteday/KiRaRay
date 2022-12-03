@@ -1,7 +1,7 @@
 #include "image.h"
 #include "logger.h"
 #include "tinyexr.h"
-#include "math/math.h"
+
 #include "util/math_utils.h"
 
 KRR_NAMESPACE_BEGIN
@@ -231,7 +231,7 @@ fail:
 } // namespace pfm
 
 namespace image {
-	using namespace math;
+	
 
 Vector2f ndir_to_oct_equal_area_unorm(Vector3f n) {
 	// Use atan2 to avoid explicit div-by-zero check in atan(y/x).

@@ -1,14 +1,14 @@
 #pragma once
 
 #include "common.h"
-#include "math/math.h"
+
 #include "matutils.h"
 #include "taggedptr.h"
 
 KRR_NAMESPACE_BEGIN
 
 namespace bsdf {
-	using namespace math;
+	
 
 	KRR_CALLABLE Color FrSchlick(Color f0, Color f90, float cosTheta) {
 		return f0 + (f90 - f0) * pow5(clamp(1 - fabs(cosTheta), 0.f, 1.f)); // clamp to avoid NaN if cosTheta = 1+epsilon

@@ -74,6 +74,7 @@ public:
 	}
 #endif
 
+#ifdef KRR_MATH_JSON
 	friend void to_json(json &j, const Array2<T> &v) {
 		for (int i = 0; i < 2; i++) {
 			j.push_back(v[i]);
@@ -85,6 +86,7 @@ public:
 			v[i] = (T) j.at(i);
 		}
 	}
+#endif
 };
 
 template <typename T>
@@ -129,6 +131,7 @@ public:
 	}
 #endif
 
+#ifdef KRR_MATH_JSON
 	friend void to_json(json &j, const Array3<T> &v) {
 		for (int i = 0; i < 3; i++) {
 			j.push_back(v[i]);
@@ -140,6 +143,7 @@ public:
 			v[i] = (T) j.at(i);
 		}
 	}
+#endif
 };
 
 template <typename T>
@@ -175,6 +179,7 @@ public:
 	}
 #endif
 
+#ifdef KRR_MATH_JSON
 	friend void to_json(json &j, const Array4<T> &v) {
 		for (int i = 0; i < 4; i++) {
 			j.push_back(v[i]);
@@ -186,6 +191,7 @@ public:
 			v[i] = (T) j.at(i);
 		}
 	}
+#endif
 };
 
 using Array2i = Array2<int>;

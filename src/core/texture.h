@@ -7,7 +7,7 @@
 #include <cuda_runtime.h>
 
 #include "common.h"
-#include "math/math.h"
+
 #include "file.h"
 #include "window.h"
 #include "raytracing.h"

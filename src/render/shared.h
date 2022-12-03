@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/math.h"
+
 #include "util/math_utils.h"
 #include "raytracing.h"
 #include "scene.h"
@@ -19,8 +19,8 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace math;
-using namespace math::utils;
+
+using namespace utils;
 
 namespace shader {
 

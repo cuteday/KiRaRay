@@ -7,7 +7,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace math;
+
 using namespace importer;
 
 namespace {

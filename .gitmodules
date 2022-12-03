@@ -12,10 +12,10 @@
 	path = src/ext/pybind11
 	url = https://github.com/pybind/pybind11.git
 	branch = stable
-[submodule "src/ext/eigen"]
-	path = src/ext/eigen
-	url = https://github.com/cuteday/Eigen.git
 [submodule "src/ext/pbrtparser"]
 	path = src/ext/pbrtparser
 	url = https://github.com/cuteday/pbrt-parser.git
 	branch = cute
+[submodule "src/core/math/3rdparty/eigen"]
+	path = src/core/math/3rdparty/eigen
+	url = https://github.com/cuteday/Eigen.git

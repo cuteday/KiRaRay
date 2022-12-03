@@ -9,7 +9,7 @@
 
 #include "light.h"
 #include "logger.h"
-#include "math/math.h"
+
 #include "scene.h"
 #include "scene/importer.h"
 #include "util/string.h"

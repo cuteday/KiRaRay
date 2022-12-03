@@ -4,7 +4,7 @@
 #include "common.h"
 #include "window.h"
 #include "renderpass.h"
-#include "math/math.h"
+
 #include "device/buffer.h"
 
 KRR_NAMESPACE_BEGIN

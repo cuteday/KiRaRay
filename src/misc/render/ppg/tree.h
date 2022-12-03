@@ -11,11 +11,11 @@
 #include "device/cuda.h"
 #include "device/atomic.h"
 #include "host/synchronize.h"
-#include "math/math.h"
+
 #include "util/check.h"
 
 KRR_NAMESPACE_BEGIN
-using namespace math;
+
 using AtomicType = double;	/* The type used for storing atomic data, e.g., per-node irradiance. */
 
 enum class ESampleCombination {

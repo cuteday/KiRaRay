@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "math/math.h"
+
 #include "bxdf.h"
 
 #define _DEFINE_BSDF_INTERNAL_ROUTINES(bsdf_name)														\
@@ -31,7 +31,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace math;
+
 
 namespace bsdf{
 	constexpr float minCosTheta = 1e-6f;

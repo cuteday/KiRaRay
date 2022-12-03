@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "math/math.h"
+
 #include "render/shared.h"
 
 #include "bxdf.h"

@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-#include "math/math.h"
+
 #include "util/math_utils.h"
 
 #define KRR_RAY_TMAX	(1e20f)
@@ -10,7 +10,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace math;
+
 
 class Material;
 class Light;
@@ -51,7 +51,7 @@ struct Frame {
 	KRR_CALLABLE Frame(Vector3f n, Vector3f t, Vector3f b) : N(n), T(t), B(b) {}
 
 	KRR_CALLABLE Frame(Vector3f n) : N(n) {
-		T = math::utils::getPerpendicular(n);
+		T = utils::getPerpendicular(n);
 		B = normalize(cross(n, T));
 	}
 

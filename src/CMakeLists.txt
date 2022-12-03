@@ -1,4 +1,5 @@
 ADD_SUBDIRECTORY(ext)
+ADD_SUBDIRECTORY(core/math)
 
 ###############################################################################
 # include files
@@ -15,6 +16,7 @@ SET ( KRR_INCLUDE_ALL
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/core
 	${CMAKE_CURRENT_BINARY_DIR}/include
+	${KRR_MATH_INCLUDE_DIRS}
 	${ASSIMP_INCLUDE_DIRS}
 	${GLEW_INCLUDE_DIRS}
 	${GLFW_INCLUDE_DIRS}
@@ -62,16 +64,6 @@ SET ( KRR_CORE_HEADERS
 	core/scene.h
 	core/texture.h
 	core/sampler.h
-	# maths
-	core/math/math.h
-	core/math/vector.h
-	core/math/array.h
-	core/math/matrix.h
-	core/math/quaternion.h
-	core/math/aabb.h
-	core/math/complex.h
-	core/math/constants.h
-	core/math/functors.h
 	# cuda device backend and host-device interops
 	core/interop.h
 	core/host/memory.h
@@ -219,6 +211,7 @@ SET(KRR_LIBS_ALL
 	${OPENGL_gl_LIBRARY}
 	${CUDA_LIBRARIES}
 	KRR_PTX
+	krr_math
 	krr_cuda_cfg
 	krr_cuda_warning
 )

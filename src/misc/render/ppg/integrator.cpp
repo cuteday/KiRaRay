@@ -1,6 +1,6 @@
 #include "common.h"
 #include "window.h"
-#include "math/math.h"
+
 #include "util/check.h"
 
 #include "tree.h"

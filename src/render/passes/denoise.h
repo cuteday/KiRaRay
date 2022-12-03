@@ -4,7 +4,7 @@
 
 #include "common.h"
 #include "device/buffer.h"
-#include "math/math.h"
+
 #include "renderpass.h"
 #include "window.h"
 

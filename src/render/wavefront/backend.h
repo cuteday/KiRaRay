@@ -4,7 +4,7 @@
 #include "scene.h"
 #include "workqueue.h"
 #include "wavefront.h"
-#include "math/math.h"
+
 #include "device/context.h"
 
 KRR_NAMESPACE_BEGIN

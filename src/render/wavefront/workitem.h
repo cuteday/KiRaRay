@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-#include "math/math.h"
+
 #include "render/materials/bxdf.h"
 #include "raytracing.h"
 #include "render/shared.h"

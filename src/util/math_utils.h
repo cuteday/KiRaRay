@@ -1,13 +1,12 @@
 #pragma once
 
 #include "common.h"
-#include "math/math.h"
+
 #include "util/check.h"
 #include "util/hash.h"
 
 KRR_NAMESPACE_BEGIN
 
-namespace math {
 namespace utils {
 /*******************************************************
  * Numerical
@@ -304,6 +303,5 @@ KRR_CALLABLE uint32_t Compact1By2(uint32_t x) {
 	return x;
 }
 } // namespace utils
-} // namespace math
 
 KRR_NAMESPACE_END

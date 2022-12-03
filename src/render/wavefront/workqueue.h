@@ -2,7 +2,7 @@
 #include "common.h"
 #include <atomic>
 
-#include "math/math.h"
+
 #include "device/cuda.h"
 #include "device/atomic.h"
 #include "logger.h"

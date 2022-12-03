@@ -2,7 +2,7 @@
 
 #include "bsdf.h"
 #include "common.h"
-#include "math/math.h"
+
 #include "shared.h"
 #include "util/hash.h"
 

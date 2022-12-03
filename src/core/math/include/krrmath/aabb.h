@@ -4,7 +4,7 @@
 #include <Eigen/Geometry>
 
 #include "common.h"
-#include "math/vector.h"
+#include "vector.h"
 
 KRR_NAMESPACE_BEGIN
 	

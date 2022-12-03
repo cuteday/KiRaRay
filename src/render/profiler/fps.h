@@ -4,7 +4,7 @@
 #include "common.h"
 #include "logger.h"
 #include "window.h"
-#include "math/math.h"
+
 #include "host/timer.h"
 #include "util/ema.h"
 

@@ -3,7 +3,7 @@
 #include "common.h"
 #include "taggedptr.h"
 
-#include "math/math.h"
+
 #include "util/math_utils.h"
 
 #include "bxdf.h"

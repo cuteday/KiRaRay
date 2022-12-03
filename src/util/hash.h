@@ -1,7 +1,7 @@
 /* float number hashing from pbrt-v4 */
 #pragma once
 #include "common.h"
-#include "math/math.h"
+
 
 KRR_NAMESPACE_BEGIN
 

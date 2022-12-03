@@ -10,7 +10,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace math;
+
 
 struct ShapeSample {
 	Interaction intr;

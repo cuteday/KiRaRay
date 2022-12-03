@@ -4,7 +4,7 @@
 #include "common.h"
 #include "window.h"
 #include "logger.h"
-#include "math/math.h"
+
 #include "device/buffer.h"
 #include "scene.h"
 

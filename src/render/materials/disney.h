@@ -4,7 +4,7 @@
 #include "common.h"
 
 #include "render/shared.h"
-#include "math/math.h"
+
 #include "util/math_utils.h"
 
 #include "bxdf.h"

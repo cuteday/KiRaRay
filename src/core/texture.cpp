@@ -91,7 +91,7 @@ bool Image::saveImage(const fs::path& filepath) {
 			uchar* data = new uchar[nElements];
 			float* internalData = reinterpret_cast<float*>(mData);
 			std::transform(internalData, internalData + nElements, data,
-				[](float v) -> uchar { return math::clamp((int)(v * 255), 0, 255); });
+				[](float v) -> uchar { return clamp((int)(v * 255), 0, 255); });
 			stbi_write_png(filepath.string().c_str(), mSize[0], mSize[1], 4, data, 0);
 			delete[] data;
 		}

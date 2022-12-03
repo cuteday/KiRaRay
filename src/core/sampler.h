@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-#include "math/math.h"
+
 #include "util/math_utils.h"
 #include "taggedptr.h"
 #include "util/lowdiscrepancy.h"
@@ -8,7 +8,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace math;
+
 
 class PCGSampler {
 #define PCG32_DEFAULT_STATE 0x853c49e6748fea9bULL
