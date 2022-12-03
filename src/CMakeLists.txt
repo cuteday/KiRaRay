@@ -68,7 +68,6 @@ SET ( KRR_CORE_HEADERS
 	core/math/array.h
 	core/math/matrix.h
 	core/math/quaternion.h
-	core/math/utils.h
 	core/math/aabb.h
 	core/math/complex.h
 	core/math/constants.h
@@ -105,6 +104,7 @@ SET(KRR_HEADERS
 	util/string.h
 	util/image.h
 	util/lowdiscrepancy.h
+	util/math_utils.h
 	util/tables.h
 	util/hash.h
 	util/vmf.h

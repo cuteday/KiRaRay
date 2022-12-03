@@ -2,7 +2,7 @@
 
 #include "common.h"
 #include "math/math.h"
-#include "math/utils.h"
+#include "util/math_utils.h"
 
 #define MIS_POWER_HEURISTIC 1 // 0 for balance heuristic
 

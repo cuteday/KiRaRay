@@ -4,7 +4,7 @@
 #include "taggedptr.h"
 
 #include "math/math.h"
-#include "math/utils.h"
+#include "util/math_utils.h"
 
 #include "bxdf.h"
 #include "matutils.h"

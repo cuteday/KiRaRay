@@ -1,6 +1,6 @@
 #include "accumulate.h"
 
-#include "math/utils.h"
+#include "util/math_utils.h"
 #include "render/profiler/profiler.h"
 #include "device/cuda.h"
 #include "device/context.h"

@@ -3,7 +3,7 @@
 #include "common.h"
 
 #include "math/math.h"
-#include "math/utils.h"
+#include "util/math_utils.h"
 
 #define KRR_RAY_TMAX	(1e20f)
 #define KRR_RAY_EPS		(1e-5f)

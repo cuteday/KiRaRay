@@ -1,7 +1,7 @@
 #pragma once
 
 #include "math/math.h"
-#include "math/utils.h"
+#include "util/math_utils.h"
 #include "raytracing.h"
 #include "scene.h"
 

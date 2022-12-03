@@ -10,7 +10,7 @@
 #include "check.h"
 #include "tables.h"
 #include "math/math.h"
-#include "math/utils.h"
+#include "util/math_utils.h"
 
 KRR_NAMESPACE_BEGIN
 

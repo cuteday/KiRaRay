@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
 #include "math/math.h"
-#include "math/utils.h"
+#include "util/math_utils.h"
 #include "taggedptr.h"
 #include "util/lowdiscrepancy.h"
 #include "util/hash.h"

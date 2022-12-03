@@ -2,7 +2,7 @@
 #include "logger.h"
 #include "tinyexr.h"
 #include "math/math.h"
-#include "math/utils.h"
+#include "util/math_utils.h"
 
 KRR_NAMESPACE_BEGIN
 
