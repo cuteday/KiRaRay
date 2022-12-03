@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "math/utils.h"
+#include "util/math_utils.h"
 #include "render/sampling.h"
 #include "device/buffer.h"
 #include "taggedptr.h"
@@ -10,7 +10,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace math;
+
 
 struct ShapeSample {
 	Interaction intr;

@@ -1,5 +1,5 @@
-#include "math/math.h"
-using namespace math;
+
+
 
 class AdamOptimizer {
 public:

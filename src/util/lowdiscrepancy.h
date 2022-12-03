@@ -9,13 +9,12 @@
 #include "interop.h"
 #include "check.h"
 #include "tables.h"
-#include "math/math.h"
-#include "math/utils.h"
+#include "util/math_utils.h"
 
 KRR_NAMESPACE_BEGIN
 
-using namespace math;
-using namespace math::utils;
+
+using namespace utils;
 
 KRR_CALLABLE int PermutationElement(uint32_t i, uint32_t l, uint32_t p) {
     uint32_t w = l - 1;

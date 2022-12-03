@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "math/math.h"
+
 
 #define KRR_USE_DISNEY			1
 

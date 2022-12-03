@@ -2,7 +2,7 @@
 
 #include "device/cuda.h"
 #include "device/context.h"
-#include "math/utils.h"
+#include "util/math_utils.h"
 #include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN

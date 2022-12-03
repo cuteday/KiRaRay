@@ -1,4 +1,4 @@
-#include "math/utils.h"
+#include "util/math_utils.h"
 #include "path.h"
 #include "render/shared.h"
 #include "render/shading.h"
@@ -10,8 +10,8 @@
 using namespace krr;	// this is needed or nvcc cannot recognize the launchParams extern "C" var.
 KRR_NAMESPACE_BEGIN
 
-using namespace math;
-using namespace math::utils;
+
+using namespace utils;
 using namespace shader;
 using namespace types;
 

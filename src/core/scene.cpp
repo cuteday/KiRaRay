@@ -3,7 +3,7 @@
 
 #include "window.h"
 #include "scene.h"
-#include "math/math.h"
+
 #include "device/context.h"
 
 KRR_NAMESPACE_BEGIN

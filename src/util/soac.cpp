@@ -2,8 +2,7 @@
 // Originally licensed under the Apache License, Version 2.0.
 #include <assert.h>
 #include <ctype.h>
-#include <stdio.h>
-#include <string.h>
+#include <iostream>
 #include <fstream>
 #include <functional>
 #include <map>

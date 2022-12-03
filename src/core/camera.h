@@ -9,7 +9,7 @@
 KRR_NAMESPACE_BEGIN
 
 using namespace io;
-using namespace math;
+
 
 class Camera {
 public:

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/math.h"
+
 #include "sampler.h"
 #include "scene.h"
 #include "render/lightsampler.h"

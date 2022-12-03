@@ -1,6 +1,6 @@
 #include "common.h"
 
-#include "math/math.h"
+
 #include "raytracing.h"
 
 #include "render/sampling.h"

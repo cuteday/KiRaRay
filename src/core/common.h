@@ -91,6 +91,7 @@ extern dim3 threadIdx, blockDim, blockIdx;
 #endif
 
 #define KRR_CLASS_DEFINE NLOHMANN_DEFINE_TYPE_INTRUSIVE
+#include "krrmath/math.h"
 
 KRR_NAMESPACE_BEGIN
 

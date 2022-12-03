@@ -2,14 +2,14 @@
 
 #define EIGEN_DEFAULT_DENSE_INDEX_TYPE int
 #include "common.h"
-#include "math/constants.h"
-#include "math/vector.h"
-#include "math/array.h"
-#include "math/matrix.h"
-#include "math/quaternion.h"
-#include "math/aabb.h"
-#include "math/functors.h"
-#include "math/complex.h"
+#include "constants.h"
+#include "vector.h"
+#include "array.h"
+#include "matrix.h"
+#include "quaternion.h"
+#include "aabb.h"
+#include "functors.h"
+#include "complex.h"
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
@@ -22,8 +22,6 @@ using Point = Vector3f;
 using Point2f = Vector2f;
 using Point3f = Vector3f;
 using AABB = AABB3f;
-
-namespace math {
 
 template <typename T>
 KRR_CALLABLE auto clamp(T v, T lo, T hi) {
@@ -93,7 +91,5 @@ template <typename DerivedA, typename DerivedB>
 KRR_CALLABLE auto operator/(const Eigen::MatrixBase<DerivedA> &a, const Eigen::MatrixBase<DerivedB> &b) {
 	return a.cwiseQuotient(b);
 }
-
-} // namespace math
 
 KRR_NAMESPACE_END

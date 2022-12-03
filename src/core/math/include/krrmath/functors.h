@@ -2,11 +2,9 @@
 #include <Eigen/Dense>
 
 #include "common.h"
-#include "math/vector.h"
+#include "vector.h"
 
 KRR_NAMESPACE_BEGIN
-
-namespace math {
 
 #ifdef KRR_DEVICE_CODE
 using ::abs;
@@ -62,6 +60,5 @@ KRR_CALLABLE float coth(const float x) { return 1 / tanh(x); }
 
 KRR_CALLABLE float sech(const float x) { return 1 / cosh(x); }
 
-} // namespace math
 
 KRR_NAMESPACE_END

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "math/math.h"
+
 #include "device/memory.h"
 #include "device/buffer.h"
 
