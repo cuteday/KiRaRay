@@ -216,7 +216,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	return materialId;
 }
 
-Mesh createMesh(pbrt::Shape::SP shape, const Transformf<> transform) {
+Mesh createMesh(pbrt::Shape::SP shape, const Matrix4f transform) {
 	Mesh mesh;
 	pbrt::TriangleMesh::SP m = std::dynamic_pointer_cast<pbrt::TriangleMesh>(shape);
 	int n_vertices			 = m->vertex.size();
@@ -225,7 +225,7 @@ Mesh createMesh(pbrt::Shape::SP shape, const Transformf<> transform) {
 	if (m->normal.size() < n_vertices)
 		Log(Debug, "The current mesh has %zd normals but %d vertices, thus the normal(s) are ignored.",
 			m->normal.size(), n_vertices);
-	Matrixf<3, 3> rot		 = transform.rotation().inverse().transpose();
+	Matrixf<3, 3> rot = transform.topLeftCorner(3, 3).inverse().transpose();
 	mesh.vertices.reserve(n_vertices);
 	mesh.indices.reserve(n_vertices);
 	for (int i = 0; i < n_vertices; i++) {
