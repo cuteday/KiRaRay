@@ -1,5 +1,8 @@
 /*  This code should be run on host side. 
 	All the data manipulated by this code should reside on host memory. */
+#include <algorithm>
+#include <execution>
+
 #include "tree.h"
 #include "integrator.h"
 
@@ -287,12 +290,13 @@ KRR_HOST void STree::forEachDTreeWrapper(std::function<void(DTreeWrapper*)> func
 	std::vector<STreeNode> nodes(n_nodes);
 	m_nodes.copy_to_host(nodes.data(), n_nodes);
 
-	for (int i = 0; i < n_nodes; ++i) {
-		//Log(Info, "Processing the %d-th D-Tree...", i);
-		if (nodes[i].isLeaf) {
-			func(&nodes[i].dTree);
-		}
-	}
+	std::for_each(std::execution::par, nodes.begin(), nodes.end(), 
+		[&func](STreeNode &node) {
+			if (node.isLeaf) {
+				func(&node.dTree);
+			}
+	});
+
 	m_nodes.copy_from_host(nodes.data(), nodes.size());
 }
 
