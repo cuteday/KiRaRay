@@ -19,10 +19,10 @@ KRR_DEVICE_FUNCTION float getMetallic(Color diffuse, Color spec) {
 	float s = luminance(spec);
 	if (s == 0)
 		return 0;
-	float b	   = s + d - 0.08;
-	float c	   = 0.04 - s;
-	float root = sqrt(b * b - 0.16 * c);
-	float m	   = (root - b) * 12.5;
+	float b	   = s + d - 0.08f;
+	float c	   = 0.04f - s;
+	float root = sqrt(b * b - 0.16f * c);
+	float m	   = (root - b) * 12.5f;
 	return max(0.f, m);
 }
 

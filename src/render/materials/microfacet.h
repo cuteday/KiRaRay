@@ -86,9 +86,9 @@ public:
 KRR_CALLABLE static void GGXSample11(float cosTheta, float U1, float U2,
 	float* slope_x, float* slope_y) {
 	// special case (normal incidence)
-	if (cosTheta > .9999) {
+	if (cosTheta > .9999f) {
 		float r = sqrt(U1 / (1 - U1));
-		float phi = 6.28318530718 * U2;
+		float phi = M_2PI * U2;
 		*slope_x = r * cos(phi);
 		*slope_y = r * sin(phi);
 		return;

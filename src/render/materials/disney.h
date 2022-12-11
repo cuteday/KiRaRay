@@ -243,7 +243,7 @@ public:
 
 		// Create the microfacet distribution for metallic and/or specular
 		// transmission.
-		float aspect = sqrt(1 - sd.anisotropic * .9);
+		float aspect = sqrt(1 - sd.anisotropic * .9f);
 		float ax	 = max(.001f, pow2(roughness) / aspect);
 		float ay	 = max(.001f, pow2(roughness) * aspect);
 
