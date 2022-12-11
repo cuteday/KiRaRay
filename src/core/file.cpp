@@ -5,11 +5,11 @@ KRR_NAMESPACE_BEGIN
 
 fs::path File::cwd() { return KRR_PROJECT_DIR; }
 fs::path File::projectDir() { return cwd(); }
-fs::path File::dataDir() { return cwd() / "data"; }
-fs::path File::codeDir() { return cwd() / "src"; }
+fs::path File::dataDir() { return fs::weakly_canonical(cwd() / "common"); }
+fs::path File::codeDir() { return fs::weakly_canonical(cwd() / "src"); }
 
 fs::path File::resolve(const fs::path &name) { 
-	return name.is_absolute() ? name : File::cwd() / name; 
+	return name.is_absolute() ? name : fs::weakly_canonical(File::cwd() / name);
 }
 
 KRR_NAMESPACE_END
