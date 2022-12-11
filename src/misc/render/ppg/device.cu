@@ -1,8 +1,8 @@
 #include "render/shared.h"
 #include "render/shading.h"
-#include "render/ppg/ppg.h"
 #include "render/wavefront/workqueue.h"
 
+#include "ppg/ppg.h"
 #include <optix_device.h>
 
 using namespace krr;

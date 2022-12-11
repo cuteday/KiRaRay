@@ -90,7 +90,7 @@ struct GuidedPathState {
 	uint n_vertices{};
 };
 
-#include "render/ppg/guideditem_soa.h"
+#include "ppg/guideditem_soa.h"
 
 class GuidedRayQueue : public WorkQueue<GuidedRayWorkItem> {
 public:
