@@ -71,8 +71,9 @@ typedef unsigned char uchar;
 # define KRR_DEVICE_FUNCTION KRR_DEVICE KRR_FORCEINLINE
 # define KRR_DEVICE_LAMBDA(...) [ =, *this ] KRR_DEVICE(__VA_ARGS__) mutable 
 
-#if !defined(__CUDACC__)
-extern dim3 threadIdx, blockDim, blockIdx;
+#if !defined(__CUDA_ARCH__)
+extern const uint3 threadIdx, blockIdx;
+extern const dim3 blockDim;
 #endif	// eliminate intellisense warnings for these kernel built-in variables
 
 #ifdef __GNUC__
