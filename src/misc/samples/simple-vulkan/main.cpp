@@ -92,8 +92,8 @@ class VulkanCudaSineWave : public VulkanBaseApp {
           "Requested height and width is too large for this sample!");
     }
     // Add our compiled vulkan shader files
-	string vertex_shader_path   = krr::File::resolve("common/shaders/sinewave.vert.spv)").string();
-	string fragment_shader_path = krr::File::resolve("common/shaders/sinewave.frag.spv)").string();
+	string vertex_shader_path   = krr::File::resolve("common/shaders/sinewave.vert.spv").string();
+	string fragment_shader_path = krr::File::resolve("common/shaders/sinewave.frag.spv").string();
 
 	m_shaderFiles.push_back(std::make_pair(VK_SHADER_STAGE_FRAGMENT_BIT, fragment_shader_path));
 	m_shaderFiles.push_back(std::make_pair(VK_SHADER_STAGE_VERTEX_BIT, vertex_shader_path));

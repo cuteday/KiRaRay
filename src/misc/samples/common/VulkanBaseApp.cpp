@@ -479,6 +479,10 @@ bool VulkanBaseApp::isSuitableDevice(VkPhysicalDevice dev) const {
 		   findGraphicsQueueIndicies(dev, m_surface, graphicsQueueIndex, presentQueueIndex);
 }
 
+bool VulkanBaseApp::isVkPhysicalDeviceUuid(void *Uuid) {
+	return !memcmp((void *) m_vkDeviceUUID, Uuid, (size_t) VK_UUID_SIZE);
+}
+
 void VulkanBaseApp::createDevice() {
 	{
 		uint32_t deviceCount = 0;
@@ -1760,7 +1764,7 @@ void VulkanBaseApp::mainLoop() {
 
 void readFile(std::istream &s, std::vector<char> &data) {
 	s.seekg(0, std::ios_base::end);
-	//Log(Info, "File has a length of %d bytes", static_cast<int>(s.tellg()));
+	// Log(Info, "File has a length of %d bytes", static_cast<int>(s.tellg()));
 	data.resize(s.tellg());
 	s.clear();
 	s.seekg(0, std::ios_base::beg);
