@@ -1,6 +1,10 @@
+# dependends on glfw and vulkan
+
 add_library(imgui
     imconfig.h
     imgui_draw.cpp
+    imgui_impl_vulkan.h
+    imgui_impl_vulkan.cpp
 	imgui_impl_opengl3.cpp
 	imgui_impl_opengl3.h
 	imgui_impl_opengl3_loader.h
@@ -17,4 +21,4 @@ add_library(imgui
 )
 
 target_include_directories(imgui PUBLIC ../glfw)
-target_link_libraries(imgui PRIVATE glfw)
+target_link_libraries(imgui PRIVATE glfw Vulkan::Vulkan)
