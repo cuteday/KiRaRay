@@ -1,5 +1,4 @@
 add_library(samples_common STATIC
-	common/helper_multiprocess.cpp
 	common/VulkanBaseApp.cpp
 )
 target_include_directories(samples_common PUBLIC 
@@ -14,6 +13,5 @@ target_link_libraries(samples_common PUBLIC
 )
 
 add_subdirectory(simple-vulkan)
-add_subdirectory(simple-vulkan-mmap)
 
 add_dependencies(samples_common compile_shaders)
