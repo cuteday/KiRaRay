@@ -92,6 +92,7 @@ SET(KRR_HEADERS
 	scene/scenegraph.h
 	# others
 	main/renderer.h
+	main/vulkan_renderer.h
 	util/check.h
 	util/string.h
 	util/image.h
@@ -115,6 +116,7 @@ SET (KRR_SOURCE
 	scene/assimp.cpp
 	scene/pbrt.cpp
 	main/renderer.cpp
+	main/vulkan_renderer.cpp
 	util/tables.cpp
 	util/image.cpp
 )
@@ -210,6 +212,7 @@ SET(KRR_LIBS_ALL
 	zlibstatic
 	${OPENGL_gl_LIBRARY}
 	${CUDA_LIBRARIES}
+	Vulkan::Vulkan
 	KRR_PTX
 	krr_math
 	krr_cuda_cfg

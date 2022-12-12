@@ -4,6 +4,7 @@
 #include "kiraray.h"
 
 #include "main/renderer.h"
+#include "main/vulkan_renderer.h"
 #include "render/passes/accumulate.h"
 #include "render/passes/tonemapping.h"
 #include "render/passes/denoise.h"

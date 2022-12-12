@@ -1,7 +1,4 @@
 #pragma once
-#ifndef __VULKANBASEAPP_H__
-#define __VULKANBASEAPP_H__
-
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -11,11 +8,14 @@
 #include <vulkan/vulkan_win32.h>
 #endif /* _WIN64 */
 
+#include "common.h"
+
 /* remove _VK_TIMELINE_SEMAPHORE to use binary semaphores */
 // use vulkan timeline semaphore
 #define _VK_TIMELINE_SEMAPHORE
-
 struct GLFWwindow;
+
+KRR_NAMESPACE_BEGIN
 
 class VulkanBaseApp {
 public:
@@ -129,4 +129,4 @@ private:
 
 void readFile(std::istream &s, std::vector<char> &data);
 
-#endif /* __VULKANBASEAPP_H__ */
+KRR_NAMESPACE_END
