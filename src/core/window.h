@@ -53,24 +53,41 @@ namespace ui = ImGui;
 
 #endif
 
-class WindowApp{
+class WindowAppBase {
+public:
+	WindowAppBase() = default;
+	
+	WindowAppBase(const char title[], Vector2i size, bool visible = true,
+				  bool enableVsync = false){};
+
+	~WindowAppBase(){};
+
+	virtual void resize(const Vector2i size) = 0;
+	virtual void run() = 0;
+	virtual void render() = 0;
+	virtual void draw() = 0;
+
+	// user input handler
+	virtual void onMouseEvent(io::MouseEvent &mouseEvent) {};
+	virtual void onKeyEvent(io::KeyboardEvent &keyEvent) {};
+
+	virtual void renderUI() {};
+};
+
+
+class WindowApp: public WindowAppBase{
+	/* A glfw + OpenGL windowing application. */
 public:
 	WindowApp(const char title[], Vector2i size,
 			bool visible = true, bool enableVsync = false);
 
 	~WindowApp();
 
-	virtual void resize(const Vector2i size);
+	virtual void resize(const Vector2i size) override;
+	virtual void run() override;
+	virtual void render() override {};
+	virtual void draw() override;
 
-	virtual void run();
-
-	virtual void render() = 0;
-
-	virtual void draw();
-
-	// user input handler
-	virtual void onMouseEvent(io::MouseEvent& mouseEvent) {};
-	virtual void onKeyEvent(io::KeyboardEvent &keyEvent) {};
 	Vector2f getMouseScale() { return fbSize.cast<float>().cwiseInverse(); }
 
 	inline Vector2i getMousePos() const {
@@ -78,17 +95,15 @@ public:
 		glfwGetCursorPos(handle, &x, &y);
 		return { (int)x, (int)y };
 	}
-	virtual void renderUI() {};
 
-  protected:
+ protected:
 	Vector2i fbSize{0};
 	GLuint fbTexture{0};
 	GLuint fbPbo{0};
 	cudaGraphicsResource_t cuDisplayTexture{0};
 	CUDABuffer fbBuffer;
 
-	/*! the glfw window handle */
-	GLFWwindow *handle{nullptr};
+	GLFWwindow *handle{ nullptr };		/*! the glfw window handle */
 	Vector2i lastMousePos = {-1, -1};
 };
 

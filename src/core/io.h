@@ -174,7 +174,7 @@ namespace io {
 		uint32_t codepoint = 0; ///< UTF-32 codepoint from GLFW for Input event types
 	};
 
-	inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey)
+	inline KeyboardEvent::Key glfwToKey(int glfwKey)
 	{
 		static_assert(GLFW_KEY_ESCAPE == 256, "GLFW_KEY_ESCAPE is expected to be 256");
 		if (glfwKey < GLFW_KEY_ESCAPE)

@@ -9,6 +9,7 @@
 #endif /* _WIN64 */
 
 #include "common.h"
+#include "window.h"
 
 /* remove _VK_TIMELINE_SEMAPHORE to use binary semaphores */
 // use vulkan timeline semaphore
