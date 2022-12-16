@@ -53,12 +53,20 @@ KRR_NAMESPACE_BEGIN
 		cudaDeviceSynchronize();                                                                   \
 		cudaError_t error = cudaGetLastError();                                                    \
 		if (error != cudaSuccess) {                                                                \
-			fprintf(stderr, "error (%s: line %d): %s\n", __FILE__, __LINE__,                       \
+			fprintf(stderr, "Error (%s: line %d): %s\n", __FILE__, __LINE__,                       \
 					cudaGetErrorString(error));                                                    \
 			throw std::runtime_error("CUDA synchronized check failed");                            \
 		}                                                                                          \
 	} while (0)
 
+#define CHECK_LOG(EXPR, LOG)                                                                       \
+	do {                                                                                           \
+		if (!(EXPR)) {                                                                             \
+			Log(Error, "Error (%s: line %d): %s", __FILE__, __LINE__, LOG);                        \
+		}                                                                                          \
+	} while (0)
+
+	
 #define CHECK(x) assert(x)
 #define CHECK_IMPL(a, b, op) assert((a)op(b))
 
