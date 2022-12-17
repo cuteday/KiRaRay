@@ -104,10 +104,13 @@ SET(KRR_HEADERS
 	util/ema.h
 )
 
+FILE (GLOB_RECURSE KRR_RENDER_PASSES
+	"render/passes/*.cpp"
+	"render/passes/*.cu"
+)
+
 SET (KRR_SOURCE
-	render/passes/accumulate.cu
-	render/passes/tonemapping.cu
-	render/passes/denoise.cpp
+	${KRR_RENDER_PASSES}
 	render/path/pathtracer.cpp
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
@@ -142,9 +145,6 @@ SET ( KRR_SHADERS
 	render/lightsampler.h
 	render/path/path.h
 	render/wavefront/wavefront.h
-	render/passes/accumulate.h
-	render/passes/tonemapping.h
-	render/passes/denoise.h
 	render/raytracing.cuh
 )
 
@@ -256,10 +256,10 @@ SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE)
 # The additional implementation of algorithms (in the static libraray "krr_starlight_lib") is not built by default
 # You can turn this on via CMake options (-DKRR_BUILD_STARLIGHT=ON)
 if (KRR_BUILD_STARLIGHT)
-set(KRR_BUILD_STARLIGHT 1)
-# ADD LIBRARY FROM MISC  (a.k.a. kirara startlight)
-ADD_SUBDIRECTORY (misc)
-MESSAGE ("KRR Starlight Include: ${KRR_MISC_INCLUDE_ALL}")
-TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_starlight_lib)
-SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} ${KRR_MISC_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
+	set(KRR_BUILD_STARLIGHT 1)
+	# ADD LIBRARY FROM MISC  (a.k.a. kirara startlight)
+	ADD_SUBDIRECTORY (misc)
+	MESSAGE ("KRR Starlight Include: ${KRR_MISC_INCLUDE_ALL}")
+	TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_starlight_lib)
+	SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} ${KRR_MISC_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
 endif()

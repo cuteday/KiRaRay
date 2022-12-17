@@ -80,4 +80,5 @@ public:
 	KRR_REGISTER_PASS_DEC(WavefrontPathTracer);
 };
 
+KRR_INSTANTIATE_PASS(WavefrontPathTracer);
 KRR_NAMESPACE_END

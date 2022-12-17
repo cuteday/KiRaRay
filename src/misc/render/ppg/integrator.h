@@ -72,4 +72,5 @@ public:
 	GuidedPathStateBuffer* guidedPathState{};
 };
 
+KRR_INSTANTIATE_PASS(PPGPathTracer);
 KRR_NAMESPACE_END

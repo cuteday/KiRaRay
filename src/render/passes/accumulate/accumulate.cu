@@ -42,6 +42,14 @@ void AccumulatePass::render(CUDABuffer& frame) {
 
 }
 
+void AccumulatePass::resize(const Vector2i &size) {
+	mFrameSize = size;
+	if (!mAccumBuffer)
+		mAccumBuffer = new CUDABuffer();
+	mAccumBuffer->resize(size[0] * size[1] * sizeof(Vector4f));
+	reset();
+}
+
 void AccumulatePass::renderUI() {
 	if (ui::Checkbox("Enabled", &mEnable))
 		reset();

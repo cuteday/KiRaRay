@@ -51,6 +51,7 @@ public:
 	Format getFormat() const { return mFormat; }
 	inline size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
 	int getChannels() const { return mChannels; }
+	size_t getSizeInBytes() const { return mChannels * mSize[0] * mSize[1] * getElementSize(); }
 	uchar* data() { return mData; }
 	void reset(uchar *data) { mData = data; }
 	

@@ -58,4 +58,5 @@ private:
 	LaunchParamsPT* launchParamsDevice;
 };
 
+KRR_INSTANTIATE_PASS(MegakernelPathTracer);
 KRR_NAMESPACE_END

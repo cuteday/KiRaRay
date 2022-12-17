@@ -153,10 +153,10 @@ void RenderApp::renderUI() {
 			strcpy(loadConfigBuf, mConfigPath.c_str());
 			if (ui::InputInt2("Frame size", (int *) &fbSize))
 				resize(fbSize);
-			ui::InputText("Load path: ", loadConfigBuf, 1024);
+			ui::InputText("Load path: ", loadConfigBuf, sizeof(loadConfigBuf));
 			if (ui::Button("Load config"))
 				loadConfig(loadConfigBuf);
-			ui::InputText("Save path: ", saveConfigBuf, 1024);
+			ui::InputText("Save path: ", saveConfigBuf, sizeof(saveConfigBuf));
 			if (ui::Button("Save config"))
 				saveConfig(saveConfigBuf);
 		}

@@ -3,9 +3,9 @@
 #include "common.h"
 
 #include "render/wavefront/integrator.h"
-#include "render/passes/accumulate.h"
-#include "render/passes/tonemapping.h"
-#include "render/passes/denoise.h"
+#include "render/passes/accumulate/accumulate.h"
+#include "render/passes/tonemapping/tonemapping.h"
+#include "render/passes/denoise/denoise.h"
 #include "render/path/pathtracer.h"
 #include "main/renderer.h"
 #include "scene/importer.h"

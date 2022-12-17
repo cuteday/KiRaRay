@@ -1,4 +1,4 @@
-#pragma once
+ #pragma once
 #include <cuda_runtime.h>
 #include <optix.h>
 
@@ -56,4 +56,5 @@ private:
 	DenoiseBackend mBackend;
 };
 
+KRR_INSTANTIATE_PASS(DenoisePass);
 KRR_NAMESPACE_END

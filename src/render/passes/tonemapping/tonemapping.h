@@ -41,4 +41,5 @@ private:
 	Operator mOperator{ Operator::Linear };
 };
 
+KRR_INSTANTIATE_PASS(ToneMappingPass);
 KRR_NAMESPACE_END

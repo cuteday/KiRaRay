@@ -22,12 +22,7 @@ public:
 
 	void reset();
 
-	void resize(const Vector2i& size) override {
-		mFrameSize = size;
-		if (!mAccumBuffer) mAccumBuffer = new CUDABuffer();
-		mAccumBuffer->resize(size[0] * size[1] * sizeof(Vector4f));
-		reset();
-	}
+	void resize(const Vector2i &size) override;
 
 	string getName() const override { return "AccumulatePass"; }
 
@@ -42,4 +37,5 @@ private:
 	CpuTimer::TimePoint mStartTime, mCurrentTime;
 };
 
+KRR_INSTANTIATE_PASS(AccumulatePass);
 KRR_NAMESPACE_END
