@@ -5,8 +5,13 @@ KRR_NAMESPACE_BEGIN
 
 void ErrorMeasurePass::render(CUDABuffer &frame) {
 	if (mNeedsEvaluate) {
-		mResult = calculateMetric(mMetric, reinterpret_cast<Color4f*>(frame.data()), 
-			reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()));
+		size_t n_elememts = mFrameSize[0] * mFrameSize[1];
+		mResult =
+			calculateMetric(mMetric, reinterpret_cast<Color4f *>(frame.data()),
+							reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()), n_elememts);
+
+		mNeedsEvaluate = false;
+		mIsEvaluated   = true;
 	}
 }
 
@@ -17,36 +22,52 @@ void ErrorMeasurePass::resize(const Vector2i &size) {
 
 void ErrorMeasurePass::renderUI() { 
 	static char *metricNames[] = { "MSE", "MAPE", "RelMSE" }; 
+	static bool continuousEvaluate = false;
 	ui::Checkbox("Enabled", &mEnable);
 	if (mEnable) {
 		ui::Combo("Metric", (int *) &mMetric, metricNames, Metric::NumMetrics);
 		static char referencePath[500] = "";
-		ui::InputText("Reference path: ", referencePath, sizeof(referencePath));
+		ui::InputText("Reference path", referencePath, sizeof(referencePath));
 		if (ui::Button("Load")) {
 			loadReferenceImage(referencePath);
 		}
 		if (mReferenceImage.isValid()) {
 			ui::Text("Reference image: %s", mReferenceImagePath.c_str());
-			if (ui::Button("Evaluate"))
-				mNeedsEvaluate = 1;
+			if (!continuousEvaluate) {
+				ui::Checkbox("Continuous evaluate", &continuousEvaluate);
+				if (!continuousEvaluate && ui::Button("Evaluate")) 
+					mNeedsEvaluate = 1;
+			}	
+			mNeedsEvaluate |= continuousEvaluate;
 		}
 		if (mIsEvaluated)
 			ui::Text("%s: %f", metricNames[mMetric], mResult);
-		
 	}
 }
 
 float ErrorMeasurePass::calculateMetric(Metric metric, 
-	const Color4f* frame, const Color4f* reference) {
-	return 0;
+	const Color4f* frame, const Color4f* reference, size_t n_elements) {
+	switch (metric) { 
+	case Metric::MSE:
+		return calc_metric_mse(frame, reference, n_elements);	
+	case Metric::MAPE:
+		return calc_metric_mape(frame, reference, n_elements);	
+	case Metric::RelMSE:
+		return calc_metric_relmse(frame, reference, n_elements);	
+	default:
+		Log(Error, "ErrorMeasure::Unimplemented error metric!");
+	}
 }
 
 bool ErrorMeasurePass::loadReferenceImage(const string &path) {
  	bool success = mReferenceImage.loadImage(path, false);
 	if (success) {
+		CHECK_LOG(mReferenceImage.getSize() == mFrameSize, 
+			"ErrorMeasure::Reference image size does not match frame size!");
 		mReferenceImageBuffer.resize(mReferenceImage.getSizeInBytes());
-		mReferenceImageBuffer.copy_from_host(mReferenceImage.data(),
-											 mReferenceImage.getSizeInBytes());
+		mReferenceImageBuffer.copy_from_host(reinterpret_cast<Color4f*>(mReferenceImage.data()), 
+			mFrameSize[0] * mFrameSize[1]);
+		mReferenceImage.saveImage("common/test.exr");
 		mIsEvaluated = mNeedsEvaluate = false;
 		mReferenceImagePath			  = path;
 	} else {

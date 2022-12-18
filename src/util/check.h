@@ -62,7 +62,7 @@ KRR_NAMESPACE_BEGIN
 #define CHECK_LOG(EXPR, LOG)                                                                       \
 	do {                                                                                           \
 		if (!(EXPR)) {                                                                             \
-			Log(Error, "Error (%s: line %d): %s", __FILE__, __LINE__, LOG);                        \
+			Log(Fatal, "Error (%s: line %d): %s", __FILE__, __LINE__, LOG);                        \
 		}                                                                                          \
 	} while (0)
 

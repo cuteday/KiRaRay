@@ -34,9 +34,9 @@ public:
 protected:
 	bool loadReferenceImage(const string &path);
 	static float calculateMetric(Metric metric, 
-		const Color4f *frame, const Color4f *reference);
+		const Color4f *frame, const Color4f *reference, size_t n_elements);
 	Image mReferenceImage;
-	CUDABuffer mReferenceImageBuffer;
+	TypedBuffer<Color4f> mReferenceImageBuffer;
 	Metric mMetric{ MSE };
 	float mResult;
 	string mReferenceImagePath;

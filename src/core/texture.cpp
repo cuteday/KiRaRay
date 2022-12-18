@@ -40,6 +40,8 @@ bool Image::loadImage(const fs::path& filepath, bool srgb) {
 		char* errMsg = nullptr;
 		// to do: if loadEXR always return RGBA data?
 		int res = LoadEXR((float**)&data, &size[0], &size[1], filename.c_str(), (const char**)&errMsg);
+		//int res = tinyexr::load_exr((float **) &data, &size[0], &size[1], filename.c_str(), true);
+		
 		if (res != TINYEXR_SUCCESS) {
 			logError("Failed to load EXR image at " + filename);
 			if (errMsg) logError(errMsg);
@@ -102,7 +104,8 @@ bool Image::saveImage(const fs::path& filepath) {
 			logError("Image::saveImage Saving non-hdr image as hdr file...");
 			return false;
 		}
-		tinyexr::save_exr(reinterpret_cast<float*>(mData), mSize[0], mSize[1], 4, 4, filepath.string().c_str());
+		tinyexr::save_exr(reinterpret_cast<float *>(mData), mSize[0], mSize[1], 4, 4,
+						  filepath.string().c_str(), true);
 	}
 	else {
 		logError("Image::saveImage Unknown image extension: " + extension);
