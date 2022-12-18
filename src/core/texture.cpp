@@ -1,8 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_MSC_SECURE_CRT
-#define TINYEXR_USE_MINIZ (0)
-#define TINYEXR_IMPLEMENTATION
+
 #include "zlib.h"			// needed by tinyexr
 #include "stb_image.h"
 #include "stb_image_write.h"
@@ -30,17 +29,19 @@ Image::Image(Vector2i size, Format format, bool srgb):
 	mData = new uchar[size[0] * size[1] * 4 * getElementSize()];
 }
 
-bool Image::loadImage(const fs::path& filepath, bool srgb) {
+bool Image::loadImage(const fs::path& filepath, 
+	bool flip, bool srgb) {
 	Vector2i size;
 	int channels;
 	string filename = filepath.string();
 	string format	= filepath.extension().string();
 	uchar* data = nullptr;
+	stbi_set_flip_vertically_on_load(flip);
 	if (IsEXR(filename.c_str()) == TINYEXR_SUCCESS) {
 		char* errMsg = nullptr;
 		// to do: if loadEXR always return RGBA data?
-		int res = LoadEXR((float**)&data, &size[0], &size[1], filename.c_str(), (const char**)&errMsg);
-		//int res = tinyexr::load_exr((float **) &data, &size[0], &size[1], filename.c_str(), true);
+		//int res = LoadEXR((float**)&data, &size[0], &size[1], filename.c_str(), (const char**)&errMsg);
+		int res = tinyexr::load_exr((float **) &data, &size[0], &size[1], filename.c_str(), flip);
 		
 		if (res != TINYEXR_SUCCESS) {
 			logError("Failed to load EXR image at " + filename);
@@ -50,6 +51,7 @@ bool Image::loadImage(const fs::path& filepath, bool srgb) {
 		mFormat = Format::RGBAfloat;
 	}
 	else if (stbi_is_hdr(filename.c_str())){
+		stbi_set_flip_vertically_on_load(flip);
 		data = (uchar*)stbi_loadf(filename.c_str(), &size[0], &size[1], &channels, STBI_rgb_alpha);
 		if (data == nullptr) {
 			logError("Failed to load float hdr image at " + filename);
@@ -71,11 +73,11 @@ bool Image::loadImage(const fs::path& filepath, bool srgb) {
 		}
 		mFormat = Format::RGBAuchar;
 	}
+	stbi_set_flip_vertically_on_load(false);
 	int elementSize = getElementSize();
 	mSrgb = srgb;
 	if (mData) delete[] mData;
 	mData = data;
-
 	mSize = size;
 	logDebug("Loaded image " + to_string(size[0]) + "*" + to_string(size[1]));
 	return true;
@@ -120,25 +122,25 @@ bool Image::isHdr(const string& filepath)
 		stbi_is_hdr(filepath.c_str());
 }
 
-Image::SharedPtr Image::createFromFile(const string& filepath, bool srgb)
+Image::SharedPtr Image::createFromFile(const string& filepath, bool flip, bool srgb)
 {
 	Image::SharedPtr pImage = Image::SharedPtr(new Image());
-	pImage->loadImage(filepath);
+	pImage->loadImage(filepath, flip, srgb);
 	return pImage;
 }
 
-Texture::SharedPtr Texture::createFromFile(const string& filepath, bool srgb)
+Texture::SharedPtr Texture::createFromFile(const string& filepath, bool flip, bool srgb)
 {
 	Texture::SharedPtr pTexture = Texture::SharedPtr(new Texture());
 	logDebug("Attempting to load texture from " + filepath);
-	pTexture->loadImage(filepath);
+	pTexture->loadImage(filepath, flip, srgb);
 	return pTexture;
 }
 
-Texture::Texture(const string& filepath, bool srgb, uint id)
+Texture::Texture(const string& filepath, bool flip, bool srgb, uint id)
 	:mTextureId{id} {
 	logDebug("Attempting to load texture from " + filepath);
-	loadImage(filepath, srgb);
+	loadImage(filepath, flip, srgb);
 	textureProps[id] = TextureProp{ filepath };
 }
 

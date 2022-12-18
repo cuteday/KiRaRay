@@ -40,7 +40,7 @@ void loadTexture(Material::SharedPtr material,
 	if (auto t = std::dynamic_pointer_cast<pbrt::ImageTexture>(texture)) {
 		fs::path filename = basedir / t->fileName;
 		stbi_set_flip_vertically_on_load(true);	// pbrt textures do not need filp.
-		sMaterialLoader.loadTexture(material, type, filename.string());
+		sMaterialLoader.loadTexture(material, type, filename.string(), true);
 		stbi_set_flip_vertically_on_load(false);
 	} else {
 		Log(Warning, "Encountered unsupported pbrt texture: %s", texture->toString().c_str());
@@ -301,15 +301,6 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 	for (const pbrt::LightSource::SP light : scene->world->lightSources) {
 		if (auto l = std::dynamic_pointer_cast<pbrt::InfiniteLightSource>(light)) {
 			Log(Info, "Encountered infinite light source %s", l->mapName.c_str());
-			//Texture image;
-			//image.loadImage(resolve(l->mapName));
-			//Vector2i size = image.getImage().getSize();
-			//Color4f* rgba = image::convertEqualAeraOctahedralMappingToSpherical((Color4f *) image.getImage().data(),
-			//													size[0], size[1]);
-			//delete[] image.getImage().data();
-			//image.getImage().reset((uchar *) rgba);
-			//image.toDevice();
-			//pScene->addInfiniteLight(InfiniteLight(image));
 #ifdef USE_PBRT_ENVMAP
 			pScene->addInfiniteLight(InfiniteLight(resolve(l->mapName)));
 #endif

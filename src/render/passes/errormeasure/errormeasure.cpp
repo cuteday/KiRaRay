@@ -56,11 +56,12 @@ float ErrorMeasurePass::calculateMetric(Metric metric,
 		return calc_metric_relmse(frame, reference, n_elements);	
 	default:
 		Log(Error, "ErrorMeasure::Unimplemented error metric!");
+		return NAN;
 	}
 }
 
 bool ErrorMeasurePass::loadReferenceImage(const string &path) {
- 	bool success = mReferenceImage.loadImage(path, false);
+ 	bool success = mReferenceImage.loadImage(path, true, false);
 	if (success) {
 		CHECK_LOG(mReferenceImage.getSize() == mFrameSize, 
 			"ErrorMeasure::Reference image size does not match frame size!");

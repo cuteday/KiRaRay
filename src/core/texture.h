@@ -40,11 +40,11 @@ public:
 	Image(Vector2i size, Format format = Format::RGBAuchar, bool srgb = false);
 	~Image() {}
 
-	bool loadImage(const fs::path& filepath, bool srgb = false);
+	bool loadImage(const fs::path& filepath, bool flip = false, bool srgb = false);
 	bool saveImage(const fs::path& filepath);
 
 	static bool isHdr(const string& filepath);
-	static Image::SharedPtr createFromFile(const string& filepath, bool srgb = false);
+	static Image::SharedPtr createFromFile(const string& filepath, bool flip = false, bool srgb = false);
 	bool isValid() const { return mFormat != Format::NONE && mSize[0] * mSize[1]; }
 	bool isSrgb() const { return mSrgb; }
 	Vector2i getSize() const { return mSize; }
@@ -70,14 +70,14 @@ public:
 
 	Texture() = default; 
 	Texture(Color4f value) { setConstant(value); }
-	Texture(const string& filepath, bool srgb = false, uint id = 0);
+	Texture(const string& filepath, bool flip = false, bool srgb = false, uint id = 0);
 
 	void setConstant(const Color4f value){ 
 		mValid = true;
 		mValue = value;
 	};
-	void loadImage(const string& filepath, bool srgb = false) {
-		mValid = mImage.loadImage(filepath, srgb);
+	void loadImage(const string& filepath, bool flip = false, bool srgb = false) {
+		mValid = mImage.loadImage(filepath, flip, srgb);
 	}
 	Image &getImage() { return mImage; }
 	KRR_CALLABLE Color4f getConstant() const { return mValue; }
@@ -103,7 +103,7 @@ public:
 			return texture::textureProps[mTextureId].path;
 		return "unknown filepath";
 	}
-	static Texture::SharedPtr createFromFile(const string& filepath, bool srgb = false);
+	static Texture::SharedPtr createFromFile(const string& filepath, bool flip = false, bool srgb = false);
 
 	bool mValid{ false };
 	Color4f mValue{};	 /* If this is a constant texture, the value should be set. */

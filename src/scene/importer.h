@@ -19,7 +19,7 @@ public:
 	MaterialLoader(bool useSrgb = true) { mUseSrgb = useSrgb; };
 	~MaterialLoader(){};
 	void loadTexture(const Material::SharedPtr &pMaterial, TextureType type,
-					 const std::string &filename);
+					 const std::string &filename, bool flip = false);
 	void setSrgb(bool useSrgb) { mUseSrgb = useSrgb; }
 
 private:

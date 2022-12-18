@@ -2,7 +2,7 @@
 #include "device/cuda.h"
 #include "device/buffer.h"
 
-#include "thrust/transform.h"
+#include "thrust/reduce.h"
 #include "thrust/transform_reduce.h"
 #include "thrust/execution_policy.h"
 

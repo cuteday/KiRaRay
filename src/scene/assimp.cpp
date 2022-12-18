@@ -198,7 +198,7 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 using namespace texture;
 
 void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial, TextureType type,
-								 const std::string &filename) {
+								 const std::string &filename, bool flip) {
 	assert(pMaterial);
 	bool srgb = mUseSrgb && pMaterial->determineSrgb(filename, type);
 	if (!fs::exists(filename)) {
@@ -207,7 +207,7 @@ void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial, TextureTy
 	}
 	TextureKey textureKey{ filename, srgb };
 	if (!mTextureCache.count(textureKey)) {
-		mTextureCache[textureKey] = Texture(filename, srgb, ++textureIdAllocator);
+		mTextureCache[textureKey] = Texture(filename, flip, srgb, ++textureIdAllocator);
 	}
 	pMaterial->setTexture(type, mTextureCache[textureKey]);
 }
