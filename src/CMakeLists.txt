@@ -151,7 +151,6 @@ SET ( KRR_SHADERS
 SET_SOURCE_FILES_PROPERTIES (
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
-	render/passes/errormeasure/metrics.cpp
 	util/tables.cpp
 	PROPERTIES LANGUAGE CUDA
 )
