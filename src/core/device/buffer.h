@@ -2,6 +2,8 @@
 #include <vector>
 #include <assert.h>
 #include <cuda.h>
+#include <thrust/transform.h>
+#include <thrust/execution_policy.h>
 
 #include "common.h"
 #include "util/check.h"
@@ -152,6 +154,12 @@ public:
 	KRR_CALLABLE T &operator [] (size_t index) {
 		DCHECK_LT(index, m_size);
 		return d_ptr[index];
+	}
+
+	template <typename F> 
+	KRR_HOST void for_each(F&& func) {
+		thrust::transform(thrust::device, d_ptr, d_ptr + m_size, d_ptr, 
+			[func] KRR_DEVICE(const T &val) mutable { return func(val); });
 	}
 
 	KRR_CALLABLE size_t size() const { return m_size; }

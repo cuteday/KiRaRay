@@ -1,10 +1,12 @@
 #include "errormeasure.h"
 #include "metrics.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
 void ErrorMeasurePass::render(CUDABuffer &frame) {
 	if (mNeedsEvaluate) {
+		PROFILE("Metric calculation");
 		size_t n_elememts = mFrameSize[0] * mFrameSize[1];
 		mResult =
 			calculateMetric(mMetric, reinterpret_cast<Color4f *>(frame.data()),
@@ -33,11 +35,9 @@ void ErrorMeasurePass::renderUI() {
 		}
 		if (mReferenceImage.isValid()) {
 			ui::Text("Reference image: %s", mReferenceImagePath.c_str());
-			if (!continuousEvaluate) {
-				ui::Checkbox("Continuous evaluate", &continuousEvaluate);
-				if (!continuousEvaluate && ui::Button("Evaluate")) 
-					mNeedsEvaluate = 1;
-			}	
+			ui::Checkbox("Continuous evaluate", &continuousEvaluate);
+			if (!continuousEvaluate && ui::Button("Evaluate")) 
+				mNeedsEvaluate = 1;
 			mNeedsEvaluate |= continuousEvaluate;
 		}
 		if (mIsEvaluated)
@@ -65,10 +65,11 @@ bool ErrorMeasurePass::loadReferenceImage(const string &path) {
 	if (success) {
 		CHECK_LOG(mReferenceImage.getSize() == mFrameSize, 
 			"ErrorMeasure::Reference image size does not match frame size!");
+		// TODO: find out why saving an exr image yields this permutation on pixel format?
+		mReferenceImage.permuteChannels(Vector4i{ 3, 0, 1, 2});
 		mReferenceImageBuffer.resize(mReferenceImage.getSizeInBytes());
 		mReferenceImageBuffer.copy_from_host(reinterpret_cast<Color4f*>(mReferenceImage.data()), 
 			mFrameSize[0] * mFrameSize[1]);
-		mReferenceImage.saveImage("common/test.exr");
 		mIsEvaluated = mNeedsEvaluate = false;
 		mReferenceImagePath			  = path;
 	} else {

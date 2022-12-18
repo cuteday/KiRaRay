@@ -5,6 +5,8 @@
 #pragma once
 #include <map>
 #include <cuda_runtime.h>
+#include <thrust/transform.h>
+#include <thrust/execution_policy.h>
 
 #include "common.h"
 
@@ -51,6 +53,8 @@ public:
 	Format getFormat() const { return mFormat; }
 	inline size_t getElementSize() const { return mFormat == Format::RGBAfloat ? sizeof(float) : sizeof(uchar); }
 	int getChannels() const { return mChannels; }
+	template <int DIM>
+	inline void permuteChannels(const Vector<int, DIM> permutation);
 	size_t getSizeInBytes() const { return mChannels * mSize[0] * mSize[1] * getElementSize(); }
 	uchar* data() { return mData; }
 	void reset(uchar *data) { mData = data; }
@@ -62,6 +66,40 @@ private:
 	Format mFormat{ };
 	uchar* mData{ };
 };
+
+template <int DIM> void Image::permuteChannels(const Vector<int, DIM> permutation) {
+	if (!isValid())
+		Log(Error, "Load the image before do permutations");
+	CHECK_LOG(4 == mChannels, "Only support channel == 4 currently!");
+	CHECK_LOG(DIM <= mChannels, "Permutation do not match channel count!");
+	size_t data_size = getElementSize();
+	size_t n_pixels	 = mSize[0] * mSize[1];
+	if (data_size == sizeof(float)) {
+		using PixelType = Array<float, 4>;
+		auto *pixels	= reinterpret_cast<PixelType *>(mData);
+		thrust::transform(thrust::host, pixels, pixels + n_pixels, pixels, [=](PixelType pixel) {
+			PixelType res = pixel;
+			for (int c = 0; c < DIM; c++) {
+				res[c] = pixel[permutation[c]];
+			}
+			return res;
+		});
+	} else if (data_size == sizeof(char)) {
+		using PixelType = Array<char, 4>;
+		auto *pixels	= reinterpret_cast<PixelType *>(mData);
+		thrust::transform(thrust::host, pixels, pixels + n_pixels, pixels, [=](PixelType pixel) {
+			PixelType res = pixel;
+			for (int c = 0; c < DIM; c++) {
+				res[c] = pixel[permutation[c]];
+			}
+			return res;
+		});
+	}
+	else {
+		Log(Error, "Permute channels not implemented yet :-(");
+	}
+}
+
 
 class Texture {
 public:
