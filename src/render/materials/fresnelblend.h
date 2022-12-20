@@ -30,7 +30,8 @@ public:
 		ggx			= { alpha, alpha };
 	}
 
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
+						 TransportMode mode = TransportMode::Radiance) const {
 		if (!SameHemisphere(wo, wi))
 			return Color::Zero();
 		Color diff = (28.f / (23.f * M_PI)) * diffuse * (Color::Ones() - specular)
@@ -46,7 +47,8 @@ public:
 		return diff + spec;
 	}
 
-	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler & sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
+								   TransportMode mode = TransportMode::Radiance) const {
 		BSDFSample sample = {};
 		float comp = sg.get1D();
 		Vector2f u = sg.get2D();
@@ -66,7 +68,8 @@ public:
 		return sample;
 	}
 
-	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
+						   TransportMode mode = TransportMode::Radiance) const {
 		if (!SameHemisphere(wo, wi)) return 0;
 		float diffPdf = fabs(wi[2]) * M_INV_PI;
 

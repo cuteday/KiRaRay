@@ -36,7 +36,7 @@ public:
 		distribution = { alpha, alpha };
 	}
 
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi, TransportMode mode = TransportMode::Radiance) const {
 		if (eta == 1 || distribution.isSpecular())
 			return Color3f(0.f);
 		// Evaluate rough dielectric BSDF
@@ -68,13 +68,13 @@ public:
 			Color3f ft	= T * distribution.D(wm) * distribution.G(wo, wi) *
 					   abs(dot(wi, wm) * dot(wo, wm) / denom);
 			// Account for non-symmetry with transmission to different medium
-			ft /= pow2(etap);
-
+			if (mode == TransportMode::Radiance) ft /= pow2(etap); 
 			return ft;
 		}
 	}
 
-	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
+								   TransportMode mode = TransportMode::Radiance) const {
 		if (eta == 1 || distribution.isSpecular()) {
 			// Sample perfectly specular dielectric BSDF
 			float F = FrDielectric(CosTheta(wo), eta);
@@ -101,7 +101,7 @@ public:
 
 				Color3f ft(T / AbsCosTheta(wi));
 				// Account for non-symmetry with transmission to different medium
-				ft /= pow2(etap);
+				if (mode == TransportMode::Radiance) ft /= pow2(etap);
 
 				return BSDFSample(ft, wi, pt / (pr + pt), BSDF_SPECULAR_TRANSMISSION);
 			}
@@ -144,14 +144,15 @@ public:
 				Color3f ft(T * distribution.D(wm) * distribution.G(wo, wi) *
 					abs(dot(wi, wm) * dot(wo, wm) / (CosTheta(wi) * CosTheta(wo) * denom)));
 				// Account for non-symmetry with transmission to different medium
-				ft /= pow2(etap);
+				if (mode == TransportMode::Radiance) ft /= pow2(etap);
 
 				return BSDFSample(ft, wi, pdf, BSDF_GLOSSY_TRANSMISSION);
 			}
 		}
 	}
 
-	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
+						   TransportMode mode = TransportMode::Radiance) const {
 		if (eta == 1 || distribution.isSpecular())
 			return 0;
 		// Evaluate sampling PDF of rough dielectric BSDF

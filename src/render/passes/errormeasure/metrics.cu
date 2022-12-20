@@ -32,6 +32,10 @@ float calc_metric_mse(const Color4f *frame, const Color4f *reference,
 		0.f, thrust::plus<float>()) / n_elements;
 }
 
+float calc_metric_rmse(const Color4f* frame, const Color4f* reference, size_t n_elements) {
+	return sqrt(calc_metric_mse(frame, reference, n_elements));
+}
+
 float calc_metric_mape(const Color4f *frame, const Color4f *reference, 
 	size_t n_elements) {
 	Color3f *mape_buffer = initialize_metric(n_elements);

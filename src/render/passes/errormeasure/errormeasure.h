@@ -15,6 +15,7 @@ class ErrorMeasurePass : public RenderPass {
 public:
 	enum Metric {
 		MSE,
+		RMSE,
 		MAPE,
 		RelMSE,
 		NumMetrics

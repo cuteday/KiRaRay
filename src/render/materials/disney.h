@@ -290,7 +290,8 @@ public:
 		if (totalWt > 0) pDiffuse /= totalWt, pSpecRefl /= totalWt, pSpecTrans /= totalWt;
 	}
 
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
+						 TransportMode mode = TransportMode::Radiance) const {
 		Color val	 = Color::Zero();
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
@@ -298,15 +299,16 @@ public:
 			val += disneyRetro.f(wo, wi);
 		}
 		if (pSpecRefl > 0 && reflect) {
-			val += microfacetBrdf.f(wo, wi);
+			val += microfacetBrdf.f(wo, wi, mode);
 		}
 		if (pSpecTrans > 0 && !reflect) {
-			val += microfacetBtdf.f(wo, wi);
+			val += microfacetBtdf.f(wo, wi, mode);
 		}
 		return val;
 	}
 
-	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler& sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
+								   TransportMode mode = TransportMode::Radiance) const {
 		BSDFSample sample;
 		float comp = sg.get1D();
 		if (comp < pDiffuse) {
@@ -317,7 +319,7 @@ public:
 			sample.wi	 = wi;
 			sample.flags = BSDF_DIFFUSE_REFLECTION;
 		} else if (comp < pDiffuse + pSpecRefl) {
-			sample = microfacetBrdf.sample(wo, sg);
+			sample = microfacetBrdf.sample(wo, sg, mode);
 			sample.pdf *= pSpecRefl;
 			if (pDiffuse) {
 				sample.f += disneyDiffuse.f(wo, sample.wi);
@@ -325,23 +327,24 @@ public:
 				sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
 			}
 		} else if (pSpecTrans > 0) {
-			sample = microfacetBtdf.sample(wo, sg);
+			sample = microfacetBtdf.sample(wo, sg, mode);
 			sample.pdf *= pSpecTrans;
 		}
 		return sample;
 	}
 
-	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
+						   TransportMode mode = TransportMode::Radiance) const {
 		float val = 0;
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
 			val += pDiffuse * AbsCosTheta(wi) * M_INV_PI;
 		}
 		if (pSpecRefl > 0 && reflect) {
-			val += pSpecRefl * microfacetBrdf.pdf(wo, wi);
+			val += pSpecRefl * microfacetBrdf.pdf(wo, wi, mode);
 		}
 		if (pSpecTrans > 0 && !reflect) {
-			val += pSpecTrans * microfacetBtdf.pdf(wo, wi);
+			val += pSpecTrans * microfacetBtdf.pdf(wo, wi, mode);
 		}
 		return val;
 	}

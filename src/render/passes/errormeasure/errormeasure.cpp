@@ -23,13 +23,14 @@ void ErrorMeasurePass::resize(const Vector2i &size) {
 }
 
 void ErrorMeasurePass::renderUI() { 
-	static char *metricNames[] = { "MSE", "MAPE", "RelMSE" }; 
+	static char *metricNames[]	   = { "MSE", "RMSE", "MAPE", "RelMSE" }; 
 	static bool continuousEvaluate = false;
 	ui::Checkbox("Enabled", &mEnable);
 	if (mEnable) {
-		ui::Combo("Metric", (int *) &mMetric, metricNames, Metric::NumMetrics);
-		static char referencePath[500] = "";
-		ui::InputText("Reference path", referencePath, sizeof(referencePath));
+		if(ui::Combo("Metric", (int *) &mMetric, metricNames, Metric::NumMetrics))
+			mIsEvaluated = false;
+		static char referencePath[256] = "";
+		ui::InputText("Reference", referencePath, sizeof(referencePath));
 		if (ui::Button("Load")) {
 			loadReferenceImage(referencePath);
 		}
@@ -50,6 +51,8 @@ float ErrorMeasurePass::calculateMetric(Metric metric,
 	switch (metric) { 
 	case Metric::MSE:
 		return calc_metric_mse(frame, reference, n_elements);	
+	case Metric::RMSE:
+		return calc_metric_rmse(frame, reference, n_elements);	
 	case Metric::MAPE:
 		return calc_metric_mape(frame, reference, n_elements);	
 	case Metric::RelMSE:
