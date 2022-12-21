@@ -23,9 +23,7 @@ KRR_NAMESPACE_BEGIN
 using namespace utils;
 
 namespace shader {
-
-enum { RADIANCE_RAY_TYPE = 0, SHADOW_RAY_TYPE = 1, RAY_TYPE_COUNT };
-
+	
 struct HitInfo {
 	uint primitiveId;
 	Vector3f barycentric;

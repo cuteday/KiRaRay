@@ -7,8 +7,6 @@
 #include "logger.h"
 
 
-
-
 KRR_NAMESPACE_BEGIN
 
 

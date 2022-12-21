@@ -10,7 +10,9 @@ KRR_NAMESPACE_BEGIN
 
 using namespace shader;
 
-const string shaderProgramNames[] = {
+enum { RADIANCE_RAY_TYPE = 0, SHADOW_RAY_TYPE = 1, RAY_TYPE_COUNT };
+
+const string shaderProgramNames[RAY_TYPE_COUNT] = {
 	"Radiance",
 	"ShadowRay"
 };

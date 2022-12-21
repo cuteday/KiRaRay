@@ -112,6 +112,7 @@ FILE (GLOB_RECURSE KRR_RENDER_PASSES
 SET (KRR_SOURCE
 	${KRR_RENDER_PASSES}
 	render/path/pathtracer.cpp
+	render/bdpt/integrator.cpp
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
 	render/profiler/profiler.cpp
@@ -145,7 +146,6 @@ SET ( KRR_SHADERS
 	render/lightsampler.h
 	render/path/path.h
 	render/wavefront/wavefront.h
-	render/raytracing.cuh
 )
 
 SET_SOURCE_FILES_PROPERTIES (
@@ -167,7 +167,15 @@ set_target_properties (soac PROPERTIES OUTPUT_NAME soac)
 add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/render/wavefront/workitem_soa.h
     COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/render/wavefront/workitem_soa.h
     DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa)
-set (KRR_SOA_GENERATED ${CMAKE_CURRENT_BINARY_DIR}/include/render/wavefront/workitem_soa.h)
+
+add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/render/bdpt/workitem_soa.h
+    COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/render/bdpt/workitem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/render/bdpt/workitem_soa.h
+    DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/render/bdpt/workitem.soa)
+
+set (KRR_SOA_GENERATED 
+	${CMAKE_CURRENT_BINARY_DIR}/include/render/wavefront/workitem_soa.h
+	${CMAKE_CURRENT_BINARY_DIR}/include/render/bdpt/workitem_soa.h
+)
 
 add_custom_target (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
 
@@ -180,11 +188,13 @@ INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code 
 CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-path)
 CUDA_COMPILE_EMBED(WAVEFRONT_PTX render/wavefront/wavefront.cu krr-wavefront)
+CUDA_COMPILE_EMBED(BDPT_PTX render/bdpt/device.cu krr-bdpt)
 
 ADD_LIBRARY (KRR_PTX STATIC
 	# PTX 
 	${PATHTRACER_PTX}
 	${WAVEFRONT_PTX}
+	${BDPT_PTX}
 )
 ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 
@@ -230,6 +240,7 @@ ADD_LIBRARY ( krr_lib STATIC
 	# PTX
 	${PATHTRACER_PTX}
 	${WAVEFRONT_PTX}
+	${BDPT_PTX}
 )
 
 ADD_DEPENDENCIES (krr_lib krr_soa_generated)

@@ -2,7 +2,6 @@
 #include "path.h"
 #include "render/shared.h"
 #include "render/shading.h"
-#include "render/raytracing.cuh"
 #include "util/hash.h"
 
 #include <optix_device.h>
@@ -10,12 +9,22 @@
 using namespace krr;	// this is needed or nvcc cannot recognize the launchParams extern "C" var.
 KRR_NAMESPACE_BEGIN
 
-
 using namespace utils;
 using namespace shader;
 using namespace types;
 
 extern "C" __constant__ LaunchParamsPT launchParams;
+
+template <typename... Args>
+KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray, float tMax,
+								  int rayType, OptixRayFlags flags, Args &&...payload) {
+
+	optixTrace(traversable, ray.origin, ray.dir, 0.f, tMax, 0.f, /* ray time val min max */
+			   OptixVisibilityMask(255),						 /* all visible */
+			   flags, rayType, RAY_TYPE_COUNT,					 /* ray type and number of types */
+			   rayType,											 /* miss SBT index */
+			   std::forward<Args>(payload)...); /* (unpacked pointers to) payloads */
+}
 
 /* @returns: whether this ray is missed */
 KRR_DEVICE_FUNCTION bool traceRay(OptixTraversableHandle traversable, Ray ray,

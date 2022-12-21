@@ -2,19 +2,7 @@
 
 #include "file.h"
 #include "kiraray.h"
-
-#include "main/renderer.h"
-#include "main/vulkan_renderer.h"
-#include "render/passes/accumulate/accumulate.h"
-#include "render/passes/tonemapping/tonemapping.h"
-#include "render/passes/denoise/denoise.h"
-#include "render/path/pathtracer.h"
-#include "render/wavefront/integrator.h"
-#include "scene/importer.h"
-
-#if KRR_BUILD_STARLIGHT
-#include "render/ppg/integrator.h"
-#endif
+#include "renderer.h"
 
 KRR_NAMESPACE_BEGIN
 
