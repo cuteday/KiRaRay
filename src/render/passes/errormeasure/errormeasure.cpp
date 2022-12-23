@@ -23,11 +23,11 @@ void ErrorMeasurePass::resize(const Vector2i &size) {
 }
 
 void ErrorMeasurePass::renderUI() { 
-	static char *metricNames[]	   = { "MSE", "RMSE", "MAPE", "RelMSE" }; 
-	static bool continuousEvaluate = false;
+	static const char *metricNames[] = { "MSE", "MAPE", "RelMSE" };
+	static bool continuousEvaluate	 = false;
 	ui::Checkbox("Enabled", &mEnable);
 	if (mEnable) {
-		if(ui::Combo("Metric", (int *) &mMetric, metricNames, Metric::NumMetrics))
+		if (ui::Combo("Metric", (int *) &mMetric, metricNames, (int)ErrorMetric::Count))
 			mIsEvaluated = false;
 		static char referencePath[256] = "";
 		ui::InputText("Reference", referencePath, sizeof(referencePath));
@@ -42,25 +42,13 @@ void ErrorMeasurePass::renderUI() {
 			mNeedsEvaluate |= continuousEvaluate;
 		}
 		if (mIsEvaluated)
-			ui::Text("%s: %f", metricNames[mMetric], mResult);
+			ui::Text("%s: %f", metricNames[(int)mMetric], mResult);
 	}
 }
 
-float ErrorMeasurePass::calculateMetric(Metric metric, 
+float ErrorMeasurePass::calculateMetric(ErrorMetric metric, 
 	const Color4f* frame, const Color4f* reference, size_t n_elements) {
-	switch (metric) { 
-	case Metric::MSE:
-		return calc_metric_mse(frame, reference, n_elements);	
-	case Metric::RMSE:
-		return calc_metric_rmse(frame, reference, n_elements);	
-	case Metric::MAPE:
-		return calc_metric_mape(frame, reference, n_elements);	
-	case Metric::RelMSE:
-		return calc_metric_relmse(frame, reference, n_elements);	
-	default:
-		Log(Error, "ErrorMeasure::Unimplemented error metric!");
-		return NAN;
-	}
+	return calc_metric(frame, reference, n_elements, metric);	
 }
 
 bool ErrorMeasurePass::loadReferenceImage(const string &path) {

@@ -72,27 +72,31 @@ KRR_CALLABLE float luminance(Color3f color) {
 }
 
 KRR_CALLABLE float srgb2linear(float sRGBColor) {
-	if (sRGBColor <= 0.04045)
-		return sRGBColor / 12.92;
+	if (sRGBColor <= 0.04045f)
+		return sRGBColor / 12.92f;
 	else
-		return pow((sRGBColor + 0.055) / 1.055, 2.4);
+		return pow((sRGBColor + 0.055f) / 1.055f, 2.4f);
 }
 
-KRR_CALLABLE Vector3f srgb2linear(Vector3f sRGBColor) {
-	return Vector3f(srgb2linear(sRGBColor[0]), srgb2linear(sRGBColor[1]),
-					srgb2linear(sRGBColor[2]));
+KRR_CALLABLE Color srgb2linear(Color sRGBColor) {
+	Color ret{};
+	for (int ch = 0; ch < Color::dim; ch++)
+		ret[ch] = srgb2linear(sRGBColor[ch]);
+	return ret;
 }
 
 KRR_CALLABLE float linear2srgb(float linearColor) {
 	if (linearColor <= 0.0031308)
-		return linearColor * 12.92;
+		return linearColor * 12.92f;
 	else
-		return 1.055 * pow(linearColor, 1.0 / 2.4) - 0.055;
+		return 1.055f * pow(linearColor, 1.f / 2.4f) - 0.055f;
 }
 
-KRR_CALLABLE Vector3f linear2srgb(Vector3f linearColor) {
-	return Vector3f(linear2srgb(linearColor[0]), linear2srgb(linearColor[1]),
-					linear2srgb(linearColor[2]));
+KRR_CALLABLE Color linear2srgb(Color linearColor) {
+	Color ret{};
+	for (int ch = 0; ch < Color::dim; ch++)
+		ret[ch] = linear2srgb(linearColor[ch]);
+	return ret;
 }
 
 /*******************************************************
