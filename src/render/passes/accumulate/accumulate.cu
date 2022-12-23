@@ -18,19 +18,17 @@ void AccumulatePass::render(CUDABuffer& frame) {
 	if (mpScene->getChanges()) reset();
 	Vector4f* accumBuffer = (Vector4f*)mAccumBuffer->data();
 	Vector4f* currentBuffer = (Vector4f*)frame.data();
-	mMovingAverage = mMaxAccumCount > 0;
 	GPUParallelFor(mFrameSize[0] * mFrameSize[1], KRR_DEVICE_LAMBDA(int i) {
 		float currentWeight = 1.f / (mAccumCount + 1);
 		if (mAccumCount > 0) {
-			if (mMovingAverage) // moving average mode
+			if (mMode == Mode::MovingAverage) // moving average mode
 				accumBuffer[i] = utils::lerp(accumBuffer[i], currentBuffer[i], currentWeight);
-			else				// sum mode
+			else if (!mMaxAccumCount || mAccumCount < mMaxAccumCount) // sum mode
 				accumBuffer[i] = accumBuffer[i] + currentBuffer[i];
-		}
-		else {
+		} else {
 			accumBuffer[i] = currentBuffer[i];
 		}
-		if (mMovingAverage)
+		if (mMode == Mode::MovingAverage)
 			currentBuffer[i] = accumBuffer[i];
 		else
 			currentBuffer[i] = accumBuffer[i] * currentWeight;
@@ -54,13 +52,15 @@ void AccumulatePass::renderUI() {
 	if (ui::Checkbox("Enabled", &mEnable))
 		reset();
 	if (mEnable) {
+		static const char *modeNames[] = { "Accumulate", "Moving Average" };
+		if (ui::Combo("Enable moving average", (int *) &mMode, modeNames, (int) Mode::Count))
+			reset();
 		ui::Text("Accumulate count: %d", mAccumCount);
 		ui::Text("Elapsed time: %.2f", 
 			CpuTimer::calcDuration(mStartTime, mCurrentTime) * 1e-3 );
 		if (ui::DragInt("Max accum count", (int *) &mMaxAccumCount, 1, 0, 1e9))
 			reset();
-		if (ui::Button("reset"))
-			reset();
+		if (ui::Button("reset")) reset();
 	}
 }
 

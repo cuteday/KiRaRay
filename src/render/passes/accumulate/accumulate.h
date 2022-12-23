@@ -14,24 +14,19 @@ class AccumulatePass : public RenderPass {
 public:
 	using SharedPtr = std::shared_ptr<AccumulatePass>;
 	KRR_REGISTER_PASS_DEC(AccumulatePass);
-	KRR_CLASS_DEFINE(AccumulatePass, mMovingAverage);
+	enum class Mode { Accumulate, MovingAverage, Count };
 
 	AccumulatePass() = default;
-
 	void renderUI() override;
-
 	void reset();
-
 	void resize(const Vector2i &size) override;
-
 	string getName() const override { return "AccumulatePass"; }
-
 	void render(CUDABuffer& frame);
 	CUDABuffer& result() { return *mAccumBuffer; }
 
 private:
 	uint mAccumCount{ 0 };
-	bool mMovingAverage{ false };
+	Mode mMode{ Mode::Accumulate };
 	uint mMaxAccumCount{ 0U };
 	CUDABuffer *mAccumBuffer;
 	CpuTimer::TimePoint mStartTime, mCurrentTime;
