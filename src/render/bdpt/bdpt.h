@@ -14,22 +14,19 @@ using namespace shader;
 struct LaunchParamsBDPT {
 	uint frameID{ 0 };
 	Vector2i fbSize = Vector2i::Zero();
-	// per pixel debugging output
 	bool debugOutput	= false;
-	Vector2i debugPixel = { 960, 540 };
-	// path tracing parameters
-	bool NEE = false; // enable next event estimation (and multiple importance sampling)
-	
+	Vector2i debugPixel = { 114, 514 };
+
 	int maxDepth		 = 10;
 	float probRR		 = 0.2;
-	float clampThreshold = 1e4f; // clamp max radiance contrib per frame
-	int spp				 = 1;
+	float clampThreshold = 1e4f; 
 
 	Camera camera;
 	LightSampler lightSampler;
 	Scene::SceneData sceneData;
 
 	Color4f* colorBuffer{ nullptr };
+	BDPTPathStateBuffer *pathState{ nullptr };
 	OptixTraversableHandle traversable{ 0 };
 };
 

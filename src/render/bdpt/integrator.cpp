@@ -99,14 +99,15 @@ void BDPTIntegrator::buildAS() {
 
 void BDPTIntegrator::renderUI() {
 	ui::Text("Render parameters");
-	ui::InputInt("Samples per pixel", &launchParams.spp);
 	ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
-	ui::InputInt("Max bounces", &launchParams.maxDepth);
+	ui::InputInt("Max depth", &launchParams.maxDepth);
 	ui::DragFloat("Radiance clip", &launchParams.clampThreshold, 0.1, 1, 500);
-	ui::Checkbox("Next event estimation", &launchParams.NEE);
-	ui::Text("Debugging");
-	ui::Checkbox("Shader debug output", &launchParams.debugOutput);
-	ui::InputInt2("Debug pixel", (int *) &launchParams.debugPixel);
+	
+	if (ui::CollapsingHeader("Debugging")) {
+		ui::Checkbox("Shader debug output", &launchParams.debugOutput);
+		if (launchParams.debugOutput)
+			ui::InputInt2("Debug pixel", (int *) &launchParams.debugPixel);
+	}
 }
 
 void BDPTIntegrator::render(CUDABuffer &frame) {
