@@ -4,29 +4,32 @@
 
 #include "bxdf.h"
 
-#define _DEFINE_BSDF_INTERNAL_ROUTINES(bsdf_name)														\
-	KRR_CALLABLE static BSDFSample sampleInternal(const ShadingData &sd, Vector3f wo, Sampler & sg) {	\
-		bsdf_name bsdf;																					\
-		bsdf.setup(sd);																					\
-		return bsdf.sample(wo, sg);																		\
-	}																									\
+#define _DEFINE_BSDF_INTERNAL_ROUTINES(bsdf_name)                                                       \
+	KRR_CALLABLE static BSDFSample sampleInternal(const ShadingData &sd, Vector3f wo, Sampler &sg,      \
+												  TransportMode mode = TransportMode::Radiance) {       \
+		bsdf_name bsdf;                                                                                 \
+		bsdf.setup(sd);                                                                                 \
+		return bsdf.sample(wo, sg, mode);                                                               \
+	}                                                                                                   \
 																										\
-	KRR_CALLABLE static Vector3f fInternal(const ShadingData& sd, Vector3f wo, Vector3f wi) {			\
-		bsdf_name bsdf;																					\
-		bsdf.setup(sd);																					\
-		return bsdf.f(wo, wi);																			\
-	}																									\
-																										\
-	KRR_CALLABLE static float pdfInternal(const ShadingData& sd, Vector3f wo, Vector3f wi) {			\
-		bsdf_name bsdf;																					\
-		bsdf.setup(sd);																					\
-		return bsdf.pdf(wo, wi);																		\
-	}																									\
-																										\
-	KRR_CALLABLE static BSDFType flagsInternal(const ShadingData& sd){										\
-		bsdf_name bsdf;																					\
-		bsdf.setup(sd);																					\
-		return bsdf.flags();																		\
+	KRR_CALLABLE static Vector3f fInternal(const ShadingData &sd, Vector3f wo, Vector3f wi,             \
+										   TransportMode mode = TransportMode::Radiance) {              \
+		bsdf_name bsdf;                                                                                 \
+		bsdf.setup(sd);                                                                                 \
+		return bsdf.f(wo, wi, mode);                                                                    \
+	}                                                                                                   \
+                                                                                                        \
+	KRR_CALLABLE static float pdfInternal(const ShadingData &sd, Vector3f wo, Vector3f wi,              \
+										  TransportMode mode = TransportMode::Radiance) {               \
+		bsdf_name bsdf;                                                                                 \
+		bsdf.setup(sd);                                                                                 \
+		return bsdf.pdf(wo, wi, mode);                                                                  \
+	}                                                                                                   \
+                                                                                                        \
+	KRR_CALLABLE static BSDFType flagsInternal(const ShadingData &sd) {                                 \
+		bsdf_name bsdf;                                                                                 \
+		bsdf.setup(sd);                                                                                 \
+		return bsdf.flags();                                                                            \
 	}
 
 KRR_NAMESPACE_BEGIN

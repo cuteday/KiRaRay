@@ -86,9 +86,9 @@ public:
 KRR_CALLABLE static void GGXSample11(float cosTheta, float U1, float U2,
 	float* slope_x, float* slope_y) {
 	// special case (normal incidence)
-	if (cosTheta > .9999) {
+	if (cosTheta > .9999f) {
 		float r = sqrt(U1 / (1 - U1));
-		float phi = 6.28318530718 * U2;
+		float phi = M_2PI * U2;
 		*slope_x = r * cos(phi);
 		*slope_y = r * sin(phi);
 		return;
@@ -203,7 +203,8 @@ public:
 		distribution = { alpha, alpha };
 	}
 
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
+						 TransportMode mode = TransportMode::Radiance) const {
 		if (distribution.isSpecular()) return 0;
 		if (!SameHemisphere(wi, wo)) return 0;
 		
@@ -218,7 +219,8 @@ public:
 			(4 * cosThetaI * cosThetaO);
 	}
 
-	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler& sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
+								   TransportMode mode = TransportMode::Radiance) const {
 		BSDFSample sample = {};
 		Vector3f wi, wh;
 		Vector2f u = sg.get2D();
@@ -244,7 +246,8 @@ public:
 		return sample;
 	}
 
-	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
+						   TransportMode mode = TransportMode::Radiance) const {
 		if (distribution.isSpecular()) return 0;
 		if (!SameHemisphere(wo, wi)) return 0;
 		Vector3f wh = normalize(wo + wi);
@@ -297,7 +300,8 @@ public:
 		distribution = { alpha, alpha };
 	}
 
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
+						 TransportMode mode = TransportMode::Radiance) const {
 		if (distribution.isSpecular()) return 0;
 		if (SameHemisphere(wo, wi)) return 0;
 
@@ -314,14 +318,16 @@ public:
 		Color F = Fr(wo, wh);
 		
 		float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
-
-		return (Color::Ones() - F) * T *
+		Color3f ft = (Color::Ones() - F) * T *
 			fabs(distribution.D(wh) * distribution.G(wo, wi) *
 				AbsDot(wi, wh) * AbsDot(wo, wh)  /
 				(cosThetaI * cosThetaO * pow2(sqrtDenom)));
+		if (mode == TransportMode::Radiance) ft /= pow2(eta);
+		return ft;
 	}
 
-	KRR_CALLABLE  BSDFSample sample(Vector3f wo, Sampler& sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
+								   TransportMode mode = TransportMode::Radiance) const {
 		BSDFSample sample = {};
 		if (wo[2] == 0) return sample;
 
@@ -332,6 +338,7 @@ public:
 				return {};
 			
 			Color ft = (Color::Ones() - Fr(wo, wh)) * T / AbsCosTheta(wi);
+			if (mode == TransportMode::Radiance) ft /= pow2(eta);
 			return BSDFSample(ft, wi, 1, BSDF_SPECULAR_TRANSMISSION);
 		}
 
@@ -346,7 +353,8 @@ public:
 		return sample;
 	}
 
-	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
+						   TransportMode mode = TransportMode::Radiance) const {
 		if (distribution.isSpecular()) return 0;
 		if (SameHemisphere(wo, wi)) return 0;
 		float eta = CosTheta(wo) > 0 ? etaT : 1 / etaT;

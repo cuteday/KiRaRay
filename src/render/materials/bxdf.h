@@ -27,6 +27,11 @@ enum BSDFType {
 	BSDF_ALL = BSDF_DIFFUSE | BSDF_GLOSSY | BSDF_SPECULAR | BSDF_REFLECTION | BSDF_TRANSMISSION,
 };
 
+enum class TransportMode {
+	Radiance,
+	Importance
+};
+
 KRR_CALLABLE BSDFType operator|(BSDFType a, BSDFType b) { return BSDFType((int) a | (int) b); }
 KRR_CALLABLE BSDFType operator&(BSDFType a, BSDFType b) { return BSDFType((int) a & (int) b); }
 

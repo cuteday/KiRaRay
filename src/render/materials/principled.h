@@ -99,7 +99,7 @@ public:
 
 		// Create the microfacet distribution for metallic and/or specular
 		// transmission.
-		float aspect = sqrt(1 - sd.anisotropic * .9);
+		float aspect = sqrt(1 - sd.anisotropic * .9f);
 		float ax	 = max(1e-3f, pow2(roughness) / aspect);
 		float ay	 = max(1e-3f, pow2(roughness) * aspect);
 		delta		 = max(ax, ay) <= 1e-3f;
@@ -137,7 +137,8 @@ public:
 			pGlass = weightGlass / totalWt;
 	}
 
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
+						 TransportMode mode = TransportMode::Radiance) const {
 		Color val	 = Color::Zero();
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
@@ -145,27 +146,28 @@ public:
 			val += weightDiffuse * disneyRetro.f(wo, wi);
 		}
 		if (pMetal > 0 && reflect) {
-			val += weightMetal * metalBrdf.f(wo, wi);
+			val += weightMetal * metalBrdf.f(wo, wi, mode);
 		}
 		if (pGlass > 0) {
-			val += weightGlass * glassBsdf.f(wo, wi);
+			val += weightGlass * glassBsdf.f(wo, wi, mode);
 		}
 		return val;
 	}
 
-	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
+								   TransportMode mode = TransportMode::Radiance) const {
 		BSDFSample sample{};
 		float comp = sg.get1D();
 		if (comp < pDiffuse) {
 			Vector3f wi = cosineSampleHemisphere(sg.get2D());
 			if (wo[2] < 0)
 				wi[2] *= -1;
-			sample.pdf	 = pdf(wo, wi);
-			sample.f	 = f(wo, wi);
+			sample.pdf	 = pdf(wo, wi, mode);
+			sample.f	 = f(wo, wi, mode);
 			sample.wi	 = wi;
 			sample.flags = BSDF_DIFFUSE_REFLECTION;
 		} else if (comp < pDiffuse + pMetal) {
-			sample = metalBrdf.sample(wo, sg);
+			sample = metalBrdf.sample(wo, sg, mode);
 			sample.pdf *= pMetal;
 			if (pDiffuse > 0) {
 				sample.f += weightDiffuse * disneyDiffuse.f(wo, sample.wi);
@@ -173,8 +175,8 @@ public:
 				sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
 			}
 			if (pGlass > 0) {
-				sample.f += weightGlass * glassBsdf.f(wo, sample.wi);
-				sample.pdf += pGlass * glassBsdf.pdf(wo, sample.wi);
+				sample.f += weightGlass * glassBsdf.f(wo, sample.wi, mode);
+				sample.pdf += pGlass * glassBsdf.pdf(wo, sample.wi, mode);
 			}
 		} else if (pGlass > 0) {
 			sample = glassBsdf.sample(wo, sg);
@@ -188,25 +190,26 @@ public:
 					sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
 				}
 				if (pMetal > 0) {
-					sample.f += weightMetal * metalBrdf.f(wo, sample.wi);
-					sample.pdf += pMetal * metalBrdf.pdf(wo, sample.wi);
+					sample.f += weightMetal * metalBrdf.f(wo, sample.wi, mode);
+					sample.pdf += pMetal * metalBrdf.pdf(wo, sample.wi, mode);
 				}
 			}
 		}
 		return sample;
 	}
 
-	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
+						   TransportMode mode = TransportMode::Radiance) const {
 		float val	 = 0;
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
 			val += pDiffuse * AbsCosTheta(wi) * M_INV_PI;
 		}
 		if (pMetal > 0 && reflect) {
-			val += pMetal * metalBrdf.pdf(wo, wi);
+			val += pMetal * metalBrdf.pdf(wo, wi, mode);
 		}
 		if (pGlass > 0) {
-			val += pGlass * glassBsdf.pdf(wo, wi);
+			val += pGlass * glassBsdf.pdf(wo, wi, mode);
 		}
 		return val;
 	}

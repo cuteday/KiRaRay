@@ -29,7 +29,7 @@ struct Vertex {
 	Color3f throughput;
 	Color3f bsdfVal;
 	Color3f radiance;
-	float woPdf, bsdfPdf, dTreePdf;
+	float wiPdf, bsdfPdf, dTreePdf;
 	bool isDelta;
 };
 

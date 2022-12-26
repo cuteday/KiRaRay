@@ -23,9 +23,7 @@ KRR_NAMESPACE_BEGIN
 using namespace utils;
 
 namespace shader {
-
-enum { RADIANCE_RAY_TYPE = 0, SHADOW_RAY_TYPE = 1, RAY_TYPE_COUNT };
-
+	
 struct HitInfo {
 	uint primitiveId;
 	Vector3f barycentric;
@@ -65,9 +63,9 @@ struct ShadingData { // for use as per ray data, generated from ch
 				type = roughness <= 1e-3f ? BSDF_SPECULAR : BSDF_GLOSSY;
 				type = type | BSDF_REFLECTION | BSDF_TRANSMISSION;
 				break;
+			//case MaterialType::Principled:
+			//	[[fallthrough]];
 			case MaterialType::Disney:
-				[[fallthrough]];
-			case MaterialType::Principled:
 				type = roughness <= 1e-3f ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
 				if (diffuse.any() && specularTransmission < 1 && metallic < 1)
 					type = type | BSDFType::BSDF_DIFFUSE_REFLECTION;

@@ -25,12 +25,14 @@ public:
 		diffuse = sd.diffuse;
 	}
 
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
+						 TransportMode mode = TransportMode::Radiance) const {
 		if (!SameHemisphere(wo, wi)) return 0;
 		return diffuse * M_INV_PI;
 	}
 
-	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler& sg) const {
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
+								   TransportMode mode = TransportMode::Radiance) const {
 		BSDFSample sample;
 		Vector2f u = sg.get2D();
 		Vector3f wi = cosineSampleHemisphere(u);
@@ -41,7 +43,8 @@ public:
 		return sample;
 	}
 
-	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
+						   TransportMode mode = TransportMode::Radiance) const {
 		if (!SameHemisphere(wo, wi)) return 0;
 		return fabs(wi[2]) * M_INV_PI;
 	}

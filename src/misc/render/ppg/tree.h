@@ -277,7 +277,7 @@ public:
 		return factor * m_sum.load();
 	}
 
-	/* Irradiance is radiance/woPdf, statistical weight is generally a constant value. */
+	/* Irradiance is radiance/wiPdf, statistical weight is generally a constant value. */
 	KRR_DEVICE void recordIrradiance(Vector2f p, float irradiance, float statisticalWeight,
 									 EDirectionalFilter directionalFilter) {
 		if (!isinf(statisticalWeight) && statisticalWeight > 0) {
@@ -350,7 +350,7 @@ private:
 struct DTreeRecord {
 	Vector3f d;
 	float radiance, product;
-	float woPdf, bsdfPdf, dTreePdf;
+	float wiPdf, bsdfPdf, dTreePdf;
 	float statisticalWeight;
 	bool isDelta;
 };
@@ -369,7 +369,7 @@ public:
 		EDirectionalFilter directionalFilter, 
 		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss) {
 		if (!rec.isDelta) {
-			float irradiance = rec.radiance / rec.woPdf;
+			float irradiance = rec.radiance / rec.wiPdf;
 			building.recordIrradiance(dirToCanonical(rec.d), irradiance, rec.statisticalWeight, directionalFilter);
 		}
 	}
@@ -528,7 +528,7 @@ struct STreeNode {
 		float w = computeOverlappingVolume(min1, max1, min2, min2 + size2);
 		if (w > 0) {
 			if (isLeaf) {
-				dTree.record({ rec.d, rec.radiance, rec.product, rec.woPdf, rec.bsdfPdf, rec.dTreePdf, rec.statisticalWeight * w, rec.isDelta }, directionalFilter, bsdfSamplingFractionLoss);
+				dTree.record({ rec.d, rec.radiance, rec.product, rec.wiPdf, rec.bsdfPdf, rec.dTreePdf, rec.statisticalWeight * w, rec.isDelta }, directionalFilter, bsdfSamplingFractionLoss);
 			}
 			else {
 				size2[axis] /= 2;

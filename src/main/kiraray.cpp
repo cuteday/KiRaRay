@@ -2,32 +2,9 @@
 
 #include "file.h"
 #include "kiraray.h"
-
-#include "main/renderer.h"
-#include "render/passes/accumulate.h"
-#include "render/passes/tonemapping.h"
-#include "render/passes/denoise.h"
-#include "render/path/pathtracer.h"
-#include "render/wavefront/integrator.h"
-#include "scene/importer.h"
-
-#if KRR_BUILD_STARLIGHT
-#include "render/ppg/integrator.h"
-#endif
+#include "renderer.h"
 
 KRR_NAMESPACE_BEGIN
-
-void registerRenderPasses() {
-	// just a temporary workaroud...
-	RenderPass::SharedPtr __MegakernelPathTracer(new MegakernelPathTracer());
-	RenderPass::SharedPtr __WavefrontPathTracer(new WavefrontPathTracer());
-	RenderPass::SharedPtr __AccumulatePass(new AccumulatePass());
-	RenderPass::SharedPtr __DenoisePass(new DenoisePass());
-	RenderPass::SharedPtr __ToneMappingPass(new ToneMappingPass());
-#if KRR_BUILD_STARLIGHT
-	RenderPass::SharedPtr __PPGPathTracer(new PPGPathTracer());
-#endif
-}
 
 extern "C" int main(int argc, char *argv[]) {
     fs::current_path(File::cwd());
@@ -48,7 +25,6 @@ extern "C" int main(int argc, char *argv[]) {
 
 	try {
         gpContext = std::make_shared<Context>();
-		registerRenderPasses();
 		RenderApp app(KRR_PROJECT_NAME);
 		app.loadConfig(configFile);
 		app.run();

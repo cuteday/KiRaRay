@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: 
-        cuda: ["11.5.1"]
+        cuda: ["11.6.0"]
         cuda_arch: ["61"]
         os: ["windows-2019"]
         visual_studio: ["Visual Studio 16 2019"]
@@ -51,12 +51,18 @@ jobs:
         # Cuda version
         cuda: ${{matrix.cuda}}
         # Only installs specified subpackages, must be in the form of a JSON array. For example, if you only want to install nvcc and visual studio integration: ["nvcc", "visual_studio_integration"] double quotes required! Note that if you want to use this on Linux, 'network' method MUST be used.
-        sub-packages: '["nvcc", "visual_studio_integration", "cublas_dev", "curand_dev", "nvrtc_dev", "cudart"]'
+        # sub-packages: '["nvcc", "visual_studio_integration", "cublas_dev", "curand_dev", "nvrtc_dev", "cudart"]'
         # Installation method, can be either 'local' or 'network'. 'local' downloads the entire installer with all packages and runs that (you can still only install certain packages with sub-packages on Windows). 'network' downloads a smaller executable which only downloads necessary packages which you can define in subPackages
         method: "local"
 
     - name: Check CUDA compiler
       run: nvcc -V
+
+    - name: Install Vulkan SDK
+      uses: humbletim/install-vulkan-sdk@v1.1.1
+      with:
+        version: latest
+        cache: true
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.

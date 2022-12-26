@@ -12,6 +12,8 @@
 #include <sstream>
 #include <vector>
 
+#include <Eigen/Core>
+
 #ifndef KRR_NAMESPACE_BEGIN
 
 typedef uint32_t uint;
@@ -49,3 +51,9 @@ typedef unsigned char uchar;
 #if defined(INCLUDE_NLOHMANN_JSON_HPP_)
 #define KRR_MATH_JSON
 #endif
+
+KRR_NAMESPACE_BEGIN
+
+namespace math = Eigen;
+
+KRR_NAMESPACE_END

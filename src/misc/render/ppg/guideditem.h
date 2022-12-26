@@ -20,7 +20,7 @@ struct Vertex {
 	Color3f throughput;
 	Color3f bsdfVal;
 	Color3f radiance;
-	float woPdf, bsdfPdf, dTreePdf;
+	float wiPdf, bsdfPdf, dTreePdf;
 	bool isDelta;
 
 	KRR_DEVICE void record(const Color3f& r) {
@@ -30,24 +30,24 @@ struct Vertex {
 	KRR_DEVICE void commit(STree* sdTree, float statisticalWeight,
 		ESpatialFilter spatialFilter, EDirectionalFilter directionalFilter,
 		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler& sampler) {
-		if (woPdf <= 0 || isDelta) {
+		if (wiPdf <= 0 || isDelta) {
 			return;
 		}
 		Color3f localRadiance = 0;
-		if (throughput[0] * woPdf > 1e-4f) localRadiance[0] = radiance[0] / throughput[0];
-		if (throughput[1] * woPdf > 1e-4f) localRadiance[1] = radiance[1] / throughput[1];
-		if (throughput[2] * woPdf > 1e-4f) localRadiance[2] = radiance[2] / throughput[2];
+		if (throughput[0] * wiPdf > 1e-4f) localRadiance[0] = radiance[0] / throughput[0];
+		if (throughput[1] * wiPdf > 1e-4f) localRadiance[1] = radiance[1] / throughput[1];
+		if (throughput[2] * wiPdf > 1e-4f) localRadiance[2] = radiance[2] / throughput[2];
 		Color3f product = localRadiance * bsdfVal;
 
-		//if (localRadiance.mean() / woPdf > 0)
+		//if (localRadiance.mean() / wiPdf > 0)
 		//	printf("Recording an seemingly unreasonbly large irradiance value %f: "
-		//		"throughput [%f, %f, %f]; radiance [%f, %f, %f], woPdf %f\n",
-		//		localRadiance.mean() / woPdf, throughput[0], throughput[1], throughput[2],
-		//		   radiance[0], radiance[1], radiance[2], woPdf);
+		//		"throughput [%f, %f, %f]; radiance [%f, %f, %f], wiPdf %f\n",
+		//		localRadiance.mean() / wiPdf, throughput[0], throughput[1], throughput[2],
+		//		   radiance[0], radiance[1], radiance[2], wiPdf);
 
 		DTreeRecord rec{ ray.dir, 
 			localRadiance.mean(), product.mean(), 
-			woPdf, bsdfPdf, dTreePdf, 
+			wiPdf, bsdfPdf, dTreePdf, 
 			statisticalWeight, 
 			isDelta };
 
@@ -90,7 +90,7 @@ struct GuidedPathState {
 	uint n_vertices{};
 };
 
-#include "render/ppg/guideditem_soa.h"
+#include "ppg/guideditem_soa.h"
 
 class GuidedRayQueue : public WorkQueue<GuidedRayWorkItem> {
 public:
@@ -111,7 +111,7 @@ public:
 		Vector3f dTreeVoxelSize,
 		Color3f thp,
 		Color3f bsdfVal,
-		float woPdf, float bsdfPdf, float dTreePdf,
+		float wiPdf, float bsdfPdf, float dTreePdf,
 		bool isDelta = false) {
 		int depth = n_vertices[pixelId];
 		//printf("Attempting to increment depth of pixel %d with current depth %d\n",
@@ -123,7 +123,7 @@ public:
 		vertices[depth].dTreeVoxelSize[pixelId] = dTreeVoxelSize;
 		vertices[depth].throughput[pixelId]		= thp;
 		vertices[depth].bsdfVal[pixelId]		= bsdfVal;
-		vertices[depth].woPdf[pixelId]			= woPdf;
+		vertices[depth].wiPdf[pixelId]			= wiPdf;
 		vertices[depth].bsdfPdf[pixelId]		= bsdfPdf;
 		vertices[depth].dTreePdf[pixelId]		= dTreePdf;
 		vertices[depth].isDelta[pixelId]		= isDelta;

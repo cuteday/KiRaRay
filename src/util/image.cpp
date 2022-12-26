@@ -1,13 +1,30 @@
 #include "image.h"
 #include "logger.h"
+#define TINYEXR_USE_MINIZ (0)
+#define TINYEXR_IMPLEMENTATION
+#include "zlib.h"
 #include "tinyexr.h"
 
 #include "util/math_utils.h"
 
 KRR_NAMESPACE_BEGIN
 
-
 namespace tinyexr {
+	
+struct bfloat16 {
+unsigned short int data;
+public:
+	bfloat16() { data = 0; }
+	operator float() {
+		unsigned int proc = data << 16;
+		return *reinterpret_cast<float *>(&proc);
+	}
+	bfloat16 &operator=(float float_val) {
+		data = (*reinterpret_cast<unsigned int *>(&float_val)) >> 16;
+		return *this;
+	}
+};
+	
 void save_exr(const float *data, int width, int height, int nChannels, int channelStride,
 			  const char *outfilename, bool flip) {
 	EXRHeader header;
@@ -44,7 +61,7 @@ void save_exr(const float *data, int width, int height, int nChannels, int chann
 	image.width	 = width;
 	image.height = height;
 
-	header.line_order	= 1;
+	header.line_order	= 0;
 	header.num_channels = nChannels;
 	header.channels		= (EXRChannelInfo *) malloc(sizeof(EXRChannelInfo) * header.num_channels);
 	// Must be (A)BGR order, since most of EXR viewers expect this channel order.
@@ -84,6 +101,193 @@ void save_exr(const float *data, int width, int height, int nChannels, int chann
 	free(header.pixel_types);
 	free(header.requested_pixel_types);
 }
+
+int load_exr(float **data, int *width, int *height, const char *filename, bool flip) {
+	const char **err = nullptr;
+	const char *layername = nullptr;
+
+	EXRVersion exr_version;
+	EXRImage exr_image;
+	EXRHeader exr_header;
+	InitEXRHeader(&exr_header);
+	InitEXRImage(&exr_image);
+
+	{
+		int ret = ParseEXRVersionFromFile(&exr_version, filename);
+		if (ret != TINYEXR_SUCCESS) {
+			std::stringstream ss;
+			ss << "Failed to open EXR file or read version info from EXR file. code(" << ret << ")";
+			logError(ss.str());
+			return ret;
+		}
+
+		if (exr_version.multipart || exr_version.non_image) {
+			logError(
+				"Loading multipart or DeepImage is not supported  in LoadEXR() API");
+			return TINYEXR_ERROR_INVALID_DATA;
+		}
+	}
+
+	{
+		int ret = ParseEXRHeaderFromFile(&exr_header, &exr_version, filename, err);
+		if (ret != TINYEXR_SUCCESS) {
+			FreeEXRHeader(&exr_header);
+			return ret;
+		}
+	}
+
+	for (int i = 0; i < exr_header.num_channels; i++) {
+		if (exr_header.pixel_types[i] == TINYEXR_PIXELTYPE_HALF) {
+			exr_header.requested_pixel_types[i] = TINYEXR_PIXELTYPE_FLOAT;
+		}
+	}
+
+	if (flip) exr_header.line_order = 1;
+
+	{
+		int ret = LoadEXRImageFromFile(&exr_image, &exr_header, filename, err);
+		if (ret != TINYEXR_SUCCESS) {
+			FreeEXRHeader(&exr_header);
+			return ret;
+		}
+	}
+
+	// RGBA
+	int idxR = -1;
+	int idxG = -1;
+	int idxB = -1;
+	int idxA = -1;
+
+	std::vector<std::string> layer_names;
+	::tinyexr::GetLayers(exr_header, layer_names);
+
+	std::vector<::tinyexr::LayerChannel> channels;
+	::tinyexr::ChannelsInLayer(exr_header, layername == NULL ? "" : std::string(layername), channels);
+
+	if (channels.size() < 1) {
+		logError("Layer Not Found");
+		FreeEXRHeader(&exr_header);
+		FreeEXRImage(&exr_image);
+		return TINYEXR_ERROR_LAYER_NOT_FOUND;
+	}
+
+	size_t ch_count = channels.size() < 4 ? channels.size() : 4;
+	for (size_t c = 0; c < ch_count; c++) {
+		const ::tinyexr::LayerChannel &ch = channels[c];
+
+		if (ch.name == "R") {
+			idxR = int(ch.index);
+		} else if (ch.name == "G") {
+			idxG = int(ch.index);
+		} else if (ch.name == "B") {
+			idxB = int(ch.index);
+		} else if (ch.name == "A") {
+			idxA = int(ch.index);
+		}
+	}
+
+	if (channels.size() == 1) {
+		int chIdx = int(channels.front().index);
+		// Grayscale channel only.
+
+		(*data) = reinterpret_cast<float *>(
+			malloc(4 * sizeof(float) * static_cast<size_t>(exr_image.width) *
+				   static_cast<size_t>(exr_image.height)));
+
+		if (exr_header.tiled) {
+			for (int it = 0; it < exr_image.num_tiles; it++) {
+				for (int j = 0; j < exr_header.tile_size_y; j++) {
+					for (int i = 0; i < exr_header.tile_size_x; i++) {
+						const int ii = exr_image.tiles[it].offset_x *
+										   static_cast<int>(exr_header.tile_size_x) +
+									   i;
+						const int jj = exr_image.tiles[it].offset_y *
+										   static_cast<int>(exr_header.tile_size_y) +
+									   j;
+						const int idx = ii + jj * static_cast<int>(exr_image.width);
+
+						// out of region check.
+						if (ii >= exr_image.width) {
+							continue;
+						}
+						if (jj >= exr_image.height) {
+							continue;
+						}
+						const int srcIdx		 = i + j * exr_header.tile_size_x;
+						unsigned char **src		 = exr_image.tiles[it].images;
+						(*data)[4 * idx + 0] = reinterpret_cast<float **>(src)[chIdx][srcIdx];
+						(*data)[4 * idx + 1] = reinterpret_cast<float **>(src)[chIdx][srcIdx];
+						(*data)[4 * idx + 2] = reinterpret_cast<float **>(src)[chIdx][srcIdx];
+						(*data)[4 * idx + 3] = reinterpret_cast<float **>(src)[chIdx][srcIdx];
+					}
+				}
+			}
+		} else {
+			for (int i = 0; i < exr_image.width * exr_image.height; i++) {
+				const float val		   = reinterpret_cast<float **>(exr_image.images)[chIdx][i];
+				(*data)[4 * i + 0] = val;
+				(*data)[4 * i + 1] = val;
+				(*data)[4 * i + 2] = val;
+				(*data)[4 * i + 3] = val;
+			}
+		}
+	} else {
+		// Assume RGB(A)
+		(*data) = reinterpret_cast<float *>(
+			malloc(4 * sizeof(float) * static_cast<size_t>(exr_image.width) *
+				   static_cast<size_t>(exr_image.height)));
+		if (exr_header.tiled) {
+			for (int it = 0; it < exr_image.num_tiles; it++) {
+				for (int j = 0; j < exr_header.tile_size_y; j++) {
+					for (int i = 0; i < exr_header.tile_size_x; i++) {
+						const int ii  = exr_image.tiles[it].offset_x * exr_header.tile_size_x + i;
+						const int jj  = exr_image.tiles[it].offset_y * exr_header.tile_size_y + j;
+						const int idx = ii + jj * exr_image.width;
+
+						// out of region check.
+						if (ii >= exr_image.width) {
+							continue;
+						}
+						if (jj >= exr_image.height) {
+							continue;
+						}
+						const int srcIdx		 = i + j * exr_header.tile_size_x;
+						unsigned char **src		 = exr_image.tiles[it].images;
+						(*data)[4 * idx + 0] = reinterpret_cast<float **>(src)[idxR][srcIdx];
+						(*data)[4 * idx + 1] = reinterpret_cast<float **>(src)[idxG][srcIdx];
+						(*data)[4 * idx + 2] = reinterpret_cast<float **>(src)[idxB][srcIdx];
+						if (idxA != -1) {
+							(*data)[4 * idx + 3] =
+								reinterpret_cast<float **>(src)[idxA][srcIdx];
+						} else {
+							(*data)[4 * idx + 3] = 1.0;
+						}
+					}
+				}
+			}
+		} else {
+			for (int i = 0; i < exr_image.width * exr_image.height; i++) {
+				(*data)[4 * i + 0] = reinterpret_cast<float **>(exr_image.images)[idxR][i];
+				(*data)[4 * i + 1] = reinterpret_cast<float **>(exr_image.images)[idxG][i];
+				(*data)[4 * i + 2] = reinterpret_cast<float **>(exr_image.images)[idxB][i];
+				if (idxA != -1) {
+					(*data)[4 * i + 3] = reinterpret_cast<float **>(exr_image.images)[idxA][i];
+				} else {
+					(*data)[4 * i + 3] = 1.0;
+				}
+			}
+		}
+	}
+
+	(*width)  = exr_image.width;
+	(*height) = exr_image.height;
+
+	FreeEXRHeader(&exr_header);
+	FreeEXRImage(&exr_image);
+	
+	return 0;
+}
+
 } // namespace tinyexr
 
 namespace pfm {
@@ -230,51 +434,4 @@ fail:
 }
 } // namespace pfm
 
-namespace image {
-	
-
-Vector2f ndir_to_oct_equal_area_unorm(Vector3f n) {
-	// Use atan2 to avoid explicit div-by-zero check in atan(y/x).
-	float r	  = sqrt(1.f - abs(n[2]));
-	float phi = atan2(abs(n[1]), abs(n[0]));
-
-	// Compute p = (u,v) in the first quadrant.
-	Vector2f p;
-	p[1] = r * phi * M_2PI;
-	p[0] = r - p[1];
-
-	// Reflect p over the diagonals, and move to the correct quadrant.
-	if (n[2] < 0.f)
-		p = Vector2f{ 1 - p[1], 1 - p[0] };
-	p[0] = copysignf(p[0], n[0]);
-	p[1] = copysignf(p[1], n[1]);
-	return p * 0.5f + Vector2f(0.5f);
-}
-	
-Color4f* convertEqualAeraOctahedralMappingToSpherical(Color4f *data, int width, int height) {
-	CHECK_EQ(width, height);
-	if (width != height)
-		logError(
-			"Converting an image that may not be an equal-area octahedral mapping environment!");
-	Color4f *rgb = new Color4f[2 * width * height];
-	Vector2i size{ width, height };
-	Vector2i dstSize{ width * 2, height };
-	for (int r = 0; r < height; r++) {
-		for (int c = 0; c < width * 2; c++) {
-			Vector2f pixel{ (float) c, (float) r };
-			Vector2f latlong = (pixel + Vector2f(0.5f)).cwiseQuotient(Vector2f(dstSize));
-			Vector3f dir	 = utils::latlongToWorld(latlong);
-			Vector2i oct	 = ndir_to_oct_equal_area_unorm(dir).cwiseProduct(Vector2f(size)).cast<int>();
-			oct				 = oct.cwiseMin(size - Vector2i(1)).cwiseMax(0);
-			uint srcPixel	 = oct[0] + oct[1] * width;
-			uint dstPixel	 = c + r * width * 2;
-			rgb[dstPixel]	 = data[srcPixel];
-		}
-	}
-	return rgb;
-}
-
-}
-
 KRR_NAMESPACE_END
-
