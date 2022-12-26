@@ -204,6 +204,10 @@ KRR_CALLABLE Vector3f sphericalToCartesian(float sinTheta, float cosTheta, float
 	return Vector3f(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
 }
 
+KRR_CALLABLE Vector3f sphericalToCartesian(const Vector2f sph) {
+	return sphericalToCartesian(sph[0], sph[1]);
+}
+
 KRR_CALLABLE float sphericalTheta(const Vector3f &v) { return acos(clamp(v[2], -1.f, 1.f)); }
 
 KRR_CALLABLE float sphericalPhi(const Vector3f &v) {

@@ -34,7 +34,7 @@ set ( KRR_MISC_INCLUDE_ALL
 )
 include_directories(${KRR_MISC_INCLUDE_ALL})
 set (KRR_MISC_INCLUDE_ALL ${KRR_MISC_INCLUDE_ALL} PARENT_SCOPE)
-CUDA_COMPILE_EMBED(PPG_PTX ppg/device.cu krr-ppg ${KRR_MISC_INCLUDE_ALL})
+CUDA_COMPILE_EMBED(PPG_PTX ppg/device.cu krr-ppg krr_misc_soa_generated ${KRR_MISC_INCLUDE_ALL})
 add_library(KRR_MISC_PTX STATIC
 	# peseudo target for SOA generation priority
 	${PPG_PTX}

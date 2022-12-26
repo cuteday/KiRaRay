@@ -32,5 +32,4 @@ private:
 	CpuTimer::TimePoint mStartTime, mCurrentTime;
 };
 
-KRR_INSTANTIATE_PASS(AccumulatePass);
 KRR_NAMESPACE_END

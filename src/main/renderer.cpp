@@ -249,7 +249,7 @@ void RenderApp::loadConfig(fs::path path) {
 			Log(Info, "Creating specified render pass: %s", name.c_str());
 			RenderPass::SharedPtr pass = RenderPassFactory::createInstance(name);
 			if (p.contains("parameters")) {
-				//*pass = p["parameters"];
+				*pass = p["parameters"];
 			}
 			pass->setEnable(p.value("enable", true));
 			mpPasses.push_back(pass);

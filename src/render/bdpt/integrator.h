@@ -57,5 +57,4 @@ private:
 	LaunchParamsBDPT launchParams;
 };
 
-KRR_INSTANTIATE_PASS(BDPTIntegrator);
 KRR_NAMESPACE_END

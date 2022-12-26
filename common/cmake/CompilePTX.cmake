@@ -22,7 +22,7 @@ endif ()
 #    that PTX string 'embedded' as a global constant.
 # 4) assign the name of the intermediary .o file to the cmake variable
 #    'output_var', which can then be added to cmake targets.
-macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name)
+macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name dependencies)
 	
 	add_library ("${lib_name}" OBJECT "${cuda_file}")
 	set_property (TARGET "${lib_name}" PROPERTY CUDA_PTX_COMPILATION ON)
@@ -56,7 +56,7 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name)
 		${ARGN}
 	)
 	target_link_libraries("${lib_name}" PRIVATE krr_cuda_cfg krr_cuda_warning krr_opt)
-	add_dependencies ("${lib_name}" krr_soa_generated)
+	add_dependencies ("${lib_name}" "${dependencies}")
 	
 	set (c_var_name ${output_var})
 	set (embedded_file ${cuda_file}.ptx_embedded.c)

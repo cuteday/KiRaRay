@@ -120,7 +120,6 @@ SET (KRR_SOURCE
 	scene/assimp.cpp
 	scene/pbrt.cpp
 	main/renderer.cpp
-	main/vulkan_renderer.cpp
 	util/tables.cpp
 	util/image.cpp
 )
@@ -186,9 +185,9 @@ add_custom_target (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
 INCLUDE_DIRECTORIES (${KRR_INCLUDE_ALL})
 INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code 
-CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-path)
-CUDA_COMPILE_EMBED(WAVEFRONT_PTX render/wavefront/wavefront.cu krr-wavefront)
-CUDA_COMPILE_EMBED(BDPT_PTX render/bdpt/device.cu krr-bdpt)
+CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-path krr_soa_generated)
+CUDA_COMPILE_EMBED(WAVEFRONT_PTX render/wavefront/wavefront.cu krr-wavefront krr_soa_generated)
+CUDA_COMPILE_EMBED(BDPT_PTX render/bdpt/device.cu krr-bdpt krr_soa_generated)
 
 ADD_LIBRARY (KRR_PTX STATIC
 	# PTX 
@@ -261,7 +260,8 @@ ENDIF()
 ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
 
 #TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
-TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib)
+# -WHOLEARCHIVE assures that static variables are instantiated before main(), by linking all object files
+TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
 SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE)
 
 # The additional implementation of algorithms (in the static libraray "krr_starlight_lib") is not built by default
@@ -271,6 +271,6 @@ if (KRR_BUILD_STARLIGHT)
 	# ADD LIBRARY FROM MISC  (a.k.a. kirara startlight)
 	ADD_SUBDIRECTORY (misc)
 	MESSAGE ("KRR Starlight Include: ${KRR_MISC_INCLUDE_ALL}")
-	TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_starlight_lib)
+	TARGET_LINK_LIBRARIES (krr_lib PUBLIC krr_starlight_lib)
 	SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} ${KRR_MISC_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
 endif()

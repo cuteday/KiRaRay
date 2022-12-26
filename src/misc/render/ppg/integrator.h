@@ -4,7 +4,6 @@
 #include "tree.h"
 #include "render/wavefront/integrator.h"
 #include "backend.h"
-#include "guideditem.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -72,5 +71,4 @@ public:
 	GuidedPathStateBuffer* guidedPathState{};
 };
 
-KRR_INSTANTIATE_PASS(PPGPathTracer);
 KRR_NAMESPACE_END

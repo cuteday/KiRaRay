@@ -113,9 +113,6 @@ private:
 #define KRR_REGISTER_PASS_DEC(name)                                                                     \
 	static RenderPassRegister<name> reg;
 
-#define KRR_INSTANTIATE_PASS(name)                                                                      \
-	inline void __reg##name() { name::SharedPtr __name(new name()); }
-
 #define KRR_REGISTER_PASS_DEF(name)																		\
 	RenderPassRegister<name> name::reg(#name);															\
 	typename RenderPassRegister<name>::exec_register RenderPassRegister<name>::register_object(#name)                                                   

@@ -36,5 +36,4 @@ protected:
 	bool mIsEvaluated{}, mNeedsEvaluate{};
 };
 
-KRR_INSTANTIATE_PASS(ErrorMeasurePass);
 KRR_NAMESPACE_END

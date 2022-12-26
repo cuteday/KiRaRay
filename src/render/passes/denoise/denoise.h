@@ -56,5 +56,4 @@ private:
 	DenoiseBackend mBackend;
 };
 
-KRR_INSTANTIATE_PASS(DenoisePass);
 KRR_NAMESPACE_END
