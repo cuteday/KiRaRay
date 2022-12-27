@@ -34,7 +34,6 @@ private:
 class RenderPass{
 public:
 	using SharedPtr = std::shared_ptr<RenderPass>;
-	KRR_CLASS_DEFINE(RenderPass, mEnable);
 
 	RenderPass() = default;
 	// Whether this pass is enabled by default
@@ -56,27 +55,56 @@ public:
 	virtual bool enabled() const { return mEnable; }
 
 protected:
+	friend void to_json(json &j, const RenderPass &p) {
+		j = json{ { "enable", p.mEnable } };
+	}
+
+	friend void from_json(const json &j, RenderPass &p) {
+		j.at("enable").get_to(p.mEnable);
+	}
+	
 	bool mEnable = true;
-	Vector2i mFrameSize;
+	Vector2i mFrameSize{};
 	Scene::SharedPtr mpScene = nullptr;
 };
 
 class RenderPassFactory {
 public:
-	typedef std::map<string, RenderPass::SharedPtr(*) ()> map_type;
+	typedef std::map<string, std::function<RenderPass::SharedPtr(void)> > map_type;
+	typedef std::map<string, std::function<RenderPass::SharedPtr(const json&)>> configured_map_type;
 	
 	template <typename T> 
 	static RenderPass::SharedPtr create() { 
-		return RenderPass::SharedPtr(new T()); 
+		return std::make_shared<T>(); 
+	}
+
+	template <typename T> 
+	static RenderPass::SharedPtr deserialize(const json &serde) { 
+		auto ret = std::make_shared<T>(); 
+		*ret	 = serde.get<T>();
+		return ret;
 	}
 
 	static RenderPass::SharedPtr createInstance(std::string const &s) {
-		map_type::iterator it = getMap()->find(s);
-		if (it == getMap()->end()) {
+		auto map			  = getMap();
+		map_type::iterator it = map->find(s);
+		if (it == map->end()) {
 			Log(Error, "Could not create instance for %s: check if the pass is registered.", s.c_str());
 			return 0;
 		}
 		return it->second();
+	}
+
+	static RenderPass::SharedPtr deserizeInstance(std::string const &s, const json &serde) {
+		auto configured_map				 = getConfiguredMap();
+		configured_map_type::iterator it = configured_map->find(s);
+		if (it == configured_map->end()) {
+			Log(Error, "Could not deserialize instance for %s:" 
+					"check if the pass is registered, and serde methods implemented.",
+				s.c_str());
+			return 0;
+		}
+		return it->second(serde);
 	}
 
 protected:
@@ -85,15 +113,25 @@ protected:
 		return map;
 	}
 
+	static std::shared_ptr<configured_map_type> getConfiguredMap() {
+		if (!configured_map) {
+			configured_map.reset(new configured_map_type);
+		}
+		return configured_map;
+	}
+
 private:
+	/* The two map members are initialized in context.cpp */
 	static std::shared_ptr<map_type> map;
+	static std::shared_ptr<configured_map_type> configured_map;
 };
 
 template <typename T> 
 class RenderPassRegister : RenderPassFactory {
 public:
-	RenderPassRegister(const string &s) { 
-		getMap()->insert(std::make_pair(s, &RenderPassFactory::create<T>)); 
+	RenderPassRegister(const string &s) {
+		getMap()->insert(std::make_pair(s, &RenderPassFactory::create<T>));
+		getConfiguredMap()->insert(std::make_pair(s, &RenderPassFactory::deserialize<T>));
 	}
 
 private:
@@ -101,6 +139,7 @@ private:
 		exec_register() = default;
 		exec_register(const string &s) { 
 			getMap()->insert(std::make_pair(s, &RenderPassFactory::create<T>));
+			getConfiguredMap()->insert(std::make_pair(s, &RenderPassFactory::deserialize<T>));
 		}
 	};
 	// will force instantiation of definition of static member

@@ -18,6 +18,8 @@ public:
 	using SharedPtr = std::shared_ptr<ErrorMeasurePass>;
 	KRR_REGISTER_PASS_DEC(ErrorMeasurePass);
 
+	ErrorMeasurePass() = default;
+	~ErrorMeasurePass() = default;
 	void render(CUDABuffer &frame) override;
 	void renderUI() override;
 	void resize(const Vector2i& size) override;
@@ -34,6 +36,19 @@ protected:
 	float mResult;
 	string mReferenceImagePath;
 	bool mIsEvaluated{}, mNeedsEvaluate{};
+
+	friend void to_json(json &j, const ErrorMeasurePass &p) { 
+		j = json{ 
+			{ "metric", p.mMetric }, 
+			{ "reference", p.mReferenceImagePath }
+		};
+	}
+
+	friend void from_json(const json &j, ErrorMeasurePass &p) {
+		j.at("metric").get_to(p.mMetric);
+		if (j.contains("reference"))
+			p.loadReferenceImage(j.at("reference"));
+	}
 };
 
 KRR_NAMESPACE_END

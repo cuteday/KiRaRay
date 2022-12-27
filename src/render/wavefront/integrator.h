@@ -17,6 +17,7 @@ KRR_NAMESPACE_BEGIN
 class WavefrontPathTracer : public RenderPass {
 public:
 	using SharedPtr = std::shared_ptr<WavefrontPathTracer>;
+	KRR_REGISTER_PASS_DEC(WavefrontPathTracer);
 
 	WavefrontPathTracer() = default;
 	WavefrontPathTracer(Scene& scene);
@@ -75,9 +76,21 @@ public:
 	bool debugOutput{ };
 	uint debugPixel{ };
 	bool enableClamp{ true };
-	float clampMax{ 1000 };
+	float clampMax{ 1e3f };
 
-	KRR_REGISTER_PASS_DEC(WavefrontPathTracer);
+	friend void to_json(json &j, const WavefrontPathTracer &p) { 
+		j = json{ 
+			{ "nee", p.enableNEE }, 
+			{ "max_depth", p.maxDepth },
+			{ "rr", p.probRR },
+		};
+	}
+
+	friend void from_json(const json &j, WavefrontPathTracer &p) {
+		j.at("nee").get_to(p.enableNEE);
+		j.at("max_depth").get_to(p.maxDepth);
+		j.at("rr").get_to(p.probRR);
+	}
 };
 
 KRR_NAMESPACE_END

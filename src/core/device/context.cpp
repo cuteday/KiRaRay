@@ -7,6 +7,7 @@ KRR_NAMESPACE_BEGIN
 using namespace inter;
 Context::SharedPtr gpContext;
 std::shared_ptr<RenderPassFactory::map_type> RenderPassFactory::map = nullptr;
+std::shared_ptr<RenderPassFactory::configured_map_type> RenderPassFactory::configured_map = nullptr;
 CUDATrackedMemory CUDATrackedMemory::singleton;
 
 namespace {

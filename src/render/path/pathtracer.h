@@ -17,7 +17,7 @@ public:
 	using SharedPtr = std::shared_ptr<MegakernelPathTracer>;
 	KRR_REGISTER_PASS_DEC(MegakernelPathTracer);
 
-	MegakernelPathTracer();
+	MegakernelPathTracer() = default;
 	~MegakernelPathTracer();
 
 	void createProgramGroups();
@@ -33,13 +33,9 @@ public:
 		mFrameSize = launchParams.fbSize = size; 
 	}
 
-	void setScene(Scene::SharedPtr scene) override {
-		mpScene = scene;
-		mpScene->toDevice();
-		buildAS();
-		buildSBT();
-		logSuccess("Scene set...");
-	}
+	void initialize();
+
+	void setScene(Scene::SharedPtr scene) override;
 
 	string getName() const override { return "MegakernelPathTracer"; }
 
@@ -56,6 +52,20 @@ private:
 	OptixShaderBindingTable sbt = {};
 	LaunchParamsPT launchParams;
 	LaunchParamsPT* launchParamsDevice;
+
+	friend void to_json(json &j, const MegakernelPathTracer &p) {
+		j = json{
+			{ "nee", p.launchParams.NEE },
+			{ "max_depth", p.launchParams.maxDepth },
+			{ "rr", p.launchParams.probRR },
+		};
+	}
+
+	friend void from_json(const json &j, MegakernelPathTracer &p) {
+		j.at("nee").get_to(p.launchParams.NEE);
+		j.at("max_depth").get_to(p.launchParams.maxDepth);
+		j.at("rr").get_to(p.launchParams.probRR);
+	}
 };
 
 KRR_NAMESPACE_END

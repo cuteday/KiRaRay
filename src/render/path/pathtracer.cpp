@@ -10,7 +10,7 @@ KRR_NAMESPACE_BEGIN
 
 extern "C" char PATHTRACER_PTX[];
 
-MegakernelPathTracer::MegakernelPathTracer() {
+void MegakernelPathTracer::initialize() {
 	logDebug("Setting up module ...");
 	module = OptiXBackend::createOptiXModule(gpContext->optixContext, PATHTRACER_PTX);
 	logDebug("Creating program groups ...");
@@ -18,9 +18,12 @@ MegakernelPathTracer::MegakernelPathTracer() {
 	logDebug("Setting up optix pipeline ...");
 	createPipeline();
 
-	launchParamsDevice = gpContext->alloc->new_object<LaunchParamsPT>();
-	logSuccess("Megakernel PathTracer::Optix context fully set up");
+	if (launchParamsDevice == nullptr)
+		launchParamsDevice = gpContext->alloc->new_object<LaunchParamsPT>();
+	logSuccess("Megakernel PathTracer::Optix context set!");
 }
+
+//MegakernelPathTracer::MegakernelPathTracer() { initialize(); }
 
 MegakernelPathTracer::~MegakernelPathTracer() {
 	gpContext->alloc->deallocate_object(launchParamsDevice);
@@ -29,7 +32,6 @@ MegakernelPathTracer::~MegakernelPathTracer() {
 void MegakernelPathTracer::createProgramGroups() {
 	// setup raygen program groups
 	raygenPGs.resize(1);
-	;
 	raygenPGs[0] =
 		OptiXBackend::createRaygenPG(gpContext->optixContext, module, "__raygen__Pathtracer");
 	// setup hit program groups
@@ -73,8 +75,21 @@ void MegakernelPathTracer::createPipeline() {
 	// */ 	pipeline, 2 * 1024, 2 * 1024, 2 * 1024, 1)); logDebug(log);
 }
 
+void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
+	initialize();
+	mpScene = scene;
+	mpScene->toDevice();
+	buildAS();
+	buildSBT();
+	logSuccess("Scene set...");
+}
+
 void MegakernelPathTracer::buildSBT() {
 	// build raygen records
+	raygenRecords.clear();
+	missRecords.clear();
+	hitgroupRecords.clear();
+
 	for (int i = 0; i < raygenPGs.size(); i++) {
 		RaygenRecord rec;
 		OPTIX_CHECK(optixSbtRecordPackHeader(raygenPGs[i], &rec));

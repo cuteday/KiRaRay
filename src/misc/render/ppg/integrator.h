@@ -16,6 +16,7 @@ KRR_NAMESPACE_BEGIN
 */
 class PPGPathTracer : public WavefrontPathTracer {
 public:
+	using SharedPtr = std::shared_ptr<PPGPathTracer>;
 	KRR_REGISTER_PASS_DEC(PPGPathTracer);
 
 	PPGPathTracer() = default;
@@ -69,6 +70,22 @@ public:
 	bool enableLearning{false};
 	bool enableGuiding{true};
 	GuidedPathStateBuffer* guidedPathState{};
+
+	friend void to_json(nlohmann::json &j, const PPGPathTracer &p) {
+		nlohmann::to_json(j, static_cast<const WavefrontPathTracer&>(p));
+		j.update({ 
+			{ "spp_per_pass", p.m_sppPerPass },
+			{ "max_memory", p.m_sdTreeMaxMemory }, 
+			{ "bsdf_fraction", p.m_bsdfSamplingFraction }
+		});
+	}
+
+	friend void from_json(const nlohmann::json &j, PPGPathTracer &p) {
+		nlohmann::from_json(j, static_cast<WavefrontPathTracer &>(p));
+		j.at("spp_per_pass").get_to(p.m_sppPerPass);
+		j.at("max_memory").get_to(p.m_sdTreeMaxMemory);
+		j.at("bsdf_fraction").get_to(p.m_bsdfSamplingFraction);
+	}
 };
 
 KRR_NAMESPACE_END
