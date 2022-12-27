@@ -12,7 +12,7 @@ set ( KRR_PPG_PT
 )
 
 SET_SOURCE_FILES_PROPERTIES (
-	ppg/integrator.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ppg/integrator.cpp
 	PROPERTIES LANGUAGE CUDA
 )
 
@@ -42,7 +42,7 @@ add_library(KRR_MISC_PTX STATIC
 add_dependencies(KRR_MISC_PTX krr_misc_soa_generated)
 
 set ( KRR_MISC_LIBS_ALL
-	krr_lib
+	#krr_lib
 	krr_cuda_cfg
 	krr_cuda_warning
 	KRR_MISC_PTX
@@ -55,7 +55,7 @@ add_library (krr_starlight_lib STATIC
 	${PPG_PTX}
 )
 add_dependencies(krr_starlight_lib krr_misc_soa_generated)
-set_property(TARGET krr_starlight_lib PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-TARGET_COMPILE_DEFINITIONS (krr_lib PUBLIC ${KRR_DEFINITIONS})
+set_property(TARGET krr_starlight_lib PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS OFF)
+TARGET_COMPILE_DEFINITIONS (krr_starlight_lib PUBLIC ${KRR_DEFINITIONS})
 target_link_libraries (krr_starlight_lib PRIVATE ${KRR_MISC_LIBS_ALL})
 target_include_directories(krr_starlight_lib PUBLIC ${KRR_MISC_INCLUDE_ALL})
