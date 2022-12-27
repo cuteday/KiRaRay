@@ -175,9 +175,9 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 		/* If the path is terminated by this vertex, then NEE should not be evaluated
 		 * otherwise the MIS weight of this NEE action will be meaningless. */
 		if (depth == launchParams.maxDepth || 
-			(launchParams.probRR > 0 && path.sampler.get1D() < launchParams.probRR))
+			(launchParams.probRR < 1.f && path.sampler.get1D() > launchParams.probRR))
 			break;
-		path.throughput /= 1 - launchParams.probRR;
+		path.throughput /= launchParams.probRR;
 		
 		if (launchParams.NEE) evalDirect(sd, path);
 

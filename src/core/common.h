@@ -92,6 +92,8 @@ extern const dim3 blockDim;
 #endif
 
 #define KRR_CLASS_DEFINE NLOHMANN_DEFINE_TYPE_INTRUSIVE
+#define KRR_ENUM_DEINFE NLOHMANN_JSON_SERIALIZE_ENUM
+
 #include "krrmath/math.h"
 
 KRR_NAMESPACE_BEGIN

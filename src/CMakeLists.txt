@@ -270,7 +270,6 @@ if (KRR_BUILD_STARLIGHT)
 	set(KRR_BUILD_STARLIGHT 1)
 	# ADD LIBRARY FROM MISC  (a.k.a. kirara startlight)
 	ADD_SUBDIRECTORY (misc)
-	MESSAGE ("KRR Starlight Include: ${KRR_MISC_INCLUDE_ALL}")
-	TARGET_LINK_LIBRARIES (krr_lib PUBLIC krr_starlight_lib)
+	TARGET_LINK_LIBRARIES (krr_lib PUBLIC krr_starlight_lib -WHOLEARCHIVE:$<TARGET_FILE:krr_starlight_lib>)
 	SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} ${KRR_MISC_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
 endif()

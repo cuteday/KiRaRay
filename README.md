@@ -42,11 +42,63 @@ This project uses cmake to build, no additional setting is needed. Make sure cud
 
 #### Running
 
-Specify the json configuration file as command line argument to start the renderer. The sample configuration will be used if no argument is provided, for example:
+Specify the json configuration file as command line argument to start the renderer. The [example](common/configs/example.json) configuration will be used if no argument is provided:
 
 ~~~bash
 build/src/kiraray.exe common/configs/example.json
 ~~~
+
+Render passes may contain configurable parameters that can be serialize/deserialized in to json elements. A configuration file must contain the render passes setup (expand below for an example), with some optional parameters. 
+
+<details>
+<summary>Click for example configuration </summary>
+
+Currently, the render passes are simply executed in a sequential manner, each with optional configurable parameters. One can always head to the source code for the detailed parameters. The following configuration shows a simplea standard render pipeline:
+
+~~~json
+{
+	"model": "common/assets/scenes/cbox/cbox.obj",
+	"resolution": [
+		750,
+		750
+	],
+	"passes": [
+		{
+			"enable": true,
+			"name": "WavefrontPathTracer",
+			"params": {
+				"nee": true,
+				"rr": 0.8,
+				"max depth": 6
+			}
+		},
+		{
+			"enable": true,
+			"name": "AccumulatePass",
+			"params": {
+				"spp": 0,
+				"mode": "moving average"
+			}
+		},
+		{
+			"enable": true,
+			"name": "DenoisePass"
+		},
+		{
+			"enable": true,
+			"name": "ToneMappingPass",
+			"params": {
+				"exposure": 5,
+				"operator": "aces"
+			}
+		}
+	],
+}
+~~~
+
+
+
+</details>
 
 One can also save the current parameters (including camera parameters, render passes and scene file path, etc.) to a configuration file via the option in main menu bar.
 

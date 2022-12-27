@@ -27,8 +27,8 @@ struct LaunchParamsPT {
 	bool NEE = false; // enable next event estimation (and multiple importance sampling)
 	
 	int maxDepth		 = 10;
-	float probRR		 = 0.2;
-	float clampThreshold = 10000; // clamp max radiance contrib per frame
+	float probRR		 = 0.8;
+	float clampThreshold = 1e4f; // clamp max radiance contrib per frame
 	int spp				 = 1;
 	int lightSamples	 = 1;
 	// scene 

@@ -13,7 +13,6 @@ class ToneMappingPass: public RenderPass {
 public:
 	using SharedPtr = std::shared_ptr<ToneMappingPass>;
 	KRR_REGISTER_PASS_DEC(ToneMappingPass);
-	KRR_CLASS_DEFINE(ToneMappingPass, mExposureCompensation);
 
 	enum class Operator {
 		Linear = 0,
@@ -36,9 +35,25 @@ public:
 	string getName() const override { return "ToneMappingPass"; }
 
 private:
-	bool mEnable{ true };
+	friend void to_json(json& j, const ToneMappingPass& p) {
+		j = json{ { "exposure", p.mExposureCompensation }, { "operator", p.mOperator } };
+	}
+	
+	friend void from_json(const json &j, ToneMappingPass &p) {
+		p.mOperator = j.value("operator", Operator::Linear);
+		p.mExposureCompensation = j.value("exposure", 1.f);
+	}
+	
 	float mExposureCompensation{ 1 };
 	Operator mOperator{ Operator::Linear };
 };
+
+KRR_ENUM_DEINFE(ToneMappingPass::Operator, { 
+	{ ToneMappingPass::Operator::Linear, "linear" },
+	{ ToneMappingPass::Operator::Reinhard, "reinhard" },
+	{ ToneMappingPass::Operator::Aces, "aces" },
+	{ ToneMappingPass::Operator::Uncharted2, "uncharted2" },
+	{ ToneMappingPass::Operator::HejiHable, "hejihable" },
+})
 
 KRR_NAMESPACE_END
