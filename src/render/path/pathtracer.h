@@ -62,9 +62,9 @@ private:
 	}
 
 	friend void from_json(const json &j, MegakernelPathTracer &p) {
-		j.at("nee").get_to(p.launchParams.NEE);
-		j.at("max_depth").get_to(p.launchParams.maxDepth);
-		j.at("rr").get_to(p.launchParams.probRR);
+		p.launchParams.NEE = j.value("nee", true);
+		p.launchParams.maxDepth = j.value("max_depth", 10);
+		p.launchParams.probRR = j.value("rr", 0.8);
 	}
 };
 

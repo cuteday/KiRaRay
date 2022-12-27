@@ -40,8 +40,8 @@ private:
 	}
 	
 	friend void from_json(const json &j, ToneMappingPass &p) {
-		j.at("exposure").get_to(p.mExposureCompensation);
-		j.at("operator").get_to(p.mOperator);		
+		p.mOperator = j.value("operator", Operator::Linear);
+		p.mExposureCompensation = j.value("exposure", 1.f);
 	}
 	
 	float mExposureCompensation{ 1 };

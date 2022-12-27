@@ -45,7 +45,7 @@ protected:
 	}
 
 	friend void from_json(const json &j, ErrorMeasurePass &p) {
-		j.at("metric").get_to(p.mMetric);
+		p.mMetric = j.value("metric", ErrorMetric::RelMSE);
 		if (j.contains("reference"))
 			p.loadReferenceImage(j.at("reference"));
 	}

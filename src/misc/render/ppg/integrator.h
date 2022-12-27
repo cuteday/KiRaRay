@@ -82,9 +82,9 @@ public:
 
 	friend void from_json(const nlohmann::json &j, PPGPathTracer &p) {
 		nlohmann::from_json(j, static_cast<WavefrontPathTracer &>(p));
-		j.at("spp_per_pass").get_to(p.m_sppPerPass);
-		j.at("max_memory").get_to(p.m_sdTreeMaxMemory);
-		j.at("bsdf_fraction").get_to(p.m_bsdfSamplingFraction);
+		p.m_sppPerPass = j.value("spp_per_pass", 10);
+		p.m_sdTreeMaxMemory = j.value("max_memory", 16);
+		p.m_bsdfSamplingFraction = j.value("bsdf_fraction", 0.5);
 	}
 };
 

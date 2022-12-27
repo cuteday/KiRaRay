@@ -87,9 +87,9 @@ public:
 	}
 
 	friend void from_json(const json &j, WavefrontPathTracer &p) {
-		j.at("nee").get_to(p.enableNEE);
-		j.at("max_depth").get_to(p.maxDepth);
-		j.at("rr").get_to(p.probRR);
+		p.enableNEE = j.value("nee", true);
+		p.maxDepth	= j.value("max_depth", 10);
+		p.probRR	= j.value("rr", 0.8);
 	}
 };
 

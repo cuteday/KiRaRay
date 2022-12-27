@@ -32,8 +32,8 @@ private:
 	}
 
 	friend void from_json(const json &j, AccumulatePass &p) {
-		j.at("spp").get_to(p.mMaxAccumCount);
-		j.at("mode").get_to(p.mMode);
+		p.mMaxAccumCount = j.value("spp", 0);
+		p.mMode			 = j.value("mode", Mode::Accumulate);
 	}
 
 	uint mAccumCount{ 0 };
