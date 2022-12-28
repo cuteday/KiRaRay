@@ -140,7 +140,10 @@ void DenoisePass::renderUI() {
 	}	
 }
 
-void DenoisePass::resize(const Vector2i& size) { mBackend.resize(size); }
+void DenoisePass::resize(const Vector2i& size) { 
+	RenderPass::resize(size);
+	mBackend.resize(size); 
+}
 
 KRR_REGISTER_PASS_DEF(DenoisePass);
 KRR_NAMESPACE_END

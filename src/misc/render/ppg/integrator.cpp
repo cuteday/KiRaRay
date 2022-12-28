@@ -2,6 +2,7 @@
 #include "window.h"
 
 #include "util/check.h"
+#include "util/film.h"
 
 #include "tree.h"
 #include "integrator.h"
@@ -14,7 +15,7 @@ namespace {
 }
 
 void PPGPathTracer::resize(const Vector2i& size) {
-	frameSize = size;
+	RenderPass::resize(size);
 	initialize();		// need to resize the queues
 }
 
@@ -45,6 +46,14 @@ void PPGPathTracer::initialize(){
 	if (guidedRayQueue) guidedRayQueue->resize(maxQueueSize, alloc);
 	else guidedRayQueue = alloc.new_object<GuidedRayQueue>(maxQueueSize, alloc);
 	if (!backend) backend = new OptiXPPGBackend();
+	/* @addition VAPG */
+	std::cout << "current frame size: " << mFrameSize;
+	if (m_image)  m_image->resize(mFrameSize);
+	else m_image = alloc.new_object<Film>(mFrameSize);
+	if (m_pixelEstimate)  m_pixelEstimate->resize(mFrameSize);
+	else m_pixelEstimate = alloc.new_object<Film>(mFrameSize);
+	m_image->reset();
+	m_pixelEstimate->reset();
 	CUDA_SYNC_CHECK();
 }
 
@@ -234,14 +243,19 @@ void PPGPathTracer::endFrame(CUDABuffer& frame) {
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		Color3f L = Color3f(pixelState->L[pixelId]) / samplesPerPixel;
 		if (enableClamp) L = clamp(L, 0.f, clampMax);
-		frameBuffer[pixelId] = Color4f(L, any(L) ? 1 : 0);
+		frameBuffer[pixelId] = Color4f(L, 1.f);
+		if (m_distribution == EDistribution::EFull)
+			m_image->put(Color4f(L, 1.f), pixelId);
 	});
 	if (enableLearning) {
 		PROFILE("Training SD-Tree");
 		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 			Sampler sampler = &pixelState->sampler[pixelId];
-			guidedPathState->commitAll(pixelId, m_sdTree, 0.5f, m_spatialFilter, m_directionalFilter,
-				m_bsdfSamplingFractionLoss, sampler);
+			Color pixelEstimate = 0.5f;
+			if (m_isBuilt && m_distribution == EDistribution::EFull)
+				pixelEstimate = m_pixelEstimate->getPixel(pixelId).head<3>();
+			guidedPathState->commitAll(pixelId, m_sdTree, 1.f, m_spatialFilter, m_directionalFilter, m_bsdfSamplingFractionLoss, sampler,
+										   m_distribution, pixelEstimate);
 		});
 		++guiding_trained_frames;
 	}
@@ -256,6 +270,8 @@ void PPGPathTracer::renderUI() {
 	ui::Checkbox("Enable NEE", &enableNEE);
 
 	ui::Text("Path guiding");
+	const static char *distributionNames[] = { "Radiance", "Partial", "Full" };
+	ui::Text("Target distribution mode: %s", distributionNames[(int)m_distribution]);
 	ui::Checkbox("Enable learning", &enableLearning);
 	ui::Checkbox("Enable guiding", &enableGuiding);
 	ui::Text("Current iteration: %d", m_iter);
@@ -269,6 +285,9 @@ void PPGPathTracer::renderUI() {
 		guiding_trained_frames = 0;
 		m_sdTree->gatherStatistics();
 		resetSDTree();		// this is performed at the beginning of each iteration
+		*m_pixelEstimate = *m_image;
+		m_image->reset();
+		CUDA_SYNC_CHECK();
 		m_iter++;
 	}
 	if (ui::CollapsingHeader("Advanced guiding options")) {
@@ -350,12 +369,6 @@ KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int d
 	}
 	return alpha * bsdfPdf + (1 - alpha) * dTreePdf;
 }
-
-/* Current issues:
-* 1. No effect at all...?
-* 2. Why there are always 1023 s-tree nodes even after just 1 iter...?
-* 3. The local radiance contribution of each MC estimate seems just too big...
-*/
 
 KRR_REGISTER_PASS_DEF(PPGPathTracer);
 KRR_NAMESPACE_END

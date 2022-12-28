@@ -21,7 +21,7 @@ KRR_DEVICE_FUNCTION void WavefrontPathTracer::debugPrint(uint pixelId, const cha
 
 void WavefrontPathTracer::initialize() {
 	Allocator &alloc = *gpContext->alloc;
-	maxQueueSize	 = frameSize[0] * frameSize[1];
+	maxQueueSize	 = mFrameSize[0] * mFrameSize[1];
 	CUDA_SYNC_CHECK(); // necessary, preventing kernel accessing memories tobe free'ed...
 	for (int i = 0; i < 2; i++) {
 		if (rayQueue[i])
@@ -158,14 +158,14 @@ void WavefrontPathTracer::generateCameraRays(int sampleId) {
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 			Sampler sampler		= &pixelState->sampler[pixelId];
-			Vector2i pixelCoord = { pixelId % frameSize[0], pixelId / frameSize[0] };
-			Ray cameraRay		= camera->getRay(pixelCoord, frameSize, sampler);
+			Vector2i pixelCoord = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
+			Ray cameraRay		= camera->getRay(pixelCoord, mFrameSize, sampler);
 			cameraRayQueue->pushCameraRay(cameraRay, pixelId);
 		});
 }
 
 void WavefrontPathTracer::resize(const Vector2i &size) {
-	frameSize = size;
+	RenderPass::resize(size);
 	initialize(); // need to resize the queues
 }
 
@@ -184,7 +184,7 @@ void WavefrontPathTracer::beginFrame(CUDABuffer &frame) {
 	cudaMemcpy(camera, &mpScene->getCamera(), sizeof(Camera), cudaMemcpyHostToDevice);
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
-			Vector2i pixelCoord	   = { pixelId % frameSize[0], pixelId / frameSize[0] };
+			Vector2i pixelCoord	   = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
 			pixelState->L[pixelId] = 0;
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameId * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);

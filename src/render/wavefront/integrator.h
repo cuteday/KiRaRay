@@ -68,7 +68,6 @@ public:
 	// path tracing parameters
 	int frameId{ 0 };
 	int maxQueueSize;
-	Vector2i frameSize{ };
 	int samplesPerPixel{ 1 };
 	int maxDepth{ 10 };
 	float probRR{ 0.8 };

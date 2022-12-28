@@ -41,6 +41,18 @@ enum class EDirectionalFilter {
 	EBox,
 };
 
+enum class EDistribution { 
+	ERadiance, 
+	ESimple, 
+	EFull 
+};
+
+KRR_ENUM_DEINFE(EDistribution, { 
+	{ EDistribution::ERadiance, "radiance" },
+	{ EDistribution::ESimple, "simple" },
+	{ EDistribution::EFull, "full" },
+});
+
 class QuadTreeNode {
 public:
 	QuadTreeNode() = default;
@@ -244,7 +256,8 @@ public:
 
 	/*	Ensure that each quadtree node's sum of irradiance estimates equals that of all its children.
 		This function do not change the topology of the D-Tree. */
-	KRR_HOST void build(std::vector<QuadTreeNode>& nodes);
+	KRR_HOST void build(std::vector<QuadTreeNode>& nodes, 
+		EDistribution distribution = EDistribution::ERadiance, float parentSize = 1.f);
 
 private:
 	friend class DTree;
@@ -266,6 +279,8 @@ public:
 
 	KRR_HOST DTree(const DTree &other);
 
+	KRR_CALLABLE QuadTreeNode &node(size_t i) { return m_nodes[i]; }
+
 	KRR_CALLABLE const QuadTreeNode &node(size_t i) const { return m_nodes[i]; }
 
 	KRR_CALLABLE float mean() const {
@@ -275,6 +290,12 @@ public:
 		}
 		const float factor = 1 / (M_4PI * statisticalWeight);
 		return factor * m_sum.load();
+	}
+
+	// @addition VAPG
+	KRR_CALLABLE void setMean(const float mean) {
+		const float factor = M_PI * 4 * m_statisticalWeight.load();
+		m_sum.store(factor * mean);
 	}
 
 	/* Irradiance is radiance/wiPdf, statistical weight is generally a constant value. */
@@ -320,6 +341,17 @@ public:
 		return clamp(res, 0.f, 1.f);
 	}
 
+	// @addition VAPG
+	KRR_HOST void setNumNodes(size_t numNodes) { m_nodes.resize(numNodes); }
+
+	// @addition VAPG
+	KRR_HOST void resetSum() { 
+		size_t n_nodes = m_nodes.size();
+		for (int i = 0; i < n_nodes; i++) {
+			m_nodes[i].setSum(0);
+		}
+	}
+
 	KRR_CALLABLE size_t numNodes() const { return m_nodes.size(); }
 
 	KRR_CALLABLE float statisticalWeight() const { return m_statisticalWeight.load(); }
@@ -336,7 +368,7 @@ public:
 		return m_nodes.sizeInBytes() * sizeof(QuadTreeNode) + sizeof(*this);
 	}
 
-	KRR_HOST void build();
+	KRR_HOST void build(EDistribution distribution = EDistribution::ERadiance);
 
 private:
 	atomic<AtomicType> m_statisticalWeight{ 0 };
@@ -397,7 +429,7 @@ public:
 		return { (cosTheta + 1) / 2, phi / M_2PI };
 	}
 
-	KRR_HOST void build();
+	KRR_HOST void build(EDistribution distribution);
 
 	KRR_HOST void reset(int maxDepth, float subdivisionThreshold);
 
