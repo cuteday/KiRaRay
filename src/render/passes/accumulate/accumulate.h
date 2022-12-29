@@ -43,7 +43,7 @@ private:
 	CpuTimer::TimePoint mStartTime, mCurrentTime;
 };
 
-KRR_ENUM_DEINFE(AccumulatePass::Mode, {
+KRR_ENUM_DEFINE(AccumulatePass::Mode, {
 	{AccumulatePass::Mode::Accumulate, "accumulate"},
 	{AccumulatePass::Mode::MovingAverage, "moving average"}	
 })

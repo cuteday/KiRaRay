@@ -156,10 +156,10 @@ public:
 		return d_ptr[index];
 	}
 
-	template <typename F> 
+	template <typename F, typename D = T> 
 	KRR_HOST void for_each(F&& func) {
 		thrust::transform(thrust::device, d_ptr, d_ptr + m_size, d_ptr, 
-			[func] KRR_DEVICE(const T &val) mutable { return func(val); });
+			[func] KRR_DEVICE(const D &val) mutable { return func(val); });
 	}
 
 	KRR_CALLABLE size_t size() const { return m_size; }

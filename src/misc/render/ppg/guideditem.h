@@ -27,26 +27,42 @@ struct Vertex {
 		radiance += r;
 	}
 
-	KRR_DEVICE void commit(STree* sdTree, float statisticalWeight,
-		ESpatialFilter spatialFilter, EDirectionalFilter directionalFilter,
-		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler& sampler) {
+	KRR_DEVICE void commit(STree *sdTree, float statisticalWeight, ESpatialFilter spatialFilter,
+						   EDirectionalFilter directionalFilter,
+						   EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler &sampler,
+						   EDistribution distribution = EDistribution::ERadiance,
+						   const Color &pixelEstimate = {}) {
 		if (wiPdf <= 0 || isDelta) {
 			return;
 		}
 		Color3f localRadiance = 0;
-		if (throughput[0] * wiPdf > 1e-4f) localRadiance[0] = radiance[0] / throughput[0];
-		if (throughput[1] * wiPdf > 1e-4f) localRadiance[1] = radiance[1] / throughput[1];
-		if (throughput[2] * wiPdf > 1e-4f) localRadiance[2] = radiance[2] / throughput[2];
+		if (throughput[0] * wiPdf > 1e-4f)
+			localRadiance[0] = radiance[0] / throughput[0];
+		if (throughput[1] * wiPdf > 1e-4f)
+			localRadiance[1] = radiance[1] / throughput[1];
+		if (throughput[2] * wiPdf > 1e-4f)
+			localRadiance[2] = radiance[2] / throughput[2];
 		Color3f product = localRadiance * bsdfVal;
-
-		//if (localRadiance.mean() / wiPdf > 0)
-		//	printf("Recording an seemingly unreasonbly large irradiance value %f: "
-		//		"throughput [%f, %f, %f]; radiance [%f, %f, %f], wiPdf %f\n",
-		//		localRadiance.mean() / wiPdf, throughput[0], throughput[1], throughput[2],
-		//		   radiance[0], radiance[1], radiance[2], wiPdf);
+		
+		/* @modified: VAPG */
+		float value	= localRadiance.mean();
+		switch (distribution) {
+			case EDistribution::ERadiance:
+				value = localRadiance.mean();
+				break;
+			case EDistribution::ESimple:	/* consider partial integrand (additional BSDF) */
+				value = product.mean();
+				value = pow2(value);		/* second moment */
+				break;
+			case EDistribution::EFull:
+				value = (radiance / pixelEstimate.cwiseMax(1e-4f) * wiPdf).mean();	// full integrand
+				// TODO: value has NaN! temporally use cwise max (1e4f) to prevent nans.
+				value = pow2(value);		/* second moment */
+				break;
+		}
 
 		DTreeRecord rec{ ray.dir, 
-			localRadiance.mean(), product.mean(), 
+			value, product.mean(), 
 			wiPdf, bsdfPdf, dTreePdf, 
 			statisticalWeight, 
 			isDelta };
@@ -141,15 +157,18 @@ public:
 		}
 	}
 
+	// @modified VAPG
 	KRR_DEVICE void commitAll(int pixelId, 
 		STree* sdTree, float statisticalWeight,
 		ESpatialFilter spatialFilter, EDirectionalFilter directionalFilter,
-		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler& sampler) {
+		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler& sampler,
+		EDistribution distribution = EDistribution::ERadiance, const Color3f &pixelEstimate = {}) {
 		//printf("The current pixel #%d has %d vertices\n", pixelId, n_vertices[pixelId]);
 		for (int i = 0; i < n_vertices[pixelId]; i++) {
 			Vertex v = vertices[i][pixelId];
 			v.commit(sdTree, statisticalWeight,
-				spatialFilter, directionalFilter, bsdfSamplingFractionLoss, sampler);
+				spatialFilter, directionalFilter, bsdfSamplingFractionLoss, sampler, 
+				distribution, pixelEstimate);
 		}
 	}
 };

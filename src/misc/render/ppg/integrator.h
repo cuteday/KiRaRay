@@ -4,17 +4,19 @@
 #include "tree.h"
 #include "render/wavefront/integrator.h"
 #include "backend.h"
+#include "util/task.h"
 
 KRR_NAMESPACE_BEGIN
 
-/* A minimized ppg on interactive gpu pathtracing, the simplifications are:
-*   Sample without NEE;
+class Film;
+
+/* A simplified ppg on interactive gpu pathtracing, the simplifications are:
 *   No need to learn MIS probability;
+*	No DI strategy (no guide towards direct illumination);
 *   No spatial or directional filters;
-*   Manually reset and rebuild the sdtree (instead of automatically iterative learning);
 *   No combining rendered frames (with optimal variance).
 */
-class PPGPathTracer : public WavefrontPathTracer {
+class PPGPathTracer : public WavefrontPathTracer{
 public:
 	using SharedPtr = std::shared_ptr<PPGPathTracer>;
 	KRR_REGISTER_PASS_DEC(PPGPathTracer);
@@ -56,13 +58,26 @@ public:
 	OptiXPPGBackend* backend;
 
 	STree* m_sdTree{ 0 };
-	bool m_isBuilt{ 0 };							/* Whether the sampling tree has been built at least once. */
-	int m_iter{ 0 };								/* How many iteration have passed? Each iteration, the pass should be doubled. */
-	int m_sppPerPass{ 10 };							/* A "pass" is some number of frames. */
-	int m_sdTreeMaxMemory{ 16 };					/* Max memory in megabytes. */
+	EDistribution m_distribution{ EDistribution::ERadiance };	/* The target distribution (radiance or radiance * bsdf). */
+	bool m_isBuilt{ 0 };								/* Whether the sampling tree has been built at least once. */
+	int m_iter{ 0 };									/* How many iteration have passed? Each iteration, the pass should be doubled. */
+	int m_sppPerPass{ 10 };								/* A "pass" is some number of frames. */
+	int m_sdTreeMaxMemory{ 16 };						/* Max memory in megabytes. */
 	float m_bsdfSamplingFraction{ 0.5 };			
-	int m_sTreeThreshold{ 12000 };					/* The subdivision threshold for the statistical weight of the S-Tree. */
-	float m_dTreeThreshold{ 0.01 };					/* The subdivision / prune threshold for the D-Tree (the energy fraction of spherical area). */
+	int m_sTreeThreshold{ 12000 };						/* The subdivision threshold for the statistical weight of the S-Tree. */
+	float m_dTreeThreshold{ 0.01 };						/* The subdivision / prune threshold for the D-Tree (the energy fraction of spherical area). */
+	
+	/* The following state parameters are used in offline setup with a given budget. */
+	void finalize();									/* Save the rendering (of the last iter) maybe more. */
+	void nextIteration();								/* Do the works for entering NEXT, e.g., rebuild, save image */
+	void resetGuiding();								/* Reset the SD-Tree to the beginning. */
+	int m_trainingIterations{ -1 };						/* The number of iterations for training (-1 means unlimited) */
+	bool m_autoBuild{ false };							/* Automatically rebuild if the current render pass finishes. */
+	bool m_isFinalIter{ false };						/* Only results of the final iter is saved */
+	RenderTask m_task{};								/* Task class for progressing and more */
+	Film *m_image{ nullptr };							/* The image currently being rendered. @addition VAPG */
+	Film *m_pixelEstimate{ nullptr };					/* The image rendered during the last iteration. @addition VAPG */
+	
 	EDirectionalFilter m_directionalFilter{ EDirectionalFilter::ENearest };
 	ESpatialFilter m_spatialFilter{ ESpatialFilter::ENearest };
 	EBsdfSamplingFractionLoss m_bsdfSamplingFractionLoss{ EBsdfSamplingFractionLoss::ENone };
@@ -71,20 +86,33 @@ public:
 	bool enableGuiding{true};
 	GuidedPathStateBuffer* guidedPathState{};
 
-	friend void to_json(nlohmann::json &j, const PPGPathTracer &p) {
-		nlohmann::to_json(j, static_cast<const WavefrontPathTracer&>(p));
+	friend void to_json(json &j, const PPGPathTracer &p) {
+		to_json(j, static_cast<const WavefrontPathTracer&>(p));
 		j.update({ 
+			{ "target_dist",  p.m_distribution}, 
 			{ "spp_per_pass", p.m_sppPerPass },
 			{ "max_memory", p.m_sdTreeMaxMemory }, 
-			{ "bsdf_fraction", p.m_bsdfSamplingFraction }
+			{ "bsdf_fraction", p.m_bsdfSamplingFraction },
+			{ "distribution", p.m_distribution },
+			{ "stree_thres", p.m_sTreeThreshold },
+			{ "dtree_thres", p.m_dTreeThreshold },
+			{ "auto_build", p.m_autoBuild },
+			{ "budget", p.m_task }
 		});
 	}
 
-	friend void from_json(const nlohmann::json &j, PPGPathTracer &p) {
-		nlohmann::from_json(j, static_cast<WavefrontPathTracer &>(p));
-		p.m_sppPerPass = j.value("spp_per_pass", 10);
-		p.m_sdTreeMaxMemory = j.value("max_memory", 16);
+	friend void from_json(const json &j, PPGPathTracer &p) {
+		p.enableNEE				 = j.value("nee", true);
+		p.maxDepth				 = j.value("max_depth", 6);
+		p.probRR				 = j.value("rr", 0.8f);
+		p.m_sppPerPass			 = j.value("spp_per_pass", 4);
+		p.m_sdTreeMaxMemory		 = j.value("max_memory", 16);
 		p.m_bsdfSamplingFraction = j.value("bsdf_fraction", 0.5);
+		p.m_distribution		 = j.value("distribution", EDistribution::ERadiance);
+		p.m_sTreeThreshold		 = j.value("stree_thres", 12000.f);
+		p.m_dTreeThreshold		 = j.value("dtree_thres", 0.01f);
+		p.m_autoBuild			 = j.value("auto_build", false);
+		p.m_task				 = j.value("budget", RenderTask{});
 	}
 };
 

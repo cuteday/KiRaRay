@@ -36,19 +36,28 @@ KRR_HOST QuadTreeNode& QuadTreeNode::operator=(const QuadTreeNode& arg) {
 }
 
 /*	Ensure that each quadtree node's sum of irradiance estimates equals that of all its children.
-	This function do not change the topology of the D-Tree. */
-KRR_HOST void QuadTreeNode::build(std::vector<QuadTreeNode>& nodes) {		// [called by host]
+	This function do not change the topology of the D-Tree. 
+	@modified VAPG  */
+KRR_HOST void QuadTreeNode::build(std::vector<QuadTreeNode>& nodes, 
+		EDistribution distribution, float parentSize) {		// [called by host]
+	
+	float childSize = parentSize / 4.f;
 	for (int i = 0; i < 4; ++i) {
 		// During sampling, all irradiance estimates are accumulated in
 		// the leaves, so the leaves are built by definition.
 		if (isLeaf(i)) {
+			if (distribution == EDistribution::ESimple || distribution == EDistribution::EFull) {
+				// @addition VAPG
+				// pointwise square-root operation since guiding distribution based on second moment
+				setSum(i, sqrtf(sum(i) * childSize));
+			}
 			continue;
 		}
 
 		QuadTreeNode& c = nodes[child(i)];
 
 		// Recursively build each child such that their sum becomes valid...
-		c.build(nodes);
+		c.build(nodes, distribution, childSize);
 
 		// ...then sum up the children's sums.
 		float sum = 0;
@@ -157,15 +166,16 @@ KRR_HOST void DTree::reset(const DTree& previousDTree, int newMaxDepth, float su
 	CUDA_SYNC_CHECK();
 }
 
-/* Make sure *this is on host memory now. This function would not change the topology of the D-Tree. */
-KRR_HOST void DTree::build() {
+/* Make sure *this is on host memory now. This function would not change the topology of the D-Tree. 
+   @modified VAPG */
+KRR_HOST void DTree::build(EDistribution distribution) {
 	size_t n_nodes = m_nodes.size();
 	std::vector<QuadTreeNode> nodes(n_nodes);
 	m_nodes.copy_to_host(nodes.data(), n_nodes);
 
 	QuadTreeNode& root = nodes[0];
 	// Build the quadtree recursively, starting from its root.
-	root.build(nodes);
+	root.build(nodes, distribution, 1.f);
 
 	// Ensure that the overall sum of irradiance estimates equals
 	// the sum of irradiance estimates found in the quadtree.
@@ -193,8 +203,8 @@ KRR_HOST DTreeWrapper& DTreeWrapper::operator = (const DTreeWrapper& other) {
 	return *this;
 }
 
-KRR_HOST void DTreeWrapper::build() {
-	building.build();
+KRR_HOST void DTreeWrapper::build(EDistribution distribution) {
+	building.build(distribution);
 	sampling.clear();
 	sampling = building;
 }
@@ -247,10 +257,10 @@ KRR_HOST void STree::clear() {
 }
 
 KRR_HOST void STree::subdivideAll() {
-	int nNodes = (int)m_nodes.size();
-	std::vector<STreeNode> nodes(nNodes);
-	m_nodes.copy_to_host(nodes.data(), nNodes);
-	for (int i = 0; i < nNodes; ++i) {
+	size_t n_nodes = m_nodes.size();
+	std::vector<STreeNode> nodes(n_nodes);
+	m_nodes.copy_to_host(nodes.data(), n_nodes);
+	for (int i = 0; i < n_nodes; ++i) {
 		if (m_nodes[i].isLeaf) {
 			subdivide(i, nodes);
 		}
@@ -384,8 +394,8 @@ void PPGPathTracer::buildSDTree() {
 	cudaDeviceSynchronize();
 	// Build distributions
 	Log(Info, "Building distributions for each D-Tree node...");
-	m_sdTree->forEachDTreeWrapper([](DTreeWrapper* dTree) {
-		dTree->build();
+	m_sdTree->forEachDTreeWrapper([this](DTreeWrapper* dTree) {
+		dTree->build(m_distribution);
 		});
 	m_isBuilt = true;
 	CUDA_SYNC_CHECK();

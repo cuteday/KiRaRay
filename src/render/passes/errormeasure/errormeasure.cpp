@@ -20,7 +20,7 @@ void ErrorMeasurePass::render(CUDABuffer &frame) {
 }
 
 void ErrorMeasurePass::resize(const Vector2i &size) {
-	mFrameSize = size;
+	RenderPass::resize(size);
 }
 
 void ErrorMeasurePass::renderUI() { 
