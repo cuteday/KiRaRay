@@ -235,12 +235,14 @@ void RenderApp::saveConfig(string path) {
 }
 
 void RenderApp::loadConfig(fs::path path) {
-	if (!fs::exists(path)) {
-		logError("Config file not found at " + path.string());
-		return;
-	}
-	std::ifstream f(path);
-	json config = json::parse(f, nullptr, true);
+	json config = File::loadJSON(path);
+	
+	// set output directory if the config file specifies
+	fs::path outputDir = File::resolve("common/outputs") / path.stem();
+	if (config.contains("output")) 
+		outputDir = File::resolve(config.at("output"));
+	File::setOutputDir(outputDir);
+
 	mSpp		= config.value("spp", 0);
 	if (config.contains("passes")) {
 		mpPasses.clear();
@@ -258,7 +260,7 @@ void RenderApp::loadConfig(fs::path path) {
 		}
 	} else
 		logWarning("No specified render pass in configuration!");
-	Scene::SharedPtr scene{};
+	Scene::SharedPtr scene{ mpScene };
 	if (config.contains("model")) {
 		scene		 = std::make_shared<Scene>();
 		string model = config["model"].get<string>();

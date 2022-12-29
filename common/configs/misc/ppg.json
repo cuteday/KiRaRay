@@ -12,9 +12,16 @@
 				"nee": true,
 				"rr": 0.8,
 				"max_depth": 10,
-				"spp_per_pass": 10,
+				"spp_per_pass": 4,
 				"max_memory": 16,
-				"bsdf_fraction": 0.5
+				"bsdf_fraction": 0.5,
+				"distribution": "full",
+				"stree_thres": 4000,
+				"dtree_trres": 0.01,
+				"auto_build": true,
+				"budget": {
+					"type": "none"
+				}
 			}
 		},
 		{

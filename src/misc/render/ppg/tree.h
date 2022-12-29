@@ -47,7 +47,7 @@ enum class EDistribution {
 	EFull 
 };
 
-KRR_ENUM_DEINFE(EDistribution, { 
+KRR_ENUM_DEFINE(EDistribution, { 
 	{ EDistribution::ERadiance, "radiance" },
 	{ EDistribution::ESimple, "simple" },
 	{ EDistribution::EFull, "full" },

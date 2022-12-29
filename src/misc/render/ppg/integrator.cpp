@@ -1,5 +1,6 @@
 #include "common.h"
 #include "window.h"
+#include "file.h"
 
 #include "util/check.h"
 #include "util/film.h"
@@ -11,7 +12,8 @@
 KRR_NAMESPACE_BEGIN
 
 namespace {
-	static int guiding_trained_frames = 0;
+	static size_t guiding_trained_frames = 0;
+	static size_t train_frames_this_iteration = 0;
 }
 
 void PPGPathTracer::resize(const Vector2i& size) {
@@ -40,20 +42,19 @@ void PPGPathTracer::initialize(){
 	enableClamp = false;
 	maxDepth = 6;
 	probRR = 1;
-	Log(Info, "Initializing guided state buffer for SD-Tree...");
 	if (guidedPathState) guidedPathState->resize(maxQueueSize, alloc);
 	else guidedPathState = alloc.new_object<GuidedPathStateBuffer>(maxQueueSize, alloc);
 	if (guidedRayQueue) guidedRayQueue->resize(maxQueueSize, alloc);
 	else guidedRayQueue = alloc.new_object<GuidedRayQueue>(maxQueueSize, alloc);
 	if (!backend) backend = new OptiXPPGBackend();
 	/* @addition VAPG */
-	std::cout << "current frame size: " << mFrameSize;
 	if (m_image)  m_image->resize(mFrameSize);
 	else m_image = alloc.new_object<Film>(mFrameSize);
 	if (m_pixelEstimate)  m_pixelEstimate->resize(mFrameSize);
 	else m_pixelEstimate = alloc.new_object<Film>(mFrameSize);
 	m_image->reset();
 	m_pixelEstimate->reset();
+	m_task.reset();
 	CUDA_SYNC_CHECK();
 }
 
@@ -235,6 +236,10 @@ void PPGPathTracer::beginFrame(CUDABuffer& frame) {
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		guidedPathState->n_vertices[pixelId] = 0;
 	});
+	// [offline mode] always training when auto-train enabled
+	// but the last iteration (the render iteration) do not need training anymore.
+	enableLearning = (enableLearning || m_autoBuild) && !m_isFinalIter;	
+	train_frames_this_iteration = (1 << m_iter) * m_sppPerPass;
 	CUDA_SYNC_CHECK();
 }
 
@@ -244,8 +249,7 @@ void PPGPathTracer::endFrame(CUDABuffer& frame) {
 		Color3f L = Color3f(pixelState->L[pixelId]) / samplesPerPixel;
 		if (enableClamp) L = clamp(L, 0.f, clampMax);
 		frameBuffer[pixelId] = Color4f(L, 1.f);
-		if (m_distribution == EDistribution::EFull)
-			m_image->put(Color4f(L, 1.f), pixelId);
+		m_image->put(Color4f(L, 1.f), pixelId);
 	});
 	if (enableLearning) {
 		PROFILE("Training SD-Tree");
@@ -258,6 +262,15 @@ void PPGPathTracer::endFrame(CUDABuffer& frame) {
 										   m_distribution, pixelEstimate);
 		});
 		++guiding_trained_frames;
+	}
+	m_task.tickFrame();
+	if (m_task.isFinished() || (m_trainingIterations > 0 &&
+		guiding_trained_frames >= train_frames_this_iteration)) {
+		finalize();
+	}
+	if (m_autoBuild && !m_isFinalIter && 
+		guiding_trained_frames >= train_frames_this_iteration) {
+		nextIteration();
 	}
 	CUDA_SYNC_CHECK();
 }
@@ -272,31 +285,23 @@ void PPGPathTracer::renderUI() {
 	ui::Text("Path guiding");
 	const static char *distributionNames[] = { "Radiance", "Partial", "Full" };
 	ui::Text("Target distribution mode: %s", distributionNames[(int)m_distribution]);
-	ui::Checkbox("Enable learning", &enableLearning);
+	ui::Checkbox("Auto rebuild", &m_autoBuild);
+	if (!m_autoBuild) ui::Checkbox("Enable learning", &enableLearning);
 	ui::Checkbox("Enable guiding", &enableGuiding);
 	ui::Text("Current iteration: %d", m_iter);
 	ui::DragFloat("Bsdf sampling fraction", &m_bsdfSamplingFraction, 0.01, 0, 1);
-	int train_frames_this_iteration = (1 << m_iter) * m_sppPerPass ;
 	ui::Text("Frames this iteration: %d / %d", 
 		guiding_trained_frames, train_frames_this_iteration);
 	ui::ProgressBar((float)guiding_trained_frames / train_frames_this_iteration);
 	if (ui::Button("Next guiding iteration")) {
-		buildSDTree();		// this is performed at the end of each iteration
-		guiding_trained_frames = 0;
-		m_sdTree->gatherStatistics();
-		resetSDTree();		// this is performed at the beginning of each iteration
-		*m_pixelEstimate = *m_image;
-		m_image->reset();
-		CUDA_SYNC_CHECK();
-		m_iter++;
+		nextIteration();
+	}
+	if (ui::CollapsingHeader("Task progress")) {
+		m_task.renderUI();
 	}
 	if (ui::CollapsingHeader("Advanced guiding options")) {
 		if (ui::Button("Reset guiding")) {
-			cudaDeviceSynchronize();
-			m_sdTree->clear();
-			m_isBuilt = false;
-			m_iter = guiding_trained_frames = 0;
-			CUDA_SYNC_CHECK();
+			resetGuiding();
 		}
 		ui::DragInt("Spp per pass", &m_sppPerPass, 1, 1, 100);
 		ui::DragInt("S-tree threshold", &m_sTreeThreshold, 1, 1000, 100000, "%d");
@@ -315,6 +320,52 @@ void PPGPathTracer::renderUI() {
 	}
 }
 
+void PPGPathTracer::resetGuiding() {
+	cudaDeviceSynchronize();
+	m_sdTree->clear();
+	m_image->reset();
+	m_isBuilt = m_isFinalIter = false;
+	m_iter = guiding_trained_frames = 0;
+	CUDA_SYNC_CHECK();
+}
+
+void PPGPathTracer::nextIteration() {
+	if (m_isFinalIter) {
+		Log(Warning, "Attempting to rebuild SD-Tree in the last iteration");
+		return;
+	}
+	buildSDTree();		// this is performed at the end of each iteration
+	guiding_trained_frames = 0;
+	m_sdTree->gatherStatistics();
+	resetSDTree();		// this is performed at the beginning of each iteration
+	*m_pixelEstimate = *m_image;
+	m_image->reset();	// discard previous samples each iteration
+	CUDA_SYNC_CHECK();
+	m_iter++;
+	/* Determine whether the current iteration is the final iteration. */
+	if (m_trainingIterations > 0 && m_iter == m_trainingIterations)
+		m_isFinalIter = true;
+	size_t train_frames_next_iter = (1 << m_iter) * m_sppPerPass;
+	Budget budget = m_task.getBudget();
+	if (budget.type == BudgetType::Time) {
+		if (m_task.getProgress() > 0.15f)
+			m_isFinalIter = true;
+	} else if (budget.type == BudgetType::Spp) {
+		size_t remaining_spp = budget.value * (1.f - m_task.getProgress());
+		if (remaining_spp - train_frames_next_iter < 2 * train_frames_next_iter)
+			// Final iteration must use at least half of the SPP budget.
+			m_isFinalIter = true;
+	}
+}
+
+void PPGPathTracer::finalize() { 
+	cudaDeviceSynchronize();
+	fs::path save_path = File::outputDir() / "result.exr";
+	m_image->save(save_path);
+	Log(Success, "Task finished, saving results to %s", save_path.string().c_str());
+	CUDA_SYNC_CHECK();
+	exit(EXIT_SUCCESS);
+}
 
 KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler, 
 	const ShadingData& sd, float& bsdfPdf, float& dTreePdf, int depth,

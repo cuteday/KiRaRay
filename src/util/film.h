@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "file.h"
 #include "texture.h"
 #include "krrmath/math.h"
 #include "device/buffer.h"
@@ -10,7 +11,7 @@ class Film {
 public:
 	using SharedPtr = std::shared_ptr<Film>;
 	using Pixel = Color4f;
-	using WeightedPixel = struct {Color4f pixel; float weight;};
+	using WeightedPixel = struct {Pixel pixel; float weight;};
 
 	Film() = default;
 	~Film() = default;
@@ -59,14 +60,14 @@ public:
 		return getPixel(idx);
 	}
 
-	KRR_HOST void save(const string& filepath) {
+	KRR_HOST void save(const fs::path& filepath) {
 		size_t n_pixels = m_size[0] * m_size[1]; 
 		CUDABuffer tmp(n_pixels * sizeof(Pixel));
 		Pixel *pixels_device = reinterpret_cast<Pixel *>(tmp.data());
 		thrust::transform(thrust::device, m_data.data(), m_data.data() + n_pixels, pixels_device,
 						  [] KRR_DEVICE(const WeightedPixel &d) -> Pixel { return d.pixel; });
 		Image frame(m_size, Image::Format::RGBAfloat, false);
-		tmp.copy_to_host(pixels_device, n_pixels);
+		tmp.copy_to_host(frame.data(), n_pixels * sizeof(Color4f));
 		frame.saveImage(filepath);
 	}
 

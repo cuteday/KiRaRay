@@ -5,7 +5,7 @@ KRR_NAMESPACE_BEGIN
 
 enum class ErrorMetric { MSE, MAPE, RelMSE, Count };
 
-KRR_ENUM_DEINFE(ErrorMetric, {
+KRR_ENUM_DEFINE(ErrorMetric, {
 	{ErrorMetric::MSE, "mse"},
 	{ErrorMetric::MAPE, "mape"},
 	{ErrorMetric::RelMSE, "rel_mse"}

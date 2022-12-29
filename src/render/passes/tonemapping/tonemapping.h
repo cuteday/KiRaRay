@@ -48,7 +48,7 @@ private:
 	Operator mOperator{ Operator::Linear };
 };
 
-KRR_ENUM_DEINFE(ToneMappingPass::Operator, { 
+KRR_ENUM_DEFINE(ToneMappingPass::Operator, { 
 	{ ToneMappingPass::Operator::Linear, "linear" },
 	{ ToneMappingPass::Operator::Reinhard, "reinhard" },
 	{ ToneMappingPass::Operator::Aces, "aces" },
