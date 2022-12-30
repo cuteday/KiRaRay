@@ -113,7 +113,7 @@ public:
 		p.m_sdTreeMaxMemory		 = j.value("max_memory", 16);
 		p.m_bsdfSamplingFraction = j.value("bsdf_fraction", 0.5);
 		p.m_distribution		 = j.value("distribution", EDistribution::ERadiance);
-		p.m_sTreeThreshold		 = j.value("stree_thres", 12000.f);
+		p.m_sTreeThreshold		 = j.value("stree_thres", 4000.f);
 		p.m_dTreeThreshold		 = j.value("dtree_thres", 0.01f);
 		p.m_autoBuild			 = j.value("auto_build", false);
 		p.m_task				 = j.value("budget", RenderTask{});

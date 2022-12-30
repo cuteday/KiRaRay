@@ -21,6 +21,7 @@ struct Vertex {
 	Color3f bsdfVal;
 	Color3f radiance;
 	float wiPdf, bsdfPdf, dTreePdf;
+	float wiMisWeight;	// @addition VAPG
 	bool isDelta;
 
 	KRR_DEVICE void record(const Color3f& r) {
@@ -52,11 +53,13 @@ struct Vertex {
 				break;
 			case EDistribution::ESimple:	/* consider partial integrand (additional BSDF) */
 				value = product.mean();
+				if (wiMisWeight > 0) value *= wiMisWeight;
 				value = pow2(value);		/* second moment */
 				break;
 			case EDistribution::EFull:
 				value = (radiance / pixelEstimate.cwiseMax(1e-4f) * wiPdf).mean();	// full integrand
-				// TODO: value has NaN! temporally use cwise max (1e4f) to prevent nans.
+				// Value has NaN! temporally use cwise max (1e4f) to prevent nans.
+				if (wiMisWeight > 0) value *= wiMisWeight;
 				value = pow2(value);		/* second moment */
 				break;
 		}
@@ -143,6 +146,7 @@ public:
 		vertices[depth].bsdfPdf[pixelId]		= bsdfPdf;
 		vertices[depth].dTreePdf[pixelId]		= dTreePdf;
 		vertices[depth].isDelta[pixelId]		= isDelta;
+		vertices[depth].wiMisWeight[pixelId]	= wiPdf / dTreePdf;	// currently ok since we used a constant selction prob
 		n_vertices[pixelId] = 1 + depth;
 	}
 

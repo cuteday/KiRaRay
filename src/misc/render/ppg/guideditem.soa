@@ -30,6 +30,7 @@ struct Vertex {
 	Color3f bsdfVal;
 	Color3f radiance;
 	float wiPdf, bsdfPdf, dTreePdf;
+	float wiMisWeight;
 	bool isDelta;
 };
 
