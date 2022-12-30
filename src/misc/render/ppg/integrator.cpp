@@ -186,7 +186,6 @@ void PPGPathTracer::generateScatterRays() {
 void PPGPathTracer::render(CUDABuffer& frame) {
 	if (!mpScene || !maxQueueSize) return;
 	PROFILE("PPG Path Tracer");
-	Color4f* frameBuffer = (Color4f*)frame.data();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
 		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
@@ -227,7 +226,17 @@ void PPGPathTracer::render(CUDABuffer& frame) {
 		}
 	}
 	CUDA_SYNC_CHECK();
-	frameId++;
+	// write results of the current frame...
+	Color4f *frameBuffer = (Color4f *) frame.data();
+	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
+		Color3f L = Color3f(pixelState->L[pixelId]) / samplesPerPixel;
+		if (enableClamp) L = clamp(L, 0.f, clampMax);
+		m_image->put(Color4f(L, 1.f), pixelId);
+		if (m_renderMode == RenderMode::Interactive)
+			frameBuffer[pixelId] = Color4f(L, 1);
+		else if (m_renderMode == RenderMode::Offline)
+			frameBuffer[pixelId] = m_image->getPixel(pixelId);
+	});
 }
 
 void PPGPathTracer::beginFrame(CUDABuffer& frame) {
@@ -244,13 +253,7 @@ void PPGPathTracer::beginFrame(CUDABuffer& frame) {
 }
 
 void PPGPathTracer::endFrame(CUDABuffer& frame) {
-	Color4f* frameBuffer = (Color4f*)frame.data();
-	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
-		Color3f L = Color3f(pixelState->L[pixelId]) / samplesPerPixel;
-		if (enableClamp) L = clamp(L, 0.f, clampMax);
-		frameBuffer[pixelId] = Color4f(L, 1.f);
-		m_image->put(Color4f(L, 1.f), pixelId);
-	});
+	frameId++;
 	if (enableLearning) {
 		PROFILE("Training SD-Tree");
 		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){

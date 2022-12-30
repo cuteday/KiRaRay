@@ -15,9 +15,14 @@ public:
 	Context() { initialize(); }
 	~Context() { finalize(); }
 
+	void setGlobalConfig(const json &config);
+	void updateGlobalConfig(const json &config);
+	json getGlobalConfig() const;
+
 	void initialize();
 	void finalize();
 
+	json globalConfig{};
 	CUcontext cudaContext;
 	CUstream cudaStream{ 0 };
 	cudaDeviceProp deviceProps;

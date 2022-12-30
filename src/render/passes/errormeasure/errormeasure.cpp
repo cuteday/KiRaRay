@@ -4,6 +4,14 @@
 
 KRR_NAMESPACE_BEGIN
 
+namespace {
+static const char *metricNames[] = { "MSE", "MAPE", "RelMSE" };
+}
+
+void ErrorMeasurePass::beginFrame(CUDABuffer &frame) {
+	mNeedsEvaluate |= mContinuousEvaluate && (mFrameNumber % mEvaluateInterval == 0);
+}
+
 void ErrorMeasurePass::render(CUDABuffer &frame) {
 	if (mNeedsEvaluate) {
 		PROFILE("Metric calculation");
@@ -13,10 +21,16 @@ void ErrorMeasurePass::render(CUDABuffer &frame) {
 		mResult =
 			calculateMetric(mMetric, reinterpret_cast<Color4f *>(frame.data()),
 							reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()), n_elememts);
-
+		if (mLogResults)
+			Log(Info, "Evaluate result: %s = %f", metricNames[(int) mMetric], mResult);
+		
 		mNeedsEvaluate = false;
 		mIsEvaluated   = true;
 	}
+}
+
+void ErrorMeasurePass::endFrame(CUDABuffer &frame) {
+	mFrameNumber++;
 }
 
 void ErrorMeasurePass::resize(const Vector2i &size) {
@@ -24,8 +38,6 @@ void ErrorMeasurePass::resize(const Vector2i &size) {
 }
 
 void ErrorMeasurePass::renderUI() { 
-	static const char *metricNames[] = { "MSE", "MAPE", "RelMSE" };
-	static bool continuousEvaluate	 = false;
 	ui::Checkbox("Enabled", &mEnable);
 	if (mEnable) {
 		if (ui::Combo("Metric", (int *) &mMetric, metricNames, (int)ErrorMetric::Count))
@@ -37,10 +49,11 @@ void ErrorMeasurePass::renderUI() {
 		}
 		if (mReferenceImage.isValid()) {
 			ui::Text("Reference image: %s", mReferenceImagePath.c_str());
-			ui::Checkbox("Continuous evaluate", &continuousEvaluate);
-			if (!continuousEvaluate && ui::Button("Evaluate")) 
-				mNeedsEvaluate = 1;
-			mNeedsEvaluate |= continuousEvaluate;
+			ui::Checkbox("Continuous evaluate", &mContinuousEvaluate);
+			if (mContinuousEvaluate)
+				ui::InputScalar("Evaluate every", ImGuiDataType_::ImGuiDataType_U64,
+								&mEvaluateInterval);
+			if (ui::Button("Evaluate")) mNeedsEvaluate = 1;
 		}
 		if (mIsEvaluated)
 			ui::Text("%s: %f", metricNames[(int)mMetric], mResult);
