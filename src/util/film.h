@@ -18,6 +18,7 @@ public:
 	KRR_HOST Film(size_t res_x, size_t res_y) {
 		m_size = { (int) res_x, (int) res_y };
 		m_data.resize(res_x * res_y);
+		reset();
 	}
 	
 	KRR_HOST Film(const Vector2f size) :
@@ -38,6 +39,7 @@ public:
 	KRR_HOST void resize(const Vector2i& size) {
 		m_size = size;
 		m_data.resize(size[0] * size[1]);
+		reset();
 	}
 
 	KRR_CALLABLE void put(const Pixel &pixel, const size_t offset) {

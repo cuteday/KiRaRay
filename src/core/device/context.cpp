@@ -63,4 +63,10 @@ void Context::finalize(){
 	cuCtxDestroy(cudaContext);
 }
 
+void Context::setGlobalConfig(const json& config) { globalConfig = config; }
+
+json Context::getGlobalConfig() const { return globalConfig; }
+
+void Context::updateGlobalConfig(const json &config) { globalConfig.update(config); }
+
 KRR_NAMESPACE_END

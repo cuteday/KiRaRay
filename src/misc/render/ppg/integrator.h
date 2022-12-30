@@ -20,6 +20,7 @@ class PPGPathTracer : public WavefrontPathTracer{
 public:
 	using SharedPtr = std::shared_ptr<PPGPathTracer>;
 	KRR_REGISTER_PASS_DEC(PPGPathTracer);
+	enum class RenderMode { Interactive, Offline };
 
 	PPGPathTracer() = default;
 	~PPGPathTracer() = default;
@@ -71,6 +72,7 @@ public:
 	void finalize();									/* Save the rendering (of the last iter) maybe more. */
 	void nextIteration();								/* Do the works for entering NEXT, e.g., rebuild, save image */
 	void resetGuiding();								/* Reset the SD-Tree to the beginning. */
+	RenderMode m_renderMode{RenderMode::Interactive};	/* If in OFFLINE mode, most of the operations is automatic.  */	
 	int m_trainingIterations{ -1 };						/* The number of iterations for training (-1 means unlimited) */
 	bool m_autoBuild{ false };							/* Automatically rebuild if the current render pass finishes. */
 	bool m_isFinalIter{ false };						/* Only results of the final iter is saved */
@@ -89,6 +91,7 @@ public:
 	friend void to_json(json &j, const PPGPathTracer &p) {
 		to_json(j, static_cast<const WavefrontPathTracer&>(p));
 		j.update({ 
+			{ "mode", p.m_renderMode },
 			{ "target_dist",  p.m_distribution}, 
 			{ "spp_per_pass", p.m_sppPerPass },
 			{ "max_memory", p.m_sdTreeMaxMemory }, 
@@ -102,6 +105,7 @@ public:
 	}
 
 	friend void from_json(const json &j, PPGPathTracer &p) {
+		p.m_renderMode			 = j.value("mode", PPGPathTracer::RenderMode::Interactive);
 		p.enableNEE				 = j.value("nee", true);
 		p.maxDepth				 = j.value("max_depth", 6);
 		p.probRR				 = j.value("rr", 0.8f);
@@ -115,5 +119,10 @@ public:
 		p.m_task				 = j.value("budget", RenderTask{});
 	}
 };
+
+KRR_ENUM_DEFINE(PPGPathTracer::RenderMode, {
+	{ PPGPathTracer::RenderMode::Interactive, "interactive" },
+	{PPGPathTracer::RenderMode::Offline, "offline"},
+})
 
 KRR_NAMESPACE_END

@@ -237,6 +237,10 @@ void RenderApp::saveConfig(string path) {
 void RenderApp::loadConfig(fs::path path) {
 	json config = File::loadJSON(path);
 	
+	// set global configurations if eligiable 
+	if (config.contains("global"))
+		gpContext->updateGlobalConfig(config.at("global"));
+
 	// set output directory if the config file specifies
 	fs::path outputDir = File::resolve("common/outputs") / path.stem();
 	if (config.contains("output")) 
