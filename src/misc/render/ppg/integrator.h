@@ -76,6 +76,7 @@ public:
 	int m_trainingIterations{ -1 };						/* The number of iterations for training (-1 means unlimited) */
 	bool m_autoBuild{ false };							/* Automatically rebuild if the current render pass finishes. */
 	bool m_isFinalIter{ false };						/* Only results of the final iter is saved */
+	bool m_saveIntermediate{ false };					/* Save rendered images of each iteration. */
 	RenderTask m_task{};								/* Task class for progressing and more */
 	Film *m_image{ nullptr };							/* The image currently being rendered. @addition VAPG */
 	Film *m_pixelEstimate{ nullptr };					/* The image rendered during the last iteration. @addition VAPG */
@@ -100,7 +101,8 @@ public:
 			{ "stree_thres", p.m_sTreeThreshold },
 			{ "dtree_thres", p.m_dTreeThreshold },
 			{ "auto_build", p.m_autoBuild },
-			{ "budget", p.m_task }
+			{ "budget", p.m_task },
+			{ "save_intermediate", p.m_saveIntermediate }
 		});
 	}
 
@@ -117,6 +119,7 @@ public:
 		p.m_dTreeThreshold		 = j.value("dtree_thres", 0.01f);
 		p.m_autoBuild			 = j.value("auto_build", false);
 		p.m_task				 = j.value("budget", RenderTask{});
+		p.m_saveIntermediate	 = j.value("save_intermediate", false);
 	}
 };
 

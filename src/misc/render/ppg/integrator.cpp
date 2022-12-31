@@ -344,6 +344,9 @@ void PPGPathTracer::nextIteration() {
 	*m_pixelEstimate = *m_image;
 	m_image->reset();	// discard previous samples each iteration
 	CUDA_SYNC_CHECK();
+	if (m_saveIntermediate)
+		m_pixelEstimate->save(File::outputDir() / 
+			("iteration_" + std::to_string(m_iter) + ".exr"));
 	m_iter++;
 	/* Determine whether the current iteration is the final iteration. */
 	if (m_trainingIterations > 0 && m_iter == m_trainingIterations)
