@@ -109,10 +109,8 @@ public:
 	}
 
 	friend void from_json(const json &j, PPGPathTracer &p) {
-		p.m_renderMode			 = j.value("mode", PPGPathTracer::RenderMode::Interactive);
-		p.enableNEE				 = j.value("nee", true);
-		p.maxDepth				 = j.value("max_depth", 6);
-		p.probRR				 = j.value("rr", 0.8f);
+		from_json(j, static_cast<WavefrontPathTracer &>(p));
+		p.m_renderMode			 = j.value("mode", PPGPathTracer::RenderMode::Interactive);		
 		p.m_sppPerPass			 = j.value("spp_per_pass", 4);
 		p.m_sdTreeMaxMemory		 = j.value("max_memory", 16);
 		p.m_bsdfSamplingFraction = j.value("bsdf_fraction", 0.5);

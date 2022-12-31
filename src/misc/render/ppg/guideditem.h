@@ -59,7 +59,7 @@ struct Vertex {
 			case EDistribution::EFull:
 				value = (radiance / pixelEstimate * wiPdf).mean();	// full integrand
 				// temporally use cwise max (1e4f) to prevent nans.
-				//if (wiMisWeight > 0) value *= wiMisWeight;	// MIS aware
+				if (wiMisWeight > 0) value *= wiMisWeight;	// MIS aware
 				value = pow2(value);		/* second moment */
 				break;
 		}
@@ -86,10 +86,7 @@ struct Vertex {
 			offset[2] *= sampler.get1D() - 0.5f;
 
 			const AABB& sdAabb = sdTree->aabb();
-			Vector3f origin = ray.origin + offset;
-			for (int i = 0; i < Vector3f::dim; i++) {
-				origin[i] = max(sdAabb.min()[i], min(sdAabb.max()[i], origin[i]));
-			}
+			Vector3f origin	   = sdAabb.clip(ray.origin + offset);
 
 			splatDTree = sdTree->dTreeWrapper(origin);
 			if (splatDTree) {

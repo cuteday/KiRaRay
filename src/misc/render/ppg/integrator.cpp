@@ -12,8 +12,11 @@
 KRR_NAMESPACE_BEGIN
 
 namespace {
-	static size_t guiding_trained_frames = 0;
-	static size_t train_frames_this_iteration = 0;
+static size_t guiding_trained_frames		  = 0;
+static size_t train_frames_this_iteration	  = 0;
+const static char *spatial_filter_names[]	  = { "Nearest", "StochasticBox", "Box" };
+const static char *directional_filter_names[] = { "Nearest", "Box" };
+const static char *distribution_names[]		  = { "Radiance", "Partial", "Full" };
 }
 
 void PPGPathTracer::resize(const Vector2i& size) {
@@ -38,10 +41,6 @@ void PPGPathTracer::initialize(){
 	Allocator& alloc = *gpContext->alloc;
 	WavefrontPathTracer::initialize();
 	cudaDeviceSynchronize();
-	/* override some default options... */
-	enableClamp = false;
-	maxDepth = 6;
-	probRR = 1;
 	if (guidedPathState) guidedPathState->resize(maxQueueSize, alloc);
 	else guidedPathState = alloc.new_object<GuidedPathStateBuffer>(maxQueueSize, alloc);
 	if (guidedRayQueue) guidedRayQueue->resize(maxQueueSize, alloc);
@@ -286,8 +285,9 @@ void PPGPathTracer::renderUI() {
 	ui::Checkbox("Enable NEE", &enableNEE);
 
 	ui::Text("Path guiding");
-	const static char *distributionNames[] = { "Radiance", "Partial", "Full" };
-	ui::Text("Target distribution mode: %s", distributionNames[(int)m_distribution]);
+	ui::Text("Target distribution mode: %s", distribution_names[(int)m_distribution]);
+	ui::Combo("Spatial filter", (int*) & m_spatialFilter, spatial_filter_names, 3);
+	ui::Combo("Directional filter", (int *) &m_directionalFilter, directional_filter_names, 2);
 	ui::Checkbox("Auto rebuild", &m_autoBuild);
 	if (!m_autoBuild) ui::Checkbox("Enable learning", &enableLearning);
 	ui::Checkbox("Enable guiding", &enableGuiding);

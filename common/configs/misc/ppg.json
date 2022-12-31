@@ -16,21 +16,16 @@
 				"max_memory": 16,
 				"bsdf_fraction": 0.5,
 				"distribution": "full",
+				"spatial_filter": "stochastic",
+				"directional_filter": "box",
 				"stree_thres": 4000,
 				"dtree_trres": 0.01,
 				"auto_build": true,
-				"mode": "interactive",
+				"mode": "offline",
 				"budget": {
-					"type": "none"
+					"type": "spp",
+					"value": 1000
 				}
-			}
-		},
-		{
-			"enable": true,
-			"name": "AccumulatePass",
-			"params": {
-				"spp": 0,
-				"mode": "accumulate"
 			}
 		},
 		{
@@ -38,7 +33,10 @@
 			"name": "ErrorMeasurePass",
 			"params": {
 				"metric": "rel_mse",
-				"reference": "common/configs/example.exr"
+				"reference": "common/configs/example.exr",
+				"interval": 10,
+				"continuous": true,
+				"log": true
 			}
 		},
 		{

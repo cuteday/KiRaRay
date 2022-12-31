@@ -54,7 +54,7 @@ KRR_ENUM_DEFINE(EDirectionalFilter, {
 
 KRR_ENUM_DEFINE(ESpatialFilter, { 
 	{ ESpatialFilter::ENearest, "nearest" },
-	{ ESpatialFilter::EStochasticBox, "stochastic_box" },
+	{ ESpatialFilter::EStochasticBox, "stochastic" },
 	{ ESpatialFilter::EBox, "box" },
 });
 
@@ -234,7 +234,6 @@ public:
 	/* This RECORD splatts the contribution of an radiance record to nearby cells. */
 	KRR_DEVICE void record(const Vector2f& origin, float size, Vector2f nodeOrigin, 
 		float nodeSize, float value, TypedBuffer<QuadTreeNode>& nodes) {
-		printf("QuadTreeNode::area record: this should not get called...\n");
 		float childSize = nodeSize / 2;
 		for (int i = 0; i < 4; ++i) {
 			Vector2f childOrigin = nodeOrigin;
@@ -312,7 +311,6 @@ public:
 				if (directionalFilter == EDirectionalFilter::ENearest) {
 					m_nodes[0].record(p, irradiance * statisticalWeight, m_nodes);
 				} else {
-					printf("DTree::recordIrradiance: this should not get called...\n");
 					int depth  = depthAt(p);
 					float size = pow(0.5f, depth);
 

@@ -51,6 +51,7 @@ out
 
 # Assets and resource data
 temp
+common/outputs
 common/scenes
 common/images
 imgui.ini

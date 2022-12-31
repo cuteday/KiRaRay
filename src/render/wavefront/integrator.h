@@ -74,7 +74,7 @@ public:
 	bool enableNEE{ };
 	bool debugOutput{ };
 	uint debugPixel{ };
-	bool enableClamp{ true };
+	bool enableClamp{ false };
 	float clampMax{ 1e3f };
 
 	friend void to_json(json &j, const WavefrontPathTracer &p) { 

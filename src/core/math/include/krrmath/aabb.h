@@ -26,6 +26,10 @@ public:
 		this->m_min -= VectorType::Constant(inflation);
 		this->m_max += VectorType::Constant(inflation);
 	}
+
+	KRR_CALLABLE VectorType clip(const VectorType& p) const {
+		return p.cwiseMin(this->m_max).cwiseMax(this->m_min);
+	}
 };
 	
 using AABB3f = AxisAligned<float, 3>;
