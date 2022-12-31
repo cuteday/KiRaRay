@@ -18,10 +18,13 @@ public:
 	KRR_HOST Film(size_t res_x, size_t res_y) {
 		m_size = { (int) res_x, (int) res_y };
 		m_data.resize(res_x * res_y);
+		reset();
 	}
 	
 	KRR_HOST Film(const Vector2f size) :
 		Film(size[0], size[1]) {}
+
+	KRR_CALLABLE WeightedPixel *data() { return m_data.data(); }
 
 	KRR_CALLABLE Vector2i size() { return m_size; }
 
@@ -29,6 +32,8 @@ public:
 		m_data.for_each([value] KRR_DEVICE(const WeightedPixel &c) -> WeightedPixel 
 			{ return { value, 0 }; });
 	}
+
+	KRR_HOST TypedBuffer<WeightedPixel> &getInternalBuffer() { return m_data; }
 
 	KRR_HOST void clear() { 
 		m_size = {};
@@ -38,6 +43,7 @@ public:
 	KRR_HOST void resize(const Vector2i& size) {
 		m_size = size;
 		m_data.resize(size[0] * size[1]);
+		reset();
 	}
 
 	KRR_CALLABLE void put(const Pixel &pixel, const size_t offset) {

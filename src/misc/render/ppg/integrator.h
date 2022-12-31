@@ -10,16 +10,15 @@ KRR_NAMESPACE_BEGIN
 
 class Film;
 
-/* A simplified ppg on interactive gpu pathtracing, the simplifications are:
-*   No need to learn MIS probability;
+/* A simplified ppg for gpu pathtracing, the simplifications are:
 *	No DI strategy (no guide towards direct illumination);
-*   No spatial or directional filters;
 *   No combining rendered frames (with optimal variance).
 */
 class PPGPathTracer : public WavefrontPathTracer{
 public:
 	using SharedPtr = std::shared_ptr<PPGPathTracer>;
 	KRR_REGISTER_PASS_DEC(PPGPathTracer);
+	enum class RenderMode { Interactive, Offline };
 
 	PPGPathTracer() = default;
 	~PPGPathTracer() = default;
@@ -53,6 +52,8 @@ public:
 	void resetSDTree();
 	/* This builds the sampling distribution for importance sampling, after collecting enough MC estimates. */
 	void buildSDTree();
+	/* @addition VAPG filter the raw pixel estimate using a simple box filter. */
+	void filterFrame(Film *image);
 
 	GuidedRayQueue *guidedRayQueue;
 	OptiXPPGBackend* backend;
@@ -71,9 +72,11 @@ public:
 	void finalize();									/* Save the rendering (of the last iter) maybe more. */
 	void nextIteration();								/* Do the works for entering NEXT, e.g., rebuild, save image */
 	void resetGuiding();								/* Reset the SD-Tree to the beginning. */
+	RenderMode m_renderMode{RenderMode::Interactive};	/* If in OFFLINE mode, most of the operations is automatic.  */	
 	int m_trainingIterations{ -1 };						/* The number of iterations for training (-1 means unlimited) */
 	bool m_autoBuild{ false };							/* Automatically rebuild if the current render pass finishes. */
 	bool m_isFinalIter{ false };						/* Only results of the final iter is saved */
+	bool m_saveIntermediate{ false };					/* Save rendered images of each iteration. */
 	RenderTask m_task{};								/* Task class for progressing and more */
 	Film *m_image{ nullptr };							/* The image currently being rendered. @addition VAPG */
 	Film *m_pixelEstimate{ nullptr };					/* The image rendered during the last iteration. @addition VAPG */
@@ -89,31 +92,42 @@ public:
 	friend void to_json(json &j, const PPGPathTracer &p) {
 		to_json(j, static_cast<const WavefrontPathTracer&>(p));
 		j.update({ 
+			{ "mode", p.m_renderMode },
 			{ "target_dist",  p.m_distribution}, 
 			{ "spp_per_pass", p.m_sppPerPass },
 			{ "max_memory", p.m_sdTreeMaxMemory }, 
 			{ "bsdf_fraction", p.m_bsdfSamplingFraction },
 			{ "distribution", p.m_distribution },
+			{ "spatial_filter", p.m_spatialFilter },
+			{ "directional_filter", p.m_directionalFilter },
 			{ "stree_thres", p.m_sTreeThreshold },
 			{ "dtree_thres", p.m_dTreeThreshold },
 			{ "auto_build", p.m_autoBuild },
-			{ "budget", p.m_task }
+			{ "budget", p.m_task },
+			{ "save_intermediate", p.m_saveIntermediate }
 		});
 	}
 
 	friend void from_json(const json &j, PPGPathTracer &p) {
-		p.enableNEE				 = j.value("nee", true);
-		p.maxDepth				 = j.value("max_depth", 6);
-		p.probRR				 = j.value("rr", 0.8f);
+		from_json(j, static_cast<WavefrontPathTracer &>(p));
+		p.m_renderMode			 = j.value("mode", PPGPathTracer::RenderMode::Interactive);		
 		p.m_sppPerPass			 = j.value("spp_per_pass", 4);
 		p.m_sdTreeMaxMemory		 = j.value("max_memory", 16);
 		p.m_bsdfSamplingFraction = j.value("bsdf_fraction", 0.5);
 		p.m_distribution		 = j.value("distribution", EDistribution::ERadiance);
-		p.m_sTreeThreshold		 = j.value("stree_thres", 12000.f);
+		p.m_spatialFilter		 = j.value("spatial_filter", ESpatialFilter::ENearest);
+		p.m_directionalFilter	 = j.value("directional_filter", EDirectionalFilter::ENearest);
+		p.m_sTreeThreshold		 = j.value("stree_thres", 4000.f);
 		p.m_dTreeThreshold		 = j.value("dtree_thres", 0.01f);
 		p.m_autoBuild			 = j.value("auto_build", false);
 		p.m_task				 = j.value("budget", RenderTask{});
+		p.m_saveIntermediate	 = j.value("save_intermediate", false);
 	}
 };
+
+KRR_ENUM_DEFINE(PPGPathTracer::RenderMode, {
+	{ PPGPathTracer::RenderMode::Interactive, "interactive" },
+	{PPGPathTracer::RenderMode::Offline, "offline"},
+})
 
 KRR_NAMESPACE_END

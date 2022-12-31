@@ -21,6 +21,7 @@ struct Vertex {
 	Color3f bsdfVal;
 	Color3f radiance;
 	float wiPdf, bsdfPdf, dTreePdf;
+	float wiMisWeight;	// @addition VAPG
 	bool isDelta;
 
 	KRR_DEVICE void record(const Color3f& r) {
@@ -52,11 +53,13 @@ struct Vertex {
 				break;
 			case EDistribution::ESimple:	/* consider partial integrand (additional BSDF) */
 				value = product.mean();
+				if (wiMisWeight > 0) value *= wiMisWeight;	// MIS aware
 				value = pow2(value);		/* second moment */
 				break;
 			case EDistribution::EFull:
-				value = (radiance / pixelEstimate.cwiseMax(1e-4f) * wiPdf).mean();	// full integrand
-				// TODO: value has NaN! temporally use cwise max (1e4f) to prevent nans.
+				value = (radiance / pixelEstimate * wiPdf).mean();	// full integrand
+				// temporally use cwise max (1e4f) to prevent nans.
+				if (wiMisWeight > 0) value *= wiMisWeight;	// MIS aware
 				value = pow2(value);		/* second moment */
 				break;
 		}
@@ -83,10 +86,7 @@ struct Vertex {
 			offset[2] *= sampler.get1D() - 0.5f;
 
 			const AABB& sdAabb = sdTree->aabb();
-			Vector3f origin = ray.origin + offset;
-			for (int i = 0; i < Vector3f::dim; i++) {
-				origin[i] = max(sdAabb.min()[i], min(sdAabb.max()[i], origin[i]));
-			}
+			Vector3f origin	   = sdAabb.clip(ray.origin + offset);
 
 			splatDTree = sdTree->dTreeWrapper(origin);
 			if (splatDTree) {
@@ -143,6 +143,8 @@ public:
 		vertices[depth].bsdfPdf[pixelId]		= bsdfPdf;
 		vertices[depth].dTreePdf[pixelId]		= dTreePdf;
 		vertices[depth].isDelta[pixelId]		= isDelta;
+		vertices[depth].wiMisWeight[pixelId] =
+			dTreePdf / wiPdf; // currently ok since we used a constant selction prob
 		n_vertices[pixelId] = 1 + depth;
 	}
 

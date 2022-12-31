@@ -132,9 +132,27 @@ This implements [Practical Path Guiding (PPG)](https://github.com/Tom94/practica
 <p align=center>
 <img src="common/demo/pt_ppg.jpg" alt="pt_ppg" width="600" />
 
-The above image shows an 1spp rendering of a somewhat challenging scene (*veach-ajar*), where PPG is trained using MC estimates of ~500spp. The noise got reduced (maybe not much of them), but the performance also dropped drastically (only <20fps@720p on my device). The code is located [here](src/misc/render/ppg). The `PGGPathTracer` could be invoked with the configuration at [configs/misc](common/configs/misc/ppg.json).
+The above image shows an 1spp rendering of a somewhat challenging scene (*veach-ajar*), where PPG is trained using MC estimates of ~500spp. The noise got reduced (maybe not much of them), but the performance also dropped drastically (only <20fps@720p on my device). The code is located [here](src/misc/render/ppg). The `PGGPathTracer` could be invoked with the configuration at [configs/misc](common/configs/misc/ppg.json). One can refer to the code implementation for all the configurable parameters:
 
-I also implemented a later [Variance-Aware](https://github.com/iRath96/variance-aware-path-guiding) enhancement, which improves PPG on the theoretical side. Use the `distribution` parameter to select from the two methods (`radiance` for standard PPG, and `full` for the variance-aware version).
+~~~json
+	"params": {
+		"spp_per_pass": 4,
+		"max_memory": 16,
+		"bsdf_fraction": 0.5,
+		"distribution": "full",
+		"stree_thres": 2000,
+		"dtree_thres": 0.005,
+		"auto_build": true,
+		"mode": "offline",
+		"sample_combination": "atomatic",
+		"budget": {
+			"type": "spp",
+			"value": 1000
+		}
+	}
+~~~
+
+I also implemented a later [Variance-aware](https://github.com/iRath96/variance-aware-path-guiding) enhancement, which improves PPG on the theoretical side. Use the `distribution` parameter to select from the two methods (`radiance` for standard PPG, and `full` for the variance-aware version).
 
 </details>
 

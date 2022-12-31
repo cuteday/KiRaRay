@@ -12,8 +12,11 @@
 KRR_NAMESPACE_BEGIN
 
 namespace {
-	static size_t guiding_trained_frames = 0;
-	static size_t train_frames_this_iteration = 0;
+static size_t guiding_trained_frames		  = 0;
+static size_t train_frames_this_iteration	  = 0;
+const static char *spatial_filter_names[]	  = { "Nearest", "StochasticBox", "Box" };
+const static char *directional_filter_names[] = { "Nearest", "Box" };
+const static char *distribution_names[]		  = { "Radiance", "Partial", "Full" };
 }
 
 void PPGPathTracer::resize(const Vector2i& size) {
@@ -38,10 +41,6 @@ void PPGPathTracer::initialize(){
 	Allocator& alloc = *gpContext->alloc;
 	WavefrontPathTracer::initialize();
 	cudaDeviceSynchronize();
-	/* override some default options... */
-	enableClamp = false;
-	maxDepth = 6;
-	probRR = 1;
 	if (guidedPathState) guidedPathState->resize(maxQueueSize, alloc);
 	else guidedPathState = alloc.new_object<GuidedPathStateBuffer>(maxQueueSize, alloc);
 	if (guidedRayQueue) guidedRayQueue->resize(maxQueueSize, alloc);
@@ -186,7 +185,6 @@ void PPGPathTracer::generateScatterRays() {
 void PPGPathTracer::render(CUDABuffer& frame) {
 	if (!mpScene || !maxQueueSize) return;
 	PROFILE("PPG Path Tracer");
-	Color4f* frameBuffer = (Color4f*)frame.data();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
 		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
@@ -227,7 +225,17 @@ void PPGPathTracer::render(CUDABuffer& frame) {
 		}
 	}
 	CUDA_SYNC_CHECK();
-	frameId++;
+	// write results of the current frame...
+	Color4f *frameBuffer = (Color4f *) frame.data();
+	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
+		Color3f L = Color3f(pixelState->L[pixelId]) / samplesPerPixel;
+		if (enableClamp) L = clamp(L, 0.f, clampMax);
+		m_image->put(Color4f(L, 1.f), pixelId);
+		if (m_renderMode == RenderMode::Interactive)
+			frameBuffer[pixelId] = Color4f(L, 1);
+		else if (m_renderMode == RenderMode::Offline)
+			frameBuffer[pixelId] = m_image->getPixel(pixelId);
+	});
 }
 
 void PPGPathTracer::beginFrame(CUDABuffer& frame) {
@@ -244,13 +252,7 @@ void PPGPathTracer::beginFrame(CUDABuffer& frame) {
 }
 
 void PPGPathTracer::endFrame(CUDABuffer& frame) {
-	Color4f* frameBuffer = (Color4f*)frame.data();
-	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
-		Color3f L = Color3f(pixelState->L[pixelId]) / samplesPerPixel;
-		if (enableClamp) L = clamp(L, 0.f, clampMax);
-		frameBuffer[pixelId] = Color4f(L, 1.f);
-		m_image->put(Color4f(L, 1.f), pixelId);
-	});
+	frameId++;
 	if (enableLearning) {
 		PROFILE("Training SD-Tree");
 		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
@@ -283,8 +285,9 @@ void PPGPathTracer::renderUI() {
 	ui::Checkbox("Enable NEE", &enableNEE);
 
 	ui::Text("Path guiding");
-	const static char *distributionNames[] = { "Radiance", "Partial", "Full" };
-	ui::Text("Target distribution mode: %s", distributionNames[(int)m_distribution]);
+	ui::Text("Target distribution mode: %s", distribution_names[(int)m_distribution]);
+	ui::Combo("Spatial filter", (int*) & m_spatialFilter, spatial_filter_names, 3);
+	ui::Combo("Directional filter", (int *) &m_directionalFilter, directional_filter_names, 2);
 	ui::Checkbox("Auto rebuild", &m_autoBuild);
 	if (!m_autoBuild) ui::Checkbox("Enable learning", &enableLearning);
 	ui::Checkbox("Enable guiding", &enableGuiding);
@@ -338,9 +341,16 @@ void PPGPathTracer::nextIteration() {
 	guiding_trained_frames = 0;
 	m_sdTree->gatherStatistics();
 	resetSDTree();		// this is performed at the beginning of each iteration
-	*m_pixelEstimate = *m_image;
+	if (m_distribution == EDistribution::EFull) {
+		*m_pixelEstimate = *m_image;
+		filterFrame(m_pixelEstimate);
+		if (m_saveIntermediate)
+			m_pixelEstimate->save(File::outputDir() /
+								  ("iteration_" + std::to_string(m_iter) + ".exr"));
+	}
 	m_image->reset();	// discard previous samples each iteration
 	CUDA_SYNC_CHECK();
+
 	m_iter++;
 	/* Determine whether the current iteration is the final iteration. */
 	if (m_trainingIterations > 0 && m_iter == m_trainingIterations)
@@ -419,6 +429,78 @@ KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int d
 		dTreePdf = dTree->pdf(sd.frame.toWorld(wiLocal));
 	}
 	return alpha * bsdfPdf + (1 - alpha) * dTreePdf;
+}
+
+void PPGPathTracer::filterFrame(Film *image) { 
+	/* PixelData format: RGBAlphaWeight */
+	using PixelData = Film::WeightedPixel;
+	Vector2i size = image->size();
+	size_t n_pixels = size[0] * size[1];
+	std::vector<PixelData> pixels(n_pixels);
+	float *data = reinterpret_cast<float*>(pixels.data());
+	
+	int blackPixels = 0;
+	const int fpp = sizeof(PixelData) / sizeof(float);
+	image->getInternalBuffer().copy_to_host(reinterpret_cast<PixelData *>(data), n_pixels);
+
+	constexpr int FILTER_ITERATIONS = 3;
+	constexpr int SPECTRUM_SAMPLES	= Color4f::dim;
+
+	for (int i = 0, j = size[0] * size[1]; i < j; ++i) {
+		int isBlack = true;
+		for (int chan = 0; chan < SPECTRUM_SAMPLES; ++chan)
+			isBlack &= data[chan + i * fpp] == 0.f;
+		blackPixels += isBlack;
+	}
+
+	float blackDensity = 1.f / (sqrtf(1.f - blackPixels / float(size[0] * size[1])) + 1e-3);
+	const int FILTER_WIDTH = max(min(int(3 * blackDensity), min(size[0], size[1]) - 1), 1);
+
+	float *stack   = new float[FILTER_WIDTH];
+	auto boxFilter = [=](float *data, int stride, int n) {
+		assert(n > FILTER_WIDTH);
+
+		double avg = FILTER_WIDTH * data[0];
+		for (int i = 0; i < FILTER_WIDTH; ++i) {
+			stack[i] = data[0];
+			avg += data[i * stride];
+		}
+
+		for (int i = 0; i < n; ++i) {
+			avg += data[std::min(i + FILTER_WIDTH, n - 1) * stride];
+			float newVal = avg;
+			avg -= stack[i % FILTER_WIDTH];
+
+			stack[i % FILTER_WIDTH] = data[i * stride];
+			data[i * stride]		= newVal;
+		}
+	};
+
+	for (int i = 0, j = size[0] * size[1]; i < j; ++i) {
+		float &weight = data[SPECTRUM_SAMPLES + 1 + i * fpp];
+		if (weight > 0.f)
+			for (int chan = 0; chan < SPECTRUM_SAMPLES; ++chan)
+				data[chan + i * fpp] /= weight;
+		weight = 1.f;
+	}
+
+	for (int chan = 0; chan < SPECTRUM_SAMPLES; ++chan) {
+		for (int iter = 0; iter < FILTER_ITERATIONS; ++iter) {
+			for (int x = 0; x < size[0]; ++x)
+				boxFilter(data + chan + x * fpp, size[0] * fpp, size[1]);
+			for (int y = 0; y < size[1]; ++y)
+				boxFilter(data + chan + y * size[0] * fpp, fpp, size[0]);
+		}
+		for (int i = 0, j = size[0] * size[1]; i < j; ++i) {
+			float norm = 1.f / std::pow(2 * FILTER_WIDTH + 1, 2 * FILTER_ITERATIONS);
+			data[chan + i * fpp] *= norm;
+			// apply offset to avoid numerical instabilities
+			data[chan + i * fpp] += 1e-3;
+		}
+	}
+	delete[] stack;
+
+	image->getInternalBuffer().copy_from_host(reinterpret_cast<PixelData *>(data), n_pixels);
 }
 
 KRR_REGISTER_PASS_DEF(PPGPathTracer);
