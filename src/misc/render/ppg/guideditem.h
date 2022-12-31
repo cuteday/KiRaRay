@@ -53,13 +53,13 @@ struct Vertex {
 				break;
 			case EDistribution::ESimple:	/* consider partial integrand (additional BSDF) */
 				value = product.mean();
-				if (wiMisWeight > 0) value *= wiMisWeight;
+				if (wiMisWeight > 0) value *= wiMisWeight;	// MIS aware
 				value = pow2(value);		/* second moment */
 				break;
 			case EDistribution::EFull:
 				value = (radiance / pixelEstimate.cwiseMax(1e-4f) * wiPdf).mean();	// full integrand
-				// Value has NaN! temporally use cwise max (1e4f) to prevent nans.
-				if (wiMisWeight > 0) value *= wiMisWeight;
+				// temporally use cwise max (1e4f) to prevent nans.
+				if (wiMisWeight > 0) value *= wiMisWeight;	// MIS aware
 				value = pow2(value);		/* second moment */
 				break;
 		}
@@ -146,7 +146,8 @@ public:
 		vertices[depth].bsdfPdf[pixelId]		= bsdfPdf;
 		vertices[depth].dTreePdf[pixelId]		= dTreePdf;
 		vertices[depth].isDelta[pixelId]		= isDelta;
-		vertices[depth].wiMisWeight[pixelId]	= wiPdf / dTreePdf;	// currently ok since we used a constant selction prob
+		vertices[depth].wiMisWeight[pixelId] =
+			dTreePdf / wiPdf; // currently ok since we used a constant selction prob
 		n_vertices[pixelId] = 1 + depth;
 	}
 

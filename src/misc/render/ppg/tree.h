@@ -161,8 +161,6 @@ public:
 		if (!(total > 0.0f)) {
 			return sampler.get2D();
 		}
-		//else printf("[QuadTreeNode]Sample the 4 children [%f, %f, %f, %f]\n",
-		//	sum(0), sum(1), sum(2), sum(3));
 
 		float boundary = partial / total;
 		Vector2f origin = Vector2f{ 0.0f, 0.0f };	/* x, y */
@@ -205,11 +203,7 @@ public:
 		int index = childIndex(p);
 
 		if (isLeaf(index)) {
-			//float prevRadiance = addToAtomicfloat(m_sum[index], (AtomicType) irradiance);
 			float prevRadiance = m_sum[index].fetch_add((AtomicType) irradiance);
-			//if (prevRadiance < M_EPSILON)
-			//	printf("Recording irradiance %f to node %d, change it %f -> %f\n", 
-			//		irradiance, index, prevRadiance, sum(index));
 		}
 		else {
 			nodes[child(index)].record(p, irradiance, nodes);
@@ -240,7 +234,6 @@ public:
 				childOrigin, childOrigin + Vector2f(childSize));
 			if (w > 0.0f) {
 				if (isLeaf(i)) {
-					//addToAtomicfloat(m_sum[i], (AtomicType) value * w);
 					m_sum[i].fetch_add((AtomicType) value * w);
 				}
 				else {
@@ -339,17 +332,6 @@ public:
 		}
 		Vector2f res = m_nodes[0].sample(sampler, m_nodes);
 		return clamp(res, 0.f, 1.f);
-	}
-
-	// @addition VAPG
-	KRR_HOST void setNumNodes(size_t numNodes) { m_nodes.resize(numNodes); }
-
-	// @addition VAPG
-	KRR_HOST void resetSum() { 
-		size_t n_nodes = m_nodes.size();
-		for (int i = 0; i < n_nodes; i++) {
-			m_nodes[i].setSum(0);
-		}
 	}
 
 	KRR_CALLABLE size_t numNodes() const { return m_nodes.size(); }
