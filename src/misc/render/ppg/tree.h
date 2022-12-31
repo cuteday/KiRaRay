@@ -47,6 +47,17 @@ enum class EDistribution {
 	EFull 
 };
 
+KRR_ENUM_DEFINE(EDirectionalFilter, { 
+	{ EDirectionalFilter::ENearest, "nearest" },
+	{ EDirectionalFilter::EBox, "box" },
+});
+
+KRR_ENUM_DEFINE(ESpatialFilter, { 
+	{ ESpatialFilter::ENearest, "nearest" },
+	{ ESpatialFilter::EStochasticBox, "stochastic_box" },
+	{ ESpatialFilter::EBox, "box" },
+});
+
 KRR_ENUM_DEFINE(EDistribution, { 
 	{ EDistribution::ERadiance, "radiance" },
 	{ EDistribution::ESimple, "simple" },

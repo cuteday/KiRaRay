@@ -10,10 +10,8 @@ KRR_NAMESPACE_BEGIN
 
 class Film;
 
-/* A simplified ppg on interactive gpu pathtracing, the simplifications are:
-*   No need to learn MIS probability;
+/* A simplified ppg for gpu pathtracing, the simplifications are:
 *	No DI strategy (no guide towards direct illumination);
-*   No spatial or directional filters;
 *   No combining rendered frames (with optimal variance).
 */
 class PPGPathTracer : public WavefrontPathTracer{
@@ -54,6 +52,8 @@ public:
 	void resetSDTree();
 	/* This builds the sampling distribution for importance sampling, after collecting enough MC estimates. */
 	void buildSDTree();
+	/* @addition VAPG filter the raw pixel estimate using a simple box filter. */
+	void filterFrame(Film *image);
 
 	GuidedRayQueue *guidedRayQueue;
 	OptiXPPGBackend* backend;
@@ -98,6 +98,8 @@ public:
 			{ "max_memory", p.m_sdTreeMaxMemory }, 
 			{ "bsdf_fraction", p.m_bsdfSamplingFraction },
 			{ "distribution", p.m_distribution },
+			{ "spatial_filter", p.m_spatialFilter },
+			{ "directional_filter", p.m_directionalFilter },
 			{ "stree_thres", p.m_sTreeThreshold },
 			{ "dtree_thres", p.m_dTreeThreshold },
 			{ "auto_build", p.m_autoBuild },
@@ -115,6 +117,8 @@ public:
 		p.m_sdTreeMaxMemory		 = j.value("max_memory", 16);
 		p.m_bsdfSamplingFraction = j.value("bsdf_fraction", 0.5);
 		p.m_distribution		 = j.value("distribution", EDistribution::ERadiance);
+		p.m_spatialFilter		 = j.value("spatial_filter", ESpatialFilter::ENearest);
+		p.m_directionalFilter	 = j.value("directional_filter", EDirectionalFilter::ENearest);
 		p.m_sTreeThreshold		 = j.value("stree_thres", 4000.f);
 		p.m_dTreeThreshold		 = j.value("dtree_thres", 0.01f);
 		p.m_autoBuild			 = j.value("auto_build", false);
