@@ -57,9 +57,9 @@ struct Vertex {
 				value = pow2(value);		/* second moment */
 				break;
 			case EDistribution::EFull:
-				value = (radiance / pixelEstimate.cwiseMax(1e-4f) * wiPdf).mean();	// full integrand
+				value = (radiance / pixelEstimate * wiPdf).mean();	// full integrand
 				// temporally use cwise max (1e4f) to prevent nans.
-				if (wiMisWeight > 0) value *= wiMisWeight;	// MIS aware
+				//if (wiMisWeight > 0) value *= wiMisWeight;	// MIS aware
 				value = pow2(value);		/* second moment */
 				break;
 		}

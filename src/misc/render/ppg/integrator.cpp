@@ -341,12 +341,16 @@ void PPGPathTracer::nextIteration() {
 	guiding_trained_frames = 0;
 	m_sdTree->gatherStatistics();
 	resetSDTree();		// this is performed at the beginning of each iteration
-	*m_pixelEstimate = *m_image;
+	if (m_distribution == EDistribution::EFull) {
+		*m_pixelEstimate = *m_image;
+		filterFrame(m_pixelEstimate);
+		if (m_saveIntermediate)
+			m_pixelEstimate->save(File::outputDir() /
+								  ("iteration_" + std::to_string(m_iter) + ".exr"));
+	}
 	m_image->reset();	// discard previous samples each iteration
 	CUDA_SYNC_CHECK();
-	if (m_saveIntermediate)
-		m_pixelEstimate->save(File::outputDir() / 
-			("iteration_" + std::to_string(m_iter) + ".exr"));
+
 	m_iter++;
 	/* Determine whether the current iteration is the final iteration. */
 	if (m_trainingIterations > 0 && m_iter == m_trainingIterations)
@@ -425,6 +429,78 @@ KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int d
 		dTreePdf = dTree->pdf(sd.frame.toWorld(wiLocal));
 	}
 	return alpha * bsdfPdf + (1 - alpha) * dTreePdf;
+}
+
+void PPGPathTracer::filterFrame(Film *image) { 
+	/* PixelData format: RGBAlphaWeight */
+	using PixelData = Film::WeightedPixel;
+	Vector2i size = image->size();
+	size_t n_pixels = size[0] * size[1];
+	std::vector<PixelData> pixels(n_pixels);
+	float *data = reinterpret_cast<float*>(pixels.data());
+	
+	int blackPixels = 0;
+	const int fpp = sizeof(PixelData) / sizeof(float);
+	image->getInternalBuffer().copy_to_host(reinterpret_cast<PixelData *>(data), n_pixels);
+
+	constexpr int FILTER_ITERATIONS = 3;
+	constexpr int SPECTRUM_SAMPLES	= Color4f::dim;
+
+	for (int i = 0, j = size[0] * size[1]; i < j; ++i) {
+		int isBlack = true;
+		for (int chan = 0; chan < SPECTRUM_SAMPLES; ++chan)
+			isBlack &= data[chan + i * fpp] == 0.f;
+		blackPixels += isBlack;
+	}
+
+	float blackDensity = 1.f / (sqrtf(1.f - blackPixels / float(size[0] * size[1])) + 1e-3);
+	const int FILTER_WIDTH = max(min(int(3 * blackDensity), min(size[0], size[1]) - 1), 1);
+
+	float *stack   = new float[FILTER_WIDTH];
+	auto boxFilter = [=](float *data, int stride, int n) {
+		assert(n > FILTER_WIDTH);
+
+		double avg = FILTER_WIDTH * data[0];
+		for (int i = 0; i < FILTER_WIDTH; ++i) {
+			stack[i] = data[0];
+			avg += data[i * stride];
+		}
+
+		for (int i = 0; i < n; ++i) {
+			avg += data[std::min(i + FILTER_WIDTH, n - 1) * stride];
+			float newVal = avg;
+			avg -= stack[i % FILTER_WIDTH];
+
+			stack[i % FILTER_WIDTH] = data[i * stride];
+			data[i * stride]		= newVal;
+		}
+	};
+
+	for (int i = 0, j = size[0] * size[1]; i < j; ++i) {
+		float &weight = data[SPECTRUM_SAMPLES + 1 + i * fpp];
+		if (weight > 0.f)
+			for (int chan = 0; chan < SPECTRUM_SAMPLES; ++chan)
+				data[chan + i * fpp] /= weight;
+		weight = 1.f;
+	}
+
+	for (int chan = 0; chan < SPECTRUM_SAMPLES; ++chan) {
+		for (int iter = 0; iter < FILTER_ITERATIONS; ++iter) {
+			for (int x = 0; x < size[0]; ++x)
+				boxFilter(data + chan + x * fpp, size[0] * fpp, size[1]);
+			for (int y = 0; y < size[1]; ++y)
+				boxFilter(data + chan + y * size[0] * fpp, fpp, size[0]);
+		}
+		for (int i = 0, j = size[0] * size[1]; i < j; ++i) {
+			float norm = 1.f / std::pow(2 * FILTER_WIDTH + 1, 2 * FILTER_ITERATIONS);
+			data[chan + i * fpp] *= norm;
+			// apply offset to avoid numerical instabilities
+			data[chan + i * fpp] += 1e-3;
+		}
+	}
+	delete[] stack;
+
+	image->getInternalBuffer().copy_from_host(reinterpret_cast<PixelData *>(data), n_pixels);
 }
 
 KRR_REGISTER_PASS_DEF(PPGPathTracer);

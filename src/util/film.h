@@ -24,12 +24,16 @@ public:
 	KRR_HOST Film(const Vector2f size) :
 		Film(size[0], size[1]) {}
 
+	KRR_CALLABLE WeightedPixel *data() { return m_data.data(); }
+
 	KRR_CALLABLE Vector2i size() { return m_size; }
 
 	KRR_HOST void reset(const Pixel &value = {}) {
 		m_data.for_each([value] KRR_DEVICE(const WeightedPixel &c) -> WeightedPixel 
 			{ return { value, 0 }; });
 	}
+
+	KRR_HOST TypedBuffer<WeightedPixel> &getInternalBuffer() { return m_data; }
 
 	KRR_HOST void clear() { 
 		m_size = {};

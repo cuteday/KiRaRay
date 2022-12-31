@@ -22,7 +22,8 @@ void ErrorMeasurePass::render(CUDABuffer &frame) {
 			calculateMetric(mMetric, reinterpret_cast<Color4f *>(frame.data()),
 							reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()), n_elememts);
 		if (mLogResults)
-			Log(Info, "Evaluate result: %s = %f", metricNames[(int) mMetric], mResult);
+			Log(Info, "Evaluating frame #%d: %s = %f", 
+				mFrameNumber, metricNames[(int) mMetric], mResult);
 		
 		mNeedsEvaluate = false;
 		mIsEvaluated   = true;
