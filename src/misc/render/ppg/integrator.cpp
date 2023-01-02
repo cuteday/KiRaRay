@@ -372,6 +372,8 @@ void PPGPathTracer::finalize() {
 	cudaDeviceSynchronize();
 	fs::path save_path = File::outputDir() / "result.exr";
 	m_image->save(save_path);
+	Log(Info, "Total SPP: %zd, elapsed time: %.1f", 
+		m_task.getCurrentSpp(), m_task.getElapsedTime());
 	Log(Success, "Task finished, saving results to %s", save_path.string().c_str());
 	CUDA_SYNC_CHECK();
 	exit(EXIT_SUCCESS);

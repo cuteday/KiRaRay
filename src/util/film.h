@@ -71,7 +71,7 @@ public:
 		CUDABuffer tmp(n_pixels * sizeof(Pixel));
 		Pixel *pixels_device = reinterpret_cast<Pixel *>(tmp.data());
 		thrust::transform(thrust::device, m_data.data(), m_data.data() + n_pixels, pixels_device,
-						  [] KRR_DEVICE(const WeightedPixel &d) -> Pixel { return d.pixel; });
+						  [] KRR_DEVICE(const WeightedPixel &d) -> Pixel { return d.pixel / d.weight; });
 		Image frame(m_size, Image::Format::RGBAfloat, false);
 		tmp.copy_to_host(frame.data(), n_pixels * sizeof(Color4f));
 		frame.saveImage(filepath);

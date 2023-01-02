@@ -37,13 +37,18 @@ public:
 		return getProgress();
 	}
 
+	float getElapsedTime() const {
+		return CpuTimer::calcDuration(m_start_time, CpuTimer::getCurrentTimePoint()) * 1e-3;
+	}
+
+	size_t getCurrentSpp() const { return m_spp; }
+
 	float getProgress() const {
 		switch (m_budget.type) {
 			case BudgetType::Spp:
 				return (float) m_spp / (float) m_budget.value;
 			case BudgetType::Time:
-				return CpuTimer::calcDuration(m_start_time, 
-					CpuTimer::getCurrentTimePoint()) * 1e-3 / m_budget.value;
+				return getElapsedTime() / m_budget.value;
 			default:
 				return 0.f;
 		}
