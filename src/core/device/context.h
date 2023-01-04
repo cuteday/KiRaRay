@@ -21,6 +21,7 @@ public:
 
 	void initialize();
 	void finalize();
+	void terminate();
 
 	json globalConfig{};
 	CUcontext cudaContext;

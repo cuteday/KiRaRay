@@ -17,11 +17,12 @@
 KRR_NAMESPACE_BEGIN
 
 void run(const json& config) {
-	if (!gpContext)
-		gpContext = Context::SharedPtr(new Context());
+	static bool initialized{};
+	if (!gpContext) gpContext.reset(new Context());
 	RenderApp app(KRR_PROJECT_NAME);
 	app.loadConfig(config);
 	app.run();
+	CUDA_SYNC_CHECK();
 }
 
 py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::forcecast> rgb,
@@ -77,7 +78,7 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 PYBIND11_MODULE(pykrr, m) { 
 	m.doc() = "KiRaRay python binding!";
 
-	 m.def("run", &run,
+	m.def("run", &run,
 		"Run KiRaRay renderer with specified configuration file",
 		"config"_a);
 

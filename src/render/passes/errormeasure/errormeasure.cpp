@@ -76,6 +76,7 @@ bool ErrorMeasurePass::loadReferenceImage(const string &path) {
 			mReferenceImage.getSizeInBytes() / sizeof(Color4f));
 		mIsEvaluated = mNeedsEvaluate = false;
 		mReferenceImagePath			  = path;
+		Log(Info, "ErrorMeasure::Loaded reference image from %s.", path.c_str());
 	} else {
 		Log(Error, "ErrorMeasure::Failed to load reference image from %s", path.c_str());
 	}

@@ -56,12 +56,22 @@ void RenderApp::render() {
 		return;
 	if (!mPaused) { // Froze all updates if paused
 		mpScene->update();
+		//for (auto p : mpPasses)
+		//	if (p) {
+		//		p->beginFrame(fbBuffer);
+		//		p->render(fbBuffer);
+		//		p->endFrame(fbBuffer);
+		//	}
 		for (auto p : mpPasses)
-			if (p) {
-				p->beginFrame(fbBuffer);
-				p->render(fbBuffer);
-				p->endFrame(fbBuffer);
-			}
+			if(p) p->beginFrame(fbBuffer);
+		for (auto p : mpPasses)
+			if(p) p->render(fbBuffer);
+		for (auto p : mpPasses)
+			if(p) p->endFrame(fbBuffer);
+	} else {
+		// temporary workaround...
+		PROFILE("Paused");
+		Sleep(16);
 	}
 	if (Profiler::instance().isEnabled())
 		Profiler::instance().endFrame();
