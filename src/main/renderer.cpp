@@ -155,7 +155,7 @@ void RenderApp::renderUI() {
 				resize(fbSize);
 			ui::InputText("Load path: ", loadConfigBuf, sizeof(loadConfigBuf));
 			if (ui::Button("Load config"))
-				loadConfig(loadConfigBuf);
+				loadConfig(fs::path(loadConfigBuf));
 			ui::InputText("Save path: ", saveConfigBuf, sizeof(saveConfigBuf));
 			if (ui::Button("Save config"))
 				saveConfig(saveConfigBuf);
@@ -234,26 +234,22 @@ void RenderApp::saveConfig(string path) {
 	logSuccess("Saved config file to " + filepath.string());
 }
 
-void RenderApp::loadConfig(fs::path path) {
-	json config = File::loadJSON(path);
-	
-	// set global configurations if eligiable 
+//template <typename T, std::enable_if_t<std::is_same_v<T, json>>>
+void RenderApp::loadConfig(const json config) {
+	// set global configurations if eligiable
 	if (config.contains("global"))
 		gpContext->updateGlobalConfig(config.at("global"));
 
-	// set output directory if the config file specifies
-	fs::path outputDir = File::resolve("common/outputs") / path.stem();
-	if (config.contains("output")) 
-		outputDir = File::resolve(config.at("output"));
-	File::setOutputDir(outputDir);
+	if (config.contains("output"))
+		File::setOutputDir(File::resolve(config.at("output")));
 
-	mSpp		= config.value("spp", 0);
+	mSpp = config.value("spp", 0);
 	if (config.contains("passes")) {
 		mpPasses.clear();
 		for (const json &p : config["passes"]) {
 			string name = p.at("name");
 			Log(Info, "Creating specified render pass: %s", name.c_str());
-			RenderPass::SharedPtr pass {};
+			RenderPass::SharedPtr pass{};
 			if (p.contains("params")) {
 				pass = RenderPassFactory::deserizeInstance(name, p.value<json>("params", {}));
 			} else {
@@ -286,6 +282,14 @@ void RenderApp::loadConfig(fs::path path) {
 	if (config.contains("resolution"))
 		resize(config.value("resolution", fbSize));
 	mConfig		= config;
+}
+
+void RenderApp::loadConfigFrom(fs::path path) {
+	json config = File::loadJSON(path);
+	loadConfig(config);
+	// set output directory, default is same as the config file directory.
+	if (!File::outputDir().empty())
+		File::setOutputDir(File::resolve("common/outputs") / path.stem());
 	mConfigPath = path.string();
 }
 

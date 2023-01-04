@@ -249,21 +249,6 @@ TARGET_COMPILE_DEFINITIONS (krr_lib PUBLIC ${KRR_DEFINITIONS})
 TARGET_INCLUDE_DIRECTORIES (krr_lib SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE})
 TARGET_LINK_LIBRARIES(krr_lib PUBLIC ${KRR_LIBS_ALL})
 
-
-IF (KRR_ENABLE_PYTHON)
-	ADD_LIBRARY(pykrr SHARED core/python/py.cpp)
-	TARGET_INCLUDE_DIRECTORIES(pykrr SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE} ${pybind11_INCLUDE_DIR} ${PYTHON_INCLUDE_DIRS})
-	TARGET_LINK_LIBRARIES(pykrr PUBLIC krr_lib ${PYTHON_LIBRARIES} pybind11::module)
-	pybind11_extension(pykrr)
-ENDIF()
-
-ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
-
-#TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
-# -WHOLEARCHIVE assures that static variables are instantiated before main(), by linking all object files
-TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
-SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE)
-
 # The additional implementation of algorithms (in the static libraray "krr_starlight_lib") is not built by default
 # You can turn this on via CMake options (-DKRR_BUILD_STARLIGHT=ON)
 if (KRR_BUILD_STARLIGHT)
@@ -273,3 +258,17 @@ if (KRR_BUILD_STARLIGHT)
 	TARGET_LINK_LIBRARIES (krr_lib PUBLIC krr_starlight_lib -WHOLEARCHIVE:$<TARGET_FILE:krr_starlight_lib>)
 	SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} ${KRR_MISC_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
 endif()
+
+IF (KRR_ENABLE_PYTHON)
+	ADD_LIBRARY(pykrr SHARED core/python/py.cpp)
+	TARGET_INCLUDE_DIRECTORIES(pykrr SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE} ${pybind11_INCLUDE_DIR} ${PYTHON_INCLUDE_DIRS})
+	TARGET_LINK_LIBRARIES(pykrr PUBLIC krr_lib ${PYTHON_LIBRARIES} pybind11::module -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
+	pybind11_extension(pykrr)
+ENDIF()
+
+ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
+
+#TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
+# -WHOLEARCHIVE assures that static variables are instantiated before main(), by linking all object files
+TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
+SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE)

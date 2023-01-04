@@ -3,9 +3,6 @@
 #include "pybind11/pybind11.h"
 #include <pybind11/operators.h>
 #include <pybind11/functional.h>
-#include <pybind11/numpy.h>
-#include <pybind11/stl.h>
-
 
 #define KRR_PY_CLASS(Name, Base, ...)                                          \
 	py::class_<Name, Base, ref<Name>>(m, #Name, D(Name), ##__VA_ARGS__)

@@ -57,8 +57,10 @@ struct Vertex {
 				value = pow2(value);		/* second moment */
 				break;
 			case EDistribution::EFull:
+				// note that since 'radiance = throughput * localRadiance',
+				// we do not need a multiplication by throughput here.
+				// The 'pixelEstimate' is filtered and offseted so no nan will occur.
 				value = (radiance / pixelEstimate * wiPdf).mean();	// full integrand
-				// temporally use cwise max (1e4f) to prevent nans.
 				if (wiMisWeight > 0) value *= wiMisWeight;	// MIS aware
 				value = pow2(value);		/* second moment */
 				break;
@@ -130,8 +132,6 @@ public:
 		float wiPdf, float bsdfPdf, float dTreePdf,
 		bool isDelta = false) {
 		int depth = n_vertices[pixelId];
-		//printf("Attempting to increment depth of pixel %d with current depth %d\n",
-		//	pixelId, depth);
 		if (depth >= MAX_TRAIN_DEPTH) return;
 		vertices[depth].radiance[pixelId]		= Color3f(0); /* Always remember to clear the radiance from last frame, as I forgotten... */
 		vertices[depth].ray[pixelId]			= ray;
@@ -153,9 +153,6 @@ public:
 		for (int i = 0; i < cur_depth; i++) {
 			Color3f prevRadiance = vertices[i].radiance[pixelId];
 			vertices[i].radiance[pixelId] = prevRadiance + L;
-			//if (L.mean() > 0 && prevRadiance.mean() > 0)
-			//printf("Recording radiance %f for pixel #%d with current depth %d, current radiance: %f\n",
-			//	L.mean(), pixelId, cur_depth, vertices[i].radiance[pixelId].mean());
 		}
 	}
 
@@ -165,7 +162,6 @@ public:
 		ESpatialFilter spatialFilter, EDirectionalFilter directionalFilter,
 		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler& sampler,
 		EDistribution distribution = EDistribution::ERadiance, const Color3f &pixelEstimate = {}) {
-		//printf("The current pixel #%d has %d vertices\n", pixelId, n_vertices[pixelId]);
 		for (int i = 0; i < n_vertices[pixelId]; i++) {
 			Vertex v = vertices[i][pixelId];
 			v.commit(sdTree, statisticalWeight,

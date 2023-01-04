@@ -40,7 +40,10 @@ public:
 
 	void captureFrame(bool hdr = false, fs::path filename = "");
 	void saveConfig(string path);
-	void loadConfig(fs::path path);
+	void loadConfigFrom(fs::path path);
+	
+	//template <typename T, std::enable_if_t<std::is_same_v<T, json>> = false>
+	void loadConfig(const json config);
 
 private:
 	bool mShowUI{ true };
