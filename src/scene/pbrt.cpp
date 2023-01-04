@@ -69,14 +69,14 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	};
 
 	if (auto m = std::dynamic_pointer_cast<pbrt::DisneyMaterial>(mat)) {
-		Log(Info, "Encountered disney material: %s", mat->name.c_str());
+		Log(Debug, "Encountered disney material: %s", mat->name.c_str());
 		material->mShadingModel	   = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(m->color.x, m->color.y, m->color.z, 1);
 		matParams.IoR			   = m->eta;
 		matParams.specular[2]	   = m->metallic;
 		matParams.specular[1]	   = m->roughness;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::PlasticMaterial>(mat)) {
-		Log(Info, "Encountered plastic material: %s", mat->name.c_str());
+		Log(Debug, "Encountered plastic material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(cast(m->kd), 1);
 		if (m->map_kd) {
@@ -90,7 +90,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		if (m->remapRoughness) roughness = remap_roughness(roughness);
 		matParams.specular[1] = sqrt(roughness);		// sqrt'ed
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MatteMaterial>(mat)) {
-		Log(Info, "Encountered matte material: %s", mat->name.c_str());
+		Log(Debug, "Encountered matte material: %s", mat->name.c_str());
 		matParams.diffuse = Vector4f(cast(m->kd), 1);
 		if (m->map_kd) {
 			Log(Debug, "A diffuse texture is found for %s texture %s", m->toString().c_str(),
@@ -102,7 +102,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
 		matParams.specular[3]	= 0;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::SubstrateMaterial>(mat)) {
-		Log(Info, "Encountered substrate material: %s", mat->name.c_str());
+		Log(Debug, "Encountered substrate material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
 		matParams.diffuse = Vector4f(cast(m->kd), 1);
 		if (m->map_kd) {
@@ -115,7 +115,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		if (m->remapRoughness) roughness = remap_roughness(roughness);
 		matParams.specular = Vector4f(ks, 1 - sqrt(roughness));		// sqrt'ed
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::UberMaterial>(mat)) {
-		Log(Info, "Encountered uber material: %s", mat->name.c_str());
+		Log(Debug, "Encountered uber material: %s", mat->name.c_str());
 		Vector3f diffuse		= cast(m->kd);
 		Vector3f specular		= cast(m->ks);
 		Vector3f transmission	= cast(m->kt);
@@ -164,7 +164,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		matParams.specular			   = Vector4f(specular, 1 - sqrt(roughness));	// sqrt'ed
 		matParams.specularTransmission = luminance(transmission);
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::TranslucentMaterial>(mat)) {
-		Log(Warning, "Encountered not well-supported transluscent material: %s", mat->name.c_str());
+		Log(Debug, "Encountered not well-supported transluscent material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		matParams.diffuse = Vector4f(cast(m->kd), matParams.diffuse[3]);
 		if (m->map_kd) {
@@ -175,12 +175,12 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		}
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MirrorMaterial>(mat)) {
 		// TODO: needs to make disney mirror-reflect when 0-roughness.
-		Log(Info, "Encountered mirror material: %s", mat->name.c_str());
+		Log(Debug, "Encountered mirror material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
 		matParams.diffuse		= Vector4f(Vector3f(0), 1);
 		matParams.specular		= Vector4f(cast(m->kr), 1);
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MetalMaterial>(mat)) {
-		Log(Warning, "Encountered not well-supported metal material: %s", mat->name.c_str());
+		Log(Debug, "Encountered not well-supported metal material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		Vector3f eta			= cast(m->eta);
 		Vector3f eta_k			= cast(m->k);
@@ -192,7 +192,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 		matParams.specular[1] = sqrt(roughness);	// sqrt'ed
 		matParams.specular[2] = 0.8;				// manually set metallic
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::GlassMaterial>(mat)) {
-		Log(Warning, "Encountered not well-supported glass material: %s", mat->name.c_str());
+		Log(Debug, "Encountered not well-supported glass material: %s", mat->name.c_str());
 		Log(Info, "Glass material %s has an index of %f", mat->name.c_str(), m->index);
 		material->mShadingModel		   = Material::ShadingModel::MetallicRoughness;
 		material->mBsdfType			   = MaterialType::Dielectric;
@@ -300,7 +300,7 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 
 	for (const pbrt::LightSource::SP light : scene->world->lightSources) {
 		if (auto l = std::dynamic_pointer_cast<pbrt::InfiniteLightSource>(light)) {
-			Log(Info, "Encountered infinite light source %s", l->mapName.c_str());
+			Log(Debug, "Encountered infinite light source %s", l->mapName.c_str());
 #ifdef USE_PBRT_ENVMAP
 			pScene->addInfiniteLight(InfiniteLight(resolve(l->mapName)));
 #endif
