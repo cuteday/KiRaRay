@@ -221,7 +221,7 @@ SET(KRR_LIBS_ALL
 	zlibstatic
 	${OPENGL_gl_LIBRARY}
 	${CUDA_LIBRARIES}
-	Vulkan::Vulkan
+	#Vulkan::Vulkan
 	KRR_PTX
 	krr_math
 	krr_cuda_cfg

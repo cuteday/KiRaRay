@@ -26,7 +26,7 @@ extern "C" int main(int argc, char *argv[]) {
 	try {
         gpContext = std::make_shared<Context>();
 		RenderApp app(KRR_PROJECT_NAME);
-		app.loadConfig(configFile);
+		app.loadConfigFrom(configFile);
 		app.run();
     } catch (std::exception e) {
         Log(Fatal, "Kiraray::Unhandled exception: %s\n", e.what());
