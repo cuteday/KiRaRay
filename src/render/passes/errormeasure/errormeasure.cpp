@@ -9,6 +9,7 @@ static const char *metricNames[] = { "MSE", "MAPE", "RelMSE" };
 }
 
 void ErrorMeasurePass::beginFrame(CUDABuffer &frame) {
+	mFrameNumber++;
 	mNeedsEvaluate |= mContinuousEvaluate && (mFrameNumber % mEvaluateInterval == 0);
 }
 
@@ -31,7 +32,6 @@ void ErrorMeasurePass::render(CUDABuffer &frame) {
 }
 
 void ErrorMeasurePass::endFrame(CUDABuffer &frame) {
-	mFrameNumber++;
 }
 
 void ErrorMeasurePass::resize(const Vector2i &size) {
