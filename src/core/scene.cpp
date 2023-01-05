@@ -91,6 +91,7 @@ void Scene::processLights(){
 	for (InfiniteLight& light : *mData.infiniteLights)
 		mData.lights->push_back(&light);
 	logInfo("A total of " + to_string(mData.lights->size()) + " light(s) processed!");
+	if (!mData.lights->size()) Log(Warning, "There's no light source in the scene! May cause crash...");
 	if (mData.lightSampler) 
 		gpContext->alloc->deallocate_object((UniformLightSampler*)mData.lightSampler.ptr());
 	mData.lightSampler = gpContext->alloc->new_object<UniformLightSampler>((inter::span<Light>) *mData.lights);

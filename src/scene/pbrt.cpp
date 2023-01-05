@@ -62,6 +62,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	Material::MaterialParams &matParams = material->mMaterialParams;
 
 	auto remap_roughness = [](const float &roughness) {
+		if (roughness == 0.f) return 0.f;
 		float x = log(roughness);
 		float val = 1.62142f + 0.819955f * x + 0.1734f * pow2(x) + 0.0171201f * pow3(x) +
 					0.000640711f * pow4(x);
@@ -157,7 +158,7 @@ size_t loadMaterial(Scene::SharedPtr scene,
 				m->name.c_str());
 			if (auto tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_bump))
 				loadTexture(material, m->map_bump, Material::TextureType::Normal, basedir);
-
+			// TODO: theres no tangent space calculated for pbrt models, so bumpmap is meaningless.
 		}
 		material->mShadingModel		   = Material::ShadingModel::SpecularGlossiness;
 		matParams.diffuse			   = Vector4f(diffuse, matParams.diffuse[3]);
@@ -250,9 +251,11 @@ Mesh createMesh(pbrt::Shape::SP shape, const Matrix4f transform) {
 }
 
 void createAreaLight(Mesh& mesh, pbrt::AreaLight::SP areaLight) {
-	if (pbrt::DiffuseAreaLightRGB::SP l =
-			std::dynamic_pointer_cast<pbrt::DiffuseAreaLightRGB>(areaLight)) {
+	if (auto l = std::dynamic_pointer_cast<pbrt::DiffuseAreaLightRGB>(areaLight)) {
 		mesh.Le	 = cast(l->L);
+	} else if (auto l = std::dynamic_pointer_cast<pbrt::DiffuseAreaLightBB>(areaLight)) {
+		// convert blackbody strength & temporature to linear RGB...
+		mesh.Le = cast(l->LinRGB());
 	} else {
 		Log(Warning, "Encountered unsupported area light: %s", areaLight->toString().c_str());
 	}
