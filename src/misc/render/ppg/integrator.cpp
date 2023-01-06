@@ -370,7 +370,9 @@ void PPGPathTracer::nextIteration() {
 
 void PPGPathTracer::finalize() { 
 	cudaDeviceSynchronize();
-	fs::path save_path = File::outputDir() / "result.exr";
+	string output_name = gpContext->getGlobalConfig().contains("name") ? 
+		gpContext->getGlobalConfig()["name"] : "result";
+	fs::path save_path = File::outputDir() / (output_name + ".exr");
 	m_image->save(save_path);
 	Log(Info, "Total SPP: %zd, elapsed time: %.1f", 
 		m_task.getCurrentSpp(), m_task.getElapsedTime());
