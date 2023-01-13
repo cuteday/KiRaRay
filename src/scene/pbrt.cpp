@@ -296,7 +296,7 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 				pScene->meshes.push_back(mesh);
 				pScene->mAABB.extend(mesh.getAABB());
 			} else {
-				Log(Warning, "Encountered unsupported pbrt shape type: %s", geom->toString().c_str());
+				Log(Debug, "Encountered unsupported pbrt shape type: %s", geom->toString().c_str());
 			}
 		}
 	}

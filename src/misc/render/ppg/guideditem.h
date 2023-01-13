@@ -7,7 +7,7 @@
 KRR_NAMESPACE_BEGIN
 
 constexpr int MAX_GUIDED_DEPTH = 10;
-constexpr int MAX_TRAIN_DEPTH = 5;
+constexpr int MAX_TRAIN_DEPTH = 10;
 
 struct GuidedRayWorkItem {
 	uint itemId;	// the index of work item in scatter ray queue
