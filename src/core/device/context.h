@@ -18,6 +18,8 @@ public:
 	void setGlobalConfig(const json &config);
 	void updateGlobalConfig(const json &config);
 	json getGlobalConfig() const;
+	void requestExit() { exit = true; }
+	bool shouldQuit() const { return exit; };
 
 	void initialize();
 	void finalize();
@@ -29,6 +31,8 @@ public:
 	cudaDeviceProp deviceProps;
 	OptixDeviceContext optixContext;
 	Allocator* alloc;
+	// signal bits
+	bool exit{};
 };
 
 extern Context::SharedPtr gpContext;

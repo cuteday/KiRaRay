@@ -8,7 +8,7 @@
 #include "thrust/transform_reduce.h"
 #include "thrust/execution_policy.h"
 
-#define METRIC_IN_SRGB	1
+#define METRIC_IN_SRGB	0
 
 KRR_NAMESPACE_BEGIN
 

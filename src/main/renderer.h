@@ -25,6 +25,7 @@ public:
 		: WindowApp(title, size, true, false), mpPasses(passes) {}
 
 	void resize(const Vector2i size) override;
+	void finalize();
 
 	// Process signals passed down from direct imgui callback (imgui do not capture it)
 	virtual void onMouseEvent(io::MouseEvent &mouseEvent) override;

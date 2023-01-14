@@ -268,7 +268,7 @@ void PPGPathTracer::endFrame(CUDABuffer& frame) {
 	m_task.tickFrame();
 	if (m_task.isFinished() || (m_trainingIterations > 0 &&
 		guiding_trained_frames >= train_frames_this_iteration)) {
-		finalize();
+		gpContext->requestExit();
 	}
 	if (m_autoBuild && !m_isFinalIter && 
 		guiding_trained_frames >= train_frames_this_iteration) {
@@ -378,7 +378,6 @@ void PPGPathTracer::finalize() {
 		m_task.getCurrentSpp(), m_task.getElapsedTime());
 	Log(Success, "Task finished, saving results to %s", save_path.string().c_str());
 	CUDA_SYNC_CHECK();
-	exit(EXIT_SUCCESS);
 }
 
 KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler, 

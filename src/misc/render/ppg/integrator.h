@@ -30,6 +30,7 @@ public:
 	void endFrame(CUDABuffer& frame) override;
 	void render(CUDABuffer& frame) override;
 	void renderUI() override;
+	void finalize() override; /* Save the rendering (of the last iter) maybe more. */
 
 	string getName() const override { return "PPGPathTracer"; }
 
@@ -69,7 +70,6 @@ public:
 	float m_dTreeThreshold{ 0.01 };						/* The subdivision / prune threshold for the D-Tree (the energy fraction of spherical area). */
 	
 	/* The following state parameters are used in offline setup with a given budget. */
-	void finalize();									/* Save the rendering (of the last iter) maybe more. */
 	void nextIteration();								/* Do the works for entering NEXT, e.g., rebuild, save image */
 	void resetGuiding();								/* Reset the SD-Tree to the beginning. */
 	RenderMode m_renderMode{RenderMode::Interactive};	/* If in OFFLINE mode, most of the operations is automatic.  */	
@@ -120,6 +120,7 @@ public:
 		p.m_sTreeThreshold		 = j.value("stree_thres", 4000.f);
 		p.m_dTreeThreshold		 = j.value("dtree_thres", 0.01f);
 		p.m_autoBuild			 = j.value("auto_build", false);
+		p.enableGuiding			 = j.value("enable_guiding", false);
 		p.m_task				 = j.value("budget", RenderTask{});
 		p.m_saveIntermediate	 = j.value("save_intermediate", false);
 	}

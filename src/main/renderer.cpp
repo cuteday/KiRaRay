@@ -56,12 +56,6 @@ void RenderApp::render() {
 		return;
 	if (!mPaused) { // Froze all updates if paused
 		mpScene->update();
-		//for (auto p : mpPasses)
-		//	if (p) {
-		//		p->beginFrame(fbBuffer);
-		//		p->render(fbBuffer);
-		//		p->endFrame(fbBuffer);
-		//	}
 		for (auto p : mpPasses)
 			if(p) p->beginFrame(fbBuffer);
 		for (auto p : mpPasses)
@@ -71,7 +65,7 @@ void RenderApp::render() {
 	} else {
 		// temporary workaround...
 		PROFILE("Paused");
-		Sleep(16);
+		Sleep(10);
 	}
 	if (Profiler::instance().isEnabled())
 		Profiler::instance().endFrame();
@@ -82,7 +76,8 @@ void RenderApp::run() {
 	glfwGetFramebufferSize(handle, &width, &height);
 	resize(Vector2i(width, height));
 
-	while (!glfwWindowShouldClose(handle)) {
+	while (!glfwWindowShouldClose(handle)
+		&& !gpContext->shouldQuit()) {
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
@@ -112,6 +107,8 @@ void RenderApp::run() {
 			break;
 		}
 	}
+
+	finalize();
 }
 
 void RenderApp::renderUI() {
@@ -229,7 +226,7 @@ void RenderApp::saveConfig(string path) {
 		fs::create_directories(dirpath);
 	fs::path filepath =
 		path.empty() ? dirpath / ("config_" + Log::nowToString("%H_%M_%S") + ".json") : path;
-	std::ofstream ofs(filepath);
+
 	json config			 = mConfig;
 	config["resolution"] = fbSize;
 	config["scene"]		 = *mpScene;
@@ -239,8 +236,7 @@ void RenderApp::saveConfig(string path) {
 		passes.push_back(p_cfg);
 	}
 	config["passes"] = passes;
-	ofs << config;
-	ofs.close();
+	File::saveJSON(filepath, config);
 	logSuccess("Saved config file to " + filepath.string());
 }
 
@@ -302,5 +298,12 @@ void RenderApp::loadConfigFrom(fs::path path) {
 		File::setOutputDir(File::resolve("common/outputs") / path.stem());
 	mConfigPath = path.string();
 }
+
+void RenderApp::finalize() { 
+	for (auto pass : mpPasses) {
+		pass->finalize();
+	}
+}
+
 
 KRR_NAMESPACE_END

@@ -20,7 +20,9 @@ public:
 	static void setCwd(const fs::path &cwd);
 
 	static fs::path resolve(const fs::path &name);
+
 	static json loadJSON(const fs::path &filepath);
+	static void saveJSON(const fs::path &filepath, const json &j);
 
 private:
 	static fs::path m_current_working_dir;

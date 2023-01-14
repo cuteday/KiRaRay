@@ -26,21 +26,25 @@ public:
 	void endFrame(CUDABuffer &frame) override;
 	void renderUI() override;
 	void resize(const Vector2i& size) override;
+	void finalize() override;
 
 	string getName() const override { return "ErrorMeasurePass"; }
 
 protected:
+	using EvaluationData = std::pair<size_t, json>;
+
 	bool loadReferenceImage(const string &path);
 	static float calculateMetric(ErrorMetric metric, 
 		const Color4f *frame, const Color4f *reference, size_t n_elements);
 	Image mReferenceImage;
 	TypedBuffer<Color4f> mReferenceImageBuffer;
 	ErrorMetric mMetric{ ErrorMetric::RelMSE };
-	float mResult;
+	json mLastResult;
 	string mReferenceImagePath;
-	bool mIsEvaluated{}, mNeedsEvaluate{}, mContinuousEvaluate{};
-	bool mLogResults{};
+	bool mNeedsEvaluate{}, mContinuousEvaluate{};
+	bool mLogResults{}, mSaveResults{};
 	size_t mFrameNumber{ 0 }, mEvaluateInterval{ 1 };
+	std::vector<EvaluationData> mEvaluationResults;
 
 	friend void to_json(json &j, const ErrorMeasurePass &p) { 
 		j = json{ 
@@ -48,7 +52,8 @@ protected:
 			{ "reference", p.mReferenceImagePath },
 			{ "continuous", p.mContinuousEvaluate },
 			{ "interval", p.mEvaluateInterval }, 
-			{ "log", p.mLogResults }
+			{ "log", p.mLogResults },
+			{ "save", p.mSaveResults },
 		};
 	}
 
@@ -57,6 +62,7 @@ protected:
 		p.mContinuousEvaluate = j.value("continuous", false);
 		p.mEvaluateInterval	  = j.value("interval", 1);
 		p.mLogResults		  = j.value("log", false);
+		p.mSaveResults		  = j.value("save", true);
 		if (gpContext->getGlobalConfig().contains("reference"))
 			p.loadReferenceImage(gpContext->getGlobalConfig().at("reference"));
 		if (j.contains("reference"))

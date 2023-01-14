@@ -14,20 +14,19 @@ void ErrorMeasurePass::beginFrame(CUDABuffer &frame) {
 }
 
 void ErrorMeasurePass::render(CUDABuffer &frame) {
-	if (mNeedsEvaluate) {
+	if (mNeedsEvaluate && mReferenceImage.isValid()) {
 		PROFILE("Metric calculation");
 		CHECK_LOG(mReferenceImage.getSize() == mFrameSize,
 				  "ErrorMeasure::Reference image size does not match frame size!");
 		size_t n_elememts = mFrameSize[0] * mFrameSize[1];
-		mResult =
-			calculateMetric(mMetric, reinterpret_cast<Color4f *>(frame.data()),
+		float result = calculateMetric(mMetric, reinterpret_cast<Color4f *>(frame.data()),
 							reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()), n_elememts);
+		mLastResult = { { string(metricNames[(int) mMetric]), result } };
 		if (mLogResults)
-			Log(Info, "Evaluating frame #%zd: %s = %f", 
-				mFrameNumber, metricNames[(int) mMetric], mResult);
-		
+			Log(Info, "Evaluating frame #%zd: %s", mFrameNumber, mLastResult.dump().c_str());
+		if (mSaveResults)
+			mEvaluationResults.push_back({ mFrameNumber, mLastResult });
 		mNeedsEvaluate = false;
-		mIsEvaluated   = true;
 	}
 }
 
@@ -35,14 +34,29 @@ void ErrorMeasurePass::endFrame(CUDABuffer &frame) {
 }
 
 void ErrorMeasurePass::resize(const Vector2i &size) {
-	RenderPass::resize(size);
+	RenderPass::resize(size); }
+
+void ErrorMeasurePass::finalize() {
+	if (mSaveResults) {
+		string output_name = gpContext->getGlobalConfig().contains("name")
+						 ? gpContext->getGlobalConfig()["name"] : "result";
+		fs::path save_path = File::outputDir() / "error" / (output_name + ".json");
+		json timesteps, data, result;
+		for (const EvaluationData &e : mEvaluationResults) {
+			timesteps.push_back((int)e.first);
+			data.push_back(e.second);
+		}
+		result["timesteps"] = timesteps, result["data"] = data;
+		File::saveJSON(save_path, result);
+		logInfo("Saved error evaluation data to " + save_path.string());
+	}
 }
 
 void ErrorMeasurePass::renderUI() { 
 	ui::Checkbox("Enabled", &mEnable);
 	if (mEnable) {
 		if (ui::Combo("Metric", (int *) &mMetric, metricNames, (int)ErrorMetric::Count))
-			mIsEvaluated = false;
+			mLastResult = {};
 		static char referencePath[256] = "";
 		ui::InputText("Reference", referencePath, sizeof(referencePath));
 		if (ui::Button("Load")) {
@@ -56,8 +70,10 @@ void ErrorMeasurePass::renderUI() {
 								&mEvaluateInterval);
 			if (ui::Button("Evaluate")) mNeedsEvaluate = 1;
 		}
-		if (mIsEvaluated)
-			ui::Text("%s: %f", metricNames[(int)mMetric], mResult);
+		if (!mLastResult.empty())
+			ui::Text("%s", mLastResult.dump().c_str());
+		ui::Checkbox("Log results", &mLogResults);
+		ui::Checkbox("Save results", &mSaveResults);
 	}
 }
 
@@ -74,8 +90,8 @@ bool ErrorMeasurePass::loadReferenceImage(const string &path) {
 		mReferenceImageBuffer.resize(mReferenceImage.getSizeInBytes());
 		mReferenceImageBuffer.copy_from_host(reinterpret_cast<Color4f*>(mReferenceImage.data()), 
 			mReferenceImage.getSizeInBytes() / sizeof(Color4f));
-		mIsEvaluated = mNeedsEvaluate = false;
-		mReferenceImagePath			  = path;
+		mNeedsEvaluate		= false;
+		mReferenceImagePath = path;
 		Log(Info, "ErrorMeasure::Loaded reference image from %s.", path.c_str());
 	} else {
 		Log(Error, "ErrorMeasure::Failed to load reference image from %s", path.c_str());
