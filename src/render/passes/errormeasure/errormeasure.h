@@ -62,7 +62,7 @@ protected:
 		p.mContinuousEvaluate = j.value("continuous", false);
 		p.mEvaluateInterval	  = j.value("interval", 1);
 		p.mLogResults		  = j.value("log", false);
-		p.mSaveResults		  = j.value("save", true);
+		p.mSaveResults		  = j.value("save", false);
 		if (gpContext->getGlobalConfig().contains("reference"))
 			p.loadReferenceImage(gpContext->getGlobalConfig().at("reference"));
 		if (j.contains("reference"))
