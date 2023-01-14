@@ -5,7 +5,7 @@
 KRR_NAMESPACE_BEGIN
 
 namespace {
-static const char *metricNames[] = { "MSE", "MAPE", "RelMSE" };
+static const char *metricNames[] = { "MSE", "MAPE", "SMAPE", "RelMSE" };
 }
 
 void ErrorMeasurePass::beginFrame(CUDABuffer &frame) {
