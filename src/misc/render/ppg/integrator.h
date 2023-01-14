@@ -120,7 +120,7 @@ public:
 		p.m_sTreeThreshold		 = j.value("stree_thres", 4000.f);
 		p.m_dTreeThreshold		 = j.value("dtree_thres", 0.01f);
 		p.m_autoBuild			 = j.value("auto_build", false);
-		p.enableGuiding			 = j.value("enable_guiding", false);
+		p.enableGuiding			 = j.value("enable_guiding", true);
 		p.m_task				 = j.value("budget", RenderTask{});
 		p.m_saveIntermediate	 = j.value("save_intermediate", false);
 	}
