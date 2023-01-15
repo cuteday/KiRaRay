@@ -292,10 +292,7 @@ void RenderApp::loadConfig(const json config) {
 
 void RenderApp::loadConfigFrom(fs::path path) {
 	json config = File::loadJSON(path);
-	loadConfig(config);
-	// set output directory, default is same as the config file directory.
-	if (!File::outputDir().empty())
-		File::setOutputDir(File::resolve("common/outputs") / path.stem());
+	loadConfig(config);	
 	mConfigPath = path.string();
 }
 

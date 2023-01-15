@@ -11,6 +11,8 @@
 
 KRR_NAMESPACE_BEGIN
 
+#define INCLUDE_ALL_ITERATIONS 1
+
 namespace {
 static size_t guiding_trained_frames		  = 0;
 static size_t train_frames_this_iteration	  = 0;
@@ -224,7 +226,7 @@ void PPGPathTracer::render(CUDABuffer& frame) {
 			generateScatterRays();
 		}
 	}
-	CUDA_SYNC_CHECK();
+	//CUDA_SYNC_CHECK();
 	// write results of the current frame...
 	Color4f *frameBuffer = (Color4f *) frame.data();
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
@@ -248,7 +250,7 @@ void PPGPathTracer::beginFrame(CUDABuffer& frame) {
 	// but the last iteration (the render iteration) do not need training anymore.
 	enableLearning = (enableLearning || m_autoBuild) && !m_isFinalIter;	
 	train_frames_this_iteration = (1 << m_iter) * m_sppPerPass;
-	CUDA_SYNC_CHECK();
+	//CUDA_SYNC_CHECK();
 }
 
 void PPGPathTracer::endFrame(CUDABuffer& frame) {
@@ -348,7 +350,9 @@ void PPGPathTracer::nextIteration() {
 			m_pixelEstimate->save(File::outputDir() /
 								  ("iteration_" + std::to_string(m_iter) + ".exr"));
 	}
+#if !INCLUDE_ALL_ITERATIONS
 	m_image->reset();	// discard previous samples each iteration
+#endif
 	CUDA_SYNC_CHECK();
 
 	m_iter++;

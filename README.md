@@ -38,7 +38,7 @@ git clone --recursive --depth=1 https://github.com/cuteday/KiRaRay.git
 
 #### Building
 
-This project uses cmake to build, no additional setting is needed. Make sure cuda is installed and added to PATH. While it tries to guess the optix installation path, you may specify the `OptiX_INSTALL_DIR` environment variable manually in case it failed.
+This project uses cmake to build, no additional setting is needed. Make sure cuda is installed and added to PATH. While it tries to guess the optix installation path (i.e., the default installation path), you may specify the `OptiX_INSTALL_DIR` environment variable manually in case it failed.
 
 #### Running
 
