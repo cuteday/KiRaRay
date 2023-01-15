@@ -82,7 +82,7 @@ public:
 
 	InfiniteLight() = default;
 
-	InfiniteLight(Color tint = Color::Ones(), float scale = 1, float rotation = 0)
+	InfiniteLight(Color tint, float scale = 1, float rotation = 0)
 		:tint(tint), scale(scale), rotation(rotation) {}
 
 	InfiniteLight(const Texture &image, Vector3f tint = Vector3f::Ones(), float scale = 1, float rotation = 0)
@@ -132,13 +132,27 @@ public:
 		if(image.isValid()) image.renderUI();
 	}
 
+	friend void from_json(const json& j, InfiniteLight& p) {
+		p.scale	   = j.value("scale", 1.f);
+		p.tint	   = j.value("tint", Color{ 1 });
+		p.rotation = j.value("rotation", 0);
+		if (j.contains("image"))
+			p.setImage(j.at("image"));
+	}
+
+	friend void to_json(json &j, const InfiniteLight &p) {
+		j = json{
+			{"scale", p.scale},
+			{"tint", p.tint},
+			{"rotation", p.rotation}
+		};
+	}
 
 private: 
 	Texture image{};
 	float scale{1};
 	float rotation{0};
 	Color tint{1};
-
 };
 
 class Light :public TaggedPointer<DiffuseAreaLight, InfiniteLight> {
