@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "texture.h"
+#include "host/timer.h"
 #include "device/context.h"
 #include "device/buffer.h"
 
@@ -31,8 +32,13 @@ public:
 	string getName() const override { return "ErrorMeasurePass"; }
 
 protected:
-	using EvaluationData = std::pair<size_t, json>;
+	typedef struct {
+		size_t timestep;
+		double timepoint;
+		json metrics;
+	} EvaluationData;
 
+	void reset();
 	bool loadReferenceImage(const string &path);
 	static float calculateMetric(ErrorMetric metric, 
 		const Color4f *frame, const Color4f *reference, size_t n_elements);
@@ -45,6 +51,7 @@ protected:
 	bool mLogResults{}, mSaveResults{};
 	size_t mFrameNumber{ 0 }, mEvaluateInterval{ 1 };
 	std::vector<EvaluationData> mEvaluationResults;
+	CpuTimer::TimePoint mStartTime;
 
 	friend void to_json(json &j, const ErrorMeasurePass &p) { 
 		j = json{ 

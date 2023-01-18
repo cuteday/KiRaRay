@@ -21,11 +21,16 @@ void ErrorMeasurePass::render(CUDABuffer &frame) {
 		size_t n_elememts = mFrameSize[0] * mFrameSize[1];
 		float result = calculateMetric(mMetric, reinterpret_cast<Color4f *>(frame.data()),
 							reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()), n_elememts);
-		mLastResult = { { string(metricNames[(int) mMetric]), result } };
+		mLastResult = { 
+			{ string(metricNames[(int) mMetric]), result },
+		};
 		if (mLogResults)
 			Log(Info, "Evaluating frame #%zd: %s", mFrameNumber, mLastResult.dump().c_str());
 		if (mSaveResults)
-			mEvaluationResults.push_back({ mFrameNumber, mLastResult });
+			mEvaluationResults.push_back(
+					{ mFrameNumber,
+					CpuTimer::calcElapsedTime(mStartTime) * 1e-3,
+					mLastResult });
 		mNeedsEvaluate = false;
 	}
 }
@@ -41,12 +46,15 @@ void ErrorMeasurePass::finalize() {
 		string output_name = gpContext->getGlobalConfig().contains("name")
 						 ? gpContext->getGlobalConfig()["name"] : "result";
 		fs::path save_path = File::outputDir() / "error" / (output_name + ".json");
-		json timesteps, data, result;
+		json timesteps, timepoints, data, result;
 		for (const EvaluationData &e : mEvaluationResults) {
-			timesteps.push_back((int)e.first);
-			data.push_back(e.second);
+			timesteps.push_back((int)e.timestep);
+			timepoints.push_back((float) e.timepoint);
+			data.push_back(e.metrics);
 		}
-		result["timesteps"] = timesteps, result["data"] = data;
+		result["timesteps"] = timesteps, 
+		result["timepoints"] = timepoints,
+		result["data"] = data;
 		File::saveJSON(save_path, result);
 		logInfo("Saved error evaluation data to " + save_path.string());
 	}
@@ -56,7 +64,7 @@ void ErrorMeasurePass::renderUI() {
 	ui::Checkbox("Enabled", &mEnable);
 	if (mEnable) {
 		if (ui::Combo("Metric", (int *) &mMetric, metricNames, (int)ErrorMetric::Count))
-			mLastResult = {};
+			reset();
 		static char referencePath[256] = "";
 		ui::InputText("Reference", referencePath, sizeof(referencePath));
 		if (ui::Button("Load")) {
@@ -77,6 +85,12 @@ void ErrorMeasurePass::renderUI() {
 	}
 }
 
+void ErrorMeasurePass::reset() {
+	mNeedsEvaluate = false;
+	mLastResult	   = {};
+	mStartTime	   = CpuTimer::getCurrentTimePoint();
+}
+
 float ErrorMeasurePass::calculateMetric(ErrorMetric metric, 
 	const Color4f* frame, const Color4f* reference, size_t n_elements) {
 	return calc_metric(frame, reference, n_elements, metric);	
@@ -90,7 +104,7 @@ bool ErrorMeasurePass::loadReferenceImage(const string &path) {
 		mReferenceImageBuffer.resize(mReferenceImage.getSizeInBytes());
 		mReferenceImageBuffer.copy_from_host(reinterpret_cast<Color4f*>(mReferenceImage.data()), 
 			mReferenceImage.getSizeInBytes() / sizeof(Color4f));
-		mNeedsEvaluate		= false;
+		reset();
 		mReferenceImagePath = path;
 		Log(Info, "ErrorMeasure::Loaded reference image from %s.", path.c_str());
 	} else {

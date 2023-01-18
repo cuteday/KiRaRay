@@ -39,6 +39,10 @@ public:
 		return duration.count() * 1.0e-6;
 	}
 
+	static double calcElapsedTime(TimePoint start) {
+		return calcDuration(start, getCurrentTimePoint());
+	}
+
 private:
 	TimePoint mCurrentTime;
 	std::chrono::duration<double> mElapsedTime;

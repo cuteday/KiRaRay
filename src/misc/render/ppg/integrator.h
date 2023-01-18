@@ -73,7 +73,7 @@ public:
 	void nextIteration();								/* Do the works for entering NEXT, e.g., rebuild, save image */
 	void resetGuiding();								/* Reset the SD-Tree to the beginning. */
 	RenderMode m_renderMode{RenderMode::Interactive};	/* If in OFFLINE mode, most of the operations is automatic.  */	
-	int m_trainingIterations{ -1 };						/* The number of iterations for training (-1 means unlimited) */
+	int m_trainingIterations{ -1 };						/* The number of iterations for training (-1 means depends on budget) */
 	bool m_autoBuild{ false };							/* Automatically rebuild if the current render pass finishes. */
 	bool m_isFinalIter{ false };						/* Only results of the final iter is saved */
 	bool m_saveIntermediate{ false };					/* Save rendered images of each iteration. */
@@ -84,7 +84,8 @@ public:
 	EDirectionalFilter m_directionalFilter{ EDirectionalFilter::ENearest };
 	ESpatialFilter m_spatialFilter{ ESpatialFilter::ENearest };
 	EBsdfSamplingFractionLoss m_bsdfSamplingFractionLoss{ EBsdfSamplingFractionLoss::ENone };
-	
+	ESampleCombination m_sampleCombination{ ESampleCombination::EWeightBySampleCount };
+
 	bool enableLearning{false};
 	bool enableGuiding{true};
 	GuidedPathStateBuffer* guidedPathState{};
@@ -104,7 +105,8 @@ public:
 			{ "dtree_thres", p.m_dTreeThreshold },
 			{ "auto_build", p.m_autoBuild },
 			{ "budget", p.m_task },
-			{ "save_intermediate", p.m_saveIntermediate }
+			{ "save_intermediate", p.m_saveIntermediate },
+			{ "training_iter", p.m_trainingIterations }
 		});
 	}
 
@@ -117,12 +119,14 @@ public:
 		p.m_distribution		 = j.value("distribution", EDistribution::ERadiance);
 		p.m_spatialFilter		 = j.value("spatial_filter", ESpatialFilter::ENearest);
 		p.m_directionalFilter	 = j.value("directional_filter", EDirectionalFilter::ENearest);
+		p.m_sampleCombination	 = j.value("sample_combination", ESampleCombination::EWeightBySampleCount); 
 		p.m_sTreeThreshold		 = j.value("stree_thres", 4000.f);
 		p.m_dTreeThreshold		 = j.value("dtree_thres", 0.01f);
 		p.m_autoBuild			 = j.value("auto_build", false);
 		p.enableGuiding			 = j.value("enable_guiding", true);
 		p.m_task				 = j.value("budget", RenderTask{});
 		p.m_saveIntermediate	 = j.value("save_intermediate", false);
+		p.m_trainingIterations	 = j.value("training_iter", -1);
 	}
 };
 

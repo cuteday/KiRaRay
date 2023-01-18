@@ -268,7 +268,7 @@ void PPGPathTracer::endFrame(CUDABuffer& frame) {
 		++guiding_trained_frames;
 	}
 	m_task.tickFrame();
-	if (m_task.isFinished() || (m_trainingIterations > 0 &&
+	if (m_task.isFinished() || (m_isFinalIter &&
 		guiding_trained_frames >= train_frames_this_iteration)) {
 		gpContext->requestExit();
 	}
@@ -350,9 +350,9 @@ void PPGPathTracer::nextIteration() {
 			m_pixelEstimate->save(File::outputDir() /
 								  ("iteration_" + std::to_string(m_iter) + ".exr"));
 	}
-#if !INCLUDE_ALL_ITERATIONS
-	m_image->reset();	// discard previous samples each iteration
-#endif
+
+	if (m_sampleCombination == ESampleCombination::EDiscardWithAutomaticBudget)
+		m_image->reset();	// discard previous samples each iteration
 	CUDA_SYNC_CHECK();
 
 	m_iter++;
@@ -362,7 +362,7 @@ void PPGPathTracer::nextIteration() {
 	size_t train_frames_next_iter = (1 << m_iter) * m_sppPerPass;
 	Budget budget = m_task.getBudget();
 	if (budget.type == BudgetType::Time) {
-		if (m_task.getProgress() > 0.15f)
+		if (m_task.getProgress() > 0.33f)
 			m_isFinalIter = true;
 	} else if (budget.type == BudgetType::Spp) {
 		size_t remaining_spp = budget.value * (1.f - m_task.getProgress());
