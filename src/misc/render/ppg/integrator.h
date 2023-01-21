@@ -10,10 +10,6 @@ KRR_NAMESPACE_BEGIN
 
 class Film;
 
-/* A simplified ppg for gpu pathtracing, the simplifications are:
-*	No DI strategy (no guide towards direct illumination);
-*   No combining rendered frames (with optimal variance).
-*/
 class PPGPathTracer : public WavefrontPathTracer{
 public:
 	using SharedPtr = std::shared_ptr<PPGPathTracer>;

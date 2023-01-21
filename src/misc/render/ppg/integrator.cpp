@@ -11,8 +11,6 @@
 
 KRR_NAMESPACE_BEGIN
 
-#define INCLUDE_ALL_ITERATIONS 1
-
 namespace {
 static size_t guiding_trained_frames		  = 0;
 static size_t train_frames_this_iteration	  = 0;
