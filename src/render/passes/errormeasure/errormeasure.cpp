@@ -9,6 +9,7 @@ static const char *metricNames[] = { "MSE", "MAPE", "SMAPE", "RelMSE" };
 }
 
 void ErrorMeasurePass::beginFrame(CUDABuffer &frame) {
+	if (!mFrameNumber) reset();
 	mFrameNumber++;
 	mNeedsEvaluate |= mContinuousEvaluate && (mFrameNumber % mEvaluateInterval == 0);
 }
@@ -86,6 +87,7 @@ void ErrorMeasurePass::renderUI() {
 }
 
 void ErrorMeasurePass::reset() {
+	mFrameNumber   = 0;
 	mNeedsEvaluate = false;
 	mLastResult	   = {};
 	mStartTime	   = CpuTimer::getCurrentTimePoint();

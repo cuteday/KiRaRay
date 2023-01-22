@@ -49,6 +49,10 @@ public:
 private:
 	bool mShowUI{ true };
 	bool mPaused{ false };
+	bool mSaveFrames{ false };
+	size_t mSaveFrameInterval{ 2 };
+	bool mSaveHDR{ true };
+
 	int mFrameCount{ 0 };
 	int mSpp{ 0 };			// Samples needed tobe rendered, 0 means unlimited.
 	FrameRate mFrameRate;

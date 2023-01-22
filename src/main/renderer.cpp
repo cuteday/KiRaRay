@@ -100,10 +100,12 @@ void RenderApp::run() {
 		glfwPollEvents();
 
 		mFrameCount++;
+		if (mSaveFrames && mFrameCount % mSaveFrameInterval == 0)
+			captureFrame(mSaveHDR);
+
 		if (mSpp && mFrameCount >= mSpp) {
 			Log(Info, "Render process finished, saving results and quitting...");
-			fs::path resultPath = fs::path(mConfigPath).replace_extension("exr");
-			captureFrame(false, resultPath);
+			captureFrame(mSaveHDR, File::outputDir() / "result.exr");
 			break;
 		}
 	}
@@ -112,7 +114,6 @@ void RenderApp::run() {
 }
 
 void RenderApp::renderUI() {
-	static bool saveHdr{};
 	static bool showProfiler{};
 	static bool showFps{ true };
 	static bool showDashboard{ true };
@@ -137,7 +138,7 @@ void RenderApp::renderUI() {
 		if (ui::BeginMenu("Tools")) {
 			if (ui::MenuItem("Save config"))
 				saveConfig("");
-			ui::MenuItem("Save HDR", NULL, &saveHdr);
+			ui::MenuItem("Save HDR", NULL, &mSaveHDR);
 			if (ui::MenuItem("Screen shot"))
 				captureFrame();
 			ui::EndMenu();
@@ -150,10 +151,10 @@ void RenderApp::renderUI() {
 		ui::Checkbox("Pause", &mPaused);
 		ui::SameLine();
 		ui::Checkbox("Profiler", &showProfiler);
-		ui::Checkbox("Save HDR", &saveHdr);
+		ui::Checkbox("Save HDR", &mSaveHDR);
 		ui::SameLine();
 		if (ui::Button("Screen shot"))
-			captureFrame(saveHdr);
+			captureFrame(mSaveHDR);
 		if (ui::CollapsingHeader("Configuration")) {
 			static char loadConfigBuf[512];
 			static char saveConfigBuf[512] = "common/configs/saved_config.json";
@@ -211,9 +212,7 @@ void RenderApp::captureFrame(bool hdr, fs::path filename) {
 	fbBuffer.copy_to_host(image.data(), fbSize[0] * fbSize[1] * 4 * sizeof(float));
 	fs::path filepath(filename);
 	if (filename.empty()) // use default path for screen shots
-		filepath = File::resolve("common/images") /
-				   ("screenshot_" + Log::nowToString("%H_%M_%S") + extension);
-	fs::path dirpath = File::resolve("common/images");
+		filepath = File::outputDir() / ("frame_" + std::to_string(mFrameCount) + extension);
 	if (!fs::exists(filepath.parent_path()))
 		fs::create_directories(filepath.parent_path());
 	image.saveImage(filepath);
@@ -249,7 +248,14 @@ void RenderApp::loadConfig(const json config) {
 	if (config.contains("output"))
 		File::setOutputDir(File::resolve(config.at("output")));
 
-	mSpp = config.value("spp", 0);
+	if (config.contains("renderer")) {
+		const json render_config = config.at("renderer");
+		mSpp					 = render_config.value("spp", 0);
+		mSaveHDR				 = render_config.value("save_hdr", true);
+		mSaveFrames				 = render_config.value("save_frames", false);
+		mSaveFrameInterval		 = render_config.value("save_frame_interval", 5);
+	}
+
 	if (config.contains("passes")) {
 		mpPasses.clear();
 		for (const json &p : config["passes"]) {
