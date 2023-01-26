@@ -8,7 +8,7 @@
 #include "thrust/transform_reduce.h"
 #include "thrust/execution_policy.h"
 
-#define METRIC_IN_SRGB	1
+#define METRIC_IN_SRGB	0
 
 KRR_NAMESPACE_BEGIN
 
@@ -72,9 +72,14 @@ KRR_CALLABLE Color mse(const Color& y, const Color& ref) {
 }
 
 KRR_CALLABLE Color mape(const Color &y, const Color &ref) { 
-	return (y - ref).abs() * 100.f; 
+	return (y - ref).abs() / (ref + 0.01); 
 }
 
+KRR_CALLABLE Color smape(const Color &y, const Color &ref) { 
+	return (y - ref).abs() / (ref + y + 0.01); 
+}
+
+// is in fact MRSE...
 KRR_CALLABLE Color rel_mse(const Color &y, const Color &ref) {
 	Color ret{}, diff = (y - ref).abs();
 	for (int ch = 0; ch < Color::dim; ch++) {
@@ -97,6 +102,8 @@ float calc_metric(const Color4f *frame, const Color4f *reference,
 					return mse(y, ref);
 				case ErrorMetric::MAPE:
 					return mape(y, ref);
+				case ErrorMetric::SMAPE:
+					return smape(y, ref);
 				case ErrorMetric::RelMSE:
 				default:
 					return rel_mse(y, ref);

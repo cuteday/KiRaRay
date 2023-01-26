@@ -47,6 +47,8 @@ public:
 	virtual void beginFrame(CUDABuffer& frame) {}
 	virtual void render(CUDABuffer& frame) {}
 	virtual void endFrame(CUDABuffer& frame) {}
+	virtual void initialize() {}
+	virtual void finalize() {}
 
 	virtual bool onMouseEvent(const io::MouseEvent& mouseEvent) { return false; }
 	virtual bool onKeyEvent(const io::KeyboardEvent& keyEvent) { return false; }

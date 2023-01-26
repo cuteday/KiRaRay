@@ -54,4 +54,12 @@ json File::loadJSON(const fs::path& filepath) {
 	return file;
 }
 
+void File::saveJSON(const fs::path &filepath, const json &j) {
+	if (!fs::exists(filepath.parent_path()))
+		fs::create_directories(filepath.parent_path());
+	std::ofstream ofs(filepath);
+	ofs << std::setw(4) << j << std::endl;
+	ofs.close();
+}
+
 KRR_NAMESPACE_END

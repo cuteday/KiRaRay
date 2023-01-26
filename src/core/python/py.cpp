@@ -1,5 +1,9 @@
 #include <optional>
 #include "py.h"
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h>
+#include <pybind11_json.hpp>
+
 #include "common.h"
 
 #include "render/wavefront/integrator.h"
@@ -12,19 +16,13 @@
 
 KRR_NAMESPACE_BEGIN
 
-void run(const char scene_file[], const char env_file[] = nullptr) {
-	if (!gpContext)
-		gpContext = Context::SharedPtr(new Context());
-	RenderApp app(KRR_PROJECT_NAME, { 1280, 720 },
-				  { RenderPass::SharedPtr(new WavefrontPathTracer()),
-					RenderPass::SharedPtr(new AccumulatePass()),
-					RenderPass::SharedPtr(new ToneMappingPass()),
-					RenderPass::SharedPtr(new DenoisePass(false)) });
-	Scene::SharedPtr scene = Scene::SharedPtr(new Scene());
-	if (env_file) scene->addInfiniteLight(InfiniteLight(env_file));
-	importer::loadScene(scene_file, scene);
-	app.setScene(scene);
+void run(const json& config) {
+	static bool initialized{};
+	if (!gpContext) gpContext.reset(new Context());
+	RenderApp app(KRR_PROJECT_NAME);
+	app.loadConfig(config);
 	app.run();
+	CUDA_SYNC_CHECK();
 }
 
 py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::forcecast> rgb,
@@ -80,9 +78,9 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 PYBIND11_MODULE(pykrr, m) { 
 	m.doc() = "KiRaRay python binding!";
 
-	m.def("run", &run, 
-		"Run KiRaRay renderer with default configuration", 
-		"scene"_a, "env"_a=nullptr);
+	m.def("run", &run,
+		"Run KiRaRay renderer with specified configuration file",
+		"config"_a);
 
 	m.def("denoise", &denoise, 
 		"Denoise the hdr image using optix's builtin denoiser", "rgb"_a,

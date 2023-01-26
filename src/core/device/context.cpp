@@ -1,3 +1,5 @@
+#include <cstdlib>
+
 #include "logger.h"
 #include "context.h"
 #include "renderpass.h"
@@ -58,9 +60,15 @@ void Context::initialize() {
 }
 
 void Context::finalize(){
+	CUDA_SYNC_CHECK();
 	optixDeviceContextDestroy(optixContext);
 	delete alloc;
 	cuCtxDestroy(cudaContext);
+}
+
+void Context::terminate() { 
+	finalize(); 
+	abort();
 }
 
 void Context::setGlobalConfig(const json& config) { globalConfig = config; }

@@ -22,22 +22,6 @@ typedef struct {
 	MeshData* mesh;
 } HitgroupSBTData;
 
-/*! SBT record for a raygen program */
-struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord {
-	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-};
-
-/*! SBT record for a miss program */
-struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) MissRecord {
-	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-};
-
-/*! SBT record for a hitgroup program */
-struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
-	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-	HitgroupSBTData data;
-};
-
 /* The scene class is in poccess of components like camera, cameracontroller, etc.
  * The update(), eventHandler(), renderUI(), of them is called within this class;
  */
@@ -74,10 +58,17 @@ public:
 		*mpCameraController = cameraController;
 	}
 	void addInfiniteLight(const InfiniteLight& infiniteLight);
+	
 	void loadConfig(const json &config) { 
 		mpCamera = std::make_shared<Camera>(config.at("camera")); 
 		mpCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
 		mpCameraController->setCamera(mpCamera);
+		if (config.contains("envLights")) 
+			for (auto &light : config.at("envLights")) {
+				InfiniteLight l{};
+				from_json(light, l);
+				addInfiniteLight(l);
+			}
 	}
 
 	SceneData getSceneData() const { return mData; }
@@ -86,8 +77,11 @@ public:
 	friend void to_json(json& j, const Scene& scene) { 
 		j = json{ 
 			{ "camera", *scene.mpCamera }, 
-			{ "cameraController", *std::dynamic_pointer_cast<OrbitCameraController>(scene.mpCameraController) }
+			{ "cameraController", *std::dynamic_pointer_cast<OrbitCameraController>(scene.mpCameraController) },
 		};
+		for (int l = 0; l < scene.mData.infiniteLights->size(); l++) {
+			j["envLights"].push_back(scene.mData.infiniteLights->operator[](l));
+		}
 	}
 
 	std::vector<Mesh> meshes;

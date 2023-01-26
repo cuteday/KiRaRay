@@ -5,6 +5,7 @@
 #include "workqueue.h"
 #include "wavefront.h"
 
+#include "device/optix.h"
 #include "device/context.h"
 
 KRR_NAMESPACE_BEGIN

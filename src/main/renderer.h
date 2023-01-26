@@ -25,6 +25,7 @@ public:
 		: WindowApp(title, size, true, false), mpPasses(passes) {}
 
 	void resize(const Vector2i size) override;
+	void finalize();
 
 	// Process signals passed down from direct imgui callback (imgui do not capture it)
 	virtual void onMouseEvent(io::MouseEvent &mouseEvent) override;
@@ -40,11 +41,18 @@ public:
 
 	void captureFrame(bool hdr = false, fs::path filename = "");
 	void saveConfig(string path);
-	void loadConfig(fs::path path);
+	void loadConfigFrom(fs::path path);
+	
+	//template <typename T, std::enable_if_t<std::is_same_v<T, json>> = false>
+	void loadConfig(const json config);
 
 private:
 	bool mShowUI{ true };
 	bool mPaused{ false };
+	bool mSaveFrames{ false };
+	size_t mSaveFrameInterval{ 2 };
+	bool mSaveHDR{ true };
+
 	int mFrameCount{ 0 };
 	int mSpp{ 0 };			// Samples needed tobe rendered, 0 means unlimited.
 	FrameRate mFrameRate;

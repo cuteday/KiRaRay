@@ -19,9 +19,8 @@ KRR_NAMESPACE_BEGIN
 using AtomicType = double;	/* The type used for storing atomic data, e.g., per-node irradiance. */
 
 enum class ESampleCombination {
-	EDiscard,
 	EDiscardWithAutomaticBudget,
-	EInverseVariance,
+	EWeightBySampleCount,
 };
 
 enum class EBsdfSamplingFractionLoss {
@@ -46,6 +45,11 @@ enum class EDistribution {
 	ESimple, 
 	EFull 
 };
+
+KRR_ENUM_DEFINE(ESampleCombination, { 
+	{ ESampleCombination::EDiscardWithAutomaticBudget, "automatic" },
+	{ ESampleCombination::EWeightBySampleCount, "all" },
+});
 
 KRR_ENUM_DEFINE(EDirectionalFilter, { 
 	{ EDirectionalFilter::ENearest, "nearest" },

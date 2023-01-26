@@ -224,7 +224,7 @@ void PPGPathTracer::render(CUDABuffer& frame) {
 			generateScatterRays();
 		}
 	}
-	CUDA_SYNC_CHECK();
+	//CUDA_SYNC_CHECK();
 	// write results of the current frame...
 	Color4f *frameBuffer = (Color4f *) frame.data();
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
@@ -248,7 +248,7 @@ void PPGPathTracer::beginFrame(CUDABuffer& frame) {
 	// but the last iteration (the render iteration) do not need training anymore.
 	enableLearning = (enableLearning || m_autoBuild) && !m_isFinalIter;	
 	train_frames_this_iteration = (1 << m_iter) * m_sppPerPass;
-	CUDA_SYNC_CHECK();
+	//CUDA_SYNC_CHECK();
 }
 
 void PPGPathTracer::endFrame(CUDABuffer& frame) {
@@ -266,9 +266,9 @@ void PPGPathTracer::endFrame(CUDABuffer& frame) {
 		++guiding_trained_frames;
 	}
 	m_task.tickFrame();
-	if (m_task.isFinished() || (m_trainingIterations > 0 &&
+	if (m_task.isFinished() || (m_isFinalIter &&
 		guiding_trained_frames >= train_frames_this_iteration)) {
-		finalize();
+		gpContext->requestExit();
 	}
 	if (m_autoBuild && !m_isFinalIter && 
 		guiding_trained_frames >= train_frames_this_iteration) {
@@ -348,7 +348,9 @@ void PPGPathTracer::nextIteration() {
 			m_pixelEstimate->save(File::outputDir() /
 								  ("iteration_" + std::to_string(m_iter) + ".exr"));
 	}
-	m_image->reset();	// discard previous samples each iteration
+
+	if (m_sampleCombination == ESampleCombination::EDiscardWithAutomaticBudget)
+		m_image->reset();	// discard previous samples each iteration
 	CUDA_SYNC_CHECK();
 
 	m_iter++;
@@ -358,7 +360,7 @@ void PPGPathTracer::nextIteration() {
 	size_t train_frames_next_iter = (1 << m_iter) * m_sppPerPass;
 	Budget budget = m_task.getBudget();
 	if (budget.type == BudgetType::Time) {
-		if (m_task.getProgress() > 0.15f)
+		if (m_task.getProgress() > 0.33f)
 			m_isFinalIter = true;
 	} else if (budget.type == BudgetType::Spp) {
 		size_t remaining_spp = budget.value * (1.f - m_task.getProgress());
@@ -370,11 +372,14 @@ void PPGPathTracer::nextIteration() {
 
 void PPGPathTracer::finalize() { 
 	cudaDeviceSynchronize();
-	fs::path save_path = File::outputDir() / "result.exr";
+	string output_name = gpContext->getGlobalConfig().contains("name") ? 
+		gpContext->getGlobalConfig()["name"] : "result";
+	fs::path save_path = File::outputDir() / (output_name + ".exr");
 	m_image->save(save_path);
+	Log(Info, "Total SPP: %zd, elapsed time: %.1f", 
+		m_task.getCurrentSpp(), m_task.getElapsedTime());
 	Log(Success, "Task finished, saving results to %s", save_path.string().c_str());
 	CUDA_SYNC_CHECK();
-	exit(EXIT_SUCCESS);
 }
 
 KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler, 

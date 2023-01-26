@@ -6,6 +6,7 @@
 #include "camera.h"
 #include "file.h"
 
+#include "device/optix.h"
 #include "device/buffer.h"
 #include "device/context.h"
 #include "render/path/path.h"

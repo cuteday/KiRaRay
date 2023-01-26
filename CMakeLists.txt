@@ -155,9 +155,9 @@ endif()
 INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/FindOptiX.cmake)
 find_package(OpenGL REQUIRED)
 # Vulkan support 
-find_package(Vulkan REQUIRED)
+# find_package(Vulkan REQUIRED)
 
-ADD_SUBDIRECTORY (common)
+# ADD_SUBDIRECTORY (common)
 ADD_SUBDIRECTORY (src)
 if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 	SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_DIRS} PARENT_SCOPE)	# exporting KRR_INCLUDE_DIRS to parent scope

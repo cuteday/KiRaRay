@@ -32,12 +32,9 @@ KRR_NAMESPACE_BEGIN
 	do {                                                                                           \
 		cudaError_t rc = call;                                                                     \
 		if (rc != cudaSuccess) {                                                                   \
-			std::stringstream ss;                                                                  \
 			cudaError_t err = rc; /*cudaGetLastError();*/                                          \
-			ss << "CUDA Error " << cudaGetErrorName(err) << " (" << cudaGetErrorString(err)        \
-			   << ")";                                                                             \
-			logError(ss.str());                                                                    \
-			throw std::runtime_error(ss.str());                                                    \
+			Log(Error, "CUDA Error (%s: line %d): %s (%s)\n", __FILE__, __LINE__,                  \
+				cudaGetErrorName(err), cudaGetErrorString(err));                                 \
 		}                                                                                          \
 	} while (0)
 
@@ -53,16 +50,15 @@ KRR_NAMESPACE_BEGIN
 		cudaDeviceSynchronize();                                                                   \
 		cudaError_t error = cudaGetLastError();                                                    \
 		if (error != cudaSuccess) {                                                                \
-			fprintf(stderr, "Error (%s: line %d): %s\n", __FILE__, __LINE__,                       \
-					cudaGetErrorString(error));                                                    \
-			throw std::runtime_error("CUDA synchronized check failed");                            \
+			Log(Error, "Error (%s: line %d): %s\n", __FILE__, __LINE__,                            \
+				cudaGetErrorString(error));                                                        \
 		}                                                                                          \
 	} while (0)
 
-#define CHECK_LOG(EXPR, LOG, ...)                                                                       \
+#define CHECK_LOG(EXPR, LOG, ...)                                                                  \
 	do {                                                                                           \
 		if (!(EXPR)) {                                                                             \
-			Log(Fatal, "Error (%s: line %d): "##LOG, __FILE__, __LINE__, ##__VA_ARGS__);                        \
+			Log(Fatal, "Error (%s: line %d): "##LOG, __FILE__, __LINE__, ##__VA_ARGS__);           \
 		}                                                                                          \
 	} while (0)
 
