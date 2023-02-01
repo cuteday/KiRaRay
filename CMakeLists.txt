@@ -149,14 +149,6 @@ else()
 	set(KRR_PLATFORM_KNOWN 1)
 endif()
 
-###############################################################################
-# other dependencies
-###############################################################################
-INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/FindOptiX.cmake)
-find_package(OpenGL REQUIRED)
-# Vulkan support 
-# find_package(Vulkan REQUIRED)
-
 # ADD_SUBDIRECTORY (common)
 ADD_SUBDIRECTORY (src)
 if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)

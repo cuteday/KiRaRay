@@ -17,14 +17,7 @@ SET ( KRR_INCLUDE_ALL
 	${CMAKE_CURRENT_SOURCE_DIR}/core
 	${CMAKE_CURRENT_BINARY_DIR}/include
 	${KRR_MATH_INCLUDE_DIRS}
-	${ASSIMP_INCLUDE_DIRS}
-	${GLEW_INCLUDE_DIRS}
-	${GLFW_INCLUDE_DIRS}
-	${IMGUI_INCLUDE_DIRS}
-	${JSON_INCLUDE_DIRS}
-	${EIGEN_INCLUDE_DIRS}
-	${IMAGEIO_INCLUDE_DIRS}
-	${PBRTPARSER_INCLUDE_DIRS}
+	${KRR_EXT_INCLUDES}
 	${CUDA_INCLUDE_DIRS}
 	${OptiX_INCLUDE}
 )
@@ -198,30 +191,13 @@ ADD_LIBRARY (KRR_PTX STATIC
 ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 
 ###############################################################################
-# some of the cuda code
-###############################################################################
-# ADD_LIBRARY (KRR_CUDA_CODE STATIC
-# 	core/device/cuda.cu
-# )
-# SET_PROPERTY(TARGET KRR_CUDA_CODE PROPERTY CUDA_SEPARABLE_COMPILATION ON)
-# SET_PROPERTY(TARGET KRR_CUDA_CODE PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-
-###############################################################################
 # linking and executables
 ###############################################################################
 SET(KRR_LIBS_ALL
-	assimp
 	cuda 
 	cublas
-	OpenGL::GL
-	libglew_static
-	glfw
-	imgui
-	pbrtParser
-	zlibstatic
-	${OPENGL_gl_LIBRARY}
+	krr_ext
 	${CUDA_LIBRARIES}
-	#Vulkan::Vulkan
 	KRR_PTX
 	krr_math
 	krr_cuda_cfg
