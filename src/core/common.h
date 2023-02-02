@@ -73,7 +73,7 @@ typedef unsigned char uchar;
 
 #if !defined(__CUDA_ARCH__)
 extern const uint3 threadIdx, blockIdx;
-extern const dim3 blockDim;
+extern const dim3 blockDim, gridDim;
 #endif	// eliminate intellisense warnings for these kernel built-in variables
 
 #ifdef __GNUC__
