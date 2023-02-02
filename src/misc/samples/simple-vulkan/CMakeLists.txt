@@ -11,7 +11,7 @@ target_link_libraries(samples_common PUBLIC
 	Vulkan::Vulkan
 )
 
-add_dependencies(samples_common compile_shaders)
+#add_dependencies(samples_common compile_shaders)
 
 add_executable(simple-vulkan
 	main.cpp

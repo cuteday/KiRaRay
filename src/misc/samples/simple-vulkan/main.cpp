@@ -4,12 +4,13 @@
 #include <iomanip>
 #include <chrono>
 #include <algorithm>
-#include "linmath.h"
 
 #include "SineWaveSimulation.h"
 #include "file.h"
+#include "util/check.h"
+#include "linmath.h"
 
-#include <helper_cuda.h>
+using namespace krr;
 
 typedef float vec2[2];
 std::string execution_path;
@@ -60,21 +61,21 @@ public:
 
 	~VulkanCudaSineWave() {
 		// Make sure there's no pending work before we start tearing down
-		checkCudaErrors(cudaStreamSynchronize(m_stream));
+		CUDA_CHECK(cudaStreamSynchronize(m_stream));
 
 #ifdef _VK_TIMELINE_SEMAPHORE
 		if (m_vkTimelineSemaphore != VK_NULL_HANDLE) {
-			checkCudaErrors(cudaDestroyExternalSemaphore(m_cudaTimelineSemaphore));
+			CUDA_CHECK(cudaDestroyExternalSemaphore(m_cudaTimelineSemaphore));
 			vkDestroySemaphore(m_device, m_vkTimelineSemaphore, nullptr);
 		}
 #endif /* _VK_TIMELINE_SEMAPHORE */
 
 		if (m_vkSignalSemaphore != VK_NULL_HANDLE) {
-			checkCudaErrors(cudaDestroyExternalSemaphore(m_cudaSignalSemaphore));
+			CUDA_CHECK(cudaDestroyExternalSemaphore(m_cudaSignalSemaphore));
 			vkDestroySemaphore(m_device, m_vkSignalSemaphore, nullptr);
 		}
 		if (m_vkWaitSemaphore != VK_NULL_HANDLE) {
-			checkCudaErrors(cudaDestroyExternalSemaphore(m_cudaWaitSemaphore));
+			CUDA_CHECK(cudaDestroyExternalSemaphore(m_cudaWaitSemaphore));
 			vkDestroySemaphore(m_device, m_vkWaitSemaphore, nullptr);
 		}
 
@@ -92,7 +93,7 @@ public:
 			vkFreeMemory(m_device, m_heightMemory, nullptr);
 		}
 		if (m_cudaHeightMap) {
-			checkCudaErrors(cudaDestroyExternalMemory(m_cudaVertMem));
+			CUDA_CHECK(cudaDestroyExternalMemory(m_cudaVertMem));
 		}
 
 		if (m_indexBuffer != VK_NULL_HANDLE) {
@@ -176,7 +177,7 @@ public:
 		m_sim.initCudaLaunchConfig(cuda_device);
 
 		// Create the cuda stream we'll be using
-		checkCudaErrors(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
+		CUDA_CHECK(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
 
 		const size_t nVerts = m_sim.getWidth() * m_sim.getHeight();
 		const size_t nInds	= (m_sim.getWidth() - 1) * (m_sim.getHeight() - 1) * 6;
@@ -296,14 +297,14 @@ public:
 		externalMemoryHandleDesc.handle.fd = (int) (uintptr_t) getMemHandle(vkMem, handleType);
 #endif
 
-		checkCudaErrors(cudaImportExternalMemory(&cudaMem, &externalMemoryHandleDesc));
+		CUDA_CHECK(cudaImportExternalMemory(&cudaMem, &externalMemoryHandleDesc));
 
 		cudaExternalMemoryBufferDesc externalMemBufferDesc = {};
 		externalMemBufferDesc.offset					   = 0;
 		externalMemBufferDesc.size						   = size;
 		externalMemBufferDesc.flags						   = 0;
 
-		checkCudaErrors(
+		CUDA_CHECK(
 			cudaExternalMemoryGetMappedBuffer(cudaPtr, cudaMem, &externalMemBufferDesc));
 	}
 
@@ -344,7 +345,7 @@ public:
 
 		externalSemaphoreHandleDesc.flags = 0;
 
-		checkCudaErrors(cudaImportExternalSemaphore(&cudaSem, &externalSemaphoreHandleDesc));
+		CUDA_CHECK(cudaImportExternalSemaphore(&cudaSem, &externalSemaphoreHandleDesc));
 	}
 
 	VkDeviceSize getUniformSize() const { return sizeof(UniformBufferObject); }
@@ -424,12 +425,12 @@ public:
 		signalParams.flags							   = 0;
 		signalParams.params.fence.value				   = signalValue;
 		// Wait for vulkan to complete it's work
-		checkCudaErrors(
+		CUDA_CHECK(
 			cudaWaitExternalSemaphoresAsync(&m_cudaTimelineSemaphore, &waitParams, 1, m_stream));
 		// Now step the simulation
 		m_sim.stepSimulation(time, m_stream);
 		// Signal vulkan to continue with the updated buffers
-		checkCudaErrors(cudaSignalExternalSemaphoresAsync(&m_cudaTimelineSemaphore, &signalParams,
+		CUDA_CHECK(cudaSignalExternalSemaphoresAsync(&m_cudaTimelineSemaphore, &signalParams,
 														  1, m_stream));
 
 		waitValue += 2;
@@ -444,12 +445,12 @@ public:
 		signalParams.params.fence.value				   = 0;
 
 		// Wait for vulkan to complete it's work
-		checkCudaErrors(
+		CUDA_CHECK(
 			cudaWaitExternalSemaphoresAsync(&m_cudaWaitSemaphore, &waitParams, 1, m_stream));
 		// Now step the simulation
 		m_sim.stepSimulation(time, m_stream);
 		// Signal vulkan to continue with the updated buffers
-		checkCudaErrors(
+		CUDA_CHECK(
 			cudaSignalExternalSemaphoresAsync(&m_cudaSignalSemaphore, &signalParams, 1, m_stream));
 #endif /* _VK_TIMELINE_SEMAPHORE */
 

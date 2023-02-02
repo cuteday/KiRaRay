@@ -6,7 +6,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include "common.h"
+
+#include <common.h>
 
 #ifdef _WIN32   // for ansi control sequences
 #   define NOMINMAX 
@@ -42,15 +43,11 @@ namespace Log {
 		Info,
 		Debug,
 	};
-
 }
 
 // logger class
 class Logger {
-public:
-
 private:
-
 	using Level = Log::Level;
 	
 	friend void logDebug(const std::string& msg);
@@ -59,6 +56,8 @@ private:
 	friend void logWarning(const std::string& msg);
 	friend void logError(const std::string& msg, bool terminate);
 	friend void logFatal(const std::string& msg, bool terminate);
+	template <typename... Args> 
+	friend void logMessage(Log::Level level, const std::string &msg, Args &&...payload);
 
 	static void log(Level level, const string& msg, bool terminate = false);
 };
@@ -69,6 +68,11 @@ inline void logSuccess(const std::string& msg) { Logger::log(Logger::Level::Succ
 inline void logWarning(const std::string& msg) { Logger::log(Logger::Level::Warning, msg); }
 inline void logError(const std::string& msg, bool terminate = false) { Logger::log(Logger::Level::Error, msg, terminate); }
 inline void logFatal(const std::string& msg, bool terminate = true) { Logger::log(Logger::Level::Fatal, msg, terminate); }
+
+template <typename ...Args> 
+inline void logMessage(Log::Level level, const std::string &msg, Args &&...payload) {
+	Logger::log(level, msg);
+}
 
 #define Log(level, fmt, ...) do{				\
 		char _s[256];							\

@@ -54,7 +54,7 @@ public:
 	}
 
 	__device__ inline Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
-		if (!twoSided && dot(n, w) < 0.f) return Vector3f::Zero();	// hit backface
+		if (!twoSided && dot(n, w) < 0.f) return Color::Zero(); // hit backface
 
 		if (texture.isOnDevice()) {
 			return scale * texture.tex(uv);
@@ -106,7 +106,9 @@ public:
 		return M_INV_4PI;
 	}
 
-	KRR_CALLABLE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const { return Vector3f::Zero(); }
+	KRR_CALLABLE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
+		return Color::Zero();
+	}
 
 	__device__ inline Color Li(Vector3f wi) const {
 		Color L = tint * scale;

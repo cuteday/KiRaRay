@@ -4,7 +4,7 @@
 INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/FindOptiX.cmake)
 find_package(OpenGL REQUIRED)
 # Vulkan support 
-# find_package(Vulkan REQUIRED)
+find_package(Vulkan REQUIRED)
 
 ###############################################################################
 # third party libraries
@@ -94,7 +94,7 @@ TARGET_LINK_LIBRARIES(krr_ext INTERFACE
 	zlibstatic
 	OpenGL::GL
 	${OPENGL_gl_LIBRARY}
-	#Vulkan::Vulkan
+	Vulkan::Vulkan
 	nvrhi_vk
 )
 

@@ -8,8 +8,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(CMakeDependentOption)
 
 option(NVRHI_WITH_SHADER_COMPILER "Build the NVRHI shader compiler executable" ON)
-option(NVRHI_WITH_VALIDATION "Build NVRHI the validation layer" ON)
-option(NVRHI_WITH_VULKAN "Build the NVRHI Vulkan backend" ON)
 
 if (MSVC)
     string(REGEX REPLACE "/W[0-4]\\s*" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
@@ -18,9 +16,8 @@ endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-if (NVRHI_WITH_VULKAN)
-    add_subdirectory(thirdparty/Vulkan-Headers)
-endif()
+
+add_subdirectory(thirdparty/Vulkan-Headers)
 
 if (NVRHI_WITH_SHADER_COMPILER)
     option(CXXOPTS_BUILD_EXAMPLES OFF)
@@ -87,11 +84,9 @@ add_library(nvrhi STATIC
     ${src_common}
     ${misc_common})
 
-if (NVRHI_WITH_VALIDATION)
-    target_sources(nvrhi PRIVATE
-        ${include_validation}
-        ${src_validation})
-endif()
+target_sources(nvrhi PRIVATE
+    ${include_validation}
+    ${src_validation})
 
 target_include_directories(nvrhi PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -105,6 +100,8 @@ add_library(${nvrhi_vulkan_target} STATIC
     ${include_vk}
     ${src_vk})
 
+find_package(Vulkan REQUIRED)
+
 set_target_properties(${nvrhi_vulkan_target} PROPERTIES FOLDER "NVRHI")
 target_include_directories(${nvrhi_vulkan_target} PRIVATE include)
-target_link_libraries(${nvrhi_vulkan_target} PUBLIC Vulkan-Headers nvrhi)
+target_link_libraries(${nvrhi_vulkan_target} PUBLIC Vulkan-Headers nvrhi Vulkan::Vulkan)

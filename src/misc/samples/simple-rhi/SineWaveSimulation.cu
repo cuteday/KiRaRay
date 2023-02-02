@@ -25,8 +25,9 @@ __global__ void sinewave(float *heightMap, unsigned int width, unsigned int heig
 	}
 }
 
-SineWaveSimulation::SineWaveSimulation(size_t width, size_t height) :
-	m_heightMap(nullptr), m_width(width), m_height(height) {}
+SineWaveSimulation::SineWaveSimulation(size_t width, size_t height)
+	: m_heightMap(nullptr), m_width(width), m_height(height) {
+}
 
 void SineWaveSimulation::initCudaLaunchConfig(int device) {
 	cudaDeviceProp prop = {};
@@ -92,9 +93,13 @@ int SineWaveSimulation::initCuda(uint8_t *vkDeviceUUID, size_t UUID_SIZE) {
 	return -1;
 }
 
-SineWaveSimulation::~SineWaveSimulation() { m_heightMap = NULL; }
+SineWaveSimulation::~SineWaveSimulation() {
+	m_heightMap = NULL;
+}
 
-void SineWaveSimulation::initSimulation(float *heights) { m_heightMap = heights; }
+void SineWaveSimulation::initSimulation(float *heights) {
+	m_heightMap = heights;
+}
 
 void SineWaveSimulation::stepSimulation(float time, cudaStream_t stream) {
 	sinewave<<<m_blocks, m_threads, 0, stream>>>(m_heightMap, m_width, m_height, time);
