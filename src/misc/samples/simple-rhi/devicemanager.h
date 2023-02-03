@@ -407,8 +407,7 @@ private:
 	DeviceManager *m_DeviceManager;
 
 public:
-	explicit IRenderPass(DeviceManager *deviceManager) : m_DeviceManager(deviceManager) {
-	}
+	explicit IRenderPass(DeviceManager *deviceManager) : m_DeviceManager(deviceManager) {}
 
 	virtual ~IRenderPass() = default;
 

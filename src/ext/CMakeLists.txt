@@ -98,6 +98,26 @@ TARGET_LINK_LIBRARIES(krr_ext INTERFACE
 	nvrhi_vk
 )
 
+# shaderc for runtime compilation of glsl(shaderc) and hlsl(dxc) shaders
+add_library(shaderc UNKNOWN IMPORTED)
+if(WIN32)
+	# use the version in the SDK
+	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION $ENV{VULKAN_SDK}/Lib/shaderc_shared.lib)
+	set_property(TARGET shaderc PROPERTY INTERFACE_INCLUDE_DIRECTORIES $ENV{VULKAN_SDK}/Include)
+	target_link_libraries(krr_ext INTERFACE shaderc)
+else()
+	target_link_directories(krr_ext INTERFACE $ENV{VULKAN_SDK}/lib)
+	target_link_libraries(krr_ext INTERFACE shaderc_combined glslang MachineIndependent OSDependent OGLCompiler GenericCodeGen SPIRV SPIRV-Tools-opt SPIRV-Tools)
+endif()
+add_library(dxc UNKNOWN IMPORTED)
+if (WIN32)
+	set_target_properties(dxc PROPERTIES IMPORTED_LOCATION $ENV{VULKAN_SDK}/Lib/dxcompiler.lib)
+	set_property(TARGET dxc PROPERTY INTERFACE_INCLUDE_DIRECTORIES $ENV{VULKAN_SDK}/Include)
+	target_link_libraries(krr_ext INTERFACE dxc)
+else()
+	target_link_libraries(krr_ext INTERFACE dxcompiler)
+endif()
+
 SET(KRR_EXT_INCLUDES
 	${ASSIMP_INCLUDE_DIRS}
 	${GLEW_INCLUDE_DIRS}

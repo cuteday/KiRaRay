@@ -22,4 +22,8 @@ inline string getFileNameNoExt(string filepath) {
 	return std::filesystem::path(filepath).stem().string();
 }
 
+inline std::wstring stringToWideString(const string& src) {
+	return std::wstring{src.begin(), src.end()};	
+}
+
 KRR_NAMESPACE_END

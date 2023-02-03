@@ -583,7 +583,7 @@ bool DeviceManager_VK::createInstance() {
 
 	logMessage(m_DeviceParams.infoLogSeverity, "Enabled Vulkan instance extensions:");
 	for (const auto &ext : enabledExtensions.instance) {
-		logMessage(m_DeviceParams.infoLogSeverity, "    %s", ext.c_str());
+		Log(Info, "%s", ext.c_str());
 	}
 
 	std::unordered_set<std::string> requiredLayers = enabledExtensions.layers;
@@ -609,7 +609,7 @@ bool DeviceManager_VK::createInstance() {
 
 	logMessage(m_DeviceParams.infoLogSeverity, "Enabled Vulkan layers:");
 	for (const auto &layer : enabledExtensions.layers) {
-		logMessage(m_DeviceParams.infoLogSeverity, "    %s", layer.c_str());
+		Log(Info, "%s", layer.c_str());
 	}
 
 	auto instanceExtVec = stringSetToVector(enabledExtensions.instance);
@@ -849,7 +849,7 @@ bool DeviceManager_VK::createDevice() {
 
 	logMessage(m_DeviceParams.infoLogSeverity, "Enabled Vulkan device extensions:");
 	for (const auto &ext : enabledExtensions.device) {
-		logMessage(m_DeviceParams.infoLogSeverity, "    %s", ext.c_str());
+		Log(Info, "%s", ext.c_str());
 
 		if (ext == VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
 			accelStructSupported = true;
@@ -965,8 +965,7 @@ bool DeviceManager_VK::createDevice() {
 	auto prop		 = m_VulkanPhysicalDevice.getProperties();
 	m_RendererString = std::string(prop.deviceName.data());
 
-	logMessage(m_DeviceParams.infoLogSeverity, "Created Vulkan device: %s",
-				 m_RendererString.c_str());
+	Log(Info, "Created Vulkan device: %s", m_RendererString.c_str());
 
 	return true;
 }
