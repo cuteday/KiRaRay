@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <util/string.h>
 
 #include <common.h>
 
@@ -74,10 +75,8 @@ inline void logMessage(Log::Level level, const std::string &msg, Args &&...paylo
 	Logger::log(level, msg);
 }
 
-#define Log(level, fmt, ...) do{				\
-		char _s[256];							\
-		sprintf(_s, fmt, ## __VA_ARGS__);		\
-		log ## level (_s);						\
+#define Log(level, fmt, ...) do{						\
+		log##level(formatString(fmt, ##__VA_ARGS__));	\
 	} while (0)
 
 // util functions
