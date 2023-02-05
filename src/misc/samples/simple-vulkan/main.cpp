@@ -8,11 +8,9 @@
 #include "SineWaveSimulation.h"
 #include "file.h"
 #include "util/check.h"
-#include "linmath.h"
 
 using namespace krr;
 
-typedef float vec2[2];
 std::string execution_path;
 
 #ifndef NDEBUG
@@ -23,7 +21,7 @@ std::string execution_path;
 
 class VulkanCudaSineWave : public VulkanBaseApp {
 	typedef struct UniformBufferObject_st {
-		mat4x4 modelViewProj;
+		Matrix4f modelViewProj;
 	} UniformBufferObject;
 
 	VkBuffer m_heightBuffer, m_xyBuffer, m_indexBuffer;
@@ -125,7 +123,7 @@ public:
 		bindingDesc[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		bindingDesc[1].binding	 = 1;
-		bindingDesc[1].stride	 = sizeof(vec2);
+		bindingDesc[1].stride	 = sizeof(Vector2f);
 		bindingDesc[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		attribDesc[0].binding  = 0;
@@ -189,7 +187,7 @@ public:
 							 m_heightBuffer, m_heightMemory);
 
 		// Create the vertex buffer that will hold the xy coordinates for the grid
-		createBuffer(nVerts * sizeof(vec2),
+		createBuffer(nVerts * sizeof(Vector2f),
 					 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 					 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_xyBuffer, m_xyMemory);
 
@@ -209,7 +207,7 @@ public:
 			void *stagingBase;
 			VkBuffer stagingBuffer;
 			VkDeviceMemory stagingMemory;
-			VkDeviceSize stagingSz = std::max(nVerts * sizeof(vec2), nInds * sizeof(uint32_t));
+			VkDeviceSize stagingSz = std::max(nVerts * sizeof(Vector2f), nInds * sizeof(uint32_t));
 			createBuffer(stagingSz, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 						 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 						 stagingBuffer, stagingMemory);
@@ -221,14 +219,14 @@ public:
 
 			for (size_t y = 0; y < m_sim.getHeight(); y++) {
 				for (size_t x = 0; x < m_sim.getWidth(); x++) {
-					vec2 *stagedVert = (vec2 *) stagingBase;
+					Vector2f *stagedVert = (Vector2f *) stagingBase;
 					stagedVert[y * m_sim.getWidth() + x][0] =
 						(2.0f * x) / (m_sim.getWidth() - 1) - 1;
 					stagedVert[y * m_sim.getWidth() + x][1] =
 						(2.0f * y) / (m_sim.getHeight() - 1) - 1;
 				}
 			}
-			copyBuffer(m_xyBuffer, stagingBuffer, nVerts * sizeof(vec2));
+			copyBuffer(m_xyBuffer, stagingBuffer, nVerts * sizeof(Vector2f));
 
 			{
 				uint32_t *indices = (uint32_t *) stagingBase;
@@ -352,18 +350,18 @@ public:
 
 	void updateUniformBuffer(uint32_t imageIndex) {
 		{
-			mat4x4 view, proj;
-			vec3 eye	= { 1.75f, 1.75f, 1.25f };
-			vec3 center = { 0.0f, 0.0f, -0.25f };
-			vec3 up		= { 0.0f, 0.0f, 1.0f };
+			Matrix4f view, proj;
+			Vector3f eye	= {1.75f, 1.75f, 1.25f};
+			Vector3f center = {0.0f, 0.0f, -0.25f};
+			Vector3f up		= {0.0f, 0.0f, 1.0f};
 
-			mat4x4_perspective(proj, (float) degreesToRadians(45.0f),
-							   m_swapChainExtent.width / (float) m_swapChainExtent.height, 0.1f,
-							   10.0f);
-			proj[1][1] *= -1.0f; // Flip y axis
+			proj = perspective((float) radians(45.0f),
+					m_swapChainExtent.width / (float) m_swapChainExtent.height, 0.1f,
+					10.0f);
+			proj(1, 1) *= -1.0f; // Flip y axis
 
-			mat4x4_look_at(view, eye, center, up);
-			mat4x4_mul(m_ubo.modelViewProj, proj, view);
+			view				= look_at(eye, center, up);
+			m_ubo.modelViewProj = proj * view;
 		}
 
 		void *data;

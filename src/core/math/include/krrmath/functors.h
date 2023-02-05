@@ -130,56 +130,5 @@ KRR_CALLABLE float sech(const float x) { return 1 / cosh(x); }
 
 KRR_CALLABLE float radians(const float degree) { return degree * M_PI / 180.f; }
 
-/* space transformations (all in left-handed coordinate) */
-
-template <typename T, int Options = math::ColMajor>
-KRR_CALLABLE Matrix<T, 4, 4, Options> perspective(T fovy, T aspect, T zNear, T zFar) {
-	assert(abs(aspect - std::numeric_limits<T>::epsilon()) > static_cast<T>(0));
-
-	T const tanHalfFovy = tan(fovy / static_cast<T>(2));
-	Matrix<T, 4, 4, Options> result{ Matrix<T, 4, 4, Options>::Zero() };
-	
-	result(0, 0) = static_cast<T>(1) / (aspect * tanHalfFovy);
-	result(1, 1) = static_cast<T>(1) / (tanHalfFovy);
-	result(2, 2) = -(zFar + zNear) / (zFar - zNear);
-	result(2, 3) = -static_cast<T>(1);
-	result(3, 2) = -(static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
-	return result;
-}
-
-template <typename T, int Options = math::ColMajor>
-KRR_CALLABLE Matrix<T, 4, 4, Options> orthogonal(T left, T right, T bottom, T top) {
-	Matrix<T, 4, 4, Options> result{ Matrix<T, 4, 4, Options>::Identity() };
-
-	result(0, 0) = static_cast<T>(2) / (right - left);
-	result(1, 1) = static_cast<T>(2) / (top - bottom);
-	result(2, 2) = -static_cast<T>(1);
-	result(3, 0) = -(right + left) / (right - left);
-	result(3, 1) = -(top + bottom) / (top - bottom);
-	return result;
-}
-
-template <typename T, int Options = math::ColMajor>
-Matrix<T, 4, 4, Options> look_at(Vector3<T> const &eye, Vector3<T> const &center,
-								 Vector3<T> const &up) {
-	Vector3<T> const f(normalize(center - eye));
-	Vector3<T> const s(normalize(cross(up, f)));
-	Vector3<T> const u(cross(f, s));
-
-	Matrix<T, 4, 4, Options> result{Matrix<T, 4, 4, Options>::Identity()};
-	result(0, 0) = s.x;
-	result(1, 0) = s.y;
-	result(2, 0) = s.z;
-	result(0, 1) = u.x;
-	result(1, 1) = u.y;
-	result(2, 1) = u.z;
-	result(0, 2) = f.x;
-	result(1, 2) = f.y;
-	result(2, 2) = f.z;
-	result(3, 0) = -dot(s, eye);
-	result(3, 1) = -dot(u, eye);
-	result(3, 2) = -dot(f, eye);
-	return result;
-}
 
 KRR_NAMESPACE_END
