@@ -20,26 +20,26 @@ CommonRenderPasses::CommonRenderPasses(nvrhi::IDevice *device,
 	{
 		std::vector<ShaderMacro> VsMacros;
 		VsMacros.push_back(ShaderMacro("QUAD_Z", "0"));
-		m_FullscreenVS = ShaderLoader->createShader("donut/fullscreen_vs", "main", &VsMacros,
+		m_FullscreenVS = ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/fullscreen_vs.hlsl", "main", &VsMacros,
 													 nvrhi::ShaderType::Vertex);
 
 		VsMacros[0].definition = "1";
-		m_FullscreenAtOneVS = ShaderLoader->createShader("donut/fullscreen_vs", "main", &VsMacros,
+		m_FullscreenAtOneVS = ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/fullscreen_vs.hlsl", "main", &VsMacros,
 														  nvrhi::ShaderType::Vertex);
 	}
 
 	m_RectVS =
-		ShaderLoader->createShader("donut/rect_vs", "main", nullptr, nvrhi::ShaderType::Vertex);
+		ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/rect_vs.hlsl", "main", nullptr, nvrhi::ShaderType::Vertex);
 
 	std::vector<ShaderMacro> blitMacros = {ShaderMacro("TEXTURE_ARRAY", "0")};
 	m_BlitPS =
-		ShaderLoader->createShader("donut/blit_ps", "main", &blitMacros, nvrhi::ShaderType::Pixel);
-	m_SharpenPS				 = ShaderLoader->createShader("donut/sharpen_ps", "main", &blitMacros,
+		ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/blit_ps.hlsl", "main", &blitMacros, nvrhi::ShaderType::Pixel);
+	m_SharpenPS				 = ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/sharpen_ps.hlsl", "main", &blitMacros,
 														   nvrhi::ShaderType::Pixel);
 	blitMacros[0].definition = "1"; // TEXTURE_ARRAY
 	m_BlitArrayPS =
-		ShaderLoader->createShader("donut/blit_ps", "main", &blitMacros, nvrhi::ShaderType::Pixel);
-	m_SharpenArrayPS = ShaderLoader->createShader("donut/sharpen_ps", "main", &blitMacros,
+		ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/blit_ps.hlsl", "main", &blitMacros, nvrhi::ShaderType::Pixel);
+	m_SharpenArrayPS = ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/sharpen_ps.hlsl", "main", &blitMacros,
 												   nvrhi::ShaderType::Pixel);
 
 	auto samplerDesc = nvrhi::SamplerDesc().setAllFilters(false).setAllAddressModes(

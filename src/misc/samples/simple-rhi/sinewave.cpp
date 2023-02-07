@@ -6,7 +6,7 @@
 
 #include "SineWaveSimulation.h"
 #include "common/devicemanager.h"
-#include "common/texture.h"
+#include "common/textureloader.h"
 #include "common/shader.h"
 
 KRR_NAMESPACE_BEGIN

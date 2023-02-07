@@ -1,7 +1,8 @@
 #include <common.h>
 #include <logger.h>
+#include <texture.h>
 
-#include "texture.h"
+#include "textureloader.h"
 #include "helperpass.h"
 
 #include <algorithm>
@@ -64,22 +65,21 @@ std::shared_ptr<TextureData> TextureCache::CreateTextureData() {
 	return std::make_shared<TextureData>();
 }
 
-bool TextureCache::FillTextureData(const std::shared_ptr<Blob> &fileData,
-								   const std::shared_ptr<TextureData> &texture,
-								   const std::string &extension,
-								   const std::string &mimeType) const {
-
+bool TextureCache::FillTextureData(const std::shared_ptr<Image> &image,
+								   const std::shared_ptr<TextureData> &texture) const {
 	int width = 0, height = 0, originalChannels = 0, channels = 0;
 
-	bool is_hdr = false;
+	bool is_hdr = image->getFormat() == Image::Format::RGBAfloat;
+	originalChannels = image->getChannels();
 
 	if (originalChannels == 3) {
 		channels = 4;
 	} else {
 		channels = originalChannels;
 	}
+	width = image->getSize()[0], height = image->getSize()[1];
 
-	unsigned char *bitmap;
+	unsigned char *bitmap = image->data();
 	int bytesPerPixel = channels * (is_hdr ? 4 : 1);
 
 	if (!bitmap) {
@@ -279,17 +279,19 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFile(const std::file
 																 CommonRenderPasses *passes,
 																 nvrhi::ICommandList *commandList) {
 	std::shared_ptr<TextureData> texture;
+	fs::path absolutePath = File::resolve(path);
 
-	if (FindTextureInCache(path, texture)) return texture;
+	if (FindTextureInCache(absolutePath, texture)) return texture;
 
 	texture->forceSRGB = sRGB;
-	texture->path	   = path.generic_string();
+	texture->path	   = absolutePath.generic_string();
 
-	auto fileData = ReadTextureFile(path);
-	if (fileData) {
-		if (FillTextureData(fileData, texture, path.extension().generic_string(), "")) {
+	auto image = Image::createFromFile(absolutePath, false, sRGB);
+	
+	if (image->isValid()) {
+		if (FillTextureData(image, texture)) {
+			
 			TextureLoaded(texture);
-
 			FinalizeTexture(texture, passes, commandList);
 		}
 	}
@@ -308,9 +310,9 @@ TextureCache::LoadTextureFromFileDeferred(const std::filesystem::path &path, boo
 	texture->forceSRGB = sRGB;
 	texture->path	   = path.generic_string();
 
-	auto fileData = ReadTextureFile(path);
-	if (fileData) {
-		if (FillTextureData(fileData, texture, path.extension().generic_string(), "")) {
+	auto image = Image::createFromFile(path, false, sRGB);
+	if (image->isValid()) {
+		if (FillTextureData(image, texture)) {
 			TextureLoaded(texture);
 
 			std::lock_guard<std::mutex> guard(m_TexturesToFinalizeMutex);

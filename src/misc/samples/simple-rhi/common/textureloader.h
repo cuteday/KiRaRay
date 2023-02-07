@@ -12,6 +12,7 @@
 
 #include "descriptor.h"
 #include <file.h>
+#include <texture.h>
 
 KRR_NAMESPACE_BEGIN
 
@@ -83,9 +84,8 @@ protected:
 	bool FindTextureInCache(const std::filesystem::path &path,
 							std::shared_ptr<TextureData> &texture);
 	std::shared_ptr<Blob> ReadTextureFile(const std::filesystem::path &path) const;
-	bool FillTextureData(const std::shared_ptr<Blob> &fileData,
-						 const std::shared_ptr<TextureData> &texture, const std::string &extension,
-						 const std::string &mimeType) const;
+	bool FillTextureData(const std::shared_ptr<Image> &image,
+						 const std::shared_ptr<TextureData> &texture) const;
 	void FinalizeTexture(std::shared_ptr<TextureData> texture, CommonRenderPasses *passes,
 						 nvrhi::ICommandList *commandList);
 	virtual void TextureLoaded(std::shared_ptr<TextureData> texture);
@@ -109,20 +109,6 @@ public:
 	// ProcessRenderingThreadCommands queue).
 	std::shared_ptr<LoadedTexture> LoadTextureFromFileDeferred(const std::filesystem::path &path,
 															   bool sRGB);
-
-	// Same as LoadTextureFromFile, but using a memory blob and MIME type instead of file name, and
-	// uncached.
-	std::shared_ptr<LoadedTexture> LoadTextureFromMemory(const std::shared_ptr<Blob> &data,
-														 const std::string &name,
-														 const std::string &mimeType, bool sRGB,
-														 CommonRenderPasses *passes,
-														 nvrhi::ICommandList *commandList);
-
-	// Same as LoadTextureFromFileDeferred, but using a memory blob and MIME type instead of file
-	// name, and uncached.
-	std::shared_ptr<LoadedTexture>
-	LoadTextureFromMemoryDeferred(const std::shared_ptr<Blob> &data, const std::string &name,
-								  const std::string &mimeType, bool sRGB);
 
 	// Tells if the texture has been loaded from file successfully and its data is available in the
 	// texture object. After the texture is finalized and uploaded to the GPU, the data is no longer

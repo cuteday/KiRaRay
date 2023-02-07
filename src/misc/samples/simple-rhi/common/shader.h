@@ -3,9 +3,12 @@
 #include <vector>
 #include <file.h>
 #include <common.h>
+#include <logger.h>
 
 #include <nvrhi/nvrhi.h>
 #include <nvrhi/common/shader-blob.h>
+
+#define SHADER_MACRO_IN_CONFIG	0
 
 #ifdef _WIN32
 // dxcapi.h expects the COM API to be present on Windows.
@@ -44,12 +47,15 @@ public:
 	void clearCache() { m_bytecodeCache.clear(); }
 
 	std::vector<char> compileSpirv(std::vector<char> src, ShaderLanguage srcLanguage, 
-		nvrhi::ShaderType shaderStage, const char* entryPoint) {
+		nvrhi::ShaderType shaderStage, 
+		const char* entryPoint,
+		const std::vector<ShaderMacro> *pDefines = nullptr) {
 		string entry_str(entryPoint);	// convert string to wide-char string...
 		std::wstring entry{entry_str.begin(), entry_str.end()};
 		switch (srcLanguage) {
 			case ShaderLanguage::HLSL: {
 				std::vector<LPCWSTR> arguments;
+				std::vector<std::wstring> defines; 
 				arguments.push_back(L"-E");
 				arguments.push_back(static_cast<LPCWSTR>(entry.c_str()));
 				arguments.push_back(L"-spirv");
@@ -68,6 +74,15 @@ public:
 				arguments.push_back(L"-fvk-u-shift");
 				arguments.push_back(L"384");
 				arguments.push_back(L"0");
+				
+				if (pDefines) {
+					arguments.push_back(L"-D");
+					for (const auto &define : *pDefines) {
+						defines.push_back(stringToWideString(
+							formatString("%s=%s", define.name.c_str(), define.definition.c_str())));
+						arguments.push_back(defines.back().c_str());
+					}
+				}
 
 				static const std::unordered_map<nvrhi::ShaderType, LPCWSTR> stage_mappings{
 					{nvrhi::ShaderType::Vertex, L"vs_6_7"},
@@ -144,28 +159,33 @@ public:
 									 const std::vector<ShaderMacro> *pDefines,
 									 const nvrhi::ShaderDesc &desc){
 		
-		std::vector<char> byteCode = getBytecode(fileName, desc.shaderType, entryName);
+		std::vector<char> byteCode = getBytecode(fileName, desc.shaderType, entryName, pDefines);
 
+		nvrhi::ShaderDesc descCopy = desc;
+		descCopy.entryName		   = entryName;
+
+#if SHADER_MACRO_IN_CONFIG
 		std::vector<nvrhi::ShaderConstant> constants;
 		if (pDefines) {
 			for (const ShaderMacro &define : *pDefines)
 				constants.push_back(
 					nvrhi::ShaderConstant{define.name.c_str(), define.definition.c_str()});
 		}
-
-		nvrhi::ShaderDesc descCopy = desc;
-		descCopy.entryName		   = entryName;
-
 		return nvrhi::createShaderPermutation(m_device, descCopy, byteCode.data(),
 											  byteCode.size(), constants.data(),
 											  uint32_t(constants.size()));
+#else
+		return m_device->createShader(descCopy, byteCode.data(), byteCode.size());
+#endif
 	}
 	
 	// this is mainly for ray-tracing pipelined shaders
 	nvrhi::ShaderLibraryHandle createShaderLibrary(const char* fileName,
 		const std::vector<ShaderMacro>* pDefines) {
-		std::vector<char> byteCode = getBytecode(fileName, nvrhi::ShaderType::AllRayTracing, nullptr);
+		std::vector<char> byteCode =
+			getBytecode(fileName, nvrhi::ShaderType::AllRayTracing, nullptr, pDefines);
 
+#if SHADER_MACRO_IN_CONFIG
 		std::vector<nvrhi::ShaderConstant> constants;
 		if (pDefines) {
 			for (const ShaderMacro &define : *pDefines)
@@ -175,18 +195,25 @@ public:
 
 		return nvrhi::createShaderLibraryPermutation(m_device, byteCode.data(), byteCode.size(),
 													 constants.data(), uint32_t(constants.size()));
+#else
+		return m_device->createShaderLibrary(byteCode.data(), byteCode.size());
+#endif
 	}
 
-	std::vector<char> getBytecode(const char *fileName, nvrhi::ShaderType shaderType, const char *entryName = "main") {
+	std::vector<char> getBytecode(const char *fileName, 
+		nvrhi::ShaderType shaderType, 
+		const char *entryName = "main",
+		const std::vector<ShaderMacro> *pDefines = nullptr) {
 		if (!entryName) entryName = "main";
 		std::filesystem::path shaderFilePath = File::resolve(fileName);
 
 		auto content = File::readFile(shaderFilePath, false);
+		if (!content) Log(Error, "Failed to read file from %s", fileName);
 		std::vector<char> text((char *) content->data(),
 							   (char *) content->data() + content->size()); // shader text
 
-		std::vector<char> byteCode =
-			compileSpirv(text, ShaderLanguage::HLSL, shaderType, entryName); // compiled shader
+		std::vector<char> byteCode = compileSpirv(text, ShaderLanguage::HLSL, shaderType, entryName,
+												  pDefines); // compiled shader
 		return byteCode;
 	}
 };
