@@ -71,8 +71,8 @@ inline void logError(const std::string& msg, bool terminate = false) { Logger::l
 inline void logFatal(const std::string& msg, bool terminate = true) { Logger::log(Logger::Level::Fatal, msg, terminate); }
 
 template <typename ...Args> 
-inline void logMessage(Log::Level level, const std::string &msg, Args &&...payload) {
-	Logger::log(level, msg);
+inline void logMessage(Log::Level level, const std::string &msg, Args &&...args) {
+	Logger::log(level, formatString(msg, std::forward<Args>(args)...));
 }
 
 #define Log(level, fmt, ...) do{						\

@@ -15,6 +15,9 @@ public:
 	
 	KRR_CALLABLE AxisAligned() : Eigen::AlignedBox<T, Size>() {}
 
+	KRR_CALLABLE AxisAligned(T min, T max) :
+		Eigen::AlignedBox<T, Size>(VectorType::Constant(min), VectorType::Constant(max)) {}
+
 	KRR_CALLABLE AxisAligned(const Eigen::AlignedBox<T, Size> &other) : Eigen::AlignedBox<T, Size>(other) {}
 
 	KRR_CALLABLE AxisAligned &operator=(const Eigen::AlignedBox<T, Size> &other) {
