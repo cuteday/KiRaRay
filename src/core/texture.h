@@ -46,7 +46,7 @@ public:
 	bool saveImage(const fs::path& filepath);
 
 	static bool isHdr(const string& filepath);
-	static Image::SharedPtr createFromFile(const string& filepath, bool flip = false, bool srgb = false);
+	static Image::SharedPtr createFromFile(const fs::path& filepath, bool flip = false, bool srgb = false);
 	bool isValid() const { return mFormat != Format::NONE && mSize[0] * mSize[1]; }
 	bool isSrgb() const { return mSrgb; }
 	Vector2i getSize() const { return mSize; }
@@ -114,7 +114,7 @@ public:
 		mValid = true;
 		mValue = value;
 	};
-	void loadImage(const string& filepath, bool flip = false, bool srgb = false) {
+	void loadImage(const fs::path &filepath, bool flip = false, bool srgb = false) {
 		mValid = mImage.loadImage(filepath, flip, srgb);
 	}
 	Image &getImage() { return mImage; }
@@ -141,7 +141,8 @@ public:
 			return texture::textureProps[mTextureId].path;
 		return "unknown filepath";
 	}
-	static Texture::SharedPtr createFromFile(const string& filepath, bool flip = false, bool srgb = false);
+	static Texture::SharedPtr createFromFile(const fs::path &filepath, bool flip = false,
+											 bool srgb = false);
 
 	bool mValid{ false };
 	Color4f mValue{};	 /* If this is a constant texture, the value should be set. */
