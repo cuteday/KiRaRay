@@ -53,9 +53,21 @@ public:
 				arguments.push_back(L"-E");
 				arguments.push_back(static_cast<LPCWSTR>(entry.c_str()));
 				arguments.push_back(L"-spirv");
-				arguments.push_back(L"-fspv-target-env=vulkan1.1");
-				arguments.push_back(L"-fvk-use-gl-layout");
+				arguments.push_back(L"-fspv-target-env=vulkan1.2");
+				//arguments.push_back(L"-fvk-use-gl-layout");
 				arguments.push_back(L"-no-warnings");
+				arguments.push_back(L"-fvk-t-shift");
+				arguments.push_back(L"0");
+				arguments.push_back(L"0");
+				arguments.push_back(L"-fvk-s-shift");
+				arguments.push_back(L"128");
+				arguments.push_back(L"0");
+				arguments.push_back(L"-fvk-b-shift");
+				arguments.push_back(L"256");
+				arguments.push_back(L"0");
+				arguments.push_back(L"-fvk-u-shift");
+				arguments.push_back(L"384");
+				arguments.push_back(L"0");
 
 				static const std::unordered_map<nvrhi::ShaderType, LPCWSTR> stage_mappings{
 					{nvrhi::ShaderType::Vertex, L"vs_6_7"},
@@ -149,7 +161,7 @@ public:
 											  uint32_t(constants.size()));
 	}
 	
-	// this is mainly for ray-tracing pipelined shaders (?)
+	// this is mainly for ray-tracing pipelined shaders
 	nvrhi::ShaderLibraryHandle createShaderLibrary(const char* fileName,
 		const std::vector<ShaderMacro>* pDefines) {
 		std::vector<char> byteCode = getBytecode(fileName, nvrhi::ShaderType::AllRayTracing, nullptr);
@@ -164,24 +176,14 @@ public:
 		return nvrhi::createShaderLibraryPermutation(m_device, byteCode.data(), byteCode.size(),
 													 constants.data(), uint32_t(constants.size()));
 	}
-	
-	static void readFile(fs::path filepath, std::vector<char> &data, bool binary = true) {
-		auto flags = binary ? (std::ios::binary | std::ios::in) : std::ios::in;
-		std::ifstream s(filepath, flags);
-		if (!s.good()) throw std::runtime_error("Failed to load shader contents");
-		s.seekg(0, std::ios_base::end);
-		data.resize(s.tellg());
-		s.clear();
-		s.seekg(0, std::ios_base::beg);
-		s.read(data.data(), data.size());
-	}
 
 	std::vector<char> getBytecode(const char *fileName, nvrhi::ShaderType shaderType, const char *entryName = "main") {
 		if (!entryName) entryName = "main";
-		
 		std::filesystem::path shaderFilePath = File::resolve(fileName);
-		std::vector<char> text;		// shader text
-		readFile(shaderFilePath, text, false);
+
+		auto content = File::readFile(shaderFilePath, false);
+		std::vector<char> text((char *) content->data(),
+							   (char *) content->data() + content->size()); // shader text
 
 		std::vector<char> byteCode =
 			compileSpirv(text, ShaderLanguage::HLSL, shaderType, entryName); // compiled shader

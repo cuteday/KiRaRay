@@ -2,8 +2,8 @@
 #include <logger.h>
 #include <nvrhi/vulkan.h>
 
-#include "devicemanager.h"
-#include "shader.h"
+#include "common/devicemanager.h"
+#include "common/shader.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -27,10 +27,9 @@ public:
 		m_PixelShader = shaderLoader.createShader("src/misc/samples/simple-rhi/shaders/triangle.hlsl", "main_ps", nullptr,
 													nvrhi::ShaderType::Pixel);
 
-		if (!m_VertexShader || !m_PixelShader) {
+		if (!m_VertexShader || !m_PixelShader) 
 			return false;
-		}
-
+		
 		m_CommandList = GetDevice()->createCommandList();
 
 		return true;
@@ -67,7 +66,6 @@ public:
 		nvrhi::DrawArguments args;
 		args.vertexCount = 3;
 		m_CommandList->draw(args);
-
 		m_CommandList->close();
 		GetDevice()->executeCommandList(m_CommandList);
 	}
@@ -76,7 +74,6 @@ public:
 
 extern "C" int main(int argc, const char *argv[]) {
 	DeviceManager *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
-
 	DeviceCreationParameters deviceParams;
 	deviceParams.enableDebugRuntime			= true;
 	deviceParams.enableNvrhiValidationLayer = true;
@@ -85,7 +82,7 @@ extern "C" int main(int argc, const char *argv[]) {
 		logFatal("Cannot initialize a graphics device with the requested parameters");
 		return 1;
 	}
-
+	
 	{
 		BasicTriangle example(deviceManager);
 		if (example.Init()) {
@@ -96,9 +93,7 @@ extern "C" int main(int argc, const char *argv[]) {
 	}
 
 	deviceManager->Shutdown();
-
 	delete deviceManager;
-
 	return 0;
 }
 
