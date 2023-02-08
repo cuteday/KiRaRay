@@ -272,8 +272,8 @@ public:
 #endif /* _VK_TIMELINE_SEMAPHORE */
 	}
 
-	void importCudaExternalMemory(void **cudaPtr, cudaExternalMemory_t &cudaMem,
-								  VkDeviceMemory &vkMem, VkDeviceSize size,
+	void importCudaExternalMemory(void **cudaPtr, cudaExternalMemory_t cudaMem,
+								  VkDeviceMemory vkMem, VkDeviceSize size,
 								  VkExternalMemoryHandleTypeFlagBits handleType) {
 		cudaExternalMemoryHandleDesc externalMemoryHandleDesc = {};
 
