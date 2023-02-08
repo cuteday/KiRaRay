@@ -33,13 +33,14 @@ set(include_common
     include/nvrhi/utils.h
     include/nvrhi/common/containers.h
     include/nvrhi/common/misc.h
+    include/nvrhi/common/versioning.h
+    include/nvrhi/common/state-tracking.h
     include/nvrhi/common/resource.h)
 set(src_common
     src/common/format-info.cpp
     src/common/misc.cpp
     src/common/shader-blob.cpp
     src/common/state-tracking.cpp
-    src/common/state-tracking.h
     src/common/utils.cpp)
 
 if(MSVC)
@@ -50,7 +51,8 @@ else()
 endif()
 
 set(include_validation
-    include/nvrhi/validation.h)
+    include/nvrhi/validation.h
+    include/nvrhi/vulkan/vulkan-backend.h)
 set(src_validation
     src/validation/validation-commandlist.cpp
     src/validation/validation-device.cpp
@@ -59,7 +61,6 @@ set(src_validation
 set(include_vk
     include/nvrhi/vulkan.h)
 set(src_vk
-    src/common/versioning.h
     src/vulkan/vulkan-allocator.cpp
     src/vulkan/vulkan-buffer.cpp
     src/vulkan/vulkan-commandlist.cpp
@@ -76,8 +77,7 @@ set(src_vk
     src/vulkan/vulkan-staging-texture.cpp
     src/vulkan/vulkan-state-tracking.cpp
     src/vulkan/vulkan-texture.cpp
-    src/vulkan/vulkan-upload.cpp
-    src/vulkan/vulkan-backend.h)
+    src/vulkan/vulkan-upload.cpp)
 
 add_library(nvrhi STATIC
     ${include_common}

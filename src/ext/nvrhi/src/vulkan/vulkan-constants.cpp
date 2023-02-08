@@ -23,7 +23,7 @@
 #include <array>
 #include <assert.h>
 
-#include "vulkan-backend.h"
+#include <nvrhi/vulkan/vulkan-backend.h>
 
 #define ENABLE_SHORTCUT_CONVERSIONS 1
 

@@ -20,7 +20,7 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#include "state-tracking.h"
+#include <nvrhi/common/state-tracking.h>
 
 #include <nvrhi/utils.h>
 

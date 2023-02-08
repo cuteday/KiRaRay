@@ -24,8 +24,8 @@
 
 #include <nvrhi/vulkan.h>
 #include <nvrhi/utils.h>
-#include "../common/state-tracking.h"
-#include "../common/versioning.h"
+#include <nvrhi/common/state-tracking.h>
+#include <nvrhi/common/versioning.h>
 #include <mutex>
 #include <list>
 

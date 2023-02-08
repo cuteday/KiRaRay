@@ -20,7 +20,7 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#include "vulkan-backend.h"
+#include <nvrhi/vulkan/vulkan-backend.h>
 #include <unordered_map>
 
 #include <nvrhi/common/misc.h>

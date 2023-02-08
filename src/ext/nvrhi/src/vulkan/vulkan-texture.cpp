@@ -22,7 +22,7 @@
 
 #include <algorithm>
 
-#include "vulkan-backend.h"
+#include <nvrhi/vulkan/vulkan-backend.h>
 #include <nvrhi/common/misc.h>
 
 namespace nvrhi::vulkan

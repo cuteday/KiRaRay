@@ -8,6 +8,7 @@
 #include "common/devicemanager.h"
 #include "common/textureloader.h"
 #include "common/shader.h"
+#include "common/cufriends.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -77,6 +78,8 @@ public:
 		heightBufferDesc.initialState	= nvrhi::ResourceStates::VertexBuffer;
 		m_heightBuffer					= GetDevice()->createBuffer(heightBufferDesc);
 
+		VkDevice device = GetDevice()->getNativeObject(nvrhi::ObjectTypes::VK_Device);
+		
 		m_constantBuffer = GetDevice()->createBuffer(nvrhi::utils::CreateStaticConstantBufferDesc(
 										  sizeof(ConstantBufferEntry), "ConstantBuffer")
 				.setInitialState(nvrhi::ResourceStates::ConstantBuffer)
@@ -194,6 +197,10 @@ public:
 		m_commandList->close();
 		GetDevice()->executeCommandList(m_commandList);
 	}
+	
+protected:
+
+	
 
 private:
 	double m_elapsedTime{0};
