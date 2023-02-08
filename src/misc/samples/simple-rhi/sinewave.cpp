@@ -23,7 +23,7 @@ public:
 	};
 	
 	void Initialize() {
-		m_sim = SineWaveSimulation(512, 512);
+		m_sim = SineWaveSimulation(32, 32);
 	
 		// creating the shader modules
 		ShaderLoader shaderLoader(GetDevice());
@@ -58,7 +58,6 @@ public:
 
 		nvrhi::BufferDesc indexBufferDesc;
 		indexBufferDesc.isIndexBuffer		= true;
-		//indexBufferDesc.cpuAccess			= nvrhi::CpuAccessMode::Write;
 		indexBufferDesc.byteSize			= sizeof(uint32_t) * (m_sim.getWidth() - 1) * (m_sim.getHeight() - 1) * 6;
 		indexBufferDesc.debugName			= "IndexBuffer";
 		indexBufferDesc.initialState		= nvrhi::ResourceStates::CopyDest;
@@ -66,7 +65,6 @@ public:
 	
 		nvrhi::BufferDesc xyBufferDesc;
 		xyBufferDesc.isVertexBuffer = true;
-		//xyBufferDesc.cpuAccess		= nvrhi::CpuAccessMode::Write;
 		xyBufferDesc.byteSize		= sizeof(Vector2f) * m_sim.getWidth() * m_sim.getHeight();
 		xyBufferDesc.debugName		= "XYBuffer";
 		xyBufferDesc.initialState	= nvrhi::ResourceStates::CopyDest;
@@ -92,9 +90,7 @@ public:
 		{
 			Log(Info, "Mapping and writting xy buffer");
 			static std::vector<Vector2f> vertices(m_sim.getWidth() * m_sim.getHeight());
-			//Vector2f *vertices = static_cast<Vector2f *>(
-			//	GetDevice()->mapBuffer(m_xyBuffer, nvrhi::CpuAccessMode::Write));
-			for (size_t y = 0; y < m_sim.getHeight(); y++) {
+						for (size_t y = 0; y < m_sim.getHeight(); y++) {
 				for (size_t x = 0; x < m_sim.getWidth(); x++) {
 					vertices[y * m_sim.getWidth() + x][0] = (2.0f * x) / (m_sim.getWidth() - 1) - 1;
 					vertices[y * m_sim.getWidth() + x][1] =
@@ -102,14 +98,11 @@ public:
 				}
 			}
 			m_commandList->writeBuffer(m_xyBuffer, vertices.data(), sizeof(Vector2f) * vertices.size());
-			//GetDevice()->unmapBuffer(m_xyBuffer);
 		}
 		{
 			Log(Info, "Mapping and writting index buffer");
 			static std::vector<uint32_t> indices((m_sim.getWidth() - 1) * (m_sim.getHeight() - 1) * 6);
-			//uint32_t *indices = static_cast<uint32_t *>(
-			//	GetDevice()->mapBuffer(m_indexBuffer, nvrhi::CpuAccessMode::Write));
-			for (size_t y = 0, base_ptr = 0; y < m_sim.getHeight() - 1; y++) {
+						for (size_t y = 0, base_ptr = 0; y < m_sim.getHeight() - 1; y++) {
 				for (size_t x = 0; x < m_sim.getWidth() - 1; x++) {
 					indices[base_ptr + 0] = (uint32_t) ((y + 0) * m_sim.getWidth() + (x + 0));
 					indices[base_ptr + 1] = (uint32_t) ((y + 1) * m_sim.getWidth() + (x + 0));
@@ -120,9 +113,7 @@ public:
 					base_ptr += 6;
 				}
 			}
-			
 			m_commandList->writeBuffer(m_indexBuffer, indices.data(), sizeof(uint32_t) * indices.size());
-			//GetDevice()->unmapBuffer(m_indexBuffer);
 		}
 
 		Log(Info, "Specifying state for the buffers");		
@@ -166,6 +157,7 @@ public:
 			psoDesc.bindingLayouts = {m_bindingLayout};
 			psoDesc.primType	   = nvrhi::PrimitiveType::TriangleList;
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
+			psoDesc.renderState.rasterState.fillMode = nvrhi::RasterFillMode::Wireframe;
 			m_pipeline = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
 			Log(Info, "Finished initializing pipeline");
 		}
@@ -180,7 +172,7 @@ public:
 
 		Matrix4f view = look_at(eye, center, up);
 		Matrix4f proj = perspective(radians(45.f), float(fbInfo.width) / fbInfo.height, 0.1f, 10.f);
-		proj(1, 1) *= -1.0f; // Flip y axis
+		//proj(1, 1) *= -1.0f; // Flip y axis
 		ConstantBufferEntry cb;
 		cb.mvp = proj * view;
 		m_commandList->writeBuffer(m_constantBuffer, &cb, sizeof(ConstantBufferEntry));

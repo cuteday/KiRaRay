@@ -1,4 +1,4 @@
-//#pragma pack_matrix(column_major)
+#pragma pack_matrix(column_major)
 
 cbuffer CB : register(b0) {
 	column_major float4x4 g_modelViewProj;
@@ -11,8 +11,8 @@ void main_vs(
 	out float4 o_pos : SV_Position,
 	out float3 o_color : COLOR
 ) {
-	o_pos	= mul(g_modelViewProj, float4(i_xyPos.xy, 0.f, 1.f));
-	o_color = float3(0.f, 0.5f + 0.5f, 0.f);
+	o_pos	= mul(g_modelViewProj, float4(i_xyPos.xy, i_height, 1.f));
+	o_color = float3(0.f, i_height + 0.5f, 0.f);
 }
 
 void main_ps(

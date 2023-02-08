@@ -12,8 +12,8 @@ void main_vs(
 	out float2 o_uv : UV
 )
 {
-    o_pos = mul(float4(i_pos, 1), g_Transform);
-    o_uv = i_uv;
+	o_pos = mul(g_Transform, float4(i_pos, 1));
+	o_uv = i_uv;
 }
 
 
@@ -27,4 +27,5 @@ void main_ps(
 )
 {
     o_color = t_Texture.Sample(s_Sampler, i_uv);
+	if (o_color.a == 0.f) o_color = float4(1, 1, 1, 1);
 }

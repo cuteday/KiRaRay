@@ -11,7 +11,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-static const char *g_WindowTitle = "Rotating Boxes";
+static const char *g_WindowTitle = "Box-Shii-s";
 
 struct Vertex {
 	Vector3f position;
@@ -56,9 +56,9 @@ static const uint32_t g_Indices[] = {
 constexpr uint32_t c_NumViews = 4;
 
 static const Vector3f g_RotationAxes[c_NumViews] = {
-	Vector3f(1.f, 0.f, 0.f),
-	Vector3f(0.f, 1.f, 0.f),
-	Vector3f(0.f, 0.f, 1.f),
+	Vector3f(1.f, 0.5f, 0.f),
+	Vector3f(0.f, 1.f, 0.5f),
+	Vector3f(0.5f, 0.f, 1.f),
 	Vector3f(1.f, 1.f, 1.f),
 };
 
@@ -212,6 +212,7 @@ public:
 			psoDesc.inputLayout	   = m_InputLayout;
 			psoDesc.bindingLayouts = {m_BindingLayout};
 			psoDesc.primType	   = nvrhi::PrimitiveType::TriangleList;
+			psoDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::Front;
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
 
 			m_Pipeline = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
@@ -219,34 +220,32 @@ public:
 
 		m_CommandList->open();
 
-		nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.f));
+		nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.2f));
 
-		// Fill out the constant buffer slices for multiple views of the model.
 		ConstantBufferEntry modelConstants[c_NumViews];
 		for (uint32_t viewIndex = 0; viewIndex < c_NumViews; ++viewIndex) {
-			Matrix4f viewMatrix =
-				(Eigen::AngleAxis(m_Rotation, normalize(g_RotationAxes[viewIndex]))
-				* Quaternionf::fromEuler(0.f, radians(-30.f), 0.f)
-				* Eigen::Translation3f(0, 0, 2)).matrix();
+			Matrix4f modelMatrix = Matrix4f::Identity();
+			modelMatrix.topLeftCorner<3, 3>() =
+				Eigen::AngleAxis(m_Rotation, normalize(g_RotationAxes[viewIndex])).matrix();
+			Matrix4f viewMatrix = look_at(Vector3f{0, -1, 3.5}, {0, 0, 0}, {0, -1, 0}).matrix();
 			Matrix4f projMatrix = perspective(
-				radians(60.f), float(fbinfo.width) / float(fbinfo.height), 0.1f, 10.f);
-			Matrix4f viewProjMatrix = viewMatrix * projMatrix;
-			modelConstants[viewIndex].viewProjMatrix = viewProjMatrix;
+				radians(30.f), float(fbinfo.width) / float(fbinfo.height), 0.01f, 1000.f);
+			Matrix4f mvp = projMatrix * viewMatrix * modelMatrix;
+			//std::cout << "Proj: \n" << projMatrix << "\n";
+			//std::cout << "View: \n" << viewMatrix << "\n";
+			modelConstants[viewIndex].viewProjMatrix = mvp;
 		}
 
-		// Upload all constant buffer slices at once.
 		m_CommandList->writeBuffer(m_ConstantBuffer, modelConstants, sizeof(modelConstants));
 
 		for (uint32_t viewIndex = 0; viewIndex < c_NumViews; ++viewIndex) {
 			nvrhi::GraphicsState state;
-			// Pick the right binding set for this view.
 			state.bindings		= {m_BindingSets[viewIndex]};
 			state.indexBuffer	= {m_IndexBuffer, nvrhi::Format::R32_UINT, 0};
 			state.vertexBuffers = {{m_VertexBuffer, 0, 0}};
 			state.pipeline		= m_Pipeline;
 			state.framebuffer	= framebuffer;
 
-			// Construct the viewport so that all viewports form a grid.
 			const float width  = float(fbinfo.width) * 0.5f;
 			const float height = float(fbinfo.height) * 0.5f;
 			const float left   = width * float(viewIndex % 2);
@@ -256,10 +255,8 @@ public:
 				nvrhi::Viewport(left, left + width, top, top + height, 0.f, 1.f);
 			state.viewport.addViewportAndScissorRect(viewport);
 
-			// Update the pipeline, bindings, and other state.
 			m_CommandList->setGraphicsState(state);
-
-			// Draw the model.
+			
 			nvrhi::DrawArguments args;
 			args.vertexCount = std::size(g_Indices);
 			m_CommandList->drawIndexed(args);
