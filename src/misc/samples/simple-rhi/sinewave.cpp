@@ -12,6 +12,9 @@
 
 KRR_NAMESPACE_BEGIN
 
+using namespace vkrhi;
+using namespace cufriends;
+
 const char g_windowTitle[] = "Sine Wave Simulator";
 
 class WaveRenderer: public IRenderPass {
@@ -24,8 +27,18 @@ public:
 	};
 	
 	void Initialize() {
-		m_sim = SineWaveSimulation(32, 32);
+		m_sim = SineWaveSimulation(256, 256);
+		m_cuFriend = std::make_shared<CudaVulkanFriend>(GetDevice(false));
 	
+		// initialize CUDA
+		int cuda_device = m_cuFriend->initCUDA();	// selected cuda device 
+		if (cuda_device == -1) {
+			Log(Error, "No CUDA-Vulkan interop capable device found\n");
+			exit(EXIT_FAILURE);
+		}
+		m_sim.initCudaLaunchConfig(cuda_device);
+		CUDA_CHECK(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
+		
 		// creating the shader modules
 		ShaderLoader shaderLoader(GetDevice());
 		m_vertexShader = shaderLoader.createShader(
@@ -75,17 +88,16 @@ public:
 		heightBufferDesc.isVertexBuffer = true;
 		heightBufferDesc.byteSize		= sizeof(float) * m_sim.getWidth() * m_sim.getHeight();
 		heightBufferDesc.debugName		= "HeightBuffer";
-		heightBufferDesc.initialState	= nvrhi::ResourceStates::VertexBuffer;
-		m_heightBuffer					= GetDevice()->createBuffer(heightBufferDesc);
+		heightBufferDesc.initialState	= nvrhi::ResourceStates::CopyDest;
+		m_heightBuffer =
+			m_cuFriend->createExternalBuffer(heightBufferDesc, getDefaultMemHandleType());
 
-		VkDevice device = GetDevice()->getNativeObject(nvrhi::ObjectTypes::VK_Device);
-		
 		m_constantBuffer = GetDevice()->createBuffer(nvrhi::utils::CreateStaticConstantBufferDesc(
 										  sizeof(ConstantBufferEntry), "ConstantBuffer")
 				.setInitialState(nvrhi::ResourceStates::ConstantBuffer)
 				.setKeepInitialState(true));
 
-		m_commandList->beginTrackingBufferState(m_heightBuffer, nvrhi::ResourceStates::VertexBuffer);
+		m_commandList->beginTrackingBufferState(m_heightBuffer, nvrhi::ResourceStates::CopyDest);
 		m_commandList->beginTrackingBufferState(m_indexBuffer, nvrhi::ResourceStates::CopyDest);
 		m_commandList->beginTrackingBufferState(m_xyBuffer, nvrhi::ResourceStates::CopyDest);
 		
@@ -127,6 +139,9 @@ public:
 		m_commandList->close();
 		GetDevice()->executeCommandList(m_commandList);
 
+		m_cuFriend->importVulkanBufferToCuda((void**)&m_cudaHeightData, m_cudaHeightMem, m_heightBuffer);
+		m_sim.initSimulation(m_cudaHeightData);
+
 		Log(Info, "Creating binding set and layout");
 		nvrhi::BindingSetDesc bindingSetDesc;
 		bindingSetDesc.bindings = {
@@ -140,7 +155,7 @@ public:
 
 	void Animate(float seconds) override {
 		m_elapsedTime += seconds;
-		//m_sim.stepSimulation(m_elapsedTime * 1e9, m_stream);
+		m_sim.stepSimulation(m_elapsedTime, m_stream);
 		GetDeviceManager()->SetInformativeWindowTitle(g_windowTitle);
 	}
 
@@ -170,7 +185,7 @@ public:
 		nvrhi::utils::ClearColorAttachment(m_commandList, framebuffer, 0, nvrhi::Color(0.2f));
 		
 		Vector3f eye	= {1.75f, 1.75f, 1.25f};
-		Vector3f center = {0.0f, 0.0f, -0.25f};
+		Vector3f center = {0.0f, 0.0f, -0.35};
 		Vector3f up		= {0.0f, 0.0f, 1.0f};
 
 		Matrix4f view = look_at(eye, center, up);
@@ -197,17 +212,17 @@ public:
 		m_commandList->close();
 		GetDevice()->executeCommandList(m_commandList);
 	}
-	
-protected:
-
-	
 
 private:
 	double m_elapsedTime{0};
 	cudaStream_t m_stream{0};
 
+	std::shared_ptr<CudaVulkanFriend> m_cuFriend;
 	SineWaveSimulation m_sim;
-	nvrhi::ShaderHandle m_vertexShader, m_pixelShader;
+	float *m_cudaHeightData;
+	cudaExternalMemory_t m_cudaHeightMem;
+	
+	nvrhi::ShaderHandle m_vertexShader, m_pixelShader; 
 	nvrhi::BufferHandle m_heightBuffer, m_xyBuffer, m_indexBuffer, m_constantBuffer;
 	nvrhi::InputLayoutHandle m_inputLayout;
 	nvrhi::BindingLayoutHandle m_bindingLayout;
@@ -224,6 +239,22 @@ extern "C" int main(int argc, const char *argv[]) {
 	DeviceCreationParameters deviceParams	= {};
 	deviceParams.enableDebugRuntime			= true;
 	deviceParams.enableNvrhiValidationLayer = true;
+	deviceParams.requiredVulkanDeviceExtensions = {
+		VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+		VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+#ifdef _WIN64
+		VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
+#else
+		VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+#endif
+	};
+	deviceParams.requiredVulkanInstanceExtensions = {
+		VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
+	};
 
 	if (!deviceManager->CreateWindowDeviceAndSwapChain(deviceParams, g_windowTitle)) {
 		logFatal("Cannot initialize a graphics device with the requested parameters");

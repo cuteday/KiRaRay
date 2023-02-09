@@ -123,10 +123,10 @@ void* getMemHandle(vk::Device device, vk::DeviceMemory memory,
 	vkMemoryGetWin32HandleInfoKHR.pNext		 = NULL;
 	vkMemoryGetWin32HandleInfoKHR.memory	 = memory;
 	vkMemoryGetWin32HandleInfoKHR.handleType = handleType;
-
+	
 	PFN_vkGetMemoryWin32HandleKHR fpGetMemoryWin32HandleKHR;
 	fpGetMemoryWin32HandleKHR =
-		(PFN_vkGetMemoryWin32HandleKHR) vkGetDeviceProcAddr(device, "vkGetMemoryWin32HandleKHR");
+		(PFN_vkGetMemoryWin32HandleKHR) device.getProcAddr("vkGetMemoryWin32HandleKHR");
 	if (!fpGetMemoryWin32HandleKHR) {
 		throw std::runtime_error("Failed to retrieve vkGetMemoryWin32HandleKHR!");
 	}
@@ -206,11 +206,11 @@ void importCudaExternalMemory(void **cudaPtr, cudaExternalMemory_t &cudaMem, vk:
 	vk::DeviceMemory vkMem, vk::DeviceSize size, vk::ExternalMemoryHandleTypeFlagBits handleType) {
 	cudaExternalMemoryHandleDesc externalMemoryHandleDesc = {};
 	
-	if (uint32_t(handleType) & uint32_t(vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32)) {
+	if (handleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32) {
 		externalMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueWin32;
-	} else if (uint32_t(handleType) & uint32_t(vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32Kmt)) {
+	} else if (handleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32Kmt) {
 		externalMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueWin32Kmt;
-	} else if (uint32_t(handleType) & uint32_t(vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd)) {
+	} else if (handleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd) {
 		externalMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueFd;
 	} else {
 		throw std::runtime_error("Unknown handle type requested!");
@@ -240,15 +240,6 @@ void importCudaExternalSemaphore(cudaExternalSemaphore_t &cudaSem, vk::Device de
 	vk::Semaphore &vkSem, vk::ExternalSemaphoreHandleTypeFlagBits handleType) {
 	cudaExternalSemaphoreHandleDesc externalSemaphoreHandleDesc = {};
 
-#ifdef _VK_TIMELINE_SEMAPHORE
-	if (handleType & VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT) {
-		externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeTimelineSemaphoreWin32;
-	} else if (handleType & VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT) {
-		externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeTimelineSemaphoreWin32;
-	} else if (handleType & VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT) {
-		externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeTimelineSemaphoreFd;
-	}
-#else
 	if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32) {
 		externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32;
 	} else if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32Kmt) {
@@ -256,7 +247,6 @@ void importCudaExternalSemaphore(cudaExternalSemaphore_t &cudaSem, vk::Device de
 	} else if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd) {
 		externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueFd;
 	}
-#endif /* _VK_TIMELINE_SEMAPHORE */
 	else {
 		throw std::runtime_error("Unknown handle type requested!");
 	}
@@ -272,68 +262,6 @@ void importCudaExternalSemaphore(cudaExternalSemaphore_t &cudaSem, vk::Device de
 	externalSemaphoreHandleDesc.flags = 0;
 
 	CUDA_CHECK(cudaImportExternalSemaphore(&cudaSem, &externalSemaphoreHandleDesc));
-}
-
-void createExternalBuffer(vk::Device device, vk::PhysicalDevice physicalDevice,
-							vk::DeviceSize size, vk::BufferUsageFlags usage,
-							vk::MemoryPropertyFlags properties,
-							vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType,
-							vk::Buffer &buffer, vk::DeviceMemory &bufferMemory) {
-	vk::BufferCreateInfo bufferInfo = {};
-	bufferInfo.sType				= vk::StructureType::eBufferCreateInfo;
-	bufferInfo.size				  = size;
-	bufferInfo.usage			  = usage;
-	bufferInfo.sharingMode			= vk::SharingMode::eExclusive;
-
-	vk::ExternalMemoryBufferCreateInfo externalMemoryBufferInfo = {};
-	externalMemoryBufferInfo.sType		 = vk::StructureType::eExternalMemoryBufferCreateInfo;
-	externalMemoryBufferInfo.handleTypes = extMemHandleType;
-	bufferInfo.pNext					 = &externalMemoryBufferInfo;
-
-	if (device.createBuffer(& bufferInfo, nullptr, &buffer) != vk::Result::eSuccess) {
-		throw std::runtime_error("failed to create buffer!");
-	}
-
-	vk::MemoryRequirements memRequirements;
-	device.getBufferMemoryRequirements(buffer, &memRequirements);
-
-#ifdef _WIN64
-	WindowsSecurityAttributes winSecurityAttributes;
-	
-		
-	VkExportMemoryWin32HandleInfoKHR vulkanExportMemoryWin32HandleInfoKHR = {};
-	vulkanExportMemoryWin32HandleInfoKHR.sType =
-		VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR;
-	vulkanExportMemoryWin32HandleInfoKHR.pNext		 = NULL;
-	vulkanExportMemoryWin32HandleInfoKHR.pAttributes = &winSecurityAttributes;
-	vulkanExportMemoryWin32HandleInfoKHR.dwAccess =
-		DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE;
-	vulkanExportMemoryWin32HandleInfoKHR.name = (LPCWSTR) NULL;
-#endif /* _WIN64 */
-	vk::ExportMemoryAllocateInfoKHR vulkanExportMemoryAllocateInfoKHR = {};
-	vulkanExportMemoryAllocateInfoKHR.sType = vk::StructureType::eExportMemoryAllocateInfo;
-#ifdef _WIN64
-	vulkanExportMemoryAllocateInfoKHR.pNext =
-		extMemHandleType & vk::ExternalMemoryHandleTypeFlagBitsKHR::eOpaqueWin32
-			? &vulkanExportMemoryWin32HandleInfoKHR
-			: NULL;
-	vulkanExportMemoryAllocateInfoKHR.handleTypes = extMemHandleType;
-#else
-	vulkanExportMemoryAllocateInfoKHR.pNext		  = NULL;
-	vulkanExportMemoryAllocateInfoKHR.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-#endif /* _WIN64 */
-	vk::MemoryAllocateInfo allocInfo = {};
-	allocInfo.sType				   = vk::StructureType::eMemoryAllocateInfo;
-	allocInfo.pNext				   = &vulkanExportMemoryAllocateInfoKHR;
-	allocInfo.allocationSize	   = memRequirements.size;
-	allocInfo.memoryTypeIndex =
-		findMemoryType(physicalDevice, memRequirements.memoryTypeBits, properties);
-
-	if (device.allocateMemory( & allocInfo, nullptr, &bufferMemory) != vk::Result::eSuccess) {
-		throw std::runtime_error("failed to allocate external buffer memory!");
-	}
-
-	vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
 void createExternalSemaphore(vk::Device device, vk::Semaphore &semaphore,
@@ -425,13 +353,14 @@ class CudaVulkanFriend {
 public:
 	using Buffer = nvrhi::vulkan::Buffer;
 
-	CudaVulkanFriend(nvrhi::DeviceHandle& device):
-		m_device(reinterpret_cast<nvrhi::vulkan::Device &>(device)),
-		m_context(reinterpret_cast<nvrhi::vulkan::Device &>(device).getContext()) {}
+	CudaVulkanFriend(nvrhi::DeviceHandle device):
+		m_device(*dynamic_cast<nvrhi::vulkan::Device*>(device.Get())),
+		m_context(dynamic_cast<nvrhi::vulkan::Device*>(device.Get())->getContext()) {}
 
 	vk::Result allocateExternalMemory(nvrhi::vulkan::MemoryResource* res,
 		vk::MemoryRequirements memRequirements,
 		vk::MemoryPropertyFlags memPropertyFlags,
+		vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType,
 		bool enableDeviceAddress) const {
 		
 		res->managed = true;
@@ -461,6 +390,34 @@ public:
 		auto allocInfo = vk::MemoryAllocateInfo()
 							 .setAllocationSize(memRequirements.size)
 							 .setMemoryTypeIndex(memTypeIndex);
+		
+		/* external memory handle info */
+
+#ifdef _WIN64
+		WindowsSecurityAttributes winSecurityAttributes;
+		VkExportMemoryWin32HandleInfoKHR vulkanExportMemoryWin32HandleInfoKHR = {};
+		vulkanExportMemoryWin32HandleInfoKHR.sType =
+			VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR;
+		vulkanExportMemoryWin32HandleInfoKHR.pNext		 = nullptr;
+		vulkanExportMemoryWin32HandleInfoKHR.pAttributes = &winSecurityAttributes;
+		vulkanExportMemoryWin32HandleInfoKHR.dwAccess =
+			DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE;
+		vulkanExportMemoryWin32HandleInfoKHR.name = (LPCWSTR) nullptr;
+#endif /* _WIN64 */
+		vk::ExportMemoryAllocateInfoKHR vulkanExportMemoryAllocateInfoKHR = {};
+		vulkanExportMemoryAllocateInfoKHR.sType = vk::StructureType::eExportMemoryAllocateInfoKHR;
+#ifdef _WIN64
+		vulkanExportMemoryAllocateInfoKHR.pNext =
+			extMemHandleType & vk::ExternalMemoryHandleTypeFlagBitsKHR::eOpaqueWin32
+				? &vulkanExportMemoryWin32HandleInfoKHR : nullptr;
+		vulkanExportMemoryAllocateInfoKHR.handleTypes = extMemHandleType;
+#else
+		vulkanExportMemoryAllocateInfoKHR.pNext = nullptr;
+		vulkanExportMemoryAllocateInfoKHR.handleTypes =
+			vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
+#endif /* _WIN64 */
+
+		allocFlags.setPNext(&vulkanExportMemoryAllocateInfoKHR);
 		allocInfo.setPNext(&allocFlags);
 
 		return m_context.device.allocateMemory(&allocInfo, m_context.allocationCallbacks,
@@ -468,14 +425,20 @@ public:
 
 	}
 
-	vk::Result allocateExternalBufferMemory(nvrhi::vulkan::Buffer *buffer,
-											bool enableDeviceAddress = false) const {
+	vk::Result allocateExternalBufferMemory(
+			nvrhi::vulkan::Buffer *buffer,
+			vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType,
+			bool enableDeviceAddress = false) const {
 		vk::MemoryRequirements memRequirements;
 		m_context.device.getBufferMemoryRequirements(buffer->buffer, &memRequirements);
 
 		// allocate memory
 		const vk::Result res = allocateExternalMemory(
-			buffer, memRequirements, vkrhi::pickBufferMemoryProperties(buffer->desc), enableDeviceAddress);
+			buffer, 
+			memRequirements, 
+			vkrhi::pickBufferMemoryProperties(buffer->desc), 
+			extMemHandleType,
+			enableDeviceAddress);
 		CHECK_VK_RETURN(res)
 
 		m_context.device.bindBufferMemory(buffer->buffer, buffer->memory, 0);
@@ -484,45 +447,31 @@ public:
 
 	}
 
-	nvrhi::BufferHandle createExternalBuffer(nvrhi::BufferDesc desc) {
-		const nvrhi::vulkan::VulkanContext &context = m_device.getContext();
-		nvrhi::vulkan::VulkanAllocator &allocator = m_device.getAllocator();
-
+	nvrhi::BufferHandle createExternalBuffer(nvrhi::BufferDesc desc, 
+		vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType) {
 		if (desc.isVolatile && desc.maxVersions == 0) return nullptr;
-
 		if (desc.isVolatile && !desc.isConstantBuffer) return nullptr;
-
 		if (desc.byteSize == 0) return nullptr;
 
-		auto *buffer = new nvrhi::vulkan::Buffer(context, allocator);
+		auto *buffer = new nvrhi::vulkan::Buffer(m_context, m_device.getAllocator());
 		buffer->desc   = desc;
 
 		vk::BufferUsageFlags usageFlags =
 			vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst;
-
 		if (desc.isVertexBuffer) usageFlags |= vk::BufferUsageFlagBits::eVertexBuffer;
-
 		if (desc.isIndexBuffer) usageFlags |= vk::BufferUsageFlagBits::eIndexBuffer;
-
 		if (desc.isDrawIndirectArgs) usageFlags |= vk::BufferUsageFlagBits::eIndirectBuffer;
-
 		if (desc.isConstantBuffer) usageFlags |= vk::BufferUsageFlagBits::eUniformBuffer;
-
 		if (desc.structStride != 0 || desc.canHaveUAVs || desc.canHaveRawViews)
 			usageFlags |= vk::BufferUsageFlagBits::eStorageBuffer;
-
 		if (desc.canHaveTypedViews) usageFlags |= vk::BufferUsageFlagBits::eUniformTexelBuffer;
-
 		if (desc.canHaveTypedViews && desc.canHaveUAVs)
 			usageFlags |= vk::BufferUsageFlagBits::eStorageTexelBuffer;
-
 		if (desc.isAccelStructBuildInput)
 			usageFlags |= vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR;
-
 		if (desc.isAccelStructStorage)
 			usageFlags |= vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR;
-
-		if (context.extensions.buffer_device_address)
+		if (m_context.extensions.buffer_device_address)
 			usageFlags |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
 
 		uint64_t size = desc.byteSize;
@@ -531,9 +480,9 @@ public:
 			assert(!desc.isVirtual);
 
 			uint64_t alignment =
-				context.physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
+				m_context.physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
 
-			uint64_t atomSize = context.physicalDeviceProperties.limits.nonCoherentAtomSize;
+			uint64_t atomSize = m_context.physicalDeviceProperties.limits.nonCoherentAtomSize;
 			alignment		  = std::max(alignment, atomSize);
 
 			assert((alignment & (alignment - 1)) == 0); // check if it's a power of 2
@@ -554,37 +503,41 @@ public:
 			size += size % 4;
 		}
 
+		auto externalMemoryBufferInfo =
+			vk::ExternalMemoryBufferCreateInfo().setHandleTypes(extMemHandleType);
+
 		auto bufferInfo = vk::BufferCreateInfo()
 							  .setSize(size)
 							  .setUsage(usageFlags)
-							  .setSharingMode(vk::SharingMode::eExclusive);
+							  .setSharingMode(vk::SharingMode::eExclusive)
+							  .setPNext(&externalMemoryBufferInfo);
 
-		vk::Result res =
-			context.device.createBuffer(&bufferInfo, context.allocationCallbacks,
+		vk::Result res = m_context.device.createBuffer(&bufferInfo, m_context.allocationCallbacks,
 													   &buffer->buffer);
 		CHECK_VK_FAIL(res);
 
-		context.nameVKObject(VkBuffer(buffer->buffer), vk::DebugReportObjectTypeEXT::eBuffer,
+		m_context.nameVKObject(VkBuffer(buffer->buffer), vk::DebugReportObjectTypeEXT::eBuffer,
 							   desc.debugName.c_str());
 
 		if (!desc.isVirtual) {
 			res = allocateExternalBufferMemory(
-				buffer, (usageFlags & vk::BufferUsageFlagBits::eShaderDeviceAddress) !=
-							vk::BufferUsageFlags(0));
+				buffer, 
+				extMemHandleType,
+				(usageFlags & vk::BufferUsageFlagBits::eShaderDeviceAddress) != vk::BufferUsageFlags(0));
 			CHECK_VK_FAIL(res)
 
-			context.nameVKObject(buffer->memory, vk::DebugReportObjectTypeEXT::eDeviceMemory,
+			m_context.nameVKObject(buffer->memory, vk::DebugReportObjectTypeEXT::eDeviceMemory,
 								   desc.debugName.c_str());
 
 			if (desc.isVolatile) {
-				buffer->mappedMemory = context.device.mapMemory(buffer->memory, 0, size);
+				buffer->mappedMemory = m_context.device.mapMemory(buffer->memory, 0, size);
 				assert(buffer->mappedMemory);
 			}
 
-			if (context.extensions.buffer_device_address) {
+			if (m_context.extensions.buffer_device_address) {
 				auto addressInfo = vk::BufferDeviceAddressInfo().setBuffer(buffer->buffer);
 
-				buffer->deviceAddress = context.device.getBufferAddress(addressInfo);
+				buffer->deviceAddress = m_context.device.getBufferAddress(addressInfo);
 			}
 		}
 
@@ -597,6 +550,61 @@ public:
 		auto *vk_buffer = dynamic_cast<nvrhi::vulkan::Buffer*>(buffer.Get());
 		cufriends::importCudaExternalMemory(cudaPtr, cudaMem, context.device, vk_buffer->memory, 
 											vk_buffer->desc.byteSize, getDefaultMemHandleType());
+	}
+
+	void getDeviceUUID(uint8_t* uuid) {
+		auto physicalDeviceIDProperties = vk::PhysicalDeviceIDProperties();
+		auto physicalDeviceProperties2	= vk::PhysicalDeviceProperties2();
+
+		physicalDeviceProperties2.pNext = &physicalDeviceIDProperties;
+		m_context.physicalDevice.getProperties2(&physicalDeviceProperties2);
+		memcpy(uuid, physicalDeviceIDProperties.deviceUUID, VK_UUID_SIZE);
+	}
+
+	int initCUDA() {
+		int current_device	   = 0;
+		int device_count	   = 0;
+		int devices_prohibited = 0;
+
+		cudaDeviceProp deviceProp;
+		CUDA_CHECK(cudaGetDeviceCount(&device_count));
+
+		if (device_count == 0) {
+			Log(Error, "CUDA error: no devices supporting CUDA.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		// Find the GPU which is selected by Vulkan
+		uint8_t vkDeviceUUID[VK_UUID_SIZE];
+		getDeviceUUID(vkDeviceUUID);
+		while (current_device < device_count) {
+			cudaGetDeviceProperties(&deviceProp, current_device);
+
+			if ((deviceProp.computeMode != cudaComputeModeProhibited)) {
+				// Compare the cuda device UUID with vulkan UUID
+				int ret = memcmp((void *) &deviceProp.uuid, vkDeviceUUID, VK_UUID_SIZE);
+				if (ret == 0) {
+					CUDA_CHECK(cudaSetDevice(current_device));
+					CUDA_CHECK(cudaGetDeviceProperties(&deviceProp, current_device));
+					Log(Info, "GPU Device %d: \"%s\" with compute capability %d.%d\n\n",
+						   current_device, deviceProp.name, deviceProp.major, deviceProp.minor);
+
+					return current_device;
+				}
+
+			} else {
+				devices_prohibited++;
+			}
+			current_device++;
+		}
+
+		if (devices_prohibited == device_count) {
+			Log(Error, "CUDA error:"
+							" No Vulkan-CUDA Interop capable GPU found.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		return -1;
 	}
 
 private:

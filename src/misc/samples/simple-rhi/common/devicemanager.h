@@ -144,7 +144,7 @@ protected:
 	virtual void Present()					 = 0;
 
 public:
-	[[nodiscard]] virtual nvrhi::IDevice *GetDevice() const			= 0;
+	[[nodiscard]] virtual nvrhi::IDevice *GetDevice(bool withValidationLayer = true) const = 0;
 	[[nodiscard]] virtual const char *GetRendererString() const		= 0;
 	[[nodiscard]] virtual nvrhi::GraphicsAPI GetGraphicsAPI() const = 0;
 
@@ -224,8 +224,8 @@ private:
 
 class DeviceManager_VK : public DeviceManager {
 public:
-	[[nodiscard]] nvrhi::IDevice *GetDevice() const override {
-		if (m_ValidationLayer) return m_ValidationLayer;
+	[[nodiscard]] nvrhi::IDevice *GetDevice(bool withValidationLayer = true) const override {
+		if (withValidationLayer && m_ValidationLayer) return m_ValidationLayer;
 
 		return m_NvrhiDevice;
 	}
@@ -430,8 +430,8 @@ public:
 	[[nodiscard]] DeviceManager *GetDeviceManager() const {
 		return m_DeviceManager;
 	}
-	[[nodiscard]] nvrhi::IDevice *GetDevice() const {
-		return m_DeviceManager->GetDevice();
+	[[nodiscard]] nvrhi::IDevice *GetDevice(bool withValidationLayer = true) const {
+		return m_DeviceManager->GetDevice(withValidationLayer);
 	}
 	[[nodiscard]] uint32_t GetFrameIndex() const {
 		return m_DeviceManager->GetFrameIndex();
