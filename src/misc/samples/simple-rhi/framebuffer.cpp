@@ -80,14 +80,17 @@ extern "C" int main(int argc, const char *argv[]) {
 	DeviceCreationParameters deviceParams		= {};
 	deviceParams.enableDebugRuntime				= true;
 	deviceParams.enableNvrhiValidationLayer		= true;
-	deviceParams.swapChainFormat				= nvrhi::Format::RGBA32_FLOAT;
+	deviceParams.swapChainFormat				= nvrhi::Format::SRGBA8_UNORM;
 	deviceParams.requiredVulkanDeviceExtensions = {
-		VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,		 VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,		 
+		VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
 		VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
 #ifdef _WIN64
-		VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME, VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME, 
+		VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
 #else
-		VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, 
+		VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
 #endif
 	};
 	deviceParams.requiredVulkanInstanceExtensions = {

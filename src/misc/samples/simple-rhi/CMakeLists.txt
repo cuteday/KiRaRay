@@ -2,6 +2,7 @@ add_library(common INTERFACE)
 target_sources(common INTERFACE
 	${CMAKE_CURRENT_SOURCE_DIR}/common/devicemanager.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/common/binding.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/common/cufriends.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/common/descriptor.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/common/helperpass.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/common/textureloader.cpp

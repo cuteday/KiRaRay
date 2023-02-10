@@ -85,7 +85,7 @@ public:
 
 	nvrhi::BindingLayoutHandle m_BlitBindingLayout;
 
-	CommonRenderPasses(nvrhi::IDevice *device, std::shared_ptr<ShaderLoader> ShaderLoader);
+	CommonRenderPasses(nvrhi::IDevice *device, std::shared_ptr<ShaderLoader> shaderLoader = nullptr);
 
 	void BlitTexture(nvrhi::ICommandList *commandList, const BlitParameters &params,
 					 BindingCache *bindingCache = nullptr);

@@ -15,7 +15,7 @@ private:
 
 public:
 	BindingCache(nvrhi::IDevice *device) : m_Device(device) {}
-
+	
 	nvrhi::BindingSetHandle GetCachedBindingSet(const nvrhi::BindingSetDesc &desc,
 												nvrhi::IBindingLayout *layout);
 	nvrhi::BindingSetHandle GetOrCreateBindingSet(const nvrhi::BindingSetDesc &desc,

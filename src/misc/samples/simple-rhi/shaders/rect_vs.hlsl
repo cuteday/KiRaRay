@@ -8,15 +8,7 @@ struct BlitConstants {
 	float sharpenFactor;
 };
 
-#ifdef SPIRV
-
 [[vk::push_constant]] ConstantBuffer<BlitConstants> g_Blit;
-
-#else
-
-cbuffer g_Blit : register(b0) { BlitConstants g_Blit; }
-
-#endif
 
 void main(
 	in uint iVertex : SV_VertexID,

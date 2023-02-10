@@ -15,32 +15,37 @@ struct BlitConstants {
 };
 
 CommonRenderPasses::CommonRenderPasses(nvrhi::IDevice *device,
-									   std::shared_ptr<ShaderLoader> ShaderLoader) :
+									   std::shared_ptr<ShaderLoader> shaderLoader) :
 	m_Device(device) {
 	{
+		if (!shaderLoader) shaderLoader = std::make_shared<ShaderLoader>(device);
+
 		std::vector<ShaderMacro> VsMacros;
 		VsMacros.push_back(ShaderMacro("QUAD_Z", "0"));
-		m_FullscreenVS = ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/fullscreen_vs.hlsl", "main", &VsMacros,
-													 nvrhi::ShaderType::Vertex);
+		m_FullscreenVS =
+			shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/fullscreen_vs.hlsl",
+									   "main", &VsMacros, nvrhi::ShaderType::Vertex);
 
 		VsMacros[0].definition = "1";
-		m_FullscreenAtOneVS = ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/fullscreen_vs.hlsl", "main", &VsMacros,
-														  nvrhi::ShaderType::Vertex);
+		m_FullscreenAtOneVS =
+			shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/fullscreen_vs.hlsl",
+									   "main", &VsMacros, nvrhi::ShaderType::Vertex);
 	}
 
-	m_RectVS =
-		ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/rect_vs.hlsl", "main", nullptr, nvrhi::ShaderType::Vertex);
+	m_RectVS = shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/rect_vs.hlsl",
+										  "main", nullptr, nvrhi::ShaderType::Vertex);
 
 	std::vector<ShaderMacro> blitMacros = {ShaderMacro("TEXTURE_ARRAY", "0")};
-	m_BlitPS =
-		ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/blit_ps.hlsl", "main", &blitMacros, nvrhi::ShaderType::Pixel);
-	m_SharpenPS				 = ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/sharpen_ps.hlsl", "main", &blitMacros,
-														   nvrhi::ShaderType::Pixel);
+	m_BlitPS	= shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/blit_ps.hlsl",
+											 "main", &blitMacros, nvrhi::ShaderType::Pixel);
+	m_SharpenPS = shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/sharpen_ps.hlsl",
+											 "main", &blitMacros, nvrhi::ShaderType::Pixel);
 	blitMacros[0].definition = "1"; // TEXTURE_ARRAY
-	m_BlitArrayPS =
-		ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/blit_ps.hlsl", "main", &blitMacros, nvrhi::ShaderType::Pixel);
-	m_SharpenArrayPS = ShaderLoader->createShader("src/misc/samples/simple-rhi/shaders/sharpen_ps.hlsl", "main", &blitMacros,
-												   nvrhi::ShaderType::Pixel);
+	m_BlitArrayPS = shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/blit_ps.hlsl",
+											   "main", &blitMacros, nvrhi::ShaderType::Pixel);
+	m_SharpenArrayPS =
+		shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/sharpen_ps.hlsl", "main",
+								   &blitMacros, nvrhi::ShaderType::Pixel);
 
 	auto samplerDesc = nvrhi::SamplerDesc().setAllFilters(false).setAllAddressModes(
 		nvrhi::SamplerAddressMode::Clamp);

@@ -18,6 +18,9 @@
 
 #include <common.h>
 #include <logger.h>
+#include "cufriends.h"
+#include "binding.h"
+#include "helperpass.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -38,6 +41,7 @@ struct DeviceCreationParameters {
 	uint32_t refreshRate			= 0;
 	uint32_t swapChainBufferCount	= 3;
 	nvrhi::Format swapChainFormat	= nvrhi::Format::SRGBA8_UNORM;
+	nvrhi::Format renderFormat		= nvrhi::Format::RGBA32_FLOAT; 
 	uint32_t swapChainSampleCount	= 1;
 	uint32_t swapChainSampleQuality = 0;
 	uint32_t maxFramesInFlight		= 2;
@@ -47,6 +51,7 @@ struct DeviceCreationParameters {
 	bool enableRayTracingExtensions = false; 
 	bool enableComputeQueue			= false;
 	bool enableCopyQueue			= false;
+	bool enableCudaInterop			= false;
 
 	// Severity of the information log messages from the device manager.
 	Log::Level infoLogSeverity = Log::Level::Info;
@@ -124,6 +129,9 @@ protected:
 	uint32_t m_FrameIndex = 0;
 
 	std::vector<nvrhi::FramebufferHandle> m_SwapChainFramebuffers;
+	std::vector<nvrhi::FramebufferHandle> m_RenderFramebuffers;
+	std::unique_ptr<CommonRenderPasses> m_HelperPass;
+	std::unique_ptr<BindingCache> m_BindingCache;
 
 	DeviceManager() = default;
 
@@ -188,6 +196,7 @@ public:
 
 	virtual nvrhi::ITexture *GetCurrentBackBuffer()		   = 0;
 	virtual nvrhi::ITexture *GetBackBuffer(uint32_t index) = 0;
+	virtual nvrhi::ITexture *GetRenderImage(uint32_t index)= 0;
 	virtual uint32_t GetCurrentBackBufferIndex()		   = 0;
 	virtual uint32_t GetBackBufferCount()				   = 0;
 	nvrhi::IFramebuffer *GetCurrentFramebuffer();
@@ -250,6 +259,10 @@ protected:
 	}
 	nvrhi::ITexture *GetBackBuffer(uint32_t index) override {
 		if (index < m_SwapChainImages.size()) return m_SwapChainImages[index].rhiHandle;
+		return nullptr;
+	}
+	nvrhi::ITexture *GetRenderImage(uint32_t index) override {
+		if (index < m_RenderImages.size()) return m_RenderImages[index];
 		return nullptr;
 	}
 	uint32_t GetCurrentBackBufferIndex() override {
@@ -328,6 +341,23 @@ private:
 		 VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME},
 	};
 
+	VulkanExtensionSet m_CudaInteropExtensions = {
+		{VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,},
+		{},
+		{ VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+			VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+			VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+#ifdef _WIN64
+			VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+			VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
+#else
+			VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+			VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+#endif
+		}
+	};
+
 	std::unordered_set<std::string> m_RayTracingExtensions = {
 		VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
 		VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
@@ -361,6 +391,7 @@ private:
 	};
 
 	std::vector<SwapChainImage> m_SwapChainImages;
+	std::vector<nvrhi::TextureHandle> m_RenderImages;
 	uint32_t m_SwapChainIndex = uint32_t(-1);
 
 	nvrhi::vulkan::DeviceHandle m_NvrhiDevice;

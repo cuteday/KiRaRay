@@ -32,58 +32,9 @@ public:
 	SECURITY_ATTRIBUTES *operator&();
 	~WindowsSecurityAttributes();
 };
-
-WindowsSecurityAttributes::WindowsSecurityAttributes() {
-	m_winPSecurityDescriptor =
-		(PSECURITY_DESCRIPTOR) calloc(1, SECURITY_DESCRIPTOR_MIN_LENGTH + 2 * sizeof(void **));
-	if (!m_winPSecurityDescriptor) {
-		throw std::runtime_error("Failed to allocate memory for security descriptor");
-	}
-
-	PSID *ppSID = (PSID *) ((PBYTE) m_winPSecurityDescriptor + SECURITY_DESCRIPTOR_MIN_LENGTH);
-	PACL *ppACL = (PACL *) ((PBYTE) ppSID + sizeof(PSID *));
-
-	InitializeSecurityDescriptor(m_winPSecurityDescriptor, SECURITY_DESCRIPTOR_REVISION);
-
-	SID_IDENTIFIER_AUTHORITY sidIdentifierAuthority = SECURITY_WORLD_SID_AUTHORITY;
-	AllocateAndInitializeSid(&sidIdentifierAuthority, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0,
-							 ppSID);
-
-	EXPLICIT_ACCESS explicitAccess;
-	ZeroMemory(&explicitAccess, sizeof(EXPLICIT_ACCESS));
-	explicitAccess.grfAccessPermissions = STANDARD_RIGHTS_ALL | SPECIFIC_RIGHTS_ALL;
-	explicitAccess.grfAccessMode		= SET_ACCESS;
-	explicitAccess.grfInheritance		= INHERIT_ONLY;
-	explicitAccess.Trustee.TrusteeForm	= TRUSTEE_IS_SID;
-	explicitAccess.Trustee.TrusteeType	= TRUSTEE_IS_WELL_KNOWN_GROUP;
-	explicitAccess.Trustee.ptstrName	= (LPTSTR) *ppSID;
-
-	SetEntriesInAcl(1, &explicitAccess, NULL, ppACL);
-
-	SetSecurityDescriptorDacl(m_winPSecurityDescriptor, TRUE, *ppACL, FALSE);
-
-	m_winSecurityAttributes.nLength				 = sizeof(m_winSecurityAttributes);
-	m_winSecurityAttributes.lpSecurityDescriptor = m_winPSecurityDescriptor;
-	m_winSecurityAttributes.bInheritHandle		 = TRUE;
-}
-
-SECURITY_ATTRIBUTES *WindowsSecurityAttributes::operator&() { return &m_winSecurityAttributes; }
-
-WindowsSecurityAttributes::~WindowsSecurityAttributes() {
-	PSID *ppSID = (PSID *) ((PBYTE) m_winPSecurityDescriptor + SECURITY_DESCRIPTOR_MIN_LENGTH);
-	PACL *ppACL = (PACL *) ((PBYTE) ppSID + sizeof(PSID *));
-
-	if (*ppSID) {
-		FreeSid(*ppSID);
-	}
-	if (*ppACL) {
-		LocalFree(*ppACL);
-	}
-	free(m_winPSecurityDescriptor);
-}
 #endif /* _WIN64 */
 
-static uint32_t findMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter,
+static inline uint32_t findMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter,
 							   vk::MemoryPropertyFlags properties) {
 	vk::PhysicalDeviceMemoryProperties memProperties;
 	physicalDevice.getMemoryProperties(&memProperties);
@@ -96,7 +47,7 @@ static uint32_t findMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeF
 	return ~0;
 }
 
-vk::ExternalMemoryHandleTypeFlagBits getDefaultMemHandleType() {
+inline vk::ExternalMemoryHandleTypeFlagBits getDefaultMemHandleType() {
 #ifdef _WIN64
 	return IsWindows8Point1OrGreater() ? vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32
 									   : vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32Kmt;
@@ -105,7 +56,7 @@ vk::ExternalMemoryHandleTypeFlagBits getDefaultMemHandleType() {
 #endif /* _WIN64 */
 }	
 
-vk::ExternalSemaphoreHandleTypeFlagBits getDefaultSemaphoreHandleType() {
+inline vk::ExternalSemaphoreHandleTypeFlagBits getDefaultSemaphoreHandleType() {
 #ifdef _WIN64
 	return IsWindows8OrGreater() ? vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32
 								 : vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32Kmt;
@@ -114,7 +65,7 @@ vk::ExternalSemaphoreHandleTypeFlagBits getDefaultSemaphoreHandleType() {
 #endif /* _WIN64 */
 }
 
-void* getMemHandle(vk::Device device, vk::DeviceMemory memory,
+inline void *getMemHandle(vk::Device device, vk::DeviceMemory memory,
 								  VkExternalMemoryHandleTypeFlagBits handleType) {
 #ifdef _WIN64
 	HANDLE handle = 0;
@@ -157,7 +108,7 @@ void* getMemHandle(vk::Device device, vk::DeviceMemory memory,
 #endif /* _WIN64 */
 }
 
-void *getSemaphoreHandle(vk::Device device, vk::Semaphore semaphore,
+inline void *getSemaphoreHandle(vk::Device device, vk::Semaphore semaphore,
 										vk::ExternalSemaphoreHandleTypeFlagBits handleType) {
 #ifdef _WIN64
 	HANDLE handle;
@@ -203,7 +154,8 @@ void *getSemaphoreHandle(vk::Device device, vk::Semaphore semaphore,
 #endif /* _WIN64 */
 }
 	
-void importCudaExternalMemory(void **cudaPtr, cudaExternalMemory_t &cudaMem, vk::Device device,
+inline void importCudaExternalMemory(void **cudaPtr, cudaExternalMemory_t &cudaMem,
+									 vk::Device device,
 	vk::DeviceMemory vkMem, vk::DeviceSize size, vk::ExternalMemoryHandleTypeFlagBits handleType) {
 	cudaExternalMemoryHandleDesc externalMemoryHandleDesc = {};
 	
@@ -237,7 +189,7 @@ void importCudaExternalMemory(void **cudaPtr, cudaExternalMemory_t &cudaMem, vk:
 	CUDA_CHECK(cudaExternalMemoryGetMappedBuffer(cudaPtr, cudaMem, &externalMemBufferDesc));
 }
 
-void importCudaExternalSemaphore(cudaExternalSemaphore_t &cudaSem, vk::Device device,
+inline void importCudaExternalSemaphore(cudaExternalSemaphore_t &cudaSem, vk::Device device,
 	vk::Semaphore &vkSem, vk::ExternalSemaphoreHandleTypeFlagBits handleType) {
 	cudaExternalSemaphoreHandleDesc externalSemaphoreHandleDesc = {};
 
@@ -265,7 +217,7 @@ void importCudaExternalSemaphore(cudaExternalSemaphore_t &cudaSem, vk::Device de
 	CUDA_CHECK(cudaImportExternalSemaphore(&cudaSem, &externalSemaphoreHandleDesc));
 }
 
-void createExternalSemaphore(vk::Device device, vk::Semaphore &semaphore,
+inline void createExternalSemaphore(vk::Device device, vk::Semaphore &semaphore,
 								vk::ExternalSemaphoreHandleTypeFlagBits handleType) {
 	vk::SemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType					= vk::StructureType::eSemaphoreCreateInfo;
@@ -280,7 +232,7 @@ void createExternalSemaphore(vk::Device device, vk::Semaphore &semaphore,
 	}
 }
 
-void importExternalBuffer(void *handle, vk::Device device, vk::PhysicalDevice physicalDevice,
+inline void importExternalBuffer(void *handle, vk::Device device, vk::PhysicalDevice physicalDevice,
 										 vk::ExternalMemoryHandleTypeFlagBits handleType, size_t size,
 										 vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties,
 										 vk::Buffer &buffer, vk::DeviceMemory &memory) {

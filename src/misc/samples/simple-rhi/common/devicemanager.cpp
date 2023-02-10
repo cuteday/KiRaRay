@@ -234,6 +234,7 @@ void DeviceManager::RemoveRenderPass(IRenderPass *pRenderPass) {
 
 void DeviceManager::BackBufferResizing() {
 	m_SwapChainFramebuffers.clear();
+	m_RenderFramebuffers.clear();
 
 	for (auto it : m_vRenderPasses) {
 		it->BackBufferResizing();
@@ -248,9 +249,12 @@ void DeviceManager::BackBufferResized() {
 
 	uint32_t backBufferCount = GetBackBufferCount();
 	m_SwapChainFramebuffers.resize(backBufferCount);
+	m_RenderFramebuffers.resize(backBufferCount);
 	for (uint32_t index = 0; index < backBufferCount; index++) {
 		m_SwapChainFramebuffers[index] = GetDevice()->createFramebuffer(
 			nvrhi::FramebufferDesc().addColorAttachment(GetBackBuffer(index)));
+		m_RenderFramebuffers[index] = GetDevice()->createFramebuffer(
+			nvrhi::FramebufferDesc().addColorAttachment(GetRenderImage(index))); 
 	}
 }
 
@@ -262,11 +266,8 @@ void DeviceManager::Animate(double elapsedTime) {
 
 void DeviceManager::Render() {
 	BeginFrame();
-
-	nvrhi::IFramebuffer *framebuffer = m_SwapChainFramebuffers[GetCurrentBackBufferIndex()];
-
 	for (auto it : m_vRenderPasses) {
-		it->Render(framebuffer);
+		it->Render(m_RenderFramebuffers[GetCurrentBackBufferIndex()]);
 	}
 }
 
@@ -425,6 +426,7 @@ static void ApplyDeadZone(Vector2f &v, const float deadZone = 0.1f) {
 
 void DeviceManager::Shutdown() {
 	m_SwapChainFramebuffers.clear();
+	m_RenderFramebuffers.clear();
 
 	DestroyDeviceAndSwapChain();
 
@@ -567,7 +569,9 @@ bool DeviceManager_VK::createInstance() {
 		if (optionalExtensions.instance.find(name) != optionalExtensions.instance.end()) {
 			enabledExtensions.instance.insert(name);
 		}
-
+		if (m_DeviceParams.enableCudaInterop && m_CudaInteropExtensions.instance.count(name)) {
+			enabledExtensions.instance.insert(name);
+		}
 		requiredExtensions.erase(name);
 	}
 
@@ -593,7 +597,7 @@ bool DeviceManager_VK::createInstance() {
 		if (optionalExtensions.layers.find(name) != optionalExtensions.layers.end()) {
 			enabledExtensions.layers.insert(name);
 		}
-
+		
 		requiredLayers.erase(name);
 	}
 
@@ -834,6 +838,10 @@ bool DeviceManager_VK::createDevice() {
 			enabledExtensions.device.insert(name);
 		}
 
+		if (m_DeviceParams.enableCudaInterop && m_CudaInteropExtensions.device.count(name)) {
+			enabledExtensions.device.insert(name);
+		}
+	
 		if (m_DeviceParams.enableRayTracingExtensions &&
 			m_RayTracingExtensions.find(name) != m_RayTracingExtensions.end()) {
 			enabledExtensions.device.insert(name);
@@ -993,8 +1001,10 @@ void DeviceManager_VK::destroySwapChain() {
 	}
 
 	m_SwapChainImages.clear();
+	m_RenderImages.clear();
 }
 
+// This routine will be called whenever resizing...
 bool DeviceManager_VK::createSwapChain() {
 	destroySwapChain();
 
@@ -1057,6 +1067,18 @@ bool DeviceManager_VK::createSwapChain() {
 		sci.rhiHandle = m_NvrhiDevice->createHandleForNativeTexture(
 			nvrhi::ObjectTypes::VK_Image, nvrhi::Object(sci.image), textureDesc);
 		m_SwapChainImages.push_back(sci);
+
+		textureDesc.format				 = m_DeviceParams.renderFormat;
+		textureDesc.debugName			 = "Render image";
+		textureDesc.initialState		 = nvrhi::ResourceStates::RenderTarget;
+		textureDesc.keepInitialState	 = true;
+		textureDesc.isRenderTarget		 = true;
+		textureDesc.isUAV				 = true;
+		textureDesc.useClearValue		 = true;
+		textureDesc.clearValue			 = nvrhi::Color(0.f);
+		textureDesc.sampleCount			 = 1;
+		nvrhi::TextureHandle renderImage = m_NvrhiDevice->createTexture(textureDesc);
+		m_RenderImages.push_back(renderImage);
 	}
 
 	m_SwapChainIndex = 0;
@@ -1074,12 +1096,14 @@ bool DeviceManager_VK::CreateDeviceAndSwapChain() {
 	const PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = // NOLINT(misc-misplaced-const)
 		dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
-
+	
+#ifdef CHECK
+#undef CHECK
+#endif
 #define CHECK(a)                                                                                   \
 	if (!(a)) {                                                                                    \
 		return false;                                                                              \
 	}
-
 	CHECK(createInstance())
 
 	if (m_DeviceParams.enableDebugRuntime) {
@@ -1137,8 +1161,8 @@ bool DeviceManager_VK::CreateDeviceAndSwapChain() {
 	CHECK(createSwapChain())
 
 	m_BarrierCommandList = m_NvrhiDevice->createCommandList();
-
 	m_PresentSemaphore = m_VulkanDevice.createSemaphore(vk::SemaphoreCreateInfo());
+	m_BindingCache = std::make_unique<BindingCache>(GetDevice());
 
 #undef CHECK
 
@@ -1190,11 +1214,19 @@ void DeviceManager_VK::BeginFrame() {
 }
 
 void DeviceManager_VK::Present() {
-	m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
+	if (!m_HelperPass) {
+		m_HelperPass = std::make_unique<CommonRenderPasses>(GetDevice());
+	}
 
 	m_BarrierCommandList->open(); // umm...
+	// blit the contents of render to swapchain image...
+	m_HelperPass->BlitTexture(m_BarrierCommandList, GetFramebuffer(m_SwapChainIndex), 
+		GetRenderImage(m_SwapChainIndex), m_BindingCache.get());
+
 	m_BarrierCommandList->close();
-	m_NvrhiDevice->executeCommandList(m_BarrierCommandList);
+	m_NvrhiDevice->executeCommandList(m_BarrierCommandList, nvrhi::CommandQueue::Graphics);
+	
+	m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
 
 	vk::PresentInfoKHR info = vk::PresentInfoKHR()
 								  .setWaitSemaphoreCount(1)
@@ -1245,6 +1277,4 @@ DeviceManager *DeviceManager::CreateVK() {
 }
 
 /***********************************End DeviceManagerVK***************************************/
-
-
 KRR_NAMESPACE_END
