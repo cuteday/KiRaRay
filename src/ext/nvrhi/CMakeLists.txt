@@ -51,15 +51,16 @@ else()
 endif()
 
 set(include_validation
-    include/nvrhi/validation.h
-    include/nvrhi/vulkan/vulkan-backend.h)
+    include/nvrhi/validation.h)
 set(src_validation
     src/validation/validation-commandlist.cpp
     src/validation/validation-device.cpp
     src/validation/validation-backend.h)
 
 set(include_vk
-    include/nvrhi/vulkan.h)
+    include/nvrhi/vulkan.h
+    include/nvrhi/vulkan/vulkan-backend.h
+    include/nvrhi/vulkan/vulkan-texture.h)
 set(src_vk
     src/vulkan/vulkan-allocator.cpp
     src/vulkan/vulkan-buffer.cpp

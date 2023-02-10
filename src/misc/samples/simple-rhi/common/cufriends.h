@@ -12,6 +12,7 @@
 #include <nvrhi/nvrhi.h>
 #include <nvrhi/vulkan.h>
 #include <nvrhi/vulkan/vulkan-backend.h>
+#include <nvrhi/vulkan/vulkan-texture.h>
 
 #include <common.h>
 #include <logger.h>
@@ -361,7 +362,7 @@ public:
 		vk::MemoryRequirements memRequirements,
 		vk::MemoryPropertyFlags memPropertyFlags,
 		vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType,
-		bool enableDeviceAddress) const {
+		bool enableDeviceAddress = false) const {
 		
 		res->managed = true;
 
@@ -422,7 +423,6 @@ public:
 
 		return m_context.device.allocateMemory(&allocInfo, m_context.allocationCallbacks,
 											   &res->memory);
-
 	}
 
 	vk::Result allocateExternalBufferMemory(
@@ -440,13 +440,28 @@ public:
 			extMemHandleType,
 			enableDeviceAddress);
 		CHECK_VK_RETURN(res)
-
+			
 		m_context.device.bindBufferMemory(buffer->buffer, buffer->memory, 0);
-
 		return vk::Result::eSuccess;
-
 	}
 
+	vk::Result allocateExternalTextureMemory(nvrhi::vulkan::Texture *texture, 
+			vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType) {
+		// grab the image memory requirements
+		vk::MemoryRequirements memRequirements;
+		m_context.device.getImageMemoryRequirements(texture->image, &memRequirements);
+
+		// allocate memory
+		const vk::MemoryPropertyFlags memProperties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		const vk::Result res = allocateExternalMemory(texture, memRequirements, memProperties, extMemHandleType);
+		CHECK_VK_RETURN(res)
+	
+		m_context.device.bindImageMemory(texture->image, texture->memory, 0);
+		return vk::Result::eSuccess;
+	}
+
+	/*	1. specify ExternalMemoryBufferCreateInfo when creating buffer;
+		2. specify ExportMemoryAllocateInfoKHR when creating memory. */
 	nvrhi::BufferHandle createExternalBuffer(nvrhi::BufferDesc desc, 
 		vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType) {
 		if (desc.isVolatile && desc.maxVersions == 0) return nullptr;
@@ -478,34 +493,24 @@ public:
 
 		if (desc.isVolatile) {
 			assert(!desc.isVirtual);
-
 			uint64_t alignment =
 				m_context.physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
-
 			uint64_t atomSize = m_context.physicalDeviceProperties.limits.nonCoherentAtomSize;
 			alignment		  = std::max(alignment, atomSize);
-
 			assert((alignment & (alignment - 1)) == 0); // check if it's a power of 2
-
 			size				  = (size + alignment - 1) & ~(alignment - 1);
 			buffer->desc.byteSize = size;
-
 			size *= desc.maxVersions;
-
 			buffer->versionTracking.resize(desc.maxVersions);
 			std::fill(buffer->versionTracking.begin(), buffer->versionTracking.end(), 0);
 
 			buffer->desc.cpuAccess = nvrhi::CpuAccessMode::Write; // to get the right memory type allocated
 		} else if (desc.byteSize < 65536) {
-			// vulkan allows for <= 64kb buffer updates to be done inline via vkCmdUpdateBuffer,
-			// but the data size must always be a multiple of 4
-			// enlarge the buffer slightly to allow for this
 			size += size % 4;
 		}
 
 		auto externalMemoryBufferInfo =
 			vk::ExternalMemoryBufferCreateInfo().setHandleTypes(extMemHandleType);
-
 		auto bufferInfo = vk::BufferCreateInfo()
 							  .setSize(size)
 							  .setUsage(usageFlags)
@@ -515,7 +520,6 @@ public:
 		vk::Result res = m_context.device.createBuffer(&bufferInfo, m_context.allocationCallbacks,
 													   &buffer->buffer);
 		CHECK_VK_FAIL(res);
-
 		m_context.nameVKObject(VkBuffer(buffer->buffer), vk::DebugReportObjectTypeEXT::eBuffer,
 							   desc.debugName.c_str());
 
@@ -525,10 +529,8 @@ public:
 				extMemHandleType,
 				(usageFlags & vk::BufferUsageFlagBits::eShaderDeviceAddress) != vk::BufferUsageFlags(0));
 			CHECK_VK_FAIL(res)
-
 			m_context.nameVKObject(buffer->memory, vk::DebugReportObjectTypeEXT::eDeviceMemory,
 								   desc.debugName.c_str());
-
 			if (desc.isVolatile) {
 				buffer->mappedMemory = m_context.device.mapMemory(buffer->memory, 0, size);
 				assert(buffer->mappedMemory);
@@ -536,12 +538,39 @@ public:
 
 			if (m_context.extensions.buffer_device_address) {
 				auto addressInfo = vk::BufferDeviceAddressInfo().setBuffer(buffer->buffer);
-
 				buffer->deviceAddress = m_context.device.getBufferAddress(addressInfo);
 			}
 		}
-
 		return nvrhi::BufferHandle::Create(buffer);
+	}
+
+	nvrhi::TextureHandle createExternalTexture(nvrhi::TextureDesc desc,
+						  vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType) {
+		nvrhi::vulkan::Texture *texture =
+			new nvrhi::vulkan::Texture(m_context, m_device.getAllocator());
+		assert(texture);
+		
+	 	nvrhi::vulkan::fillTextureInfo(texture, desc);
+		auto externalMemoryBufferInfo =
+			vk::ExternalMemoryBufferCreateInfo().setHandleTypes(extMemHandleType);
+		texture->imageInfo.setPNext(&externalMemoryBufferInfo);
+
+		vk::Result res = m_context.device.createImage(
+			&texture->imageInfo, m_context.allocationCallbacks, &texture->image);
+		ASSERT_VK_OK(res);
+		CHECK_VK_FAIL(res)
+
+		m_context.nameVKObject(texture->image, vk::DebugReportObjectTypeEXT::eImage,
+							   desc.debugName.c_str());
+
+		if (!desc.isVirtual) {
+			res = allocateExternalTextureMemory(texture, extMemHandleType);
+			ASSERT_VK_OK(res);
+			CHECK_VK_FAIL(res)
+			m_context.nameVKObject(texture->memory, vk::DebugReportObjectTypeEXT::eDeviceMemory,
+								   desc.debugName.c_str());
+		}
+		return nvrhi::TextureHandle::Create(texture);
 	}
 
 	void importVulkanBufferToCuda(void **cudaPtr, cudaExternalMemory_t &cudaMem,
@@ -550,6 +579,10 @@ public:
 		auto *vk_buffer = dynamic_cast<nvrhi::vulkan::Buffer*>(buffer.Get());
 		cufriends::importCudaExternalMemory(cudaPtr, cudaMem, context.device, vk_buffer->memory, 
 											vk_buffer->desc.byteSize, getDefaultMemHandleType());
+	}
+
+	cudaSurfaceObject_t mapVulkanTextureToCudaSurface(nvrhi::TextureHandle texture) {
+		return cudaSurfaceObject_t{};
 	}
 
 	void getDeviceUUID(uint8_t* uuid) {

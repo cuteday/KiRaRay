@@ -3,7 +3,7 @@
 #include <common.h>
 #include <util/check.h>
 
-using namespace krr;
+KRR_NAMESPACE_BEGIN
 
 __global__ void sinewave(float *heightMap, unsigned int width, unsigned int height, float time) {
 	const float freq	= 4.0f;
@@ -48,51 +48,6 @@ void SineWaveSimulation::initCudaLaunchConfig(int device) {
 	m_blocks = std::min(m_blocks, (int) ((m_width * m_height + m_threads - 1) / m_threads));
 }
 
-int SineWaveSimulation::initCuda(uint8_t *vkDeviceUUID, size_t UUID_SIZE) {
-	int current_device	   = 0;
-	int device_count	   = 0;
-	int devices_prohibited = 0;
-
-	cudaDeviceProp deviceProp;
-	CUDA_CHECK(cudaGetDeviceCount(&device_count));
-
-	if (device_count == 0) {
-		fprintf(stderr, "CUDA error: no devices supporting CUDA.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	// Find the GPU which is selected by Vulkan
-	while (current_device < device_count) {
-		cudaGetDeviceProperties(&deviceProp, current_device);
-
-		if ((deviceProp.computeMode != cudaComputeModeProhibited)) {
-			// Compare the cuda device UUID with vulkan UUID
-			int ret = memcmp((void *) &deviceProp.uuid, vkDeviceUUID, UUID_SIZE);
-			if (ret == 0) {
-				CUDA_CHECK(cudaSetDevice(current_device));
-				CUDA_CHECK(cudaGetDeviceProperties(&deviceProp, current_device));
-				printf("GPU Device %d: \"%s\" with compute capability %d.%d\n\n", current_device,
-					   deviceProp.name, deviceProp.major, deviceProp.minor);
-
-				return current_device;
-			}
-
-		} else {
-			devices_prohibited++;
-		}
-
-		current_device++;
-	}
-
-	if (devices_prohibited == device_count) {
-		fprintf(stderr, "CUDA error:"
-						" No Vulkan-CUDA Interop capable GPU found.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	return -1;
-}
-
 SineWaveSimulation::~SineWaveSimulation() {
 	m_heightMap = NULL;
 }
@@ -105,3 +60,5 @@ void SineWaveSimulation::stepSimulation(float time, cudaStream_t stream) {
 	sinewave<<<m_blocks, m_threads, 0, stream>>>(m_heightMap, m_width, m_height, time);
 	CUDA_SYNC_CHECK();
 }
+
+KRR_NAMESPACE_END

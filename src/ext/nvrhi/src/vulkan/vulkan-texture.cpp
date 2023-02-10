@@ -23,6 +23,7 @@
 #include <algorithm>
 
 #include <nvrhi/vulkan/vulkan-backend.h>
+#include <nvrhi/vulkan/vulkan-texture.h>
 #include <nvrhi/common/misc.h>
 
 namespace nvrhi::vulkan
@@ -225,7 +226,7 @@ namespace nvrhi::vulkan
     }
 
     // fills out all info fields in Texture based on a TextureDesc
-    static void fillTextureInfo(Texture *texture, const TextureDesc& desc)
+    void fillTextureInfo(Texture *texture, const TextureDesc& desc)
     {
         texture->desc = desc;
 
