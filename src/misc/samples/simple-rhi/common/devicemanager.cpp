@@ -253,8 +253,9 @@ void DeviceManager::BackBufferResized() {
 	for (uint32_t index = 0; index < backBufferCount; index++) {
 		m_SwapChainFramebuffers[index] = GetDevice()->createFramebuffer(
 			nvrhi::FramebufferDesc().addColorAttachment(GetBackBuffer(index)));
-		m_RenderFramebuffers[index] = GetDevice()->createFramebuffer(
-			nvrhi::FramebufferDesc().addColorAttachment(GetRenderImage(index))); 
+		
+		m_RenderFramebuffers[index] = std::make_shared<RenderFrame>(GetDevice()->createFramebuffer(
+			nvrhi::FramebufferDesc().addColorAttachment(GetRenderImage(index)))); 
 	}
 }
 
@@ -427,7 +428,9 @@ static void ApplyDeadZone(Vector2f &v, const float deadZone = 0.1f) {
 void DeviceManager::Shutdown() {
 	m_SwapChainFramebuffers.clear();
 	m_RenderFramebuffers.clear();
-
+	m_BindingCache.reset();
+	m_HelperPass.reset();
+	
 	DestroyDeviceAndSwapChain();
 
 	if (m_Window) {
@@ -1073,11 +1076,14 @@ bool DeviceManager_VK::createSwapChain() {
 		textureDesc.initialState		 = nvrhi::ResourceStates::RenderTarget;
 		textureDesc.keepInitialState	 = true;
 		textureDesc.isRenderTarget		 = true;
-		textureDesc.isUAV				 = true;
-		textureDesc.useClearValue		 = true;
-		textureDesc.clearValue			 = nvrhi::Color(0.f);
+		//textureDesc.isUAV				 = true;
+		//textureDesc.useClearValue		 = true;
+		//textureDesc.clearValue		 = nvrhi::Color(0.f);
 		textureDesc.sampleCount			 = 1;
-		nvrhi::TextureHandle renderImage = m_NvrhiDevice->createTexture(textureDesc);
+			
+		nvrhi::TextureHandle renderImage = m_DeviceParams.enableCudaInterop ?
+			m_CUFriend->createExternalTexture(textureDesc, cufriends::getDefaultMemHandleType())
+				: m_NvrhiDevice->createTexture(textureDesc); 
 		m_RenderImages.push_back(renderImage);
 	}
 
@@ -1158,12 +1164,17 @@ bool DeviceManager_VK::CreateDeviceAndSwapChain() {
 		m_ValidationLayer = nvrhi::validation::createValidationLayer(m_NvrhiDevice);
 	}
 
+	if (m_DeviceParams.enableCudaInterop) {
+		m_CUFriend = std::make_unique<vkrhi::CudaVulkanFriend>(GetDevice(false));
+		m_CUFriend->initCUDA();
+	}
+
 	CHECK(createSwapChain())
 
 	m_BarrierCommandList = m_NvrhiDevice->createCommandList();
-	m_PresentSemaphore = m_VulkanDevice.createSemaphore(vk::SemaphoreCreateInfo());
-	m_BindingCache = std::make_unique<BindingCache>(GetDevice());
-
+	m_PresentSemaphore   = m_VulkanDevice.createSemaphore(vk::SemaphoreCreateInfo());
+	m_BindingCache		 = std::make_unique<BindingCache>(GetDevice());
+	
 #undef CHECK
 
 	return true;

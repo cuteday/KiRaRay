@@ -24,6 +24,30 @@
 
 KRR_NAMESPACE_BEGIN
 
+class RenderFrame {
+public:
+	using SharedPtr = std::shared_ptr<RenderFrame>;
+
+	RenderFrame(nvrhi::FramebufferHandle &framebuffer) : 
+		m_framebuffer (framebuffer){}
+		
+	operator nvrhi::FramebufferHandle() const { return m_framebuffer; }
+	operator nvrhi::IFramebuffer *() const { return m_framebuffer.Get(); }
+
+	nvrhi::FramebufferHandle getFramebuffer() const { return m_framebuffer; }
+
+	cudaSurfaceObject_t getMappedCudaSurface(std::shared_ptr<vkrhi::CudaVulkanFriend> cuFriend) {
+		if (!m_cudaFrame) {
+			m_cudaFrame = cuFriend->mapVulkanTextureToCudaSurface(
+				m_framebuffer->getDesc().colorAttachments[0].texture, cudaArrayColorAttachment);
+		}
+		return m_cudaFrame;
+	}
+	
+	nvrhi::FramebufferHandle m_framebuffer;
+	cudaSurfaceObject_t m_cudaFrame{};
+};
+
 struct DefaultMessageCallback : public nvrhi::IMessageCallback {
 	static DefaultMessageCallback &GetInstance();
 
@@ -129,7 +153,8 @@ protected:
 	uint32_t m_FrameIndex = 0;
 
 	std::vector<nvrhi::FramebufferHandle> m_SwapChainFramebuffers;
-	std::vector<nvrhi::FramebufferHandle> m_RenderFramebuffers;
+	std::vector<RenderFrame::SharedPtr> m_RenderFramebuffers;
+	
 	std::unique_ptr<CommonRenderPasses> m_HelperPass;
 	std::unique_ptr<BindingCache> m_BindingCache;
 
@@ -249,7 +274,7 @@ protected:
 
 	void ResizeSwapChain() override {
 		if (m_VulkanDevice) {
-			destroySwapChain();
+			// destroySwapChain();
 			createSwapChain();
 		}
 	}
@@ -351,10 +376,10 @@ private:
 #ifdef _WIN64
 			VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
 			VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
-#else
+#endif
 			VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
 			VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
-#endif
+
 		}
 	};
 
@@ -403,6 +428,8 @@ private:
 	std::queue<nvrhi::EventQueryHandle> m_FramesInFlight;
 	std::vector<nvrhi::EventQueryHandle> m_QueryPool;
 
+	std::shared_ptr<vkrhi::CudaVulkanFriend> m_CUFriend;
+
 private:
 	static VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(VkDebugReportFlagsEXT flags,
 															  VkDebugReportObjectTypeEXT objType,
@@ -442,7 +469,7 @@ public:
 
 	virtual ~IRenderPass() = default;
 
-	virtual void Render(nvrhi::IFramebuffer *framebuffer) {}
+	virtual void Render(RenderFrame::SharedPtr framebuffer) {}
 	virtual void Animate(float fElapsedTimeSeconds) {}
 	virtual void BackBufferResizing() {}
 	virtual void BackBufferResized(const uint32_t width, const uint32_t height,

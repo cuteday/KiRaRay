@@ -202,7 +202,8 @@ public:
 
 	void BackBufferResizing() override { m_Pipeline = nullptr; }
 
-	void Render(nvrhi::IFramebuffer *framebuffer) override {
+	void Render(RenderFrame::SharedPtr frame) override {
+		nvrhi::FramebufferHandle framebuffer   = frame->getFramebuffer();
 		const nvrhi::FramebufferInfoEx &fbinfo = framebuffer->getFramebufferInfo();
 
 		if (!m_Pipeline) {

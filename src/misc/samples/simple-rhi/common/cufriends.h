@@ -1,3 +1,5 @@
+// https://github.com/Devsh-Graphics-Programming/Nabla/issues/395
+// 
 #pragma once
 #include <cuda_runtime_api.h>
 #include <vulkan/vulkan.h>
@@ -89,19 +91,19 @@ inline void *getMemHandle(vk::Device device, vk::DeviceMemory memory,
 	return (void *) handle;
 #else
 	int fd = -1;
-
-	VkMemoryGetFdInfoKHR vkMemoryGetFdInfoKHR = {};
-	vkMemoryGetFdInfoKHR.sType				  = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
-	vkMemoryGetFdInfoKHR.pNext				  = NULL;
+	vk::MemoryGetFdInfoKHR vkMemoryGetFdInfoKHR;
+	vkMemoryGetFdInfoKHR.sType				  = vk::StructureType::eMemoryGetFdInfoKHR;
+	vkMemoryGetFdInfoKHR.pNext				  = nullptr;
 	vkMemoryGetFdInfoKHR.memory				  = memory;
-	vkMemoryGetFdInfoKHR.handleType			  = handleType;
+	vkMemoryGetFdInfoKHR.handleType			  = vk::ExternalMemoryHandleTypeFlagBits(handleType);
 
 	PFN_vkGetMemoryFdKHR fpGetMemoryFdKHR;
-	fpGetMemoryFdKHR = (PFN_vkGetMemoryFdKHR) vkGetDeviceProcAddr(device, "vkGetMemoryFdKHR");
+	fpGetMemoryFdKHR = (PFN_vkGetMemoryFdKHR) device.getProcAddr("vkGetMemoryFdKHR");
 	if (!fpGetMemoryFdKHR) {
-		throw std::runtime_error("Failed to retrieve vkGetMemoryWin32HandleKHR!");
+		throw std::runtime_error("Failed to retrieve vkGetMemoryFdKHR!");
 	}
-	if (fpGetMemoryFdKHR(device, &vkMemoryGetFdInfoKHR, &fd) != VK_SUCCESS) {
+	device.getMemoryFdKHR(&vkMemoryGetFdInfoKHR, &fd);
+	if (fpGetMemoryFdKHR(device, (const VkMemoryGetFdInfoKHR*) & vkMemoryGetFdInfoKHR, &fd) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to retrieve handle for buffer!");
 	}
 	return (void *) (uintptr_t) fd;
@@ -153,41 +155,6 @@ inline void *getSemaphoreHandle(vk::Device device, vk::Semaphore semaphore,
 	return (void *) (uintptr_t) fd;
 #endif /* _WIN64 */
 }
-	
-inline void importCudaExternalMemory(void **cudaPtr, cudaExternalMemory_t &cudaMem,
-									 vk::Device device,
-	vk::DeviceMemory vkMem, vk::DeviceSize size, vk::ExternalMemoryHandleTypeFlagBits handleType) {
-	cudaExternalMemoryHandleDesc externalMemoryHandleDesc = {};
-	
-	if (handleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32) {
-		externalMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueWin32;
-	} else if (handleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32Kmt) {
-		externalMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueWin32Kmt;
-	} else if (handleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd) {
-		externalMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueFd;
-	} else {
-		throw std::runtime_error("Unknown handle type requested!");
-	}
-
-	externalMemoryHandleDesc.size = size;
-
-#ifdef _WIN64
-	externalMemoryHandleDesc.handle.win32.handle = (HANDLE) getMemHandle(device, vkMem, 
-		VkExternalMemoryHandleTypeFlagBits(handleType));
-#else
-	externalMemoryHandleDesc.handle.fd = (int) (uintptr_t) getMemHandle(device, vkMem, 
-		VkExternalMemoryHandleTypeFlagBits(handleType));
-#endif
-
-	CUDA_CHECK(cudaImportExternalMemory(&cudaMem, &externalMemoryHandleDesc));
-
-	cudaExternalMemoryBufferDesc externalMemBufferDesc = {};
-	externalMemBufferDesc.offset					   = 0;
-	externalMemBufferDesc.size						   = size;
-	externalMemBufferDesc.flags						   = 0;
-
-	CUDA_CHECK(cudaExternalMemoryGetMappedBuffer(cudaPtr, cudaMem, &externalMemBufferDesc));
-}
 
 inline void importCudaExternalSemaphore(cudaExternalSemaphore_t &cudaSem, vk::Device device,
 	vk::Semaphore &vkSem, vk::ExternalSemaphoreHandleTypeFlagBits handleType) {
@@ -213,7 +180,6 @@ inline void importCudaExternalSemaphore(cudaExternalSemaphore_t &cudaSem, vk::De
 #endif
 
 	externalSemaphoreHandleDesc.flags = 0;
-
 	CUDA_CHECK(cudaImportExternalSemaphore(&cudaSem, &externalSemaphoreHandleDesc));
 }
 
@@ -258,10 +224,10 @@ inline void importExternalBuffer(void *handle, vk::Device device, vk::PhysicalDe
 	handleInfo.name		  = NULL;
 #else
 	vk::ImportMemoryFdInfoKHR handleInfo			  = {};
-	handleInfo.sType							  = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR;
+	handleInfo.sType							  = vk::StructureType::eImportMemoryFdInfoKHR;
 	handleInfo.pNext							  = NULL;
 	handleInfo.fd								  = (int) (uintptr_t) handle;
-	handleInfo.handleType						  = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+	handleInfo.handleType						  = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
 #endif /* _WIN64 */
 
 	vk::MemoryAllocateInfo memAllocation = {};
@@ -313,7 +279,7 @@ public:
 	vk::Result allocateExternalMemory(nvrhi::vulkan::MemoryResource* res,
 		vk::MemoryRequirements memRequirements,
 		vk::MemoryPropertyFlags memPropertyFlags,
-		vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType,
+		vk::ExternalMemoryHandleTypeFlags extMemHandleType,
 		bool enableDeviceAddress = false) const {
 		
 		res->managed = true;
@@ -361,7 +327,7 @@ public:
 		vulkanExportMemoryAllocateInfoKHR.sType = vk::StructureType::eExportMemoryAllocateInfoKHR;
 #ifdef _WIN64
 		vulkanExportMemoryAllocateInfoKHR.pNext =
-			extMemHandleType & vk::ExternalMemoryHandleTypeFlagBitsKHR::eOpaqueWin32
+			extMemHandleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32
 				? &vulkanExportMemoryWin32HandleInfoKHR : nullptr;
 		vulkanExportMemoryAllocateInfoKHR.handleTypes = extMemHandleType;
 #else
@@ -403,6 +369,7 @@ public:
 		vk::MemoryRequirements memRequirements;
 		m_context.device.getImageMemoryRequirements(texture->image, &memRequirements);
 
+		Log(Debug, "Allocating external image memory of size %lld", memRequirements.size);
 		// allocate memory
 		const vk::MemoryPropertyFlags memProperties = vk::MemoryPropertyFlagBits::eDeviceLocal;
 		const vk::Result res = allocateExternalMemory(texture, memRequirements, memProperties, extMemHandleType);
@@ -415,7 +382,7 @@ public:
 	/*	1. specify ExternalMemoryBufferCreateInfo when creating buffer;
 		2. specify ExportMemoryAllocateInfoKHR when creating memory. */
 	nvrhi::BufferHandle createExternalBuffer(nvrhi::BufferDesc desc, 
-		vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType) {
+		vk::ExternalMemoryHandleTypeFlags extMemHandleType) {
 		if (desc.isVolatile && desc.maxVersions == 0) return nullptr;
 		if (desc.isVolatile && !desc.isConstantBuffer) return nullptr;
 		if (desc.byteSize == 0) return nullptr;
@@ -497,15 +464,15 @@ public:
 	}
 
 	nvrhi::TextureHandle createExternalTexture(nvrhi::TextureDesc desc,
-						  vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType) {
+						  vk::ExternalMemoryHandleTypeFlags extMemHandleType) {
 		nvrhi::vulkan::Texture *texture =
 			new nvrhi::vulkan::Texture(m_context, m_device.getAllocator());
 		assert(texture);
 		
 	 	nvrhi::vulkan::fillTextureInfo(texture, desc);
-		auto externalMemoryBufferInfo =
-			vk::ExternalMemoryBufferCreateInfo().setHandleTypes(extMemHandleType);
-		texture->imageInfo.setPNext(&externalMemoryBufferInfo);
+		auto externalMemoryImageInfo =
+			vk::ExternalMemoryImageCreateInfo().setHandleTypes(extMemHandleType);
+		texture->imageInfo.setPNext(&externalMemoryImageInfo);
 
 		vk::Result res = m_context.device.createImage(
 			&texture->imageInfo, m_context.allocationCallbacks, &texture->image);
@@ -524,17 +491,110 @@ public:
 		}
 		return nvrhi::TextureHandle::Create(texture);
 	}
+	
+	void importVulkanMemoryToCuda(cudaExternalMemory_t &cudaMem, 
+		vk::DeviceMemory memory, vk::DeviceSize size) {
+			cudaExternalMemoryHandleDesc externalMemoryHandleDesc = {};
 
-	void importVulkanBufferToCuda(void **cudaPtr, cudaExternalMemory_t &cudaMem,
-								  const nvrhi::BufferHandle &buffer) {
-		const nvrhi::vulkan::VulkanContext &context = m_device.getContext();
-		auto *vk_buffer = dynamic_cast<nvrhi::vulkan::Buffer*>(buffer.Get());
-		cufriends::importCudaExternalMemory(cudaPtr, cudaMem, context.device, vk_buffer->memory, 
-											vk_buffer->desc.byteSize, getDefaultMemHandleType());
+			vk::Device device = m_context.device;
+			vk::ExternalMemoryHandleTypeFlagBits handleType = getDefaultMemHandleType();
+
+			if (handleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32) {
+				externalMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueWin32;
+			} else if (handleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32Kmt) {
+				externalMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueWin32Kmt;
+			} else if (handleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd) {
+				externalMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueFd;
+			} else {
+				throw std::runtime_error("Unknown handle type requested!");
+			}
+
+			externalMemoryHandleDesc.size = size;
+
+#ifdef _WIN64
+			externalMemoryHandleDesc.handle.win32.handle = (HANDLE) getMemHandle(
+				device, memory, VkExternalMemoryHandleTypeFlagBits(handleType));
+#else
+			externalMemoryHandleDesc.handle.fd = (int) (uintptr_t) getMemHandle(
+				device, memory, VkExternalMemoryHandleTypeFlagBits(handleType));
+#endif
+
+			CUDA_CHECK(cudaImportExternalMemory(&cudaMem, &externalMemoryHandleDesc));
 	}
 
-	cudaSurfaceObject_t mapVulkanTextureToCudaSurface(nvrhi::TextureHandle texture) {
-		return cudaSurfaceObject_t{};
+	void importVulkanBufferToCudaPtr(void **cudaPtr, cudaExternalMemory_t &cudaMem,
+								  const nvrhi::BufferHandle &buffer) {
+		auto *vk_buffer = dynamic_cast<nvrhi::vulkan::Buffer*>(buffer.Get());
+		importVulkanMemoryToCuda(cudaMem, vk_buffer->memory, vk_buffer->desc.byteSize);
+		
+		cudaExternalMemoryBufferDesc externalMemBufferDesc = {};
+		externalMemBufferDesc.offset					   = 0;
+		externalMemBufferDesc.size						   = vk_buffer->desc.byteSize;
+		externalMemBufferDesc.flags						   = 0;
+
+		CUDA_CHECK(cudaExternalMemoryGetMappedBuffer(cudaPtr, cudaMem, &externalMemBufferDesc));
+	}
+
+	cudaMipmappedArray_t importVulkanTextureToCudaMipmappedArray(nvrhi::TextureHandle tex, 
+		uint32_t cudaUsageFlags) {
+		auto getChannelBits = [](nvrhi::FormatInfo format) -> std::array<size_t, 4> {
+			size_t n_channels =
+				size_t(format.hasRed) + format.hasBlue + format.hasGreen + format.hasAlpha;
+			size_t bits_per_channel = format.bytesPerBlock * 8 / n_channels;
+			return {bits_per_channel * format.hasRed, bits_per_channel * format.hasGreen,
+					bits_per_channel * format.hasBlue, bits_per_channel * format.hasAlpha};
+		};
+
+		cudaExternalMemory_t cudaMem{};
+		auto *vk_texture = dynamic_cast<nvrhi::vulkan::Texture *>(tex.Get());
+		const nvrhi::TextureDesc& texture_desc = vk_texture->getDesc();
+		importVulkanMemoryToCuda(cudaMem, vk_texture->memory,
+								 m_device.getTextureMemoryRequirements(tex).size);
+		Log(Debug, "Importing a vulkan texture (size %lld) to cuda external memory",
+			m_device.getTextureMemoryRequirements(tex).size);
+
+		nvrhi::FormatInfo formatInfo = nvrhi::getFormatInfo(texture_desc.format);
+		auto numChannelBits			 = getChannelBits(formatInfo);
+		cudaMipmappedArray_t mipmappedArray;
+		cudaExternalMemoryMipmappedArrayDesc mipDesc;
+		memset(&mipDesc, 0, sizeof(mipDesc));
+		
+		mipDesc.formatDesc.x = numChannelBits[0];
+		mipDesc.formatDesc.y = numChannelBits[1];
+		mipDesc.formatDesc.z = numChannelBits[2];
+		mipDesc.formatDesc.w = numChannelBits[3];
+		mipDesc.formatDesc.f  = formatInfo.kind == nvrhi::FormatKind::Float
+									? cudaChannelFormatKindFloat : cudaChannelFormatKindUnsigned;
+		
+		mipDesc.extent.depth  = texture_desc.depth;
+		mipDesc.extent.width  = texture_desc.width;
+		mipDesc.extent.height = texture_desc.height;
+		mipDesc.flags		  = cudaUsageFlags;
+		mipDesc.numLevels	  = texture_desc.mipLevels;
+		mipDesc.offset		  = 0;
+
+		CUDA_CHECK(
+			cudaExternalMemoryGetMappedMipmappedArray(&mipmappedArray, cudaMem, &mipDesc));
+		return mipmappedArray;
+	}
+	
+	cudaSurfaceObject_t mapVulkanTextureToCudaSurface(nvrhi::TextureHandle texture,
+													  uint32_t cudaUsageFlags) {
+		cudaMipmappedArray_t mipmappedArray =
+			importVulkanTextureToCudaMipmappedArray(texture, cudaUsageFlags);
+		
+		cudaArray_t array;
+		CUDA_CHECK(cudaGetMipmappedArrayLevel(&array, mipmappedArray, 0));
+
+		// Create cudaSurfObject_t from CUDA array
+		cudaResourceDesc resDesc;
+		memset(&resDesc, 0, sizeof(resDesc));
+		resDesc.res.array.array = array;
+		resDesc.resType			= cudaResourceTypeArray;
+
+		cudaSurfaceObject_t surface;
+		CUDA_CHECK(cudaCreateSurfaceObject(&surface, &resDesc));
+		return surface;
 	}
 
 	void getDeviceUUID(uint8_t* uuid) {

@@ -2,8 +2,49 @@
 #include <algorithm>
 #include <common.h>
 #include <util/check.h>
+#include <device/cuda.h>
 
 KRR_NAMESPACE_BEGIN
+
+// convert floating point rgba color to 32-bit integer
+__device__ unsigned int rgbaFloatToInt(float4 rgba) {
+	rgba.x = __saturatef(rgba.x); // clamp to [0.0, 1.0]
+	rgba.y = __saturatef(rgba.y);
+	rgba.z = __saturatef(rgba.z);
+	rgba.w = __saturatef(rgba.w);
+	return ((unsigned int) (rgba.w * 255.0f) << 24) | ((unsigned int) (rgba.z * 255.0f) << 16) |
+		   ((unsigned int) (rgba.y * 255.0f) << 8) | ((unsigned int) (rgba.x * 255.0f));
+}
+
+__device__ float4 rgbaIntToFloat(unsigned int c) {
+	float4 rgba;
+	rgba.x = (c & 0xff) * 0.003921568627f;		   //  /255.0f;
+	rgba.y = ((c >> 8) & 0xff) * 0.003921568627f;  //  /255.0f;
+	rgba.z = ((c >> 16) & 0xff) * 0.003921568627f; //  /255.0f;
+	rgba.w = ((c >> 24) & 0xff) * 0.003921568627f; //  /255.0f;
+	return rgba;
+}
+
+__global__ void draw_screen(size_t n_elements, cudaSurfaceObject_t frame, float time, 
+						unsigned int width, unsigned int height) {
+	size_t tid	   = blockIdx.x * blockDim.x + threadIdx.x;
+	if (tid >= n_elements) return;
+	const size_t y = tid / width;
+	const size_t x = tid - y * width;
+
+	//float4 color = {(int(x + time * 100) % 256) / 256.f, (int(y + time * 100) % 256) / 256.f,
+	//				 (int(x + y + time * 100) % 256) / 256.f, 1.f};
+	float4 color = {(float(x) / width), (float(y) / height), 1, 1};
+	unsigned int data = rgbaFloatToInt(color);
+	//uchar4 color = {102, 204, 255, 255};
+	surf2Dwrite(data, frame, x * sizeof(uchar4), y);
+}
+
+void drawScreen(cudaSurfaceObject_t frame, float time, unsigned int width,
+				unsigned int height){
+	LinearKernel(draw_screen, 0, width * height, frame, time, width, height);
+}
+
 
 __global__ void sinewave(float *heightMap, unsigned int width, unsigned int height, float time) {
 	const float freq	= 4.0f;

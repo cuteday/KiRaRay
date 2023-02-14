@@ -7,15 +7,8 @@
 
 KRR_NAMESPACE_BEGIN
 
-template <typename T>
-__global__ void draw_screen(Color4f *pixels, float time, unsigned int width, unsigned int height) {
-	unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-	pixels[y * width + x] = {(int(x + time * 100) % 256) / 256.f,
-							 (int(y + time * 100) % 256) / 256.f,
-							 (int(x + y + time * 100) % 256) / 256.f, 1.f};
-}
+void drawScreen(cudaSurfaceObject_t frame, float time, unsigned int width,
+							unsigned int height);
 
 class SineWaveSimulation {
 	float *m_heightMap;

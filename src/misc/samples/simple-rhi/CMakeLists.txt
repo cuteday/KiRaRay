@@ -33,6 +33,7 @@ target_link_libraries(box krr_lib common)
 
 add_executable(frame
 	framebuffer.cpp
+	SineWaveSimulation.cu
 )
 target_include_directories(frame PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(frame krr_lib common)

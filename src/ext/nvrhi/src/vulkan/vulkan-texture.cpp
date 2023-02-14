@@ -248,6 +248,7 @@ namespace nvrhi::vulkan
                                 .setUsage(usage)
                                 .setSharingMode(vk::SharingMode::eExclusive)
                                 .setSamples(sampleCount)
+								.setTiling(vk::ImageTiling::eOptimal)
                                 .setFlags(flags);
     }
 

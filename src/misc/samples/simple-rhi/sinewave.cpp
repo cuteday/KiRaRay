@@ -139,7 +139,7 @@ public:
 		m_commandList->close();
 		GetDevice()->executeCommandList(m_commandList);
 
-		m_cuFriend->importVulkanBufferToCuda((void**)&m_cudaHeightData, m_cudaHeightMem, m_heightBuffer);
+		m_cuFriend->importVulkanBufferToCudaPtr((void**)&m_cudaHeightData, m_cudaHeightMem, m_heightBuffer);
 		m_sim.initSimulation(m_cudaHeightData);
 
 		Log(Info, "Creating binding set and layout");
@@ -161,7 +161,8 @@ public:
 
 	void BackBufferResizing() override { m_pipeline = nullptr; }
 
-	void Render(nvrhi::IFramebuffer *framebuffer) override { 
+	void Render(RenderFrame::SharedPtr frame) override { 
+		nvrhi::FramebufferHandle framebuffer = frame->getFramebuffer();
 		CUDA_SYNC_CHECK();
 
 		auto &fbInfo = framebuffer->getFramebufferInfo();
@@ -239,22 +240,7 @@ extern "C" int main(int argc, const char *argv[]) {
 	DeviceCreationParameters deviceParams	= {};
 	deviceParams.enableDebugRuntime			= true;
 	deviceParams.enableNvrhiValidationLayer = true;
-	deviceParams.requiredVulkanDeviceExtensions = {
-		VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
-		VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
-		VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
-#ifdef _WIN64
-		VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
-		VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
-#else
-		VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
-		VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
-#endif
-	};
-	deviceParams.requiredVulkanInstanceExtensions = {
-		VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
-		VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
-	};
+	deviceParams.enableCudaInterop			= true;
 
 	if (!deviceManager->CreateWindowDeviceAndSwapChain(deviceParams, g_windowTitle)) {
 		logFatal("Cannot initialize a graphics device with the requested parameters");

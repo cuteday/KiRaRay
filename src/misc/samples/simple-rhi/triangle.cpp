@@ -41,7 +41,9 @@ public:
 		GetDeviceManager()->SetInformativeWindowTitle(g_WindowTitle);
 	}
 
-	void Render(nvrhi::IFramebuffer *framebuffer) override {
+	void Render(RenderFrame::SharedPtr frame) override {
+		nvrhi::FramebufferHandle framebuffer = frame->getFramebuffer();
+		
 		if (!m_Pipeline) {
 			nvrhi::GraphicsPipelineDesc psoDesc;
 			psoDesc.VS		 = m_VertexShader;
