@@ -51,7 +51,9 @@ CommonRenderPasses::CommonRenderPasses(nvrhi::IDevice *device,
 		nvrhi::SamplerAddressMode::Clamp);
 	m_PointClampSampler = m_Device->createSampler(samplerDesc);
 
-	samplerDesc.setAllFilters(true);
+	samplerDesc.setAllFilters(true)
+		.setAllAddressModes(nvrhi::SamplerAddressMode::Repeat)
+		.setMaxAnisotropy(16);
 	m_LinearClampSampler = m_Device->createSampler(samplerDesc);
 
 	samplerDesc.setAllAddressModes(nvrhi::SamplerAddressMode::Wrap);

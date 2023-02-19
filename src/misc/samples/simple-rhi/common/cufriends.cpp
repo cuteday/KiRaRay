@@ -10,9 +10,6 @@ using namespace vkrhi;
 WindowsSecurityAttributes::WindowsSecurityAttributes() {
 	m_winPSecurityDescriptor =
 		(PSECURITY_DESCRIPTOR) calloc(1, SECURITY_DESCRIPTOR_MIN_LENGTH + 2 * sizeof(void **));
-	if (!m_winPSecurityDescriptor) {
-		throw std::runtime_error("Failed to allocate memory for security descriptor");
-	}
 
 	PSID *ppSID = (PSID *) ((PBYTE) m_winPSecurityDescriptor + SECURITY_DESCRIPTOR_MIN_LENGTH);
 	PACL *ppACL = (PACL *) ((PBYTE) ppSID + sizeof(PSID *));
@@ -40,7 +37,6 @@ WindowsSecurityAttributes::WindowsSecurityAttributes() {
 	m_winSecurityAttributes.lpSecurityDescriptor = m_winPSecurityDescriptor;
 	m_winSecurityAttributes.bInheritHandle		 = TRUE;
 }
-
 
 SECURITY_ATTRIBUTES *WindowsSecurityAttributes::operator&() { return &m_winSecurityAttributes; }
 

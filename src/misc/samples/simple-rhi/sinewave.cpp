@@ -89,8 +89,7 @@ public:
 		heightBufferDesc.byteSize		= sizeof(float) * m_sim.getWidth() * m_sim.getHeight();
 		heightBufferDesc.debugName		= "HeightBuffer";
 		heightBufferDesc.initialState	= nvrhi::ResourceStates::CopyDest;
-		m_heightBuffer =
-			m_cuFriend->createExternalBuffer(heightBufferDesc, getDefaultMemHandleType());
+		m_heightBuffer = m_cuFriend->createExternalBuffer(heightBufferDesc);
 
 		m_constantBuffer = GetDevice()->createBuffer(nvrhi::utils::CreateStaticConstantBufferDesc(
 										  sizeof(ConstantBufferEntry), "ConstantBuffer")

@@ -25,3 +25,12 @@ target_link_libraries(simple-vulkan
 	krr_lib		
 	Vulkan::Vulkan
 )
+
+add_executable(image-vulkan
+	VulkanImage.cu
+)
+target_include_directories(image-vulkan PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(image-vulkan
+	krr_lib		
+	Vulkan::Vulkan
+)

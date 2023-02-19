@@ -36,19 +36,6 @@ public:
 };
 #endif /* _WIN64 */
 
-static inline uint32_t findMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter,
-							   vk::MemoryPropertyFlags properties) {
-	vk::PhysicalDeviceMemoryProperties memProperties;
-	physicalDevice.getMemoryProperties(&memProperties);
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-		if (typeFilter & (1 << i) &&
-			(memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-			return i;
-		}
-	}
-	return ~0;
-}
-
 inline vk::ExternalMemoryHandleTypeFlagBits getDefaultMemHandleType() {
 #ifdef _WIN64
 	return IsWindows8Point1OrGreater() ? vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32
@@ -68,7 +55,7 @@ inline vk::ExternalSemaphoreHandleTypeFlagBits getDefaultSemaphoreHandleType() {
 }
 
 inline void *getMemHandle(vk::Device device, vk::DeviceMemory memory,
-								  VkExternalMemoryHandleTypeFlagBits handleType) {
+								  VkExternalMemoryHandleTypeFlagsKHR handleType) {
 #ifdef _WIN64
 	HANDLE handle = 0;
 	
@@ -76,8 +63,8 @@ inline void *getMemHandle(vk::Device device, vk::DeviceMemory memory,
 	vkMemoryGetWin32HandleInfoKHR.sType		 = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
 	vkMemoryGetWin32HandleInfoKHR.pNext		 = NULL;
 	vkMemoryGetWin32HandleInfoKHR.memory	 = memory;
-	vkMemoryGetWin32HandleInfoKHR.handleType = handleType;
-	
+	vkMemoryGetWin32HandleInfoKHR.handleType = (VkExternalMemoryHandleTypeFlagBitsKHR) handleType;
+
 	PFN_vkGetMemoryWin32HandleKHR fpGetMemoryWin32HandleKHR;
 	fpGetMemoryWin32HandleKHR =
 		(PFN_vkGetMemoryWin32HandleKHR) device.getProcAddr("vkGetMemoryWin32HandleKHR");
@@ -197,52 +184,6 @@ inline void createExternalSemaphore(vk::Device device, vk::Semaphore &semaphore,
 		throw std::runtime_error("failed to create synchronization objects for a CUDA-Vulkan!");
 	}
 }
-
-inline void importExternalBuffer(void *handle, vk::Device device, vk::PhysicalDevice physicalDevice,
-										 vk::ExternalMemoryHandleTypeFlagBits handleType, size_t size,
-										 vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties,
-										 vk::Buffer &buffer, vk::DeviceMemory &memory) {
-	vk::BufferCreateInfo bufferInfo = {};
-	bufferInfo.sType				= vk::StructureType::eBufferCreateInfo;			  
-	bufferInfo.size					= size;
-	bufferInfo.usage				= usage;
-	bufferInfo.sharingMode			= vk::SharingMode::eExclusive;
-
-	if (device.createBuffer(&bufferInfo, nullptr, &buffer) != vk::Result::eSuccess) {
-		throw std::runtime_error("failed to create buffer!");
-	}
-
-	vk::MemoryRequirements memRequirements;
-	device.getBufferMemoryRequirements(buffer, &memRequirements);
-	
-#ifdef _WIN64
-	VkImportMemoryWin32HandleInfoKHR handleInfo = {};
-	handleInfo.sType	  = VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR;
-	handleInfo.pNext	  = NULL;
-	handleInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
-	handleInfo.handle	  = handle;
-	handleInfo.name		  = NULL;
-#else
-	vk::ImportMemoryFdInfoKHR handleInfo			  = {};
-	handleInfo.sType							  = vk::StructureType::eImportMemoryFdInfoKHR;
-	handleInfo.pNext							  = NULL;
-	handleInfo.fd								  = (int) (uintptr_t) handle;
-	handleInfo.handleType						  = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
-#endif /* _WIN64 */
-
-	vk::MemoryAllocateInfo memAllocation = {};
-	memAllocation.sType				   = vk::StructureType::eMemoryAllocateInfo;
-	memAllocation.pNext				   = (void *) &handleInfo;
-	memAllocation.allocationSize	   = size;
-	memAllocation.memoryTypeIndex =
-		findMemoryType(physicalDevice, memRequirements.memoryTypeBits, properties);
-
-	if (device.allocateMemory(& memAllocation, nullptr, &memory) != vk::Result::eSuccess) {
-		throw std::runtime_error("Failed to import allocation!");
-	}
-
-	vkBindBufferMemory(device, buffer, memory, 0);
-}
 }
 
 namespace vkrhi {	// this is upon nvrhi.
@@ -279,7 +220,6 @@ public:
 	vk::Result allocateExternalMemory(nvrhi::vulkan::MemoryResource* res,
 		vk::MemoryRequirements memRequirements,
 		vk::MemoryPropertyFlags memPropertyFlags,
-		vk::ExternalMemoryHandleTypeFlags extMemHandleType,
 		bool enableDeviceAddress = false) const {
 		
 		res->managed = true;
@@ -301,17 +241,8 @@ public:
 			// xxxnsubtil: this is incorrect; need better error reporting
 			return vk::Result::eErrorOutOfDeviceMemory;
 		}
-
-		// allocate memory
-		auto allocFlags = vk::MemoryAllocateFlagsInfo();
-		if (enableDeviceAddress) allocFlags.flags |= vk::MemoryAllocateFlagBits::eDeviceAddress;
-
-		auto allocInfo = vk::MemoryAllocateInfo()
-							 .setAllocationSize(memRequirements.size)
-							 .setMemoryTypeIndex(memTypeIndex);
 		
 		/* external memory handle info */
-
 #ifdef _WIN64
 		WindowsSecurityAttributes winSecurityAttributes;
 		VkExportMemoryWin32HandleInfoKHR vulkanExportMemoryWin32HandleInfoKHR = {};
@@ -323,21 +254,24 @@ public:
 			DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE;
 		vulkanExportMemoryWin32HandleInfoKHR.name = (LPCWSTR) nullptr;
 #endif /* _WIN64 */
-		vk::ExportMemoryAllocateInfoKHR vulkanExportMemoryAllocateInfoKHR = {};
-		vulkanExportMemoryAllocateInfoKHR.sType = vk::StructureType::eExportMemoryAllocateInfoKHR;
+		auto vulkanExportMemoryAllocateInfoKHR =
+			vk::ExportMemoryAllocateInfoKHR()
+				.setHandleTypes(getDefaultMemHandleType())
 #ifdef _WIN64
-		vulkanExportMemoryAllocateInfoKHR.pNext =
-			extMemHandleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32
-				? &vulkanExportMemoryWin32HandleInfoKHR : nullptr;
-		vulkanExportMemoryAllocateInfoKHR.handleTypes = extMemHandleType;
+				.setPNext(IsWindows8OrGreater() ? &vulkanExportMemoryWin32HandleInfoKHR : nullptr);
 #else
-		vulkanExportMemoryAllocateInfoKHR.pNext = nullptr;
-		vulkanExportMemoryAllocateInfoKHR.handleTypes =
-			vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
+				.setPNext(nullptr);
 #endif /* _WIN64 */
 
-		allocFlags.setPNext(&vulkanExportMemoryAllocateInfoKHR);
-		allocInfo.setPNext(&allocFlags);
+		// allocate memory
+		auto allocFlags = vk::MemoryAllocateFlagsInfo()
+								.setPNext(&vulkanExportMemoryAllocateInfoKHR);
+		if (enableDeviceAddress) allocFlags.flags |= vk::MemoryAllocateFlagBits::eDeviceAddress;
+
+		auto allocInfo = vk::MemoryAllocateInfo()
+							 .setAllocationSize(memRequirements.size)
+							 .setMemoryTypeIndex(memTypeIndex)
+							 .setPNext(&allocFlags);
 
 		return m_context.device.allocateMemory(&allocInfo, m_context.allocationCallbacks,
 											   &res->memory);
@@ -345,7 +279,6 @@ public:
 
 	vk::Result allocateExternalBufferMemory(
 			nvrhi::vulkan::Buffer *buffer,
-			vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType,
 			bool enableDeviceAddress = false) const {
 		vk::MemoryRequirements memRequirements;
 		m_context.device.getBufferMemoryRequirements(buffer->buffer, &memRequirements);
@@ -355,7 +288,6 @@ public:
 			buffer, 
 			memRequirements, 
 			vkrhi::pickBufferMemoryProperties(buffer->desc), 
-			extMemHandleType,
 			enableDeviceAddress);
 		CHECK_VK_RETURN(res)
 			
@@ -363,8 +295,7 @@ public:
 		return vk::Result::eSuccess;
 	}
 
-	vk::Result allocateExternalTextureMemory(nvrhi::vulkan::Texture *texture, 
-			vk::ExternalMemoryHandleTypeFlagsKHR extMemHandleType) {
+	vk::Result allocateExternalTextureMemory(nvrhi::vulkan::Texture *texture) {
 		// grab the image memory requirements
 		vk::MemoryRequirements memRequirements;
 		m_context.device.getImageMemoryRequirements(texture->image, &memRequirements);
@@ -372,7 +303,7 @@ public:
 		Log(Debug, "Allocating external image memory of size %lld", memRequirements.size);
 		// allocate memory
 		const vk::MemoryPropertyFlags memProperties = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		const vk::Result res = allocateExternalMemory(texture, memRequirements, memProperties, extMemHandleType);
+		const vk::Result res = allocateExternalMemory(texture, memRequirements, memProperties);
 		CHECK_VK_RETURN(res)
 	
 		m_context.device.bindImageMemory(texture->image, texture->memory, 0);
@@ -381,8 +312,7 @@ public:
 
 	/*	1. specify ExternalMemoryBufferCreateInfo when creating buffer;
 		2. specify ExportMemoryAllocateInfoKHR when creating memory. */
-	nvrhi::BufferHandle createExternalBuffer(nvrhi::BufferDesc desc, 
-		vk::ExternalMemoryHandleTypeFlags extMemHandleType) {
+	nvrhi::BufferHandle createExternalBuffer(nvrhi::BufferDesc desc) {
 		if (desc.isVolatile && desc.maxVersions == 0) return nullptr;
 		if (desc.isVolatile && !desc.isConstantBuffer) return nullptr;
 		if (desc.byteSize == 0) return nullptr;
@@ -429,7 +359,7 @@ public:
 		}
 
 		auto externalMemoryBufferInfo =
-			vk::ExternalMemoryBufferCreateInfo().setHandleTypes(extMemHandleType);
+			vk::ExternalMemoryBufferCreateInfo().setHandleTypes(getDefaultMemHandleType());
 		auto bufferInfo = vk::BufferCreateInfo()
 							  .setSize(size)
 							  .setUsage(usageFlags)
@@ -445,7 +375,6 @@ public:
 		if (!desc.isVirtual) {
 			res = allocateExternalBufferMemory(
 				buffer, 
-				extMemHandleType,
 				(usageFlags & vk::BufferUsageFlagBits::eShaderDeviceAddress) != vk::BufferUsageFlags(0));
 			CHECK_VK_FAIL(res)
 			m_context.nameVKObject(buffer->memory, vk::DebugReportObjectTypeEXT::eDeviceMemory,
@@ -463,15 +392,14 @@ public:
 		return nvrhi::BufferHandle::Create(buffer);
 	}
 
-	nvrhi::TextureHandle createExternalTexture(nvrhi::TextureDesc desc,
-						  vk::ExternalMemoryHandleTypeFlags extMemHandleType) {
+	nvrhi::TextureHandle createExternalTexture(nvrhi::TextureDesc desc) {
 		nvrhi::vulkan::Texture *texture =
 			new nvrhi::vulkan::Texture(m_context, m_device.getAllocator());
 		assert(texture);
 		
 	 	nvrhi::vulkan::fillTextureInfo(texture, desc);
-		auto externalMemoryImageInfo =
-			vk::ExternalMemoryImageCreateInfo().setHandleTypes(extMemHandleType);
+		auto externalMemoryImageInfo = vk::ExternalMemoryImageCreateInfo()
+											.setHandleTypes(getDefaultMemHandleType());
 		texture->imageInfo.setPNext(&externalMemoryImageInfo);
 
 		vk::Result res = m_context.device.createImage(
@@ -483,7 +411,7 @@ public:
 							   desc.debugName.c_str());
 
 		if (!desc.isVirtual) {
-			res = allocateExternalTextureMemory(texture, extMemHandleType);
+			res = allocateExternalTextureMemory(texture);
 			ASSERT_VK_OK(res);
 			CHECK_VK_FAIL(res)
 			m_context.nameVKObject(texture->memory, vk::DebugReportObjectTypeEXT::eDeviceMemory,
@@ -495,8 +423,9 @@ public:
 	void importVulkanMemoryToCuda(cudaExternalMemory_t &cudaMem, 
 		vk::DeviceMemory memory, vk::DeviceSize size) {
 			cudaExternalMemoryHandleDesc externalMemoryHandleDesc = {};
+			memset(&externalMemoryHandleDesc, 0, sizeof(cudaExternalMemoryHandleDesc));
 
-			vk::Device device = m_context.device;
+			const vk::Device& device = m_context.device;
 			vk::ExternalMemoryHandleTypeFlagBits handleType = getDefaultMemHandleType();
 
 			if (handleType & vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32) {
@@ -547,7 +476,7 @@ public:
 
 		cudaExternalMemory_t cudaMem{};
 		auto *vk_texture = dynamic_cast<nvrhi::vulkan::Texture *>(tex.Get());
-		const nvrhi::TextureDesc& texture_desc = vk_texture->getDesc();
+		const nvrhi::TextureDesc& texture_desc = tex->getDesc();
 		importVulkanMemoryToCuda(cudaMem, vk_texture->memory,
 								 m_device.getTextureMemoryRequirements(tex).size);
 		Log(Debug, "Importing a vulkan texture (size %lld) to cuda external memory",

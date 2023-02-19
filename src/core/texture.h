@@ -11,7 +11,6 @@
 #include "common.h"
 
 #include "file.h"
-#include "window.h"
 #include "raytracing.h"
 #include "render/materials/bxdf.h"
 

@@ -213,7 +213,8 @@ public:
 			psoDesc.inputLayout	   = m_InputLayout;
 			psoDesc.bindingLayouts = {m_BindingLayout};
 			psoDesc.primType	   = nvrhi::PrimitiveType::TriangleList;
-			psoDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::Front;
+			psoDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::Back;
+			psoDesc.renderState.rasterState.frontCounterClockwise = true;
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
 
 			m_Pipeline = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);

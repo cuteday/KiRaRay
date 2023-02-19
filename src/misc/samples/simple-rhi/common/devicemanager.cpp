@@ -1072,18 +1072,17 @@ bool DeviceManager_VK::createSwapChain() {
 		m_SwapChainImages.push_back(sci);
 
 		textureDesc.format				 = m_DeviceParams.renderFormat;
-		textureDesc.debugName			 = "Render image";
-		textureDesc.initialState		 = nvrhi::ResourceStates::RenderTarget;
+		textureDesc.debugName			 = "Render Target";
+		textureDesc.initialState		 = nvrhi::ResourceStates::ShaderResource;
 		textureDesc.keepInitialState	 = true;
 		textureDesc.isRenderTarget		 = true;
-		//textureDesc.isUAV				 = true;
-		//textureDesc.useClearValue		 = true;
-		//textureDesc.clearValue		 = nvrhi::Color(0.f);
+		textureDesc.isUAV				 = true;
 		textureDesc.sampleCount			 = 1;
 			
 		nvrhi::TextureHandle renderImage = m_DeviceParams.enableCudaInterop ?
-			m_CUFriend->createExternalTexture(textureDesc, cufriends::getDefaultMemHandleType())
+			m_CUFriend->createExternalTexture(textureDesc)
 				: m_NvrhiDevice->createTexture(textureDesc); 
+
 		m_RenderImages.push_back(renderImage);
 	}
 
@@ -1169,12 +1168,12 @@ bool DeviceManager_VK::CreateDeviceAndSwapChain() {
 		m_CUFriend->initCUDA();
 	}
 
-	CHECK(createSwapChain())
-
 	m_BarrierCommandList = m_NvrhiDevice->createCommandList();
 	m_PresentSemaphore   = m_VulkanDevice.createSemaphore(vk::SemaphoreCreateInfo());
 	m_BindingCache		 = std::make_unique<BindingCache>(GetDevice());
 	
+	CHECK(createSwapChain())
+
 #undef CHECK
 
 	return true;

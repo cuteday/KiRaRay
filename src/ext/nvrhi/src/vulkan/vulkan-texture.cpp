@@ -771,6 +771,7 @@ namespace nvrhi::vulkan
                             .setCompareOp(vk::CompareOp::eLess)
                             .setMinLod(0.f)
                             .setMaxLod(std::numeric_limits<float>::max())
+                            .setUnnormalizedCoordinates(false)
                             .setBorderColor(pickSamplerBorderColor(desc));
 
         vk::SamplerReductionModeCreateInfoEXT samplerReductionCreateInfo;
