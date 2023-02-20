@@ -143,47 +143,6 @@ inline void *getSemaphoreHandle(vk::Device device, vk::Semaphore semaphore,
 #endif /* _WIN64 */
 }
 
-inline void importCudaExternalSemaphore(cudaExternalSemaphore_t &cudaSem, vk::Device device,
-	vk::Semaphore &vkSem, vk::ExternalSemaphoreHandleTypeFlagBits handleType) {
-	cudaExternalSemaphoreHandleDesc externalSemaphoreHandleDesc = {};
-
-	if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32) {
-		externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32;
-	} else if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32Kmt) {
-		externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32Kmt;
-	} else if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd) {
-		externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueFd;
-	}
-	else {
-		throw std::runtime_error("Unknown handle type requested!");
-	}
-
-#ifdef _WIN64
-	externalSemaphoreHandleDesc.handle.win32.handle =
-		(HANDLE) getSemaphoreHandle(device, vkSem, vk::ExternalSemaphoreHandleTypeFlagBits(handleType));
-#else
-	externalSemaphoreHandleDesc.handle.fd =
-		(int) (uintptr_t) getSemaphoreHandle(device, vkSem, handleType);
-#endif
-
-	externalSemaphoreHandleDesc.flags = 0;
-	CUDA_CHECK(cudaImportExternalSemaphore(&cudaSem, &externalSemaphoreHandleDesc));
-}
-
-inline void createExternalSemaphore(vk::Device device, vk::Semaphore &semaphore,
-								vk::ExternalSemaphoreHandleTypeFlagBits handleType) {
-	vk::SemaphoreCreateInfo semaphoreInfo = {};
-	semaphoreInfo.sType					= vk::StructureType::eSemaphoreCreateInfo;
-	vk::ExportSemaphoreCreateInfoKHR exportSemaphoreCreateInfo = {};
-	exportSemaphoreCreateInfo.sType = vk::StructureType::eExportSemaphoreCreateInfoKHR;
-	exportSemaphoreCreateInfo.pNext = NULL;
-	exportSemaphoreCreateInfo.handleTypes = handleType;
-	semaphoreInfo.pNext					  = &exportSemaphoreCreateInfo;
-
-	if (device.createSemaphore(& semaphoreInfo, nullptr, &semaphore) != vk::Result::eSuccess) {
-		throw std::runtime_error("failed to create synchronization objects for a CUDA-Vulkan!");
-	}
-}
 }
 
 namespace vkrhi {	// this is upon nvrhi.
@@ -419,6 +378,20 @@ public:
 		}
 		return nvrhi::TextureHandle::Create(texture);
 	}
+
+	void createExternalSemaphore(vk::Semaphore& vkSem) const {
+		vk::SemaphoreCreateInfo semaphoreInfo = {};
+		semaphoreInfo.sType					  = vk::StructureType::eSemaphoreCreateInfo;
+		vk::ExportSemaphoreCreateInfoKHR exportSemaphoreCreateInfo = {};
+		exportSemaphoreCreateInfo.sType		  = vk::StructureType::eExportSemaphoreCreateInfoKHR;
+		exportSemaphoreCreateInfo.pNext		  = NULL;
+		exportSemaphoreCreateInfo.handleTypes = getDefaultSemaphoreHandleType();
+		semaphoreInfo.pNext					  = &exportSemaphoreCreateInfo;
+
+		if (m_context.device.createSemaphore(&semaphoreInfo, nullptr, &vkSem) != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to create synchronization objects for a CUDA-Vulkan!");
+		}
+	}
 	
 	void importVulkanMemoryToCuda(cudaExternalMemory_t &cudaMem, 
 		vk::DeviceMemory memory, vk::DeviceSize size) {
@@ -492,10 +465,10 @@ public:
 		mipDesc.formatDesc.y = numChannelBits[1];
 		mipDesc.formatDesc.z = numChannelBits[2];
 		mipDesc.formatDesc.w = numChannelBits[3];
-		mipDesc.formatDesc.f  = formatInfo.kind == nvrhi::FormatKind::Float
+		mipDesc.formatDesc.f = formatInfo.kind == nvrhi::FormatKind::Float
 									? cudaChannelFormatKindFloat : cudaChannelFormatKindUnsigned;
 		
-		mipDesc.extent.depth  = texture_desc.depth;
+		mipDesc.extent.depth  = 0; // THIS MUST BE ZERO! OTHERWISE TILING ERROR WOULD OCCUR
 		mipDesc.extent.width  = texture_desc.width;
 		mipDesc.extent.height = texture_desc.height;
 		mipDesc.flags		  = cudaUsageFlags;
@@ -579,6 +552,56 @@ public:
 		}
 
 		return -1;
+	}
+
+	
+	cudaExternalSemaphore_t importVulkanSemaphoreToCuda(vk::Semaphore &vkSem) {
+		cudaExternalSemaphoreHandleDesc externalSemaphoreHandleDesc = {};
+		vk::ExternalSemaphoreHandleTypeFlagBits handleType = getDefaultSemaphoreHandleType();
+		if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32) {
+			externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32;
+		} else if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32Kmt) {
+			externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32Kmt;
+		} else if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd) {
+			externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueFd;
+		} else {
+			throw std::runtime_error("Unknown handle type requested!");
+		}
+
+#ifdef _WIN64
+		externalSemaphoreHandleDesc.handle.win32.handle = (HANDLE) getSemaphoreHandle(
+			m_context.device, vkSem, vk::ExternalSemaphoreHandleTypeFlagBits(handleType));
+#else
+		externalSemaphoreHandleDesc.handle.fd =
+			(int) (uintptr_t) getSemaphoreHandle(m_context.device, vkSem, handleType);
+#endif
+		cudaExternalSemaphore_t cudaSem{};
+		externalSemaphoreHandleDesc.flags = 0;
+		CUDA_CHECK(cudaImportExternalSemaphore(&cudaSem, &externalSemaphoreHandleDesc));
+		return cudaSem;
+	}
+
+	static void cudaWaitExternalSemaphore(CUstream stream, size_t value,
+									cudaExternalSemaphore_t *extSem, size_t numSems = 1) {
+		cudaExternalSemaphoreWaitParams extSemaphoreWaitParams;
+		memset(&extSemaphoreWaitParams, 0, sizeof(extSemaphoreWaitParams));
+		extSemaphoreWaitParams.params.fence.value = value;
+		extSemaphoreWaitParams.flags			  = 0;
+		CUDA_CHECK(
+			cudaWaitExternalSemaphoresAsync(extSem, &extSemaphoreWaitParams, numSems,
+												   stream));
+	}
+
+	static void cudaSignalExternalSemaphore(CUstream stream, size_t value,
+											cudaExternalSemaphore_t *extSem, size_t numSems = 1) {
+		cudaExternalSemaphoreSignalParams extSemaphoreSignalParams;
+		memset(&extSemaphoreSignalParams, 0, sizeof(extSemaphoreSignalParams));
+
+		extSemaphoreSignalParams.params.fence.value = value;
+		extSemaphoreSignalParams.flags				= 0;
+		CUDA_CHECK(
+			cudaSignalExternalSemaphoresAsync(extSem, &extSemaphoreSignalParams,
+													 numSems, stream));
 	}
 
 private:

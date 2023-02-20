@@ -7,7 +7,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-void drawScreen(cudaSurfaceObject_t frame, float time, unsigned int width,
+void drawScreen(CUstream stream, cudaSurfaceObject_t frame, float time, unsigned int width,
 							unsigned int height);
 
 class SineWaveSimulation {

@@ -13,21 +13,20 @@ __global__ void draw_screen(cudaSurfaceObject_t frame, float time,
 	unsigned int y = tid / width;
 	unsigned int x = tid - y * width;
 
-	float4 color = {(int(x + time * 100) % 256) / 256.f, 
-					(int(y + time * 100) % 256) / 256.f,
-					(int(x + y + time * 100) % 256) / 256.f, 1.f};
-	//float4 color = {(float(x) / width), (float(y) / height), 1, 1};
-	//float4 orig_color;
-	//surf2Dread(&orig_color, frame, x * sizeof(float4), y);
-	//if (orig_color.w == 0.f) 
+	float4 color = {(int(x + time * 50) % 200) / 200.f, 
+					(int(y + time * 50) % 200) / 200.f,
+					(int(x + y + time * 50) % 200) / 200.f, 1.f};
+	float4 orig_color;
+	surf2Dread(&orig_color, frame, x * sizeof(float4), y);
+	if (orig_color.w > 0.f) 
 		surf2Dwrite(color, frame, x * sizeof(float4), y);
 }
 
-void drawScreen(cudaSurfaceObject_t frame, float time, unsigned int width,
+void drawScreen(CUstream stream, cudaSurfaceObject_t frame, float time, unsigned int width,
 				unsigned int height){
 	constexpr int n_threads = 128;
 	
-	draw_screen<<<width * height / n_threads, n_threads, 0, 0>>>(frame, time, width, height);
+	draw_screen<<<width * height / n_threads, n_threads, 0, stream>>>(frame, time, width, height);
 }
 
 

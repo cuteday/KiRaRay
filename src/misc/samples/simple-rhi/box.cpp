@@ -271,7 +271,7 @@ public:
 
 
  extern "C" int main(int argc, const char *argv[]) {
-	DeviceManager *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
+	DeviceManagerImpl *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
 
 	DeviceCreationParameters deviceParams;
 	deviceParams.enableDebugRuntime			= true;

@@ -488,10 +488,10 @@ void DeviceManager::SetInformativeWindowTitle(const char *applicationName, const
 	SetWindowTitle(ss.str().c_str());
 }
 
-DeviceManager *DeviceManager::Create(nvrhi::GraphicsAPI api) {
+DeviceManagerImpl *DeviceManager::Create(nvrhi::GraphicsAPI api) {
 	switch (api) {
 		case nvrhi::GraphicsAPI::VULKAN:
-			return CreateVK();
+			return CreateImpl();
 		default:
 			Log(Error, "DeviceManager::Create: Unsupported Graphics API (%d)", api);
 			return nullptr;
@@ -534,7 +534,7 @@ template <typename T> static std::vector<T> setToVector(const std::unordered_set
 	return ret;
 }
 
-bool DeviceManager_VK::createInstance() {
+bool DeviceManagerImpl::createInstance() {
 	if (!glfwVulkanSupported()) {
 		return false;
 	}
@@ -644,7 +644,7 @@ bool DeviceManager_VK::createInstance() {
 	return true;
 }
 
-void DeviceManager_VK::installDebugCallback() {
+void DeviceManagerImpl::installDebugCallback() {
 	auto info =
 		vk::DebugReportCallbackCreateInfoEXT()
 			.setFlags(vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::eWarning |
@@ -658,7 +658,7 @@ void DeviceManager_VK::installDebugCallback() {
 	assert(res == vk::Result::eSuccess);
 }
 
-bool DeviceManager_VK::pickPhysicalDevice() {
+bool DeviceManagerImpl::pickPhysicalDevice() {
 	vk::Format requestedFormat = nvrhi::vulkan::convertFormat(m_DeviceParams.swapChainFormat);
 	vk::Extent2D requestedExtent(m_DeviceParams.backBufferWidth, m_DeviceParams.backBufferHeight);
 
@@ -785,7 +785,7 @@ bool DeviceManager_VK::pickPhysicalDevice() {
 	return false;
 }
 
-bool DeviceManager_VK::findQueueFamilies(vk::PhysicalDevice physicalDevice) {
+bool DeviceManagerImpl::findQueueFamilies(vk::PhysicalDevice physicalDevice) {
 	auto props = physicalDevice.getQueueFamilyProperties();
 
 	for (int i = 0; i < int(props.size()); i++) {
@@ -832,7 +832,7 @@ bool DeviceManager_VK::findQueueFamilies(vk::PhysicalDevice physicalDevice) {
 	return true;
 }
 
-bool DeviceManager_VK::createDevice() {
+bool DeviceManagerImpl::createDevice() {
 	// figure out which optional extensions are supported
 	auto deviceExtensions = m_VulkanPhysicalDevice.enumerateDeviceExtensionProperties();
 	for (const auto &ext : deviceExtensions) {
@@ -981,7 +981,7 @@ bool DeviceManager_VK::createDevice() {
 	return true;
 }
 
-bool DeviceManager_VK::createWindowSurface() {
+bool DeviceManagerImpl::createWindowSurface() {
 	const VkResult res = glfwCreateWindowSurface(m_VulkanInstance, m_Window, nullptr,
 												 (VkSurfaceKHR *) &m_WindowSurface);
 	if (res != VK_SUCCESS) {
@@ -993,7 +993,7 @@ bool DeviceManager_VK::createWindowSurface() {
 	return true;
 }
 
-void DeviceManager_VK::destroySwapChain() {
+void DeviceManagerImpl::destroySwapChain() {
 	if (m_VulkanDevice) {
 		m_VulkanDevice.waitIdle();
 	}
@@ -1008,7 +1008,7 @@ void DeviceManager_VK::destroySwapChain() {
 }
 
 // This routine will be called whenever resizing...
-bool DeviceManager_VK::createSwapChain() {
+bool DeviceManagerImpl::createSwapChain() {
 	destroySwapChain();
 
 	m_SwapChainFormat = {vk::Format(nvrhi::vulkan::convertFormat(m_DeviceParams.swapChainFormat)),
@@ -1091,7 +1091,7 @@ bool DeviceManager_VK::createSwapChain() {
 	return true;
 }
 
-bool DeviceManager_VK::CreateDeviceAndSwapChain() {
+bool DeviceManagerImpl::CreateDeviceAndSwapChain() {
 	if (m_DeviceParams.enableDebugRuntime) {
 		enabledExtensions.instance.insert("VK_EXT_debug_report");
 		enabledExtensions.layers.insert("VK_LAYER_KHRONOS_validation");
@@ -1168,8 +1168,9 @@ bool DeviceManager_VK::CreateDeviceAndSwapChain() {
 		m_CUFriend->initCUDA();
 	}
 
-	m_BarrierCommandList = m_NvrhiDevice->createCommandList();
+	m_CommandList = m_NvrhiDevice->createCommandList();
 	m_PresentSemaphore   = m_VulkanDevice.createSemaphore(vk::SemaphoreCreateInfo());
+	m_HelperPass		 = std::make_unique<CommonRenderPasses>(GetDevice());
 	m_BindingCache		 = std::make_unique<BindingCache>(GetDevice());
 	
 	CHECK(createSwapChain())
@@ -1179,13 +1180,13 @@ bool DeviceManager_VK::CreateDeviceAndSwapChain() {
 	return true;
 }
 
-void DeviceManager_VK::DestroyDeviceAndSwapChain() {
+void DeviceManagerImpl::DestroyDeviceAndSwapChain() {
 	destroySwapChain();
 
 	m_VulkanDevice.destroySemaphore(m_PresentSemaphore);
 	m_PresentSemaphore = vk::Semaphore();
 
-	m_BarrierCommandList = nullptr;
+	m_CommandList = nullptr;
 
 	m_NvrhiDevice	  = nullptr;
 	m_ValidationLayer = nullptr;
@@ -1212,7 +1213,7 @@ void DeviceManager_VK::DestroyDeviceAndSwapChain() {
 	}
 }
 
-void DeviceManager_VK::BeginFrame() {
+void DeviceManagerImpl::BeginFrame() {
 	const vk::Result res =
 		m_VulkanDevice.acquireNextImageKHR(m_SwapChain,
 										   std::numeric_limits<uint64_t>::max(), // timeout
@@ -1223,21 +1224,16 @@ void DeviceManager_VK::BeginFrame() {
 	m_NvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
 }
 
-void DeviceManager_VK::Present() {
-	if (!m_HelperPass) {
-		m_HelperPass = std::make_unique<CommonRenderPasses>(GetDevice());
-	}
+void DeviceManagerImpl::Present() {
 
-	m_BarrierCommandList->open(); // umm...
-	// blit the contents of render to swapchain image...
-	m_HelperPass->BlitTexture(m_BarrierCommandList, GetFramebuffer(m_SwapChainIndex), 
-		GetRenderImage(m_SwapChainIndex), m_BindingCache.get());
-
-	m_BarrierCommandList->close();
-	m_NvrhiDevice->executeCommandList(m_BarrierCommandList, nvrhi::CommandQueue::Graphics);
-	
 	m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
-
+	m_CommandList->open(); // umm... 
+	// blit the contents of render to swapchain image...
+	m_HelperPass->BlitTexture(m_CommandList, GetFramebuffer(m_SwapChainIndex), 
+		GetRenderImage(m_SwapChainIndex), m_BindingCache.get());
+	m_CommandList->close();
+	m_NvrhiDevice->executeCommandList(m_CommandList, nvrhi::CommandQueue::Graphics);
+	
 	vk::PresentInfoKHR info = vk::PresentInfoKHR()
 								  .setWaitSemaphoreCount(1)
 								  .setPWaitSemaphores(&m_PresentSemaphore)
@@ -1282,8 +1278,8 @@ void DeviceManager_VK::Present() {
 	}
 }
 
-DeviceManager *DeviceManager::CreateVK() {
-	return new DeviceManager_VK();
+DeviceManagerImpl *DeviceManager::CreateImpl() {
+	return new DeviceManagerImpl();
 }
 
 /***********************************End DeviceManagerVK***************************************/

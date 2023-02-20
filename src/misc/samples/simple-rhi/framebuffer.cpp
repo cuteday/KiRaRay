@@ -1,3 +1,4 @@
+// https://www.khronos.org/blog/understanding-vulkan-synchronization
 #include <common.h>
 #include <logger.h>
 #include <nvrhi/vulkan.h>
@@ -12,23 +13,25 @@ KRR_NAMESPACE_BEGIN
 
 static const char *g_WindowTitle = "CuFramebuffer";
 
-class BasicTriangle : public IRenderPass {
+class HelloVkCuda : public IRenderPass {
 private:
 	nvrhi::ShaderHandle m_VertexShader;
 	nvrhi::ShaderHandle m_PixelShader;
 	nvrhi::GraphicsPipelineHandle m_Pipeline;
 	nvrhi::CommandListHandle m_CommandList;
 	std::shared_ptr<vkrhi::CudaVulkanFriend> m_CUFriend;
-	std::unique_ptr<CommonRenderPasses> m_HelperPass;
-	nvrhi::TextureHandle m_DrawTexture;
-	cudaSurfaceObject_t m_DrawCudaSurface;
-	std::unique_ptr<BindingCache> m_BindingCache;
 	float m_ElapsedTime{};
 	CUstream m_CudaStream{};
-	vk::Semaphore m_cudaUpdateVkSem, m_VkUpdateCudaSem;
+	vk::Semaphore m_CudaUpdateVkSem, m_VkUpdateCudaSem;
+	cudaExternalSemaphore_t m_CudaExtCudaUpdateVkSem, m_CudaExtVkUpdateCudaSem;
 
 public:
 	using IRenderPass::IRenderPass;
+
+	~HelloVkCuda() { 
+		GetNativeDevice().destroySemaphore(m_CudaUpdateVkSem);
+		GetNativeDevice().destroySemaphore(m_VkUpdateCudaSem);
+	}
 
 	bool Init() {
 		ShaderLoader shaderLoader(GetDevice());
@@ -43,17 +46,18 @@ public:
 		if (!m_VertexShader || !m_PixelShader) 
 			return false;
 		
-		m_CommandList = GetDevice()->createCommandList();
-		m_HelperPass   = std::make_unique<CommonRenderPasses>(GetDevice());
-		m_BindingCache = std::make_unique<BindingCache>(GetDevice());
+		CUDA_CHECK(cudaStreamCreate(&m_CudaStream));
 
+		m_CommandList = GetDevice()->createCommandList();
+		m_CUFriend->createExternalSemaphore(m_CudaUpdateVkSem);
+		m_CUFriend->createExternalSemaphore(m_VkUpdateCudaSem);
+		m_CudaExtCudaUpdateVkSem = m_CUFriend->importVulkanSemaphoreToCuda(m_CudaUpdateVkSem);
+		m_CudaExtVkUpdateCudaSem = m_CUFriend->importVulkanSemaphoreToCuda(m_VkUpdateCudaSem);
 		return true;
 	}
 
 	void BackBufferResizing() override { 
 		m_Pipeline = nullptr; 
-		m_DrawTexture = nullptr;
-		m_DrawCudaSurface = 0;
 	}
 
 	void Animate(float fElapsedTimeSeconds) override {
@@ -64,81 +68,43 @@ public:
 	void Render(RenderFrame::SharedPtr frame) override {
 		nvrhi::FramebufferHandle framebuffer = frame->getFramebuffer();
 		auto fbInfo							 = framebuffer->getFramebufferInfo();
-
-		if (!m_DrawTexture) {
-			nvrhi::TextureDesc textureDesc;
-			textureDesc.width			 = fbInfo.width;
-			textureDesc.height			 = fbInfo.height;
-			textureDesc.format			 = nvrhi::Format::RGBA32_FLOAT;
-			textureDesc.debugName		 = "Draw Texture";
-			textureDesc.initialState	 = nvrhi::ResourceStates::ShaderResource;
-			textureDesc.keepInitialState = true;
-			textureDesc.isUAV			 = true;
-			textureDesc.sampleCount		 = 1;
-			m_DrawTexture				 = m_CUFriend->createExternalTexture(textureDesc);
-			m_CommandList->open();
-			m_CommandList->setPermanentTextureState(m_DrawTexture,
-													nvrhi::ResourceStates::ShaderResource);
-			m_CommandList->close();
-			GetDevice()->executeCommandList(m_CommandList);
+		
+		if (!m_Pipeline) {
+			nvrhi::GraphicsPipelineDesc psoDesc;
+			psoDesc.VS		 = m_VertexShader;
+			psoDesc.PS		 = m_PixelShader;
+			psoDesc.primType = nvrhi::PrimitiveType::TriangleList;
+			psoDesc.renderState.depthStencilState.depthTestEnable = false;
+			m_Pipeline = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
 		}
-		
-		//if (!m_Pipeline) {
-		//	nvrhi::GraphicsPipelineDesc psoDesc;
-		//	psoDesc.VS		 = m_VertexShader;
-		//	psoDesc.PS		 = m_PixelShader;
-		//	psoDesc.primType = nvrhi::PrimitiveType::TriangleList;
-		//	psoDesc.renderState.depthStencilState.depthTestEnable = false;
-		//	m_Pipeline = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
-		//}
 
-		//m_CommandList->open();
-		//nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.f));
-		//nvrhi::GraphicsState state;
-		//state.pipeline	  = m_Pipeline;
-		//state.framebuffer = framebuffer;
-		//state.viewport.addViewportAndScissorRect(fbInfo.getViewport());
-		//m_CommandList->setGraphicsState(state);
-
-		//nvrhi::DrawArguments args;
-		//args.vertexCount = 3;
-		//m_CommandList->draw(args);
-		//m_CommandList->close();
-		//GetDevice()->executeCommandList(m_CommandList);
-		GetDevice()->waitForIdle();
-
-#if 0
-		CUDA_SYNC_CHECK();
-		cudaSurfaceObject_t cudaFrame = frame->getMappedCudaSurface(m_CUFriend);
-		drawScreen(cudaFrame, m_ElapsedTime, fbInfo.width, fbInfo.height);
-		CUDA_SYNC_CHECK();
-#else
-		static bool initialized{};
-		
-		if (initialized) {
-			CUDA_SYNC_CHECK();
-			if (!m_DrawCudaSurface)
-				m_DrawCudaSurface =
-					m_CUFriend->mapVulkanTextureToCudaSurface(m_DrawTexture, cudaArrayDefault);
-			drawScreen(m_DrawCudaSurface, m_ElapsedTime, fbInfo.width, fbInfo.height);
-			CUDA_SYNC_CHECK();
-		} else {
-			initialized = true;
-		}
-		
+		GetVkDevice()->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_VkUpdateCudaSem, 0);
 		m_CommandList->open();
-		m_CommandList->setTextureState(m_DrawTexture, nvrhi::AllSubresources,
-									   nvrhi::ResourceStates::ShaderResource);
-		m_HelperPass->BlitTexture(m_CommandList, framebuffer, m_DrawTexture, m_BindingCache.get());
+		nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.f));
+		nvrhi::GraphicsState state;
+		state.pipeline	  = m_Pipeline;
+		state.framebuffer = framebuffer;
+		state.viewport.addViewportAndScissorRect(fbInfo.getViewport());
+		m_CommandList->setGraphicsState(state);
+
+		nvrhi::DrawArguments args;
+		args.vertexCount = 3;
+		m_CommandList->draw(args);
 		m_CommandList->close();
 		GetDevice()->executeCommandList(m_CommandList);
-#endif
+
+		vkrhi::CudaVulkanFriend::cudaWaitExternalSemaphore(m_CudaStream, 0,
+														   &m_CudaExtVkUpdateCudaSem);
+		cudaSurfaceObject_t cudaFrame = frame->getMappedCudaSurface(m_CUFriend);
+		drawScreen(m_CudaStream, cudaFrame, m_ElapsedTime, fbInfo.width, fbInfo.height);
+		CUDA_SYNC_CHECK();
+
 	}
 };
 
 
 extern "C" int main(int argc, const char *argv[]) {
-	DeviceManager *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
+	DeviceManagerImpl *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
 	
 	DeviceCreationParameters deviceParams		= {};
 	deviceParams.backBufferWidth				= 800;
@@ -155,7 +121,7 @@ extern "C" int main(int argc, const char *argv[]) {
 	}
 	
 	{
-		BasicTriangle example(deviceManager);
+		HelloVkCuda example(deviceManager);
 		if (example.Init()) {
 			deviceManager->AddRenderPassToBack(&example);
 			deviceManager->RunMessageLoop();

@@ -234,7 +234,7 @@ private:
 extern "C" int main(int argc, const char *argv[]) {
 	Log(Info, "Hello from simple-rhi!");
 	
-	DeviceManager *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
+	DeviceManagerImpl *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
 
 	DeviceCreationParameters deviceParams	= {};
 	deviceParams.enableDebugRuntime			= true;

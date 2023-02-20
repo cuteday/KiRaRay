@@ -75,7 +75,7 @@ public:
 
 
 extern "C" int main(int argc, const char *argv[]) {
-	DeviceManager *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
+	DeviceManagerImpl *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
 	DeviceCreationParameters deviceParams;
 	deviceParams.renderFormat				= nvrhi::Format::RGBA8_UNORM;
 	deviceParams.swapChainBufferCount		= 2;

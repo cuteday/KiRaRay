@@ -109,10 +109,11 @@ struct DeviceCreationParameters {
 };
 
 class IRenderPass;
+class DeviceManagerImpl;
 
 class DeviceManager {
 public:
-	static DeviceManager *Create(nvrhi::GraphicsAPI api);
+	static DeviceManagerImpl *Create(nvrhi::GraphicsAPI api);
 
 	bool CreateWindowDeviceAndSwapChain(const DeviceCreationParameters &params,
 										const char *windowTitle);
@@ -252,13 +253,15 @@ public:
 	} m_callbacks;
 
 private:
-	static DeviceManager *CreateVK();
+	static DeviceManagerImpl *CreateImpl();
 
 	std::string m_WindowTitle;
 };
 
-class DeviceManager_VK : public DeviceManager {
+class DeviceManagerImpl : public DeviceManager {
 public:
+	[[nodiscard]] vk::Device GetNativeDevice() const { return m_VulkanDevice; }
+
 	[[nodiscard]] nvrhi::IDevice *GetDevice(bool withValidationLayer = true) const override {
 		if (withValidationLayer && m_ValidationLayer) return m_ValidationLayer;
 
@@ -429,7 +432,7 @@ private:
 	nvrhi::vulkan::DeviceHandle m_NvrhiDevice;
 	nvrhi::DeviceHandle m_ValidationLayer;
 
-	nvrhi::CommandListHandle m_BarrierCommandList;
+	nvrhi::CommandListHandle m_CommandList;
 	vk::Semaphore m_PresentSemaphore;
 
 	std::queue<nvrhi::EventQueryHandle> m_FramesInFlight;
@@ -443,7 +446,7 @@ private:
 															  uint64_t obj, size_t location,
 															  int32_t code, const char *layerPrefix,
 															  const char *msg, void *userData) {
-		const DeviceManager_VK *manager = (const DeviceManager_VK *) userData;
+		const DeviceManagerImpl *manager = (const DeviceManagerImpl *) userData;
 
 		if (manager) {
 			const auto &ignored = manager->m_DeviceParams.ignoredVulkanValidationMessageLocations;
@@ -469,10 +472,10 @@ static std::vector<const char *> stringSetToVector(const std::unordered_set<std:
 
 class IRenderPass {
 private:
-	DeviceManager *m_DeviceManager;
+	DeviceManagerImpl *m_DeviceManager;
 
 public:
-	explicit IRenderPass(DeviceManager *deviceManager) : m_DeviceManager(deviceManager) {}
+	explicit IRenderPass(DeviceManagerImpl *deviceManager) : m_DeviceManager(deviceManager) {}
 
 	virtual ~IRenderPass() = default;
 
@@ -492,8 +495,13 @@ public:
 	virtual bool MouseScrollUpdate(double xoffset, double yoffset) { return false; }
 	virtual bool MouseButtonUpdate(int button, int action, int mods) { return false; }
 
+	[[nodiscard]] vk::Device GetNativeDevice() const { return m_DeviceManager->GetNativeDevice(); }
+
 	[[nodiscard]] DeviceManager *GetDeviceManager() const {
 		return m_DeviceManager;
+	}
+	[[nodiscard]] nvrhi::vulkan::IDevice *GetVkDevice() const {
+		return dynamic_cast<nvrhi::vulkan::IDevice *>(m_DeviceManager->GetDevice(false));
 	}
 	[[nodiscard]] nvrhi::IDevice *GetDevice(bool withValidationLayer = true) const {
 		return m_DeviceManager->GetDevice(withValidationLayer);
