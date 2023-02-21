@@ -1,7 +1,6 @@
 #include <filesystem>
 
 #include "file.h"
-#include "kiraray.h"
 #include "renderer.h"
 
 KRR_NAMESPACE_BEGIN

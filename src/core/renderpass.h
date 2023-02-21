@@ -1,55 +1,89 @@
 #pragma once
 #pragma init_seg(lib)
+#include <nvrhi/vulkan.h>
+#include <vulkan/cufriends.h>
 
 #include "common.h"
-#include "window.h"
 #include "logger.h"
 
 #include "device/buffer.h"
+#include "device/cuda.h"
 #include "scene.h"
 
 KRR_NAMESPACE_BEGIN
 
-class RenderResource {
-	RenderResource(string name) :name(name) { glGenBuffers(1, &pbo); }
-	~RenderResource() { glDeleteBuffers(1, &pbo); }
-	void resize(size_t size) {}
-	void registerCUDA();
-	void *map() { return nullptr; }
-	void unmap() {};
-private:
-	string name;
-	GLuint pbo;
-};
+namespace vkrhi { using namespace nvrhi; }
 
-class RenderData {
+class DeviceManager;
+
+class RenderFrame {
 public:
-	RenderData() = default;
-	RenderResource* getResource(string name);
-	RenderResource* createResource(string name);
-private:
-	std::map<string, RenderResource*> resources;
+	
+	using SharedPtr = std::shared_ptr<RenderFrame>;
+
+	RenderFrame(vkrhi::FramebufferHandle &framebuffer) :
+		mFramebuffer(framebuffer) {}
+
+	~RenderFrame() { }
+
+	operator vkrhi::FramebufferHandle() const { return mFramebuffer; }
+	operator vkrhi::IFramebuffer *() const { return mFramebuffer.Get(); }
+
+	vkrhi::FramebufferHandle getFramebuffer() const { return mFramebuffer; }
+	
+	CudaRenderTarget getCudaRenderTarget() const {
+		auto &textureDesc =
+			mFramebuffer->getDesc().colorAttachments[0].texture->getDesc();
+		return CudaRenderTarget(mCudaFrame, textureDesc.width,
+								textureDesc.height);		
+	}
+
+	void initialize(vkrhi::DeviceHandle device) {
+		std::unique_ptr<vkrhi::CudaVulkanFriend> cuFriend;
+		mCudaFrame = cuFriend->mapVulkanTextureToCudaSurface(
+			mFramebuffer->getDesc().colorAttachments[0].texture,
+			cudaArrayColorAttachment);
+	}
+
+	vkrhi::FramebufferHandle mFramebuffer;
+	cudaSurfaceObject_t mCudaFrame{};
 };
 
 class RenderPass{
+private:
+	DeviceManager *mDeviceManager{};
+	
 public:
 	using SharedPtr = std::shared_ptr<RenderPass>;
 
 	RenderPass() = default;
-	// Whether this pass is enabled by default
-	RenderPass(bool enable) : mEnable(enable) {}
+	virtual ~RenderPass() = default;
+	RenderPass(DeviceManager *device) : mDeviceManager(device) {}
 
+	virtual void resizing() {}
 	virtual void resize(const Vector2i& size) { mFrameSize = size; }
+	
 	virtual void setEnable(bool enable) { mEnable = enable; }
 	virtual void setScene(Scene::SharedPtr scene) { mpScene = scene; }
 	virtual Scene::SharedPtr getScene() { return mpScene; }
+	virtual void setDeviceManager(DeviceManager *deviceManager) {
+		mDeviceManager = deviceManager;
+	}
+
+	virtual void tick(float elapsedSeconds) {}
+	virtual void beginFrame(RenderFrame::SharedPtr frame) {}
+	virtual void render(RenderFrame::SharedPtr frame) {}
 	virtual void renderUI() {}
-	virtual void beginFrame(CUDABuffer& frame) {}
-	virtual void render(CUDABuffer& frame) {}
-	virtual void endFrame(CUDABuffer& frame) {}
+	virtual void endFrame(RenderFrame::SharedPtr frame) {}
+	
 	virtual void initialize() {}
 	virtual void finalize() {}
 
+	virtual void onWindowClose() {}
+	virtual void onWindowIconify(int iconified) {}
+	virtual void onWindowFocus(int focused) {}
+	virtual void onWindowRefresh() {}
+	virtual void onWindowPosUpdate(int xpos, int ypos) {}
 	virtual bool onMouseEvent(const io::MouseEvent& mouseEvent) { return false; }
 	virtual bool onKeyEvent(const io::KeyboardEvent& keyEvent) { return false; }
 
@@ -57,6 +91,10 @@ public:
 	virtual bool enabled() const { return mEnable; }
 
 protected:
+	[[nodiscard]] vk::Device getVulkanDevice() const;
+	[[nodiscard]] vkrhi::IDevice *getVulkanRhiDevice() const;
+	[[nodiscard]] size_t getFrameIndex() const;
+
 	friend void to_json(json &j, const RenderPass &p) {
 		j = json{ { "enable", p.mEnable } };
 	}

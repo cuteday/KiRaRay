@@ -22,9 +22,9 @@ public:
 
 	ErrorMeasurePass() = default;
 	~ErrorMeasurePass() = default;
-	void beginFrame(CUDABuffer &frame) override;
-	void render(CUDABuffer &frame) override;
-	void endFrame(CUDABuffer &frame) override;
+	void beginFrame(RenderFrame::SharedPtr frame) override;
+	void render(RenderFrame::SharedPtr frame) override;
+	void endFrame(RenderFrame::SharedPtr frame) override;
 	void renderUI() override;
 	void resize(const Vector2i& size) override;
 	void finalize() override;

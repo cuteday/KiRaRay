@@ -21,8 +21,7 @@ public:
 	void reset();
 	void resize(const Vector2i &size) override;
 	string getName() const override { return "AccumulatePass"; }
-	void render(CUDABuffer& frame);
-	CUDABuffer& result() { return *mAccumBuffer; }
+	void render(RenderFrame::SharedPtr frame) override;
 
 private:
 	friend void to_json(json &j, const AccumulatePass &p) {

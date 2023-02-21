@@ -35,15 +35,15 @@ SET ( KRR_CORE_SOURCE
 	core/window.cpp
 	core/logger.cpp
 	core/file.cpp
+	core/renderpass.cpp
 	core/texture.cpp
 )
 
 SET ( KRR_CORE_HEADERS
-	core/kiraray.h
 	core/common.h
 	# components
 	core/logger.h
-	core/io.h
+	core/input.h
 	core/window.h
 	core/taggedptr.h
 	core/file.h
@@ -85,7 +85,6 @@ SET(KRR_HEADERS
 	scene/scenegraph.h
 	# others
 	main/renderer.h
-	main/vulkan_renderer.h
 	util/check.h
 	util/string.h
 	util/image.h
@@ -127,6 +126,14 @@ SET(KRR_SHADER_MATERIALS
 	render/materials/fresnelblend.h
 	render/materials/principled.h
 	render/materials/dielectric.h
+)
+
+SET (KRR_SOURCE_VULKAN
+	core/vulkan/binding.cpp
+	core/vulkan/cufriends.cpp
+	core/vulkan/descriptor.cpp
+	core/vulkan/helperpass.cpp
+	core/vulkan/textureloader.cpp
 )
 
 SET ( KRR_SHADERS
@@ -208,6 +215,7 @@ ADD_LIBRARY ( krr_lib STATIC
 	${KRR_CORE_SOURCE}
 	${KRR_CORE_HEADERS}
 	${KRR_SOURCE}
+	${KRR_SOURCE_VULKAN}
 	${KRR_HEADERS}
 	${KRR_SHADERS}
 	# SOA (for dependency need, generate soa file before building libraray)

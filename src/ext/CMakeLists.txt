@@ -25,7 +25,10 @@ ADD_LIBRARY(vma INTERFACE)
 TARGET_INCLUDE_DIRECTORIES(vma INTERFACE vma)
 
 ADD_SUBDIRECTORY(nvrhi)
-SET(NVRHI_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/nvrhi/include)
+SET(NVRHI_INCLUDE_DIRS 
+	${CMAKE_CURRENT_SOURCE_DIR}/nvrhi/include
+	${CMAKE_CURRENT_SOURCE_DIR}/nvrhi/thirdparty/Vulkan-Headers/include
+)
 SET(NVRHI_INCLUDE_DIRS ${NVRHI_INCLUDE_DIRS} PARENT_SCOPE)
 
 # glfw3 (lib: glfw)
@@ -96,6 +99,7 @@ TARGET_LINK_LIBRARIES(krr_ext INTERFACE
 	${OPENGL_gl_LIBRARY}
 	Vulkan::Vulkan
 	nvrhi_vk
+	Vulkan-Headers
 )
 
 # shaderc for runtime compilation of glsl(shaderc) and hlsl(dxc) shaders

@@ -1,6 +1,3 @@
-#include "assimp/DefaultLogger.hpp"
-#include "assimp/postprocess.h"
-
 #include "window.h"
 #include "scene.h"
 

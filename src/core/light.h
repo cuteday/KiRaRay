@@ -4,8 +4,6 @@
 #include "taggedptr.h"
 #include "shape.h"
 #include "texture.h"
-#include "window.h"
-
 
 KRR_NAMESPACE_BEGIN
 
@@ -127,12 +125,7 @@ public:
 		image.toDevice();
 	}
 
-	void renderUI() {
-		ui::SliderFloat("Intensity", &scale, 0, 10, "%.02f");
-		ui::SliderFloat("Rotation", &rotation, 0, 1, "%.03f");
-		ui::ColorEdit3("Tint", (float*)&tint);
-		if(image.isValid()) image.renderUI();
-	}
+	void renderUI();
 
 	friend void from_json(const json& j, InfiniteLight& p) {
 		p.scale	   = j.value("scale", 1.f);

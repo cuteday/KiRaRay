@@ -1,4 +1,4 @@
-#include "DeviceManager.h"
+#include "devicemanager.h"
 
 #include <cstdio>
 #include <queue>

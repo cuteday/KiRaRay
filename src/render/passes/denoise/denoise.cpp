@@ -125,10 +125,10 @@ void DenoiseBackend::setPixelFormat(PixelFormat format) {
 	initialize();
 }
 
-void DenoisePass::render(CUDABuffer &frame) {
+void DenoisePass::render(RenderFrame::SharedPtr frame) {
 	if (!mEnable) return;
 	PROFILE("Denoise");
-	mBackend.denoise((float *) frame.data(), nullptr, nullptr, (float *) frame.data());
+	
 }
 
 void DenoisePass::renderUI() { 

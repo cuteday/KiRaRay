@@ -45,7 +45,7 @@ public:
 	KRR_REGISTER_PASS_DEC(DenoisePass);
 	KRR_CLASS_DEFINE(DenoisePass, mUseGeometry);
 
-	void render(CUDABuffer &frame) override;
+	void render(RenderFrame::SharedPtr frame) override;
 	void renderUI() override;
 	void resize(const Vector2i& size) override;
 

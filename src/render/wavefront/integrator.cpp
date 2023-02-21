@@ -1,6 +1,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+#include "device/cuda.h"
 #include "integrator.h"
 #include "render/profiler/profiler.h"
 #include "workqueue.h"
@@ -177,7 +178,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	backend->setScene(*scene);
 }
 
-void WavefrontPathTracer::beginFrame(CUDABuffer &frame) {
+void WavefrontPathTracer::beginFrame(RenderFrame::SharedPtr frame) {
 	if (!mpScene || !maxQueueSize)
 		return;
 	PROFILE("Begin frame");
@@ -191,11 +192,11 @@ void WavefrontPathTracer::beginFrame(CUDABuffer &frame) {
 		});
 }
 
-void WavefrontPathTracer::render(CUDABuffer &frame) {
+void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 	if (!mpScene || !maxQueueSize)
 		return;
 	PROFILE("Wavefront Path Tracer");
-	Color4f *frameBuffer = (Color4f *) frame.data();
+	CudaRenderTarget frameBuffer = frame->getCudaRenderTarget();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
 		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
@@ -233,7 +234,7 @@ void WavefrontPathTracer::render(CUDABuffer &frame) {
 			Color L = pixelState->L[pixelId] / float(samplesPerPixel);
 			if (enableClamp)
 				L = clamp(L, 0.f, clampMax);
-			frameBuffer[pixelId] = Color4f(L, 1);
+			frameBuffer.write(Color4f(L, 1), pixelId);
 		});
 	frameId++;
 }

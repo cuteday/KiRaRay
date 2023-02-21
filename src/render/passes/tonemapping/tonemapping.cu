@@ -53,14 +53,14 @@ void ToneMappingPass::renderUI() {
 	}
 }
 
-void ToneMappingPass::render(CUDABuffer& frame){
+void ToneMappingPass::render(RenderFrame::SharedPtr frame) {
 	if (!mEnable) return;
 	PROFILE("Tong mapping pass");
 	CUstream &stream = gpContext->cudaStream;
 	Color colorTransform = Color(mExposureCompensation);
-	Color4f *frameBuffer = (Color4f *) frame.data();
+	CudaRenderTarget frameBuffer = frame->getCudaRenderTarget();
 	GPUParallelFor(mFrameSize[0] * mFrameSize[1], KRR_DEVICE_LAMBDA(int pixelId) {
-		Color color = Color(frameBuffer[pixelId]) * colorTransform;
+		Color color = frameBuffer.read(pixelId).head<3>() * colorTransform;
 		switch (mOperator) {
 		case krr::ToneMappingPass::Operator::Linear:
 			break;
@@ -79,7 +79,7 @@ void ToneMappingPass::render(CUDABuffer& frame){
 		default:
 			break;
 		}
-		frameBuffer[pixelId] = Color4f(color, 1.f);
+		frameBuffer.write(Color4f(color, 1.f), pixelId);
 	});
 }
 

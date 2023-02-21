@@ -1,10 +1,13 @@
-// handle user inputs
-// this one is adapted from Falcor...
 #pragma once
-#include "common.h"
-#include "GL/glew.h"
-#include "GLFW/glfw3.h"
 
+#define GLFW_INCLUDE_NONE // Do not include any OpenGL headers
+#include <GLFW/glfw3.h>
+#ifdef _WIN32
+#define GLFW_EXPOSE_NATIVE_WIN32
+#endif // _WIN32
+#include <GLFW/glfw3native.h>
+
+#include "common.h"
 
 KRR_NAMESPACE_BEGIN
 

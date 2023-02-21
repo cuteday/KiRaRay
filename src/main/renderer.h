@@ -1,6 +1,5 @@
 #pragma once
 
-#include "kiraray.h"
 #include "window.h"
 #include "scene.h"
 #include "camera.h"
@@ -17,27 +16,25 @@
 
 KRR_NAMESPACE_BEGIN
 
-class RenderApp : public WindowApp{
+class RenderApp : public DeviceManager{
 public:
 	RenderApp(const char title[], Vector2i size = { 1280, 720 })
-		: WindowApp(title, size, true, false) {}
-	RenderApp(const char title[], Vector2i size, std::vector<RenderPass::SharedPtr> passes)
-		: WindowApp(title, size, true, false), mpPasses(passes) {}
+		: DeviceManager() {}
 
-	void resize(const Vector2i size) override;
+	void BackBufferResizing() override {}
+	void BackBufferResized() override;
+
+	void initialize(){};
 	void finalize();
 
 	// Process signals passed down from direct imgui callback (imgui do not capture it)
-	virtual void onMouseEvent(io::MouseEvent &mouseEvent) override;
-	virtual void onKeyEvent(io::KeyboardEvent &keyEvent) override;
+	virtual bool onMouseEvent(io::MouseEvent &mouseEvent) override;
+	virtual bool onKeyEvent(io::KeyboardEvent &keyEvent) override;
 
 	void setScene(Scene::SharedPtr scene);
-	void setPasses(const std::vector<RenderPass::SharedPtr> passes) { mpPasses = passes; }
-
-	void render() override;
-	void run() override;
-	void renderUI() override;
-	void draw() override;
+	
+	void run();
+	void renderUI();
 
 	void captureFrame(bool hdr = false, fs::path filename = "");
 	void saveConfig(string path);
@@ -56,7 +53,6 @@ private:
 	int mFrameCount{ 0 };
 	int mSpp{ 0 };			// Samples needed tobe rendered, 0 means unlimited.
 	FrameRate mFrameRate;
-	std::vector<RenderPass::SharedPtr> mpPasses;
 	Scene::SharedPtr mpScene;
 	ProfilerUI::UniquePtr mpProfilerUI;
 	json mConfig{};

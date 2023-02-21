@@ -466,7 +466,6 @@ static std::vector<const char *> stringSetToVector(const std::unordered_set<std:
 	for (const auto &s : set) {
 		ret.push_back(s.c_str());
 	}
-
 	return ret;
 }
 

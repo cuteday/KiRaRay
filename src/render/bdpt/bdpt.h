@@ -25,7 +25,7 @@ struct LaunchParamsBDPT {
 	LightSampler lightSampler;
 	Scene::SceneData sceneData;
 
-	Color4f* colorBuffer{ nullptr };
+	CudaRenderTarget colorBuffer;
 	BDPTPathStateBuffer *pathState{ nullptr };
 	OptixTraversableHandle traversable{ 0 };
 };
