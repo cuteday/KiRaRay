@@ -39,7 +39,7 @@ public:
 	}
 
 	void initialize(vkrhi::DeviceHandle device) {
-		std::unique_ptr<vkrhi::CudaVulkanFriend> cuFriend;
+		auto cuFriend = std::make_unique<vkrhi::CudaVulkanFriend>(device);
 		mCudaFrame = cuFriend->mapVulkanTextureToCudaSurface(
 			mFramebuffer->getDesc().colorAttachments[0].texture,
 			cudaArrayColorAttachment);
@@ -91,8 +91,9 @@ public:
 	virtual bool enabled() const { return mEnable; }
 
 protected:
-	[[nodiscard]] vk::Device getVulkanDevice() const;
-	[[nodiscard]] vkrhi::IDevice *getVulkanRhiDevice() const;
+	[[nodiscard]] DeviceManager *getDeviceManager() const; 
+	[[nodiscard]] vk::Device getVulkanNativeDevice() const;
+	[[nodiscard]] vkrhi::IDevice *getVulkanDevice() const;
 	[[nodiscard]] size_t getFrameIndex() const;
 
 	friend void to_json(json &j, const RenderPass &p) {

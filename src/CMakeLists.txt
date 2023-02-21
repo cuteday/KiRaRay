@@ -183,7 +183,7 @@ add_custom_target (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
 ###############################################################################
 
 INCLUDE_DIRECTORIES (${KRR_INCLUDE_ALL})
-INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
+INCLUDE (${KRR_PROJECT_ROOT}/common/build/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code 
 CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-path krr_soa_generated)
 CUDA_COMPILE_EMBED(WAVEFRONT_PTX render/wavefront/wavefront.cu krr-wavefront krr_soa_generated)

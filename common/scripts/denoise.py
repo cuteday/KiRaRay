@@ -20,10 +20,10 @@ def denoise(rgb, normals:np.array=None, albedo:np.array=None)->np.array:
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
-	parser.add_argument("--rgb", type=str, default="scripts/images/noisy.exr", help="path of the noisy hdr image")
+	parser.add_argument("--rgb", type=str, default="common/scripts/images/noisy.exr", help="path of the noisy hdr image")
 	parser.add_argument("--albedo", type=str, default=None, help="[optional] path of the albedo")
 	parser.add_argument("--normals", type=str, default=None, help="[optional] path of the normals")
-	parser.add_argument("--result", type=str, default="scripts/images/denoised.exr", help="path of the output file")
+	parser.add_argument("--result", type=str, default="common/scripts/images/denoised.exr", help="path of the output file")
 	args = parser.parse_args()
 
 	if not (args.rgb.endswith(".exr") or args.rgb.endswith(".hdr")):

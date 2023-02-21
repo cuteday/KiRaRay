@@ -39,13 +39,13 @@ struct DeviceCreationParameters {
 	uint32_t swapChainSampleCount	= 1;
 	uint32_t swapChainSampleQuality = 0;
 	uint32_t maxFramesInFlight		= 2;
-	bool enableDebugRuntime			= false;
-	bool enableNvrhiValidationLayer = false;
+	bool enableDebugRuntime			= true;
+	bool enableNvrhiValidationLayer = true;
 	bool vsyncEnabled				= false;
 	bool enableRayTracingExtensions = false;
 	bool enableComputeQueue			= false;
 	bool enableCopyQueue			= false;
-	bool enableCudaInterop			= false;
+	bool enableCudaInterop			= true;
 
 	// Severity of the information log messages from the device manager.
 	Log::Level infoLogSeverity = Log::Level::Info;
@@ -65,6 +65,9 @@ struct DeviceCreationParameters {
 
 class DeviceManager {
 public:
+	DeviceManager()			 = default;
+	virtual ~DeviceManager() = default;
+
 	[[nodiscard]] virtual vk::Device GetNativeDevice() const { return m_VulkanDevice; }
 
 	[[nodiscard]] virtual nvrhi::IDevice *GetDevice(bool withValidationLayer = true) const {
@@ -116,9 +119,6 @@ protected:
 
 	std::unique_ptr<CommonRenderPasses> m_HelperPass;
 	std::unique_ptr<BindingCache> m_BindingCache;
-
-	DeviceManager() = default;
-	virtual ~DeviceManager() = default;
 
 	void UpdateWindowSize();
 
@@ -187,10 +187,8 @@ public:
 	RenderFrame::SharedPtr GetFramebuffer(size_t index);
 
 	void Shutdown();
-
 	void SetWindowTitle(const char *title);
-	void SetInformativeWindowTitle(const char *applicationName, const char *extraInfo = nullptr);
-
+	
 	virtual bool IsVulkanInstanceExtensionEnabled(const char *extensionName) const {
 		return enabledExtensions.instance.find(extensionName) != enabledExtensions.instance.end();
 	}

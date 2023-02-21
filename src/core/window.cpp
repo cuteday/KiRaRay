@@ -65,7 +65,6 @@ public:
 
 	static void keyboardCallback(GLFWwindow *pGlfwWindow, int key, int scanCode, int action,
 								 int modifiers) {
-		if (ui::GetIO().WantCaptureKeyboard) return;
 		KeyboardEvent event;
 		if (prepareKeyboardEvent(key, action, modifiers, event)) {
 			DeviceManager *manager = (DeviceManager *) glfwGetWindowUserPointer(pGlfwWindow);
@@ -76,7 +75,6 @@ public:
 	}
 
 	static void charInputCallback(GLFWwindow *pGlfwWindow, uint32_t input) {
-		if (ui::GetIO().WantCaptureKeyboard) return;
 		KeyboardEvent event;
 		event.type		= KeyboardEvent::Type::Input;
 		event.codepoint = input;
@@ -88,7 +86,6 @@ public:
 	}
 
 	static void mouseMoveCallback(GLFWwindow *pGlfwWindow, double mouseX, double mouseY) {
-		if (ui::GetIO().WantCaptureMouse) return;
 		DeviceManager *manager = (DeviceManager *) glfwGetWindowUserPointer(pGlfwWindow);
 		if (manager != nullptr) {
 			// Prepare the mouse data
@@ -104,7 +101,6 @@ public:
 
 	static void mouseButtonCallback(GLFWwindow *pGlfwWindow, int button, int action,
 									int modifiers) {
-		if (ui::GetIO().WantCaptureMouse) return;
 		MouseEvent event;
 		// Prepare the mouse data
 		switch (button) {
@@ -138,7 +134,6 @@ public:
 	}
 
 	static void mouseWheelCallback(GLFWwindow *pGlfwWindow, double scrollX, double scrollY) {
-		if (ui::GetIO().WantCaptureMouse) return;
 		DeviceManager *manager = (DeviceManager *) glfwGetWindowUserPointer(pGlfwWindow);
 		if (manager != nullptr) {
 			MouseEvent event;
@@ -404,6 +399,7 @@ void DeviceManager::BackBufferResized() {
 
 		m_RenderFramebuffers[index] = std::make_shared<RenderFrame>(GetDevice()->createFramebuffer(
 			nvrhi::FramebufferDesc().addColorAttachment(GetRenderImage(index))));
+		m_RenderFramebuffers[index]->initialize(GetDevice(false));
 	}
 }
 
@@ -420,6 +416,8 @@ void DeviceManager::Render() {
 	}
 	for (auto it : m_RenderPasses) {
 		it->render(m_RenderFramebuffers[GetCurrentBackBufferIndex()]);
+		GetDevice()->waitForIdle();
+		CUDA_SYNC_CHECK();
 	}
 	for (auto it : m_RenderPasses) {
 		it->endFrame(m_RenderFramebuffers[GetCurrentBackBufferIndex()]);
@@ -581,25 +579,6 @@ void DeviceManager::SetWindowTitle(const char *title) {
 	glfwSetWindowTitle(m_Window, title);
 
 	m_WindowTitle = title;
-}
-
-void DeviceManager::SetInformativeWindowTitle(const char *applicationName, const char *extraInfo) {
-	std::stringstream ss;
-	ss << applicationName;
-	ss << " (" << nvrhi::utils::GraphicsAPIToString(GetDevice()->getGraphicsAPI());
-
-	if (m_DeviceParams.enableDebugRuntime) 
-		ss << ", VulkanValidationLayer";
-	if (m_DeviceParams.enableNvrhiValidationLayer) 
-		ss << ", NvrhiValidationLayer";
-	ss << ")";
-
-	double frameTime = GetAverageFrameTimeSeconds();
-	if (frameTime > 0) 
-		ss << " - " << std::setprecision(4) << (1.0 / frameTime) << " FPS ";
-	
-	if (extraInfo) ss << extraInfo;
-	SetWindowTitle(ss.str().c_str());
 }
 
 template <typename T> static std::vector<T> setToVector(const std::unordered_set<T> &set) {
@@ -1159,7 +1138,6 @@ bool DeviceManager::createSwapChain() {
 		nvrhi::TextureHandle renderImage = m_DeviceParams.enableCudaInterop
 											   ? m_CUFriend->createExternalTexture(textureDesc)
 											   : m_NvrhiDevice->createTexture(textureDesc);
-
 		m_RenderImages.push_back(renderImage);
 	}
 

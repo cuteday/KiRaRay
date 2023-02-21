@@ -3,11 +3,15 @@
 
 KRR_NAMESPACE_BEGIN
 
-vk::Device RenderPass::getVulkanDevice() const {
+DeviceManager* RenderPass::getDeviceManager() const {
+	return mDeviceManager;
+}
+
+vk::Device RenderPass::getVulkanNativeDevice() const {
 	return mDeviceManager->GetNativeDevice();
 }
 
-vkrhi::IDevice *RenderPass::getVulkanRhiDevice() const {
+vkrhi::IDevice *RenderPass::getVulkanDevice() const {
 	return mDeviceManager->GetDevice();
 }
 

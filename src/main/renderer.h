@@ -18,13 +18,13 @@ KRR_NAMESPACE_BEGIN
 
 class RenderApp : public DeviceManager{
 public:
-	RenderApp(const char title[], Vector2i size = { 1280, 720 })
-		: DeviceManager() {}
+	RenderApp() : DeviceManager() {}
+	~RenderApp() = default;
 
 	void BackBufferResizing() override {}
 	void BackBufferResized() override;
 
-	void initialize(){};
+	void initialize();
 	void finalize();
 
 	// Process signals passed down from direct imgui callback (imgui do not capture it)
@@ -37,10 +37,9 @@ public:
 	void renderUI();
 
 	void captureFrame(bool hdr = false, fs::path filename = "");
+	
 	void saveConfig(string path);
 	void loadConfigFrom(fs::path path);
-	
-	//template <typename T, std::enable_if_t<std::is_same_v<T, json>> = false>
 	void loadConfig(const json config);
 
 private:

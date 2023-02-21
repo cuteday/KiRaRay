@@ -23,28 +23,28 @@ CommonRenderPasses::CommonRenderPasses(nvrhi::IDevice *device,
 		std::vector<ShaderMacro> VsMacros;
 		VsMacros.push_back(ShaderMacro("QUAD_Z", "0"));
 		m_FullscreenVS =
-			shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/fullscreen_vs.hlsl",
+			shaderLoader->createShader("common/shaders/fullscreen_vs.hlsl",
 									   "main", &VsMacros, nvrhi::ShaderType::Vertex);
 
 		VsMacros[0].definition = "1";
 		m_FullscreenAtOneVS =
-			shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/fullscreen_vs.hlsl",
+			shaderLoader->createShader("common/shaders/fullscreen_vs.hlsl",
 									   "main", &VsMacros, nvrhi::ShaderType::Vertex);
 	}
 
-	m_RectVS = shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/rect_vs.hlsl",
+	m_RectVS = shaderLoader->createShader("common/shaders/rect_vs.hlsl",
 										  "main", nullptr, nvrhi::ShaderType::Vertex);
 
 	std::vector<ShaderMacro> blitMacros = {ShaderMacro("TEXTURE_ARRAY", "0")};
-	m_BlitPS	= shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/blit_ps.hlsl",
+	m_BlitPS	= shaderLoader->createShader("common/shaders/blit_ps.hlsl",
 											 "main", &blitMacros, nvrhi::ShaderType::Pixel);
-	m_SharpenPS = shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/sharpen_ps.hlsl",
+	m_SharpenPS = shaderLoader->createShader("common/shaders/sharpen_ps.hlsl",
 											 "main", &blitMacros, nvrhi::ShaderType::Pixel);
 	blitMacros[0].definition = "1"; // TEXTURE_ARRAY
-	m_BlitArrayPS = shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/blit_ps.hlsl",
+	m_BlitArrayPS = shaderLoader->createShader("common/shaders/blit_ps.hlsl",
 											   "main", &blitMacros, nvrhi::ShaderType::Pixel);
 	m_SharpenArrayPS =
-		shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/sharpen_ps.hlsl", "main",
+		shaderLoader->createShader("common/shaders/sharpen_ps.hlsl", "main",
 								   &blitMacros, nvrhi::ShaderType::Pixel);
 
 	auto samplerDesc = nvrhi::SamplerDesc().setAllFilters(false).setAllAddressModes(

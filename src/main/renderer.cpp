@@ -43,6 +43,7 @@ void RenderApp::setScene(Scene::SharedPtr scene) {
 }
 
 void RenderApp::run() {
+	initialize();
 	DeviceManager::RunMessageLoop();
 	finalize();
 }
@@ -156,7 +157,6 @@ void RenderApp::saveConfig(string path) {
 	logSuccess("Saved config file to " + filepath.string());
 }
 
-//template <typename T, std::enable_if_t<std::is_same_v<T, json>>>
 void RenderApp::loadConfig(const json config) {
 	// set global configurations if eligiable
 	if (config.contains("global"))
@@ -222,10 +222,15 @@ void RenderApp::loadConfigFrom(fs::path path) {
 	mConfigPath = path.string();
 }
 
+void RenderApp::initialize() { 
+	CreateWindowDeviceAndSwapChain(m_DeviceParams, KRR_PROJECT_NAME);
+}
+
 void RenderApp::finalize() { 
 	for (auto pass : m_RenderPasses) {
 		pass->finalize();
 	}
+	Shutdown();
 }
 
 KRR_NAMESPACE_END

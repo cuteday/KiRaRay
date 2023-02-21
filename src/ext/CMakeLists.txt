@@ -1,7 +1,7 @@
 ###############################################################################
 # GAPI dependencies
 ###############################################################################
-INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/FindOptiX.cmake)
+INCLUDE (${KRR_PROJECT_ROOT}/common/build/FindOptiX.cmake)
 find_package(OpenGL REQUIRED)
 # Vulkan support 
 find_package(Vulkan REQUIRED)

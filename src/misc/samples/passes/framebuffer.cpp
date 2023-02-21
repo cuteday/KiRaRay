@@ -4,10 +4,10 @@
 #include <nvrhi/vulkan.h>
 
 #include "common/devicemanager.h"
-#include "common/textureloader.h"
-#include "common/shader.h"
-#include "common/cufriends.h"
-#include "SineWaveSimulation.h"
+#include "vulkan/textureloader.h"
+#include "vulkan/shader.h"
+#include "vulkan/cufriends.h"
+#include "deviceprog.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -36,9 +36,9 @@ public:
 	bool Init() {
 		ShaderLoader shaderLoader(GetDevice());
 
-		m_VertexShader = shaderLoader.createShader("src/misc/samples/simple-rhi/shaders/triangle.hlsl", "main_vs", nullptr,
+		m_VertexShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_vs", nullptr,
 													nvrhi::ShaderType::Vertex);
-		m_PixelShader = shaderLoader.createShader("src/misc/samples/simple-rhi/shaders/triangle.hlsl", "main_ps", nullptr,
+		m_PixelShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_ps", nullptr,
 													nvrhi::ShaderType::Pixel);
 		
 		m_CUFriend = std::make_shared<vkrhi::CudaVulkanFriend>(GetDevice(false));

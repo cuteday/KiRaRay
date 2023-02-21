@@ -4,11 +4,11 @@
 #include <nvrhi/vulkan.h>
 #include <util/check.h>
 
-#include "SineWaveSimulation.h"
+#include "deviceprog.h"
 #include "common/devicemanager.h"
-#include "common/textureloader.h"
-#include "common/shader.h"
-#include "common/cufriends.h"
+#include "vulkan/textureloader.h"
+#include "vulkan/shader.h"
+#include "vulkan/cufriends.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -42,9 +42,9 @@ public:
 		// creating the shader modules
 		ShaderLoader shaderLoader(GetDevice());
 		m_vertexShader = shaderLoader.createShader(
-			"src/misc/samples/simple-rhi/shaders/sinewave.hlsl", "main_vs", nullptr, nvrhi::ShaderType::Vertex);
+			"src/misc/samples/passes/shaders/sinewave.hlsl", "main_vs", nullptr, nvrhi::ShaderType::Vertex);
 		m_pixelShader = shaderLoader.createShader(
-			"src/misc/samples/simple-rhi/shaders/sinewave.hlsl", "main_ps", nullptr, nvrhi::ShaderType::Pixel);
+			"src/misc/samples/passes/shaders/sinewave.hlsl", "main_ps", nullptr, nvrhi::ShaderType::Pixel);
 
 		if (!m_vertexShader || !m_pixelShader) {
 			Log(Error, "Failed to create vertex and pixel shader");
@@ -232,7 +232,7 @@ private:
 };
 
 extern "C" int main(int argc, const char *argv[]) {
-	Log(Info, "Hello from simple-rhi!");
+	Log(Info, "Hello from passes!");
 	
 	DeviceManagerImpl *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
 

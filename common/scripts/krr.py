@@ -3,7 +3,7 @@ import sys
 import glob
 from pathlib import Path
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 os.chdir(ROOT_DIR)
 
 print(ROOT_DIR)

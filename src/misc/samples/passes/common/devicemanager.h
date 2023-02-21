@@ -18,9 +18,10 @@
 
 #include <common.h>
 #include <logger.h>
-#include "cufriends.h"
-#include "binding.h"
-#include "helperpass.h"
+
+#include "vulkan/cufriends.h"
+#include "vulkan/binding.h"
+#include "vulkan/helperpass.h"
 
 KRR_NAMESPACE_BEGIN
 

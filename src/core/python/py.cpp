@@ -19,7 +19,7 @@ KRR_NAMESPACE_BEGIN
 void run(const json& config) {
 	static bool initialized{};
 	if (!gpContext) gpContext.reset(new Context());
-	RenderApp app(KRR_PROJECT_NAME);
+	RenderApp app;
 	app.loadConfig(config);
 	app.run();
 	CUDA_SYNC_CHECK();

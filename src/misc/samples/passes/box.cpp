@@ -4,10 +4,10 @@
 #include <nvrhi/vulkan.h>
 #include <util/check.h>
 
-#include "common/helperpass.h"
 #include "common/devicemanager.h"
-#include "common/textureloader.h"
-#include "common/shader.h"
+#include "vulkan/helperpass.h"
+#include "vulkan/textureloader.h"
+#include "vulkan/shader.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -94,10 +94,10 @@ public:
 
 	bool Init() {
 		std::shared_ptr<ShaderLoader> shaderLoader = std::make_shared<ShaderLoader>(GetDevice());
-		m_VertexShader = shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/box.hlsl",
+		m_VertexShader = shaderLoader->createShader("src/misc/samples/passes/shaders/box.hlsl",
 													"main_vs", nullptr,
 													 nvrhi::ShaderType::Vertex);
-		m_PixelShader  = shaderLoader->createShader("src/misc/samples/simple-rhi/shaders/box.hlsl",
+		m_PixelShader  = shaderLoader->createShader("src/misc/samples/passes/shaders/box.hlsl",
 													"main_ps", nullptr,
 													 nvrhi::ShaderType::Pixel);
 
@@ -155,7 +155,7 @@ public:
 		m_CommandList->setPermanentBufferState(m_IndexBuffer, nvrhi::ResourceStates::IndexBuffer);
 
 		std::filesystem::path textureFileName =
-			"src/misc/samples/simple-rhi/assets/emoticon_001.png";
+			"src/misc/samples/passes/assets/emoticon_001.png";
 		std::shared_ptr<LoadedTexture> texture =
 			textureCache.LoadTextureFromFile(textureFileName, true, nullptr, m_CommandList);
 		m_Texture = texture->texture;

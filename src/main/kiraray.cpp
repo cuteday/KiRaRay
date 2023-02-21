@@ -14,7 +14,7 @@ extern "C" int main(int argc, char *argv[]) {
                "Switch to Release build for normal performance!");
 #endif
 
-    string configFile = "common/configs/example.json";
+    string configFile = "common/configs/minimal.json";
     if (argc < 2){
 	    Log(Warning, "No config file specified, using default config file: %s", configFile.c_str());
     } else {
@@ -24,7 +24,7 @@ extern "C" int main(int argc, char *argv[]) {
 
 	try {
         gpContext = std::make_shared<Context>();
-		RenderApp app(KRR_PROJECT_NAME);
+		RenderApp app;
 		app.loadConfigFrom(configFile);
 		app.run();
     } catch (std::exception e) {

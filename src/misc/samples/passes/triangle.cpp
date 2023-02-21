@@ -3,7 +3,7 @@
 #include <nvrhi/vulkan.h>
 
 #include "common/devicemanager.h"
-#include "common/shader.h"
+#include "vulkan/shader.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -22,9 +22,9 @@ public:
 	bool Init() {
 		ShaderLoader shaderLoader(GetDevice());
 
-		m_VertexShader = shaderLoader.createShader("src/misc/samples/simple-rhi/shaders/triangle.hlsl", "main_vs", nullptr,
+		m_VertexShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_vs", nullptr,
 													nvrhi::ShaderType::Vertex);
-		m_PixelShader = shaderLoader.createShader("src/misc/samples/simple-rhi/shaders/triangle.hlsl", "main_ps", nullptr,
+		m_PixelShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_ps", nullptr,
 													nvrhi::ShaderType::Pixel);
 
 		if (!m_VertexShader || !m_PixelShader) 

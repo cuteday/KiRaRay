@@ -1,4 +1,4 @@
-#include "SineWaveSimulation.h"
+#include "deviceprog.h"
 #include <algorithm>
 #include <common.h>
 #include <util/check.h>
