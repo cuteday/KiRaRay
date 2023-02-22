@@ -40,6 +40,7 @@ private:
  	std::unordered_map<std::string, std::vector<char>> m_bytecodeCache;
 
 public:
+	using SharedPtr = std::shared_ptr<ShaderLoader>;
 	ShaderLoader(nvrhi::DeviceHandle rendererInterface) : m_device(rendererInterface){}
 
 	void clearCache() { m_bytecodeCache.clear(); }

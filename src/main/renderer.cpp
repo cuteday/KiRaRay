@@ -30,7 +30,6 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 				return true;
 		}
 	}
-	Log(Info, "Keyboard event received");
 	if (mPaused) return true;
 	if (DeviceManager::onKeyEvent(keyEvent)) return true;
 	if (mpScene && mpScene->onKeyEvent(keyEvent)) return true;
@@ -51,7 +50,15 @@ void RenderApp::run() {
 
 void RenderApp::Render() {
 	mpScene->update();
-	DeviceManager::Render();
+	BeginFrame();
+	for (auto it : m_RenderPasses) it->beginFrame();
+	renderUI();
+	for (auto it : m_RenderPasses) {
+		it->render(m_RenderFramebuffers[GetCurrentBackBufferIndex()]);
+		GetDevice()->waitForIdle();
+		CUDA_SYNC_CHECK();
+	}
+	for (auto it : m_RenderPasses)  it->endFrame();
 }
 
 void RenderApp::renderUI() {
@@ -230,12 +237,15 @@ void RenderApp::loadConfigFrom(fs::path path) {
 
 void RenderApp::initialize() { 
 	CreateWindowDeviceAndSwapChain(m_DeviceParams, KRR_PROJECT_NAME);
+	auto uiRenderer = std::make_shared<UIRenderer>(this);
+	uiRenderer->initialize();
+	AddRenderPassToBack(uiRenderer);
 }
 
 void RenderApp::finalize() { 
-	for (auto pass : m_RenderPasses) {
+	for (auto pass : m_RenderPasses) 
 		pass->finalize();
-	}
+	m_RenderPasses.clear();
 	Shutdown();
 }
 

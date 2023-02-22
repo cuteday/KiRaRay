@@ -5,9 +5,7 @@
 #include "camera.h"
 #include "file.h"
 
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-
+#include "vulkan/uirender.h"
 #include "device/buffer.h"
 #include "device/context.h"
 #include "scene/importer.h"

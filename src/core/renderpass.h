@@ -18,7 +18,6 @@ class DeviceManager;
 
 class RenderFrame {
 public:
-	
 	using SharedPtr = std::shared_ptr<RenderFrame>;
 
 	RenderFrame(vkrhi::FramebufferHandle &framebuffer) :

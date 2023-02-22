@@ -173,6 +173,7 @@ namespace io {
 
 		Type type;              ///< The event type
 		Key  key;               ///< The last key that was pressed/released
+		int glfwKey;
 		InputModifiers mods;    ///< Keyboard modifiers
 		uint32_t codepoint = 0; ///< UTF-32 codepoint from GLFW for Input event types
 	};
@@ -310,8 +311,8 @@ namespace io {
 
 	class UserInputHandler {
 	public:
-		virtual bool onKeyEvent(const KeyboardEvent& keyEvent) = 0;
-		virtual bool onMouseEvent(const MouseEvent& mouseEvent) = 0;
+		virtual bool onKeyEvent(const KeyboardEvent &keyEvent){return false;}
+		virtual bool onMouseEvent(const MouseEvent& mouseEvent){return false;}
 	};
 }
 

@@ -24,9 +24,10 @@
 #### Requirements
 
 - Nvidia gpu (Turing or higher if possible).
-- OptiX 7.0+ and CUDA 11.0+ installed.
+- OptiX 7.0+ and CUDA 11.0+.
+- Vulkan SDK.
 
-This project is only tested with optix 7.3/4 and cuda 11.4/5/6 on Windows (MSVC). It may not compile on Linux. 
+This project is only tested with optix 7.3/4 and cuda 11.4/5/6 on Windows (MSVC). It do not compile on Linux. 
 
 #### Cloning the repository
 
@@ -108,7 +109,7 @@ One can also save the current parameters (including camera parameters, render pa
 
 **Hot keys.** `F1` for showing/hiding UI,  `F2` for showing/hiding the profiler, and `F3` for screen shots.
 
-**Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11), including a wrapper of OptiX's built-in AI denoiser. See [scripts](scripts) for details.
+**Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11), including a wrapper of OptiX's built-in AI denoiser. See [scripts](common/scripts) for details.
 
 ### Galleries
 

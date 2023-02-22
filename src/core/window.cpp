@@ -85,6 +85,18 @@ public:
 		}
 	}
 
+	static void charInputModsCallback(GLFWwindow *pGlfwWindow, uint32_t input, int modifiers) {
+		KeyboardEvent event;
+		event.type		= KeyboardEvent::Type::Input;
+		event.codepoint = input;
+		event.mods		= getInputModifiers(modifiers);
+
+		DeviceManager *manager = (DeviceManager *) glfwGetWindowUserPointer(pGlfwWindow);
+		if (manager != nullptr) {
+			manager->onKeyEvent(event);
+		}
+	}
+
 	static void mouseMoveCallback(GLFWwindow *pGlfwWindow, double mouseX, double mouseY) {
 		DeviceManager *manager = (DeviceManager *) glfwGetWindowUserPointer(pGlfwWindow);
 		if (manager != nullptr) {
@@ -105,16 +117,16 @@ public:
 		// Prepare the mouse data
 		switch (button) {
 			case GLFW_MOUSE_BUTTON_LEFT:
-				event.type = (action == GLFW_PRESS) ? MouseEvent::Type::LeftButtonDown
-													: MouseEvent::Type::LeftButtonUp;
+				event.type = (action == GLFW_PRESS || action == GLFW_REPEAT) ? 
+					MouseEvent::Type::LeftButtonDown : MouseEvent::Type::LeftButtonUp;
 				break;
 			case GLFW_MOUSE_BUTTON_MIDDLE:
-				event.type = (action == GLFW_PRESS) ? MouseEvent::Type::MiddleButtonDown
-													: MouseEvent::Type::MiddleButtonUp;
+				event.type = (action == GLFW_PRESS || action == GLFW_REPEAT) ? 
+					MouseEvent::Type::MiddleButtonDown : MouseEvent::Type::MiddleButtonUp;
 				break;
 			case GLFW_MOUSE_BUTTON_RIGHT:
-				event.type = (action == GLFW_PRESS) ? MouseEvent::Type::RightButtonDown
-													: MouseEvent::Type::RightButtonUp;
+				event.type = (action == GLFW_PRESS || action == GLFW_REPEAT) ? 
+					MouseEvent::Type::RightButtonDown : MouseEvent::Type::RightButtonUp;
 				break;
 			default:
 				// Other keys are not supported
@@ -141,7 +153,7 @@ public:
 			double x, y;
 			glfwGetCursorPos(pGlfwWindow, &x, &y);
 			event.pos		 = calcMousePos(x, y, manager->getMouseScale());
-			event.wheelDelta = (Vector2f(float(scrollX), float(scrollY)));
+			event.wheelDelta = Vector2f(float(scrollX), float(scrollY));
 
 			manager->onMouseEvent(event);
 		}
@@ -173,8 +185,9 @@ private:
 
 		event.type = (action == GLFW_RELEASE ? KeyboardEvent::Type::KeyReleased
 											 : KeyboardEvent::Type::KeyPressed);
-		event.key  = glfwToKey(key);
-		event.mods = getInputModifiers(modifiers);
+		event.glfwKey = key;
+		event.key	  = glfwToKey(key);
+		event.mods	  = getInputModifiers(modifiers);
 		return true;
 	}
 };
@@ -335,6 +348,8 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 	glfwSetCursorPosCallback(m_Window, ApiCallbacks::mouseMoveCallback);
 	glfwSetMouseButtonCallback(m_Window, ApiCallbacks::mouseButtonCallback);
 	glfwSetScrollCallback(m_Window, ApiCallbacks::mouseWheelCallback);
+	glfwSetCharCallback(m_Window, ApiCallbacks::charInputCallback);
+	glfwSetCharModsCallback(m_Window, ApiCallbacks::charInputModsCallback);
 
 	if (!CreateDeviceAndSwapChain()) return false;
 

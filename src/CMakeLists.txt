@@ -133,6 +133,7 @@ SET (KRR_SOURCE_VULKAN
 	core/vulkan/cufriends.cpp
 	core/vulkan/descriptor.cpp
 	core/vulkan/helperpass.cpp
+	core/vulkan/uirender.cpp
 	core/vulkan/textureloader.cpp
 )
 
