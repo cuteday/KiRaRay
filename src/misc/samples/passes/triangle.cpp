@@ -2,14 +2,15 @@
 #include <logger.h>
 #include <nvrhi/vulkan.h>
 
-#include "common/devicemanager.h"
-#include "vulkan/shader.h"
+#include <main/renderer.h>
+#include <vulkan/shader.h>
+#include <renderpass.h>
 
 KRR_NAMESPACE_BEGIN
 
 static const char *g_WindowTitle = "Hello Triangle";
 
-class BasicTriangle : public IRenderPass {
+class BasicTriangle : public RenderPass {
 private:
 	nvrhi::ShaderHandle m_VertexShader;
 	nvrhi::ShaderHandle m_PixelShader;
@@ -17,31 +18,25 @@ private:
 	nvrhi::CommandListHandle m_CommandList;
 
 public:
-	using IRenderPass::IRenderPass;
+	using RenderPass::RenderPass;
 
-	bool Init() {
-		ShaderLoader shaderLoader(GetDevice());
-
+	void initialize() {
+		ShaderLoader shaderLoader(getVulkanDevice());
 		m_VertexShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_vs", nullptr,
 													nvrhi::ShaderType::Vertex);
 		m_PixelShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_ps", nullptr,
 													nvrhi::ShaderType::Pixel);
 
-		if (!m_VertexShader || !m_PixelShader) 
-			return false;
-		
-		m_CommandList = GetDevice()->createCommandList();
-
-		return true;
+		if (!m_VertexShader || !m_PixelShader)
+			Log(Fatal, "Shader initialization failed");
+		m_CommandList = getVulkanDevice()->createCommandList();
 	}
 
-	void BackBufferResizing() override { m_Pipeline = nullptr; }
+	void resizing() override { m_Pipeline = nullptr; }
 
-	void Animate(float fElapsedTimeSeconds) override {
-		GetDeviceManager()->SetInformativeWindowTitle(g_WindowTitle);
-	}
+	void tick(float fElapsedTimeSeconds) override {}
 
-	void Render(RenderFrame::SharedPtr frame) override {
+	void render(RenderFrame::SharedPtr frame) override {
 		nvrhi::FramebufferHandle framebuffer = frame->getFramebuffer();
 		
 		if (!m_Pipeline) {
@@ -51,7 +46,7 @@ public:
 			psoDesc.primType = nvrhi::PrimitiveType::TriangleList;
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
 
-			m_Pipeline = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+			m_Pipeline = getVulkanDevice()->createGraphicsPipeline(psoDesc, framebuffer);
 		}
 
 		m_CommandList->open();
@@ -69,13 +64,12 @@ public:
 		args.vertexCount = 3;
 		m_CommandList->draw(args);
 		m_CommandList->close();
-		GetDevice()->executeCommandList(m_CommandList);
+		getVulkanDevice()->executeCommandList(m_CommandList);
 	}
 };
 
-
 extern "C" int main(int argc, const char *argv[]) {
-	DeviceManagerImpl *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
+	auto app = std::make_unique<DeviceManager>();
 	DeviceCreationParameters deviceParams;
 	deviceParams.renderFormat				= nvrhi::Format::RGBA8_UNORM;
 	deviceParams.swapChainBufferCount		= 2;
@@ -83,23 +77,18 @@ extern "C" int main(int argc, const char *argv[]) {
 	deviceParams.enableDebugRuntime			= true;
 	deviceParams.enableNvrhiValidationLayer = true;
 
-	if (!deviceManager->CreateWindowDeviceAndSwapChain(deviceParams, g_WindowTitle)) {
+	if (!app->CreateWindowDeviceAndSwapChain(deviceParams, g_WindowTitle)) {
 		logFatal("Cannot initialize a graphics device with the requested parameters");
 		return 1;
 	}
-	
 	{
-		BasicTriangle example(deviceManager);
-		if (example.Init()) {
-			deviceManager->AddRenderPassToBack(&example);
-			deviceManager->RunMessageLoop();
-			deviceManager->RemoveRenderPass(&example);
-		}
+		auto example = std::make_shared<BasicTriangle>(app.get());
+		example->initialize();
+		app->AddRenderPassToBack(example);
+		app->RunMessageLoop();
+		app->RemoveRenderPass(example);
 	}
-
-	deviceManager->Shutdown();
-	delete deviceManager;
-	return 0;
+	exit(EXIT_SUCCESS);
 }
 
 KRR_NAMESPACE_END

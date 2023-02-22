@@ -11,7 +11,7 @@ vk::Device RenderPass::getVulkanNativeDevice() const {
 	return mDeviceManager->GetNativeDevice();
 }
 
-vkrhi::IDevice *RenderPass::getVulkanDevice() const {
+vkrhi::vulkan::IDevice *RenderPass::getVulkanDevice() const {
 	return mDeviceManager->GetDevice();
 }
 

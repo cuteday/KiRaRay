@@ -15,7 +15,7 @@ public:
 	CudaRenderTarget() = default;
 	KRR_CALLABLE CudaRenderTarget(cudaSurfaceObject_t cudaFrame, uint32_t width,
 								  uint32_t height) :
-		mCudaFrame(cudaFrame) {}
+		mCudaFrame(cudaFrame), width(width), height(height) {}
 	~CudaRenderTarget() = default;
 
 	KRR_DEVICE Color4f read(uint32_t x, uint32_t y) {
@@ -40,7 +40,8 @@ public:
 		return write(value, x, y);
 	}
 
-private:
+	KRR_CALLABLE operator cudaSurfaceObject_t() const { return mCudaFrame; }
+
 	cudaSurfaceObject_t mCudaFrame{};
 	uint32_t width, height;
 };

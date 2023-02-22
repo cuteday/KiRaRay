@@ -3,9 +3,10 @@
 #include <krrmath/transform.h>
 #include <nvrhi/vulkan.h>
 #include <util/check.h>
+#include <renderpass.h>
 
 #include "deviceprog.h"
-#include "common/devicemanager.h"
+#include "window.h"
 #include "vulkan/textureloader.h"
 #include "vulkan/shader.h"
 #include "vulkan/cufriends.h"
@@ -17,18 +18,18 @@ using namespace cufriends;
 
 const char g_windowTitle[] = "Sine Wave Simulator";
 
-class WaveRenderer: public IRenderPass {
+class WaveRenderer: public RenderPass {
 public:
-	using IRenderPass::IRenderPass;
+	using RenderPass::RenderPass;
 
 	struct ConstantBufferEntry {
 		Matrix4f mvp;
 		float padding[16 * 3];
 	};
 	
-	void Initialize() {
+	void initialize() {
 		m_sim = SineWaveSimulation(256, 256);
-		m_cuFriend = std::make_shared<CudaVulkanFriend>(GetDevice(false));
+		m_cuFriend = std::make_shared<CudaVulkanFriend>(getVulkanDevice());
 	
 		// initialize CUDA
 		int cuda_device = m_cuFriend->initCUDA();	// selected cuda device 
@@ -40,7 +41,7 @@ public:
 		CUDA_CHECK(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
 		
 		// creating the shader modules
-		ShaderLoader shaderLoader(GetDevice());
+		ShaderLoader shaderLoader(getVulkanDevice());
 		m_vertexShader = shaderLoader.createShader(
 			"src/misc/samples/passes/shaders/sinewave.hlsl", "main_vs", nullptr, nvrhi::ShaderType::Vertex);
 		m_pixelShader = shaderLoader.createShader(
@@ -65,9 +66,9 @@ public:
 				.setElementStride(sizeof(float))
 				.setBufferIndex(1),
 		};
-		m_inputLayout = GetDevice()->createInputLayout(attributes, std::size(attributes), m_vertexShader);
+		m_inputLayout = getVulkanDevice()->createInputLayout(attributes, std::size(attributes), m_vertexShader);
 
-		m_commandList = GetDevice()->createCommandList();
+		m_commandList = getVulkanDevice()->createCommandList();
 		m_commandList->open();
 
 		nvrhi::BufferDesc indexBufferDesc;
@@ -75,14 +76,14 @@ public:
 		indexBufferDesc.byteSize			= sizeof(uint32_t) * (m_sim.getWidth() - 1) * (m_sim.getHeight() - 1) * 6;
 		indexBufferDesc.debugName			= "IndexBuffer";
 		indexBufferDesc.initialState		= nvrhi::ResourceStates::CopyDest;
-		m_indexBuffer						= GetDevice()->createBuffer(indexBufferDesc);
+		m_indexBuffer						= getVulkanDevice()->createBuffer(indexBufferDesc);
 	
 		nvrhi::BufferDesc xyBufferDesc;
 		xyBufferDesc.isVertexBuffer = true;
 		xyBufferDesc.byteSize		= sizeof(Vector2f) * m_sim.getWidth() * m_sim.getHeight();
 		xyBufferDesc.debugName		= "XYBuffer";
 		xyBufferDesc.initialState	= nvrhi::ResourceStates::CopyDest;
-		m_xyBuffer					= GetDevice()->createBuffer(xyBufferDesc);
+		m_xyBuffer					= getVulkanDevice()->createBuffer(xyBufferDesc);
 
 		nvrhi::BufferDesc heightBufferDesc;
 		heightBufferDesc.isVertexBuffer = true;
@@ -91,7 +92,7 @@ public:
 		heightBufferDesc.initialState	= nvrhi::ResourceStates::CopyDest;
 		m_heightBuffer = m_cuFriend->createExternalBuffer(heightBufferDesc);
 
-		m_constantBuffer = GetDevice()->createBuffer(nvrhi::utils::CreateStaticConstantBufferDesc(
+		m_constantBuffer = getVulkanDevice()->createBuffer(nvrhi::utils::CreateStaticConstantBufferDesc(
 										  sizeof(ConstantBufferEntry), "ConstantBuffer")
 				.setInitialState(nvrhi::ResourceStates::ConstantBuffer)
 				.setKeepInitialState(true));
@@ -136,7 +137,7 @@ public:
 		m_commandList->setPermanentBufferState(m_heightBuffer, nvrhi::ResourceStates::VertexBuffer);
 		
 		m_commandList->close();
-		GetDevice()->executeCommandList(m_commandList);
+		getVulkanDevice()->executeCommandList(m_commandList);
 
 		m_cuFriend->importVulkanBufferToCudaPtr((void**)&m_cudaHeightData, m_cudaHeightMem, m_heightBuffer);
 		m_sim.initSimulation(m_cudaHeightData);
@@ -146,21 +147,20 @@ public:
 		bindingSetDesc.bindings = {
 			nvrhi::BindingSetItem::ConstantBuffer(0, m_constantBuffer, nvrhi::EntireBuffer)
 		};
-		if (!nvrhi::utils::CreateBindingSetAndLayout(GetDevice(), nvrhi::ShaderType::All, 0,
+		if (!nvrhi::utils::CreateBindingSetAndLayout(getVulkanDevice(), nvrhi::ShaderType::All, 0,
 													 bindingSetDesc, m_bindingLayout, m_bindingSet))
 			logError("Failed to create the binding set and layout");
 		Log(Info, "Finished simulator initialization");
 	}
 
-	void Animate(float seconds) override {
+	void tick(float seconds) override {
 		m_elapsedTime += seconds;
 		m_sim.stepSimulation(m_elapsedTime, m_stream);
-		GetDeviceManager()->SetInformativeWindowTitle(g_windowTitle);
 	}
 
-	void BackBufferResizing() override { m_pipeline = nullptr; }
+	void resizing() override { m_pipeline = nullptr; }
 
-	void Render(RenderFrame::SharedPtr frame) override { 
+	void render(RenderFrame::SharedPtr frame) override { 
 		nvrhi::FramebufferHandle framebuffer = frame->getFramebuffer();
 		CUDA_SYNC_CHECK();
 
@@ -176,7 +176,7 @@ public:
 			psoDesc.primType	   = nvrhi::PrimitiveType::TriangleList;
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
 			psoDesc.renderState.rasterState.fillMode = nvrhi::RasterFillMode::Wireframe;
-			m_pipeline = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+			m_pipeline = getVulkanDevice()->createGraphicsPipeline(psoDesc, framebuffer);
 			Log(Info, "Finished initializing pipeline");
 		}
 	
@@ -210,7 +210,7 @@ public:
 		m_commandList->drawIndexed(args);
 		
 		m_commandList->close();
-		GetDevice()->executeCommandList(m_commandList);
+		getVulkanDevice()->executeCommandList(m_commandList);
 	}
 
 private:
@@ -232,32 +232,23 @@ private:
 };
 
 extern "C" int main(int argc, const char *argv[]) {
-	Log(Info, "Hello from passes!");
-	
-	DeviceManagerImpl *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
-
+	auto app								= std::make_unique<DeviceManager>();
 	DeviceCreationParameters deviceParams	= {};
 	deviceParams.enableDebugRuntime			= true;
 	deviceParams.enableNvrhiValidationLayer = true;
 	deviceParams.enableCudaInterop			= true;
 
-	if (!deviceManager->CreateWindowDeviceAndSwapChain(deviceParams, g_windowTitle)) {
+	if (!app->CreateWindowDeviceAndSwapChain(deviceParams, g_windowTitle)) {
 		logFatal("Cannot initialize a graphics device with the requested parameters");
 		return 1;
 	}
-
 	{ 
-		WaveRenderer app(deviceManager);
-		app.Initialize();
-
-		deviceManager->AddRenderPassToBack(&app);
-		deviceManager->RunMessageLoop();
-		deviceManager->RemoveRenderPass(&app);
+		auto wave = std::make_shared<WaveRenderer>(app.get());
+		wave->initialize();
+		app->AddRenderPassToBack(wave);
+		app->RunMessageLoop();
+		app->RemoveRenderPass(wave);
 	}
-
-	deviceManager->Shutdown();
-	delete deviceManager;
-	
 	exit(EXIT_SUCCESS);
 }
 

@@ -25,11 +25,12 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 			case io::KeyboardEvent::Key::F1:
 				mShowUI = !mShowUI;
 				return true;
-			case io::KeyboardEvent::Key::F3:
+			case io::KeyboardEvent::Key::F2:
 				captureFrame();
 				return true;
 		}
 	}
+	Log(Info, "Keyboard event received");
 	if (mPaused) return true;
 	if (DeviceManager::onKeyEvent(keyEvent)) return true;
 	if (mpScene && mpScene->onKeyEvent(keyEvent)) return true;
@@ -46,6 +47,11 @@ void RenderApp::run() {
 	initialize();
 	DeviceManager::RunMessageLoop();
 	finalize();
+}
+
+void RenderApp::Render() {
+	mpScene->update();
+	DeviceManager::Render();
 }
 
 void RenderApp::renderUI() {

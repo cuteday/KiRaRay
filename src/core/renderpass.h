@@ -71,10 +71,10 @@ public:
 	}
 
 	virtual void tick(float elapsedSeconds) {}
-	virtual void beginFrame(RenderFrame::SharedPtr frame) {}
+	virtual void beginFrame() {}
 	virtual void render(RenderFrame::SharedPtr frame) {}
 	virtual void renderUI() {}
-	virtual void endFrame(RenderFrame::SharedPtr frame) {}
+	virtual void endFrame() {}
 	
 	virtual void initialize() {}
 	virtual void finalize() {}
@@ -93,7 +93,7 @@ public:
 protected:
 	[[nodiscard]] DeviceManager *getDeviceManager() const; 
 	[[nodiscard]] vk::Device getVulkanNativeDevice() const;
-	[[nodiscard]] vkrhi::IDevice *getVulkanDevice() const;
+	[[nodiscard]] vkrhi::vulkan::IDevice *getVulkanDevice() const;
 	[[nodiscard]] size_t getFrameIndex() const;
 
 	friend void to_json(json &j, const RenderPass &p) {

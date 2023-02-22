@@ -178,7 +178,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	backend->setScene(*scene);
 }
 
-void WavefrontPathTracer::beginFrame(RenderFrame::SharedPtr frame) {
+void WavefrontPathTracer::beginFrame() {
 	if (!mpScene || !maxQueueSize)
 		return;
 	PROFILE("Begin frame");

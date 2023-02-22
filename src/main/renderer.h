@@ -23,6 +23,7 @@ public:
 
 	void BackBufferResizing() override {}
 	void BackBufferResized() override;
+	void Render() override;
 
 	void initialize();
 	void finalize();

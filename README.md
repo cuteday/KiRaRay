@@ -175,7 +175,8 @@ Currently, both of the two versions of the pathtracers (Megakernel / Wavefront),
 Although the main purpose of this project is to let me (a beginner) learn c++ and optix, 
 I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i am so lazy, trying to sleep as more as possible (\*/ω＼\*).
 
-For anyone that (accidentally) found this project: any questions, suggestions and bug reports are greatly appreciated!
+For anyone that (accidentally) found this project: any questions, suggestions are appreciated. 
+Bug reports, however, are not necessary since any part of this project may not work as expected ; ;
 
 ### Credits
 - The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).

@@ -238,9 +238,9 @@ void PPGPathTracer::render(RenderFrame::SharedPtr frame) {
 	});
 }
 
-void PPGPathTracer::beginFrame(RenderFrame::SharedPtr frame) {
+void PPGPathTracer::beginFrame() {
 	if (!mpScene || !maxQueueSize) return;
-	WavefrontPathTracer::beginFrame(frame);
+	WavefrontPathTracer::beginFrame();
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		guidedPathState->n_vertices[pixelId] = 0;
 	});
@@ -251,7 +251,7 @@ void PPGPathTracer::beginFrame(RenderFrame::SharedPtr frame) {
 	//CUDA_SYNC_CHECK();
 }
 
-void PPGPathTracer::endFrame(RenderFrame::SharedPtr frame) {
+void PPGPathTracer::endFrame() {
 	frameId++;
 	if (enableLearning) {
 		PROFILE("Training SD-Tree");

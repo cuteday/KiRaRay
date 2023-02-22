@@ -1,10 +1,11 @@
 #include <common.h>
 #include <logger.h>
+#include <renderpass.h>
 #include <krrmath/transform.h>
 #include <nvrhi/vulkan.h>
 #include <util/check.h>
 
-#include "common/devicemanager.h"
+#include "window.h"
 #include "vulkan/helperpass.h"
 #include "vulkan/textureloader.h"
 #include "vulkan/shader.h"
@@ -62,7 +63,7 @@ static const Vector3f g_RotationAxes[c_NumViews] = {
 	Vector3f(1.f, 1.f, 1.f),
 };
 
-class VertexBuffer : public IRenderPass {
+class VertexBuffer : public RenderPass {
 private:
 	nvrhi::ShaderHandle m_VertexShader;
 	nvrhi::ShaderHandle m_PixelShader;
@@ -78,7 +79,7 @@ private:
 	float m_Rotation = 0.f;
 
 public:
-	using IRenderPass::IRenderPass;
+	using RenderPass::RenderPass;
 
 	// This example uses a single large constant buffer with multiple views to draw multiple
 	// versions of the same model. The alignment and size of partially bound constant buffers must
@@ -92,8 +93,8 @@ public:
 	static_assert(sizeof(ConstantBufferEntry) == nvrhi::c_ConstantBufferOffsetSizeAlignment,
 				  "sizeof(ConstantBufferEntry) must be 256 bytes");
 
-	bool Init() {
-		std::shared_ptr<ShaderLoader> shaderLoader = std::make_shared<ShaderLoader>(GetDevice());
+	void initialize() {
+		std::shared_ptr<ShaderLoader> shaderLoader = std::make_shared<ShaderLoader>(getVulkanDevice());
 		m_VertexShader = shaderLoader->createShader("src/misc/samples/passes/shaders/box.hlsl",
 													"main_vs", nullptr,
 													 nvrhi::ShaderType::Vertex);
@@ -102,10 +103,10 @@ public:
 													 nvrhi::ShaderType::Pixel);
 
 		if (!m_VertexShader || !m_PixelShader) {
-			return false;
+			Log(Fatal, "Shader initialization failed");
 		}
 
-		m_ConstantBuffer = GetDevice()->createBuffer(
+		m_ConstantBuffer = getVulkanDevice()->createBuffer(
 			nvrhi::utils::CreateStaticConstantBufferDesc(sizeof(ConstantBufferEntry) * c_NumViews,
 														 "ConstantBuffer")
 				.setInitialState(nvrhi::ResourceStates::ConstantBuffer)
@@ -123,13 +124,13 @@ public:
 				.setOffset(offsetof(Vertex, uv))
 				.setElementStride(sizeof(Vertex)),
 		};
-		m_InputLayout = GetDevice()->createInputLayout(attributes, uint32_t(std::size(attributes)),
+		m_InputLayout = getVulkanDevice()->createInputLayout(attributes, uint32_t(std::size(attributes)),
 													   m_VertexShader);
 
-		CommonRenderPasses commonPasses(GetDevice(), shaderLoader);
-		TextureCache textureCache(GetDevice(), nullptr);
+		CommonRenderPasses commonPasses(getVulkanDevice(), shaderLoader);
+		TextureCache textureCache(getVulkanDevice(), nullptr);
 
-		m_CommandList = GetDevice()->createCommandList();
+		m_CommandList = getVulkanDevice()->createCommandList();
 		m_CommandList->open();
 
 		nvrhi::BufferDesc vertexBufferDesc;
@@ -137,7 +138,7 @@ public:
 		vertexBufferDesc.isVertexBuffer = true;
 		vertexBufferDesc.debugName		= "VertexBuffer";
 		vertexBufferDesc.initialState	= nvrhi::ResourceStates::CopyDest;
-		m_VertexBuffer					= GetDevice()->createBuffer(vertexBufferDesc);
+		m_VertexBuffer					= getVulkanDevice()->createBuffer(vertexBufferDesc);
 
 		m_CommandList->beginTrackingBufferState(m_VertexBuffer, nvrhi::ResourceStates::CopyDest);
 		m_CommandList->writeBuffer(m_VertexBuffer, g_Vertices, sizeof(g_Vertices));
@@ -148,24 +149,23 @@ public:
 		indexBufferDesc.isIndexBuffer = true;
 		indexBufferDesc.debugName	  = "IndexBuffer";
 		indexBufferDesc.initialState  = nvrhi::ResourceStates::CopyDest;
-		m_IndexBuffer				  = GetDevice()->createBuffer(indexBufferDesc);
+		m_IndexBuffer				  = getVulkanDevice()->createBuffer(indexBufferDesc);
 
 		m_CommandList->beginTrackingBufferState(m_IndexBuffer, nvrhi::ResourceStates::CopyDest);
 		m_CommandList->writeBuffer(m_IndexBuffer, g_Indices, sizeof(g_Indices));
 		m_CommandList->setPermanentBufferState(m_IndexBuffer, nvrhi::ResourceStates::IndexBuffer);
 
 		std::filesystem::path textureFileName =
-			"src/misc/samples/passes/assets/emoticon_001.png";
+			"src/misc/samples/passes/assets/shii_001.png";
 		std::shared_ptr<LoadedTexture> texture =
 			textureCache.LoadTextureFromFile(textureFileName, true, nullptr, m_CommandList);
 		m_Texture = texture->texture;
 
 		m_CommandList->close();
-		GetDevice()->executeCommandList(m_CommandList);
+		getVulkanDevice()->executeCommandList(m_CommandList);
 
 		if (!texture->texture) {
-			logError("Couldn't load the texture");
-			return false;
+			logFatal("Couldn't load the texture");
 		}
 
 		// Create a single binding layout and multiple binding sets, one set per view.
@@ -184,25 +184,21 @@ public:
 
 			// Create the binding layout (if it's empty -- so, on the first iteration) and the
 			// binding set.
-			if (!nvrhi::utils::CreateBindingSetAndLayout(GetDevice(), nvrhi::ShaderType::All, 0,
+			if (!nvrhi::utils::CreateBindingSetAndLayout(getVulkanDevice(), nvrhi::ShaderType::All, 0,
 														 bindingSetDesc, m_BindingLayout,
 														 m_BindingSets[viewIndex])) {
-				logError("Couldn't create the binding set or layout");
-				return false;
+				logFatal("Couldn't create the binding set or layout");
 			}
 		}
-
-		return true;
 	}
 
-	void Animate(float seconds) override {
+	void tick(float seconds) override {
 		m_Rotation += seconds * 1.1f;
-		GetDeviceManager()->SetInformativeWindowTitle(g_WindowTitle);
 	}
 
-	void BackBufferResizing() override { m_Pipeline = nullptr; }
+	void resizing() override { m_Pipeline = nullptr; }
 
-	void Render(RenderFrame::SharedPtr frame) override {
+	void render(RenderFrame::SharedPtr frame) override {
 		nvrhi::FramebufferHandle framebuffer   = frame->getFramebuffer();
 		const nvrhi::FramebufferInfoEx &fbinfo = framebuffer->getFramebufferInfo();
 
@@ -217,7 +213,7 @@ public:
 			psoDesc.renderState.rasterState.frontCounterClockwise = true;
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
 
-			m_Pipeline = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+			m_Pipeline = getVulkanDevice()->createGraphicsPipeline(psoDesc, framebuffer);
 		}
 
 		m_CommandList->open();
@@ -265,34 +261,28 @@ public:
 		}
 
 		m_CommandList->close();
-		GetDevice()->executeCommandList(m_CommandList);
+		getVulkanDevice()->executeCommandList(m_CommandList);
 	}
 };
 
 
  extern "C" int main(int argc, const char *argv[]) {
-	DeviceManagerImpl *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
-
+	auto app = std::make_unique<DeviceManager>();
 	DeviceCreationParameters deviceParams;
 	deviceParams.enableDebugRuntime			= true;
 	deviceParams.enableNvrhiValidationLayer = true;
 
-	if (!deviceManager->CreateWindowDeviceAndSwapChain(deviceParams, g_WindowTitle)) {
+	if (!app->CreateWindowDeviceAndSwapChain(deviceParams, g_WindowTitle)) {
 		logFatal("Cannot initialize a graphics device with the requested parameters");
 		return 1;
 	}
-
 	{
-		VertexBuffer example(deviceManager);
-		if (example.Init()) {
-			deviceManager->AddRenderPassToBack(&example);
-			deviceManager->RunMessageLoop();
-			deviceManager->RemoveRenderPass(&example);
-		}
+		auto example = std::make_shared<VertexBuffer>(app.get());
+		example->initialize();
+		app->AddRenderPassToBack(example);
+		app->RunMessageLoop();
+		app->RemoveRenderPass(example);
 	}
-
-	deviceManager->Shutdown();
-	delete deviceManager;
 	exit(EXIT_SUCCESS);
 }
 

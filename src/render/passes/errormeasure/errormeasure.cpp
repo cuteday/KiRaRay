@@ -8,7 +8,7 @@ namespace {
 static const char *metricNames[] = { "MSE", "MAPE", "SMAPE", "RelMSE" };
 }
 
-void ErrorMeasurePass::beginFrame(RenderFrame::SharedPtr frame) {
+void ErrorMeasurePass::beginFrame() {
 	if (!mFrameNumber) reset();
 	mFrameNumber++;
 	mNeedsEvaluate |= mContinuousEvaluate && (mFrameNumber % mEvaluateInterval == 0);
@@ -37,7 +37,7 @@ void ErrorMeasurePass::render(RenderFrame::SharedPtr frame) {
 	}
 }
 
-void ErrorMeasurePass::endFrame(RenderFrame::SharedPtr frame) {}
+void ErrorMeasurePass::endFrame() {}
 
 void ErrorMeasurePass::resize(const Vector2i &size) {
 	RenderPass::resize(size); }

@@ -45,12 +45,10 @@ struct DeviceCreationParameters {
 	bool enableRayTracingExtensions = false;
 	bool enableComputeQueue			= false;
 	bool enableCopyQueue			= false;
+	bool enablePerMonitorDPI		= false;
 	bool enableCudaInterop			= true;
 
-	// Severity of the information log messages from the device manager.
 	Log::Level infoLogSeverity = Log::Level::Info;
-
-	bool enablePerMonitorDPI = false;
 
 	std::vector<std::string> requiredVulkanInstanceExtensions;
 	std::vector<std::string> requiredVulkanDeviceExtensions;
@@ -70,9 +68,12 @@ public:
 
 	[[nodiscard]] virtual vk::Device GetNativeDevice() const { return m_VulkanDevice; }
 
-	[[nodiscard]] virtual nvrhi::IDevice *GetDevice(bool withValidationLayer = true) const {
-		if (withValidationLayer && m_ValidationLayer) return m_ValidationLayer;
-		return m_NvrhiDevice;
+	[[nodiscard]] virtual nvrhi::vulkan::IDevice *GetDevice() const {
+		return dynamic_cast<nvrhi::vulkan::IDevice*>(m_NvrhiDevice.Get());
+	}
+
+	[[nodiscard]] virtual nvrhi::IDevice* GetValidationLayer() const {
+		return m_ValidationLayer;
 	}
 
 	bool CreateWindowDeviceAndSwapChain(const DeviceCreationParameters &params,
@@ -183,8 +184,6 @@ public:
 	}
 	virtual size_t GetCurrentBackBufferIndex() { return m_SwapChainIndex; }
 	virtual size_t GetBackBufferCount() { return m_SwapChainImages.size(); }
-	RenderFrame::SharedPtr GetCurrentFramebuffer();
-	RenderFrame::SharedPtr GetFramebuffer(size_t index);
 
 	void Shutdown();
 	void SetWindowTitle(const char *title);

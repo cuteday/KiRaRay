@@ -1,9 +1,10 @@
 // https://www.khronos.org/blog/understanding-vulkan-synchronization
 #include <common.h>
 #include <logger.h>
+#include <renderpass.h>
 #include <nvrhi/vulkan.h>
 
-#include "common/devicemanager.h"
+#include "window.h"
 #include "vulkan/textureloader.h"
 #include "vulkan/shader.h"
 #include "vulkan/cufriends.h"
@@ -13,7 +14,7 @@ KRR_NAMESPACE_BEGIN
 
 static const char *g_WindowTitle = "CuFramebuffer";
 
-class HelloVkCuda : public IRenderPass {
+class HelloVkCuda : public RenderPass {
 private:
 	nvrhi::ShaderHandle m_VertexShader;
 	nvrhi::ShaderHandle m_PixelShader;
@@ -26,46 +27,44 @@ private:
 	cudaExternalSemaphore_t m_CudaExtCudaUpdateVkSem, m_CudaExtVkUpdateCudaSem;
 
 public:
-	using IRenderPass::IRenderPass;
+	using RenderPass::RenderPass;
 
 	~HelloVkCuda() { 
-		GetNativeDevice().destroySemaphore(m_CudaUpdateVkSem);
-		GetNativeDevice().destroySemaphore(m_VkUpdateCudaSem);
+		getVulkanNativeDevice().destroySemaphore(m_CudaUpdateVkSem);
+		getVulkanNativeDevice().destroySemaphore(m_VkUpdateCudaSem);
 	}
 
-	bool Init() {
-		ShaderLoader shaderLoader(GetDevice());
+	void initialize() {
+		ShaderLoader shaderLoader(getVulkanDevice());
 
 		m_VertexShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_vs", nullptr,
 													nvrhi::ShaderType::Vertex);
 		m_PixelShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_ps", nullptr,
 													nvrhi::ShaderType::Pixel);
 		
-		m_CUFriend = std::make_shared<vkrhi::CudaVulkanFriend>(GetDevice(false));
+		m_CUFriend = std::make_shared<vkrhi::CudaVulkanFriend>(getVulkanDevice());
 
 		if (!m_VertexShader || !m_PixelShader) 
-			return false;
+			Log(Fatal, "Shader initialization failed");
 		
 		CUDA_CHECK(cudaStreamCreate(&m_CudaStream));
 
-		m_CommandList = GetDevice()->createCommandList();
+		m_CommandList = getVulkanDevice()->createCommandList();
 		m_CUFriend->createExternalSemaphore(m_CudaUpdateVkSem);
 		m_CUFriend->createExternalSemaphore(m_VkUpdateCudaSem);
 		m_CudaExtCudaUpdateVkSem = m_CUFriend->importVulkanSemaphoreToCuda(m_CudaUpdateVkSem);
 		m_CudaExtVkUpdateCudaSem = m_CUFriend->importVulkanSemaphoreToCuda(m_VkUpdateCudaSem);
-		return true;
 	}
 
-	void BackBufferResizing() override { 
+	void resizing() override { 
 		m_Pipeline = nullptr; 
 	}
 
-	void Animate(float fElapsedTimeSeconds) override {
-		GetDeviceManager()->SetInformativeWindowTitle(g_WindowTitle);
+	void tick(float fElapsedTimeSeconds) override {
 		m_ElapsedTime += fElapsedTimeSeconds;
 	}
 
-	void Render(RenderFrame::SharedPtr frame) override {
+	void render(RenderFrame::SharedPtr frame) override {
 		nvrhi::FramebufferHandle framebuffer = frame->getFramebuffer();
 		auto fbInfo							 = framebuffer->getFramebufferInfo();
 		
@@ -75,10 +74,10 @@ public:
 			psoDesc.PS		 = m_PixelShader;
 			psoDesc.primType = nvrhi::PrimitiveType::TriangleList;
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
-			m_Pipeline = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+			m_Pipeline = getVulkanDevice()->createGraphicsPipeline(psoDesc, framebuffer);
 		}
 
-		GetVkDevice()->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_VkUpdateCudaSem, 0);
+		getVulkanDevice()->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_VkUpdateCudaSem, 0);
 		m_CommandList->open();
 		nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.f));
 		nvrhi::GraphicsState state;
@@ -91,22 +90,21 @@ public:
 		args.vertexCount = 3;
 		m_CommandList->draw(args);
 		m_CommandList->close();
-		GetDevice()->executeCommandList(m_CommandList);
+		getVulkanDevice()->executeCommandList(m_CommandList);
 
 		vkrhi::CudaVulkanFriend::cudaWaitExternalSemaphore(m_CudaStream, 0,
 														   &m_CudaExtVkUpdateCudaSem);
-		cudaSurfaceObject_t cudaFrame = frame->getMappedCudaSurface(m_CUFriend);
-		drawScreen(m_CudaStream, cudaFrame, m_ElapsedTime, fbInfo.width, fbInfo.height);
+		auto cudaRenderTarget		  = frame->getCudaRenderTarget();
+		drawScreen(m_CudaStream, cudaRenderTarget, m_ElapsedTime, fbInfo.width,
+				   fbInfo.height);
 		CUDA_SYNC_CHECK();
 
 	}
 };
 
-
 extern "C" int main(int argc, const char *argv[]) {
-	DeviceManagerImpl *deviceManager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
-	
-	DeviceCreationParameters deviceParams		= {};
+	auto app							  = std::make_unique<DeviceManager>();
+	DeviceCreationParameters deviceParams = {};
 	deviceParams.backBufferWidth				= 800;
 	deviceParams.backBufferHeight				= 600;
 	deviceParams.enableDebugRuntime				= true;
@@ -115,23 +113,18 @@ extern "C" int main(int argc, const char *argv[]) {
 	deviceParams.renderFormat					= nvrhi::Format::RGBA32_FLOAT;				
 	deviceParams.enableCudaInterop				= true;
 
-	if (!deviceManager->CreateWindowDeviceAndSwapChain(deviceParams, g_WindowTitle)) {
+	if (!app->CreateWindowDeviceAndSwapChain(deviceParams, g_WindowTitle)) {
 		logFatal("Cannot initialize a graphics device with the requested parameters");
 		return 1;
 	}
-	
 	{
-		HelloVkCuda example(deviceManager);
-		if (example.Init()) {
-			deviceManager->AddRenderPassToBack(&example);
-			deviceManager->RunMessageLoop();
-			deviceManager->RemoveRenderPass(&example);
-		}
+		auto example = std::make_shared<HelloVkCuda>(app.get());
+		example->initialize();
+		app->AddRenderPassToBack(example);
+		app->RunMessageLoop();
+		app->RemoveRenderPass(example);
 	}
-
-	deviceManager->Shutdown();
-	delete deviceManager;
-	return 0;
+	exit(EXIT_SUCCESS);
 }
 
 KRR_NAMESPACE_END

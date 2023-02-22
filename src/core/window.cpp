@@ -292,9 +292,7 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 
 	glfwWindowHint(GLFW_SAMPLES, params.swapChainSampleCount);
 	glfwWindowHint(GLFW_REFRESH_RATE, params.refreshRate);
-
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
 	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // Ignored for fullscreen
 
 	m_Window = glfwCreateWindow(
@@ -399,7 +397,7 @@ void DeviceManager::BackBufferResized() {
 
 		m_RenderFramebuffers[index] = std::make_shared<RenderFrame>(GetDevice()->createFramebuffer(
 			nvrhi::FramebufferDesc().addColorAttachment(GetRenderImage(index))));
-		m_RenderFramebuffers[index]->initialize(GetDevice(false));
+		m_RenderFramebuffers[index]->initialize(GetDevice());
 	}
 }
 
@@ -412,7 +410,7 @@ void DeviceManager::Animate(double elapsedTime) {
 void DeviceManager::Render() {
 	BeginFrame();
 	for (auto it : m_RenderPasses) {
-		it->beginFrame(m_RenderFramebuffers[GetCurrentBackBufferIndex()]);
+		it->beginFrame();
 	}
 	for (auto it : m_RenderPasses) {
 		it->render(m_RenderFramebuffers[GetCurrentBackBufferIndex()]);
@@ -420,7 +418,7 @@ void DeviceManager::Render() {
 		CUDA_SYNC_CHECK();
 	}
 	for (auto it : m_RenderPasses) {
-		it->endFrame(m_RenderFramebuffers[GetCurrentBackBufferIndex()]);
+		it->endFrame();
 	}
 }
 
@@ -559,17 +557,6 @@ void DeviceManager::Shutdown() {
 	}
 
 	glfwTerminate();
-}
-
-RenderFrame::SharedPtr DeviceManager::GetCurrentFramebuffer() {
-	return GetFramebuffer(GetCurrentBackBufferIndex());
-}
-
-RenderFrame::SharedPtr DeviceManager::GetFramebuffer(size_t index) {
-	if (index < m_SwapChainFramebuffers.size()) 
-		return m_RenderFramebuffers[index];
-
-	return nullptr;
 }
 
 void DeviceManager::SetWindowTitle(const char *title) {
@@ -1033,7 +1020,8 @@ bool DeviceManager::createDevice() {
 	m_RendererString = std::string(prop.deviceName.data());
 
 	Log(Info, "Created Vulkan device: %s", m_RendererString.c_str());
-
+	if (!m_DeviceParams.enableCudaInterop) 
+		Log(Error, "You should enable CUDA Interopability to allow CUDA render passes");
 	return true;
 }
 
@@ -1219,7 +1207,7 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 	}
 
 	if (m_DeviceParams.enableCudaInterop) {
-		m_CUFriend = std::make_unique<vkrhi::CudaVulkanFriend>(GetDevice(false));
+		m_CUFriend = std::make_unique<vkrhi::CudaVulkanFriend>(GetDevice());
 		m_CUFriend->initCUDA();
 	}
 
@@ -1284,7 +1272,7 @@ void DeviceManager::Present() {
 	m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
 	m_CommandList->open(); // umm...
 	// blit the contents of render to swapchain image...
-	m_HelperPass->BlitTexture(m_CommandList, GetFramebuffer(m_SwapChainIndex)->getFramebuffer(),
+	m_HelperPass->BlitTexture(m_CommandList, m_SwapChainFramebuffers[m_SwapChainIndex],
 							  GetRenderImage(m_SwapChainIndex), m_BindingCache.get());
 	m_CommandList->close();
 	m_NvrhiDevice->executeCommandList(m_CommandList, nvrhi::CommandQueue::Graphics);
