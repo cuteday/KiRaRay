@@ -6,13 +6,16 @@
 
 #include "common.h"
 
-#include "render/wavefront/integrator.h"
-#include "render/passes/accumulate/accumulate.h"
-#include "render/passes/tonemapping/tonemapping.h"
-#include "render/passes/denoise/denoise.h"
-#include "render/path/pathtracer.h"
+#undef _DEBUG
+#ifdef KRR_DEBUG_BUILD
+#define _DEBUG 1
+#else 
+#define _DEBUG 0
+#endif
+
 #include "main/renderer.h"
 #include "scene/importer.h"
+#include "render/passes/denoise/denoise.h"
 
 KRR_NAMESPACE_BEGIN
 

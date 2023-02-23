@@ -6,6 +6,7 @@
 
 #include "window.h"
 #include "logger.h"
+#include "device/context.h"
 
 #include "imgui_impl_glfw.h"
 #include "render/profiler/profiler.h"
@@ -55,6 +56,7 @@ public:
 		DeviceManager *manager =
 			reinterpret_cast<DeviceManager *>(glfwGetWindowUserPointer(window));
 		manager->onWindowClose();
+		
 	}
 
 	static void windowPosCallback(GLFWwindow *window, int xpos, int ypos) {
@@ -451,7 +453,7 @@ void DeviceManager::UpdateAverageFrameTime(double elapsedTime) {
 void DeviceManager::RunMessageLoop() {
 	m_PreviousFrameTimestamp = glfwGetTime();
 
-	while (!glfwWindowShouldClose(m_Window)) {
+	while (!glfwWindowShouldClose(m_Window) && !gpContext->shouldQuit()) {
 
 		if (m_callbacks.beforeFrame) m_callbacks.beforeFrame(*this);
 

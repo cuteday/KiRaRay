@@ -186,13 +186,20 @@ void UIRenderer::initialize() {
 		basePSODesc.renderState	   = renderState;
 		basePSODesc.bindingLayouts = {bindingLayout};
 	}
-
-	auto &io = ImGui::GetIO();
-	io.Fonts->AddFontDefault();
-
+	
 	m_commandList->close();
 	device->executeCommandList(m_commandList);
 	device->waitForIdle();
+
+	auto &io = ImGui::GetIO();
+	io.Fonts->AddFontDefault();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard |
+					  ImGuiConfigFlags_DockingEnable |
+					  ImGuiConfigFlags_ViewportsEnable;
+
+	auto &style			 = ui::GetStyle();
+	style.WindowRounding = 5.f;
+	ImGui::StyleColorsLight();
 
 	/* Setup keyboard mapping for imgui */
 	io.KeyMap[ImGuiKey_Tab]		   = GLFW_KEY_TAB;

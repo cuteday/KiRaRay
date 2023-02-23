@@ -68,7 +68,7 @@ void RenderApp::renderUI() {
 		return;
 	Profiler::instance().setEnabled(showProfiler);
 	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.8); // this sets the global transparency of UI windows.
-	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5);
+	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5);	// this sets the transparency of the main menubar.
 	if (ui::BeginMainMenuBar()) {
 		ui::PopStyleVar(1);
 		if (ui::BeginMenu("Views")) {

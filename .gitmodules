@@ -19,3 +19,6 @@
 [submodule "src/core/math/3rdparty/eigen"]
 	path = src/core/math/3rdparty/eigen
 	url = https://github.com/cuteday/Eigen.git
+[submodule "src/ext/nvrhi"]
+	path = src/ext/nvrhi
+	url = https://github.com/cuteday/nvrhi.git
