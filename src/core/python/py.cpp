@@ -66,7 +66,7 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 		gpumem_normals.copy_from_host((float *) buf_normals.ptr, buf_normals.size);
 	}
 
-	denoiser.denoise((float *) gpumem_rgb.data(), (float *) gpumem_normals.data(),
+	denoiser.denoise((CUstream)0, (float *) gpumem_rgb.data(), (float *) gpumem_normals.data(),
 					 (float *) gpumem_albedo.data(), (float *) gpumem_result.data());
 	cudaDeviceSynchronize();
 	gpumem_result.copy_to_host((float *) buf_result.ptr, buf_result.size);

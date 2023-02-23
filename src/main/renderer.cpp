@@ -13,7 +13,6 @@ void RenderApp::BackBufferResized() {
 }
 
 bool RenderApp::onMouseEvent(io::MouseEvent &mouseEvent) {
-	if (mPaused) return true;
 	if (DeviceManager::onMouseEvent(mouseEvent)) return true;
 	if (mpScene && mpScene->onMouseEvent(mouseEvent)) return true;
 	return false;
@@ -30,7 +29,6 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 				return true;
 		}
 	}
-	if (mPaused) return true;
 	if (DeviceManager::onKeyEvent(keyEvent)) return true;
 	if (mpScene && mpScene->onKeyEvent(keyEvent)) return true;
 	return false;
@@ -59,6 +57,7 @@ void RenderApp::Render() {
 		CUDA_SYNC_CHECK();
 	}
 	for (auto it : m_RenderPasses)  it->endFrame();
+	if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
 }
 
 void RenderApp::renderUI() {
@@ -80,7 +79,6 @@ void RenderApp::renderUI() {
 			ui::EndMenu();
 		}
 		if (ui::BeginMenu("Render")) {
-			ui::MenuItem("Pause", NULL, &mPaused);
 			ui::EndMenu();
 		}
 		if (ui::BeginMenu("Tools")) {
@@ -96,8 +94,6 @@ void RenderApp::renderUI() {
 
 	if (showDashboard) {
 		ui::Begin(KRR_PROJECT_NAME, &showDashboard);
-		ui::Checkbox("Pause", &mPaused);
-		ui::SameLine();
 		ui::Checkbox("Profiler", &showProfiler);
 		ui::Checkbox("Save HDR", &mSaveHDR);
 		ui::SameLine();

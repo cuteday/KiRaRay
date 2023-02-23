@@ -21,7 +21,7 @@ public:
 
 	void initialize();	
 
-	void denoise(float *rgb, float *normal, float *albedo, float *result);
+	void denoise(CUstream stream, float *rgb, float *normal, float *albedo, float *result);
 	
 	void resize(Vector2i size);
 	
@@ -53,6 +53,7 @@ public:
 
 private:
 	bool mUseGeometry{};
+	TypedBuffer<Color4f> mColorBuffer;
 	DenoiseBackend mBackend;
 };
 

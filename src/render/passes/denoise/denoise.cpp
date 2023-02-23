@@ -2,6 +2,7 @@
 #include "util/check.h"
 #include "render/profiler/profiler.h"
 #include "device/context.h"
+#include "device/cuda.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -42,7 +43,7 @@ void DenoiseBackend::initialize() {
 								   memorySizes.withoutOverlapScratchSizeInBytes));
 }
 
-void DenoiseBackend::denoise(float *rgb, float *normal, float *albedo, float *result) {
+void DenoiseBackend::denoise(CUstream stream, float *rgb, float *normal, float *albedo, float *result) {
 	std::array<OptixImage2D, 3> inputLayers;
 	int inputPixelStride = pixelFormat == PixelFormat::FLOAT3 ? sizeof(Color3f) : sizeof(Color4f);
 	int outputPixelStride = pixelFormat == PixelFormat::FLOAT3 ? sizeof(Color3f) : sizeof(Color4f);
@@ -73,7 +74,7 @@ void DenoiseBackend::denoise(float *rgb, float *normal, float *albedo, float *re
 		OPTIX_PIXEL_FORMAT_FLOAT3 : OPTIX_PIXEL_FORMAT_FLOAT4;
 	outputImage.data			   = CUdeviceptr(result);
 
-	OPTIX_CHECK(optixDenoiserComputeIntensity(denoiserHandle, 0 /* stream */, &inputLayers[0],
+	OPTIX_CHECK(optixDenoiserComputeIntensity(denoiserHandle, stream, &inputLayers[0],
 											  CUdeviceptr(intensity.data()), CUdeviceptr(scratchBuffer.data()),
 											  memorySizes.withoutOverlapScratchSizeInBytes));
 
@@ -128,7 +129,18 @@ void DenoiseBackend::setPixelFormat(PixelFormat format) {
 void DenoisePass::render(RenderFrame::SharedPtr frame) {
 	if (!mEnable) return;
 	PROFILE("Denoise");
-	
+	uint32_t width, height; 
+	frame->getSize(width, height);
+	CudaRenderTarget cudaFrame = frame->getCudaRenderTarget();
+	Color4f* colorBuffer	   = mColorBuffer.data();
+	GPUParallelFor(width * height, [=] KRR_DEVICE(int pixelId) mutable{
+		colorBuffer[pixelId] = cudaFrame.read(pixelId);
+	});
+	mBackend.denoise(0, (float *) colorBuffer, nullptr, nullptr,
+					 (float *) colorBuffer);
+	GPUParallelFor(width * height, [=] KRR_DEVICE(int pixelId) mutable {
+		cudaFrame.write(colorBuffer[pixelId], pixelId);
+	});
 }
 
 void DenoisePass::renderUI() { 
@@ -143,6 +155,7 @@ void DenoisePass::renderUI() {
 void DenoisePass::resize(const Vector2i& size) { 
 	RenderPass::resize(size);
 	mBackend.resize(size); 
+	mColorBuffer.resize(size[0] * size[1]);
 }
 
 KRR_REGISTER_PASS_DEF(DenoisePass);

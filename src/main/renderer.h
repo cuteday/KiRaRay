@@ -43,7 +43,6 @@ public:
 
 private:
 	bool mShowUI{ true };
-	bool mPaused{ false };
 	bool mSaveFrames{ false };
 	size_t mSaveFrameInterval{ 2 };
 	bool mSaveHDR{ true };

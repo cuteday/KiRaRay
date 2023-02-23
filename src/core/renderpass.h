@@ -30,11 +30,17 @@ public:
 
 	vkrhi::FramebufferHandle getFramebuffer() const { return mFramebuffer; }
 	
-	CudaRenderTarget getCudaRenderTarget() const {
+	void getSize(uint32_t& width, uint32_t& height) const {
 		auto &textureDesc =
 			mFramebuffer->getDesc().colorAttachments[0].texture->getDesc();
-		return CudaRenderTarget(mCudaFrame, textureDesc.width,
-								textureDesc.height);		
+		width = textureDesc.width;
+		height = textureDesc.height;
+	}
+	
+	CudaRenderTarget getCudaRenderTarget() const {
+		uint32_t width, height;
+		getSize(width, height);
+		return CudaRenderTarget(mCudaFrame, width, height);		
 	}
 
 	void initialize(vkrhi::DeviceHandle device) {
