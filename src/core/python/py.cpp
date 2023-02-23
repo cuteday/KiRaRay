@@ -1,21 +1,15 @@
+#include "common.h"
+
+#include "main/renderer.h"
+#include "scene/importer.h"
+#include "render/passes/denoise/denoise.h"
+// put these headers before pybind or it causes a _DEBUG definition contradict
+
 #include <optional>
 #include "py.h"
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 #include <pybind11_json.hpp>
-
-#include "common.h"
-
-#undef _DEBUG
-#ifdef KRR_DEBUG_BUILD
-#define _DEBUG 1
-#else 
-#define _DEBUG 0
-#endif
-
-#include "main/renderer.h"
-#include "scene/importer.h"
-#include "render/passes/denoise/denoise.h"
 
 KRR_NAMESPACE_BEGIN
 
