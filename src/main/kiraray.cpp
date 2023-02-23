@@ -14,7 +14,7 @@ extern "C" int main(int argc, char *argv[]) {
                "Switch to Release build for normal performance!");
 #endif
 
-    string configFile = "common/configs/minimal.json";
+    string configFile = "common/configs/example.json";
     if (argc < 2){
 	    Log(Warning, "No config file specified, using default config file: %s", configFile.c_str());
     } else {

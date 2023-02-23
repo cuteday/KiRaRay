@@ -18,7 +18,7 @@ public:
 		mCudaFrame(cudaFrame), width(width), height(height) {}
 	~CudaRenderTarget() = default;
 
-	KRR_DEVICE Color4f read(uint32_t x, uint32_t y) {
+	KRR_DEVICE Color4f read(uint32_t x, uint32_t y) const {
 		float4 res{};
 #ifdef __NVCC__
 		surf2Dread(&res, mCudaFrame, x * sizeof(float4), y);
@@ -31,7 +31,7 @@ public:
 		surf2Dwrite(float4(value), mCudaFrame, x * sizeof(float4), y);
 #endif
 	}
-	KRR_DEVICE Color4f read(uint32_t idx) {
+	KRR_DEVICE Color4f read(uint32_t idx) const {
 		uint32_t x = idx % width, y = idx / width;
 		return read(x, y);
 	}

@@ -9,11 +9,13 @@ Scene::Scene() {
 	mpCamera = Camera::SharedPtr(new Camera());
 	mpCameraController = OrbitCameraController::SharedPtr(new OrbitCameraController(mpCamera));
 	assert(mData.materials == nullptr);
+	cudaDeviceSynchronize();
 	mData.materials = gpContext->alloc->new_object<inter::vector<Material>>();
 	mData.meshes = gpContext->alloc->new_object<inter::vector<MeshData>>();
 	mData.lights = gpContext->alloc->new_object<inter::vector<Light>>();
 	mData.infiniteLights = gpContext->alloc->new_object<inter::vector<InfiniteLight>>();
 	mData.lightSampler = gpContext->alloc->new_object<UniformLightSampler>((inter::span<Light>)*mData.lights);
+	CUDA_SYNC_CHECK();
 }
 
 bool Scene::update(){

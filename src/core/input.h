@@ -173,7 +173,7 @@ namespace io {
 
 		Type type;              ///< The event type
 		Key  key;               ///< The last key that was pressed/released
-		int glfwKey;
+		int glfwKey;			///< The last key in native glfw format
 		InputModifiers mods;    ///< Keyboard modifiers
 		uint32_t codepoint = 0; ///< UTF-32 codepoint from GLFW for Input event types
 	};

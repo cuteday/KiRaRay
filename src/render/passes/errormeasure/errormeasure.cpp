@@ -20,12 +20,10 @@ void ErrorMeasurePass::render(RenderFrame::SharedPtr frame) {
 		CHECK_LOG(mReferenceImage.getSize() == mFrameSize,
 				  "ErrorMeasure::Reference image size does not match frame size!");
 		size_t n_elememts = mFrameSize[0] * mFrameSize[1];
-		// TODO: rewrite this
-		//float result = calculateMetric(mMetric, reinterpret_cast<Color4f *>(frame.data()),
-		//					reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()), n_elememts);
-		//mLastResult = { 
-		//	{ string(metricNames[(int) mMetric]), result },
-		//};
+		float result = calc_metric(frame->getCudaRenderTarget(),
+			reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()),
+			n_elememts, mMetric);
+		mLastResult = { { string(metricNames[(int) mMetric]), result } };
 		if (mLogResults)
 			Log(Info, "Evaluating frame #%zd: %s", mFrameNumber, mLastResult.dump().c_str());
 		if (mSaveResults)
@@ -93,13 +91,8 @@ void ErrorMeasurePass::reset() {
 	mStartTime	   = CpuTimer::getCurrentTimePoint();
 }
 
-float ErrorMeasurePass::calculateMetric(ErrorMetric metric, 
-	const Color4f* frame, const Color4f* reference, size_t n_elements) {
-	return calc_metric(frame, reference, n_elements, metric);	
-}
-
 bool ErrorMeasurePass::loadReferenceImage(const string &path) {
- 	bool success = mReferenceImage.loadImage(path, true, false);
+ 	bool success = mReferenceImage.loadImage(path, false, false);
 	if (success) {
 		// TODO: find out why saving an exr image yields this permutation on pixel format?
 		mReferenceImage.permuteChannels(Vector4i{ 3, 0, 1, 2});

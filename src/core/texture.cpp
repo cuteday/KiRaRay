@@ -51,7 +51,6 @@ bool Image::loadImage(const fs::path &filepath, bool flip, bool srgb) {
 		}
 		mFormat = Format::RGBAfloat;
 	} else if (stbi_is_hdr(filename.c_str())) {
-		stbi_set_flip_vertically_on_load(flip);
 		data =
 			(uchar *) stbi_loadf(filename.c_str(), &size[0], &size[1], &channels, STBI_rgb_alpha);
 		if (data == nullptr) {

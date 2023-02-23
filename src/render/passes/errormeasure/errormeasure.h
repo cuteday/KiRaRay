@@ -40,8 +40,7 @@ protected:
 
 	void reset();
 	bool loadReferenceImage(const string &path);
-	static float calculateMetric(ErrorMetric metric, 
-		const Color4f *frame, const Color4f *reference, size_t n_elements);
+	
 	Image mReferenceImage;
 	TypedBuffer<Color4f> mReferenceImageBuffer;
 	ErrorMetric mMetric{ ErrorMetric::RelMSE };

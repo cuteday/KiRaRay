@@ -348,7 +348,7 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 	glfwSetCursorPosCallback(m_Window, ApiCallbacks::mouseMoveCallback);
 	glfwSetMouseButtonCallback(m_Window, ApiCallbacks::mouseButtonCallback);
 	glfwSetScrollCallback(m_Window, ApiCallbacks::mouseWheelCallback);
-	glfwSetCharCallback(m_Window, ApiCallbacks::charInputCallback);
+	//glfwSetCharCallback(m_Window, ApiCallbacks::charInputCallback);
 	glfwSetCharModsCallback(m_Window, ApiCallbacks::charInputModsCallback);
 
 	if (!CreateDeviceAndSwapChain()) return false;
