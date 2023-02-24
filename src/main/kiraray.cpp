@@ -23,7 +23,6 @@ extern "C" int main(int argc, char *argv[]) {
     }
 
 	try {
-        gpContext = std::make_shared<Context>();
 		RenderApp app;
 		app.loadConfigFrom(configFile);
 		app.run();

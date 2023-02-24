@@ -3,6 +3,10 @@
 
 KRR_NAMESPACE_BEGIN
 
+RenderApp::RenderApp() {
+	if (!gpContext) gpContext = std::make_shared<Context>();
+}
+
 void RenderApp::BackBufferResized() {
 	DeviceManager::BackBufferResized();
 	if (mpScene)
@@ -47,7 +51,7 @@ void RenderApp::run() {
 }
 
 void RenderApp::Render() {
-	mpScene->update();
+	if (mpScene) mpScene->update();
 	BeginFrame();
 	for (auto it : m_RenderPasses) it->beginFrame();
 	renderUI();
@@ -234,8 +238,8 @@ void RenderApp::loadConfigFrom(fs::path path) {
 void RenderApp::initialize() { 
 	CreateWindowDeviceAndSwapChain(m_DeviceParams, KRR_PROJECT_NAME);
 	auto uiRenderer = std::make_shared<UIRenderer>(this);
-	uiRenderer->initialize();
 	AddRenderPassToBack(uiRenderer);
+	for (auto pass : m_RenderPasses) pass->initialize();
 }
 
 void RenderApp::finalize() { 

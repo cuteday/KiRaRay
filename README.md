@@ -25,9 +25,9 @@
 
 - Nvidia gpu (Turing or higher if possible).
 - OptiX 7.3+ and CUDA 11.x.
-- Vulkan SDK (1.2+).
+- [Vulkan SDK](https://vulkan.lunarg.com/) (1.2+).
 
-This project is only tested with optix 7.3/4 and cuda 11.4/5/6 on Windows (MSVC). It do not compile on Linux. *KiRaRay* now uses Vulkan for better interoperability with CUDA, and extensibility to rasterization-based render passes. If this is not desired, check the [legacy-GL](https://github.com/cuteday/KiRaRay/tree/legacy-GL) branch that depends on OpenGL only.
+This project is only tested with optix 7.3/4 and cuda 11.4/5/6 on Windows (MSVC). It do not compile on Linux. *KiRaRay* now uses Vulkan for better interoperability with CUDA, and extensibility to rasterization-based render passes. If Vulkan is not desired, check the [legacy-GL](https://github.com/cuteday/KiRaRay/tree/legacy-GL) branch that instead depends on OpenGL.
 
 
 #### Cloning the repository
@@ -178,10 +178,10 @@ Although the main purpose of this project is to let me (a beginner) learn c++ an
 I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i am so lazy, trying to sleep as more as possible (\*/ω＼\*).
 
 For anyone that (accidentally) found this project: any questions, suggestions are appreciated. 
-Bug reports, however, are not necessary since any part of this project may not work as expected ; ;
+Bug reports might not be necessary since any part of this project could possibly produce unexpected errors ;  ;
 
 ### Credits
 - The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).
-- Some of the code (e.g., bsdf evaluation, wavefront path) are adapted from [pbrt](https://github.com/mmp/pbrt-v4) and [Falcor](https://github.com/NVIDIAGameWorks/Falcor). 
+- Some of the code (e.g., bsdf evaluation, wavefront path) are adapted from [pbrt](https://github.com/mmp/pbrt-v4), [Donut](https://github.com/NVIDIAGameWorks/donut) and [Falcor](https://github.com/NVIDIAGameWorks/Falcor). 
 - *KiRaRay* implements a [tiny math library](https://github.com/cuteday/KiRaRay/tree/main/src/core/math) wrapper built upon [Eigen](http://eigen.tuxfamily.org/) for efficient vector/matrix arithmetic.
 - [ImGui](https://github.com/ocornut/imgui) is used to build simple user interfaces for this project. 

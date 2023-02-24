@@ -4,7 +4,7 @@
 #include <renderpass.h>
 #include <nvrhi/vulkan.h>
 
-#include "window.h"
+#include "main/renderer.h"
 #include "vulkan/textureloader.h"
 #include "vulkan/shader.h"
 #include "vulkan/cufriends.h"
@@ -12,7 +12,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-static const char *g_WindowTitle = "CuFramebuffer";
+static const char *g_WindowTitle = "HelloVkCuda";
 
 class HelloVkCuda : public RenderPass {
 private:
@@ -34,7 +34,7 @@ public:
 		getVulkanNativeDevice().destroySemaphore(m_VkUpdateCudaSem);
 	}
 
-	void initialize() {
+	void initialize() override {
 		ShaderLoader shaderLoader(getVulkanDevice());
 
 		m_VertexShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_vs", nullptr,
@@ -103,27 +103,10 @@ public:
 };
 
 extern "C" int main(int argc, const char *argv[]) {
-	auto app							  = std::make_unique<DeviceManager>();
-	DeviceCreationParameters deviceParams = {};
-	deviceParams.backBufferWidth				= 800;
-	deviceParams.backBufferHeight				= 600;
-	deviceParams.enableDebugRuntime				= true;
-	deviceParams.enableNvrhiValidationLayer		= true;
-	deviceParams.swapChainFormat				= nvrhi::Format::SRGBA8_UNORM;
-	deviceParams.renderFormat					= nvrhi::Format::RGBA32_FLOAT;				
-	deviceParams.enableCudaInterop				= true;
-
-	if (!app->CreateWindowDeviceAndSwapChain(deviceParams, g_WindowTitle)) {
-		logFatal("Cannot initialize a graphics device with the requested parameters");
-		return 1;
-	}
-	{
-		auto example = std::make_shared<HelloVkCuda>(app.get());
-		example->initialize();
-		app->AddRenderPassToBack(example);
-		app->RunMessageLoop();
-		app->RemoveRenderPass(example);
-	}
+	auto app = std::make_unique<RenderApp>();
+	app->SetWindowTitle(g_WindowTitle);
+	app->AddRenderPassToFront(std::make_shared<HelloVkCuda>());
+	app->run();
 	exit(EXIT_SUCCESS);
 }
 

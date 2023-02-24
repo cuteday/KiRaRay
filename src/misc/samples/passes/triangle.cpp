@@ -69,25 +69,10 @@ public:
 };
 
 extern "C" int main(int argc, const char *argv[]) {
-	auto app = std::make_unique<DeviceManager>();
-	DeviceCreationParameters deviceParams;
-	deviceParams.renderFormat				= nvrhi::Format::RGBA8_UNORM;
-	deviceParams.swapChainBufferCount		= 2;
-	deviceParams.maxFramesInFlight			= 1;
-	deviceParams.enableDebugRuntime			= true;
-	deviceParams.enableNvrhiValidationLayer = true;
-
-	if (!app->CreateWindowDeviceAndSwapChain(deviceParams, g_WindowTitle)) {
-		logFatal("Cannot initialize a graphics device with the requested parameters");
-		return 1;
-	}
-	{
-		auto example = std::make_shared<BasicTriangle>(app.get());
-		example->initialize();
-		app->AddRenderPassToBack(example);
-		app->RunMessageLoop();
-		app->RemoveRenderPass(example);
-	}
+	auto app = std::make_unique<RenderApp>();
+	app->SetWindowTitle(g_WindowTitle);
+	app->AddRenderPassToFront(std::make_shared<BasicTriangle>());
+	app->run();
 	exit(EXIT_SUCCESS);
 }
 

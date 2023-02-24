@@ -16,7 +16,7 @@ KRR_NAMESPACE_BEGIN
 
 class RenderApp : public DeviceManager{
 public:
-	RenderApp() : DeviceManager() {}
+	RenderApp();
 	~RenderApp() = default;
 
 	void BackBufferResizing() override {}

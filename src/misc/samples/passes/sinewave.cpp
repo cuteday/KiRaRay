@@ -6,7 +6,7 @@
 #include <renderpass.h>
 
 #include "deviceprog.h"
-#include "window.h"
+#include "main/renderer.h"
 #include "vulkan/textureloader.h"
 #include "vulkan/shader.h"
 #include "vulkan/cufriends.h"
@@ -16,7 +16,7 @@ KRR_NAMESPACE_BEGIN
 using namespace vkrhi;
 using namespace cufriends;
 
-const char g_windowTitle[] = "Sine Wave Simulator";
+const char g_WindowTitle[] = "Sine Wave Simulator";
 
 class WaveRenderer: public RenderPass {
 public:
@@ -232,23 +232,10 @@ private:
 };
 
 extern "C" int main(int argc, const char *argv[]) {
-	auto app								= std::make_unique<DeviceManager>();
-	DeviceCreationParameters deviceParams	= {};
-	deviceParams.enableDebugRuntime			= true;
-	deviceParams.enableNvrhiValidationLayer = true;
-	deviceParams.enableCudaInterop			= true;
-
-	if (!app->CreateWindowDeviceAndSwapChain(deviceParams, g_windowTitle)) {
-		logFatal("Cannot initialize a graphics device with the requested parameters");
-		return 1;
-	}
-	{ 
-		auto wave = std::make_shared<WaveRenderer>(app.get());
-		wave->initialize();
-		app->AddRenderPassToBack(wave);
-		app->RunMessageLoop();
-		app->RemoveRenderPass(wave);
-	}
+	auto app = std::make_unique<RenderApp>();
+	app->SetWindowTitle(g_WindowTitle);
+	app->AddRenderPassToFront(std::make_shared<WaveRenderer>());
+	app->run();
 	exit(EXIT_SUCCESS);
 }
 
