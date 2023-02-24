@@ -2,8 +2,6 @@
 # GAPI dependencies
 ###############################################################################
 INCLUDE (${KRR_PROJECT_ROOT}/common/build/FindOptiX.cmake)
-find_package(OpenGL REQUIRED)
-# Vulkan support 
 find_package(Vulkan REQUIRED)
 
 ###############################################################################
@@ -12,12 +10,6 @@ find_package(Vulkan REQUIRED)
 
 SET (CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 STRING (REGEX REPLACE "/W[3|4]" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-
-# glew
-SET(glew-cmake_BUILD_SHARED OFF)
-ADD_SUBDIRECTORY(glew EXCLUDE_FROM_ALL)
-SET(GLEW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/glew/include)
-SET(GLEW_INCLUDE_DIRS ${GLEW_INCLUDE_DIRS} PARENT_SCOPE)
 
 # vulkan related
 # vulkan memory allocator
@@ -94,27 +86,24 @@ TARGET_LINK_LIBRARIES(krr_ext INTERFACE
 	glfw
 	imgui
 	assimp
-	libglew_static
 	pbrtParser
 	zlibstatic
-	OpenGL::GL
-	${OPENGL_gl_LIBRARY}
 	Vulkan::Vulkan
 	nvrhi_vk
 	Vulkan-Headers
 )
 
 # shaderc for runtime compilation of glsl(shaderc) and hlsl(dxc) shaders
-add_library(shaderc UNKNOWN IMPORTED)
-if(WIN32)
-	# use the version in the SDK
-	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION $ENV{VULKAN_SDK}/Lib/shaderc_shared.lib)
-	set_property(TARGET shaderc PROPERTY INTERFACE_INCLUDE_DIRECTORIES $ENV{VULKAN_SDK}/Include)
-	target_link_libraries(krr_ext INTERFACE shaderc)
-else()
-	target_link_directories(krr_ext INTERFACE $ENV{VULKAN_SDK}/lib)
-	target_link_libraries(krr_ext INTERFACE shaderc_combined glslang MachineIndependent OSDependent OGLCompiler GenericCodeGen SPIRV SPIRV-Tools-opt SPIRV-Tools)
-endif()
+# add_library(shaderc UNKNOWN IMPORTED) # shaderc is not used currently.
+# if(WIN32)
+# 	# use the version in the SDK
+# 	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION $ENV{VULKAN_SDK}/Lib/shaderc_shared.lib)
+# 	set_property(TARGET shaderc PROPERTY INTERFACE_INCLUDE_DIRECTORIES $ENV{VULKAN_SDK}/Include)
+# 	target_link_libraries(krr_ext INTERFACE shaderc)
+# else()
+# 	target_link_directories(krr_ext INTERFACE $ENV{VULKAN_SDK}/lib)
+# 	target_link_libraries(krr_ext INTERFACE shaderc_combined glslang MachineIndependent OSDependent OGLCompiler GenericCodeGen SPIRV SPIRV-Tools-opt SPIRV-Tools)
+# endif()
 add_library(dxc UNKNOWN IMPORTED)
 if (WIN32)
 	set_target_properties(dxc PROPERTIES IMPORTED_LOCATION $ENV{VULKAN_SDK}/Lib/dxcompiler.lib)
@@ -126,7 +115,6 @@ endif()
 
 SET(KRR_EXT_INCLUDES
 	${ASSIMP_INCLUDE_DIRS}
-	${GLEW_INCLUDE_DIRS}
 	${GLFW_INCLUDE_DIRS}
 	${IMGUI_INCLUDE_DIRS}
 	${JSON_INCLUDE_DIRS}

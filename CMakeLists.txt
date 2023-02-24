@@ -26,7 +26,7 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # check if submodules are recursively fetched.
-if (NOT IS_DIRECTORY "${KRR_PROJECT_ROOT}/src/ext/glew")
+if (NOT IS_DIRECTORY "${KRR_PROJECT_ROOT}/src/ext/glfw")
 	message(FATAL_ERROR
 		"Some external dependencies are missing. "
 		"It is most possible that the \"--recursive\" flag is forgotten when cloning this project, "

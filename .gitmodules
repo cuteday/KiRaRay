@@ -1,10 +1,6 @@
 [submodule "src/ext/assimp"]
 	path = src/ext/assimp
 	url = https://github.com/assimp/assimp.git
-[submodule "src/ext/glew"]
-	path = src/ext/glew
-	url = https://github.com/Perlmint/glew-cmake.git
-	branch = glew-cmake-release
 [submodule "src/ext/glfw"]
 	path = src/ext/glfw
 	url = https://github.com/glfw/glfw.git

@@ -8,7 +8,6 @@ MESSAGE ("Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE ("Build output directory: ${CMAKE_BINARY_DIR}")
 MESSAGE ("CUDA include directory: ${CUDA_INCLUDE_DIRS}")
 MESSAGE ("Optix include directory: ${OptiX_INCLUDE}")
-MESSAGE ("OpenGL libs: ${OPENGL_gl_LIBRARY}")
 
 CONFIGURE_FILE (core/config.in.h ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
 

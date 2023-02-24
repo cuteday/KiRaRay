@@ -8,7 +8,6 @@
 #include "logger.h"
 #include "device/context.h"
 
-#include "imgui_impl_glfw.h"
 #include "render/profiler/profiler.h"
 
 #ifdef _WINDOWS
