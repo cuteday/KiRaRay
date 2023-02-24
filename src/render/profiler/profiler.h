@@ -47,7 +47,7 @@ public:
 	private:
 		Event(const std::string& name);
 
-		void start(uint32_t frameIndex, CUstream stream = 0);
+		void start(uint32_t frameIndex);
 		void end(uint32_t frameIndex);
 		void endFrame(uint32_t frameIndex);
 
@@ -152,7 +152,7 @@ public:
 		\param[in] name The event name.
 		\param[in] flags The event flags.
 	*/
-	void startEvent(const std::string& name, Flags flags = Flags::Default, CUstream stream = 0);
+	void startEvent(const std::string& name, Flags flags = Flags::Default);
 
 	/** Finish profiling a new event and update the events hierarchies.
 		\param[in] name The event name.
@@ -212,16 +212,10 @@ private:
 */
 class ProfilerEvent {
 public:
-	ProfilerEvent(const std::string& name, CUstream stream)
-		: mName(name)
-		, mFlags(Profiler::Flags::Default) {
-		Profiler::instance().startEvent(mName, mFlags, stream);
-	}
-	
-	ProfilerEvent(const std::string& name, Profiler::Flags flags = Profiler::Flags::Default, CUstream stream = 0)
+	ProfilerEvent(const std::string& name, Profiler::Flags flags = Profiler::Flags::Default)
 		: mName(name)
 		, mFlags(flags) { 
-		Profiler::instance().startEvent(mName, mFlags, stream); 
+		Profiler::instance().startEvent(mName, mFlags); 
 	}
 
 	~ProfilerEvent() { Profiler::instance().endEvent(mName, mFlags); }

@@ -61,6 +61,8 @@ void RenderApp::Render() {
 		CUDA_SYNC_CHECK();
 	}
 	for (auto it : m_RenderPasses)  it->endFrame();
+	// If profiler::endframe is called, it queries the gpu time and thus 
+	// may cause a cpu-gpu synchronization. Disable it if not necessary.
 	if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
 }
 

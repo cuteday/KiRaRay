@@ -56,7 +56,7 @@ Profiler::Stats Profiler::Event::computeGpuTimeStats() const {
 	return Stats::compute(mGpuTimeHistory.data(), mHistorySize);
 }
 
-void Profiler::Event::start(uint32_t frameIndex, CUstream stream) {
+void Profiler::Event::start(uint32_t frameIndex) {
 	if (++mTriggered > 1) {
 		logWarning("Profiler event '" + mName + "' was triggered while it is already running. Nesting profiler events with the same name is disallowed and you should probably fix that. Ignoring the new call.");
 		return;
@@ -74,7 +74,7 @@ void Profiler::Event::start(uint32_t frameIndex, CUstream stream) {
 	    frameData.gpuTimers.push_back(GpuTimer());
 	}
 	frameData.activeTimer = frameData.currentTimer++;
-	frameData.gpuTimers[frameData.activeTimer].begin(stream);
+	frameData.gpuTimers[frameData.activeTimer].begin();
 }
 
 void Profiler::Event::end(uint32_t frameIndex) {
@@ -160,7 +160,7 @@ void Profiler::Capture::finalize() {
 
 // Profiler
 
-void Profiler::startEvent(const std::string& name, Flags flags, CUstream stream) {
+void Profiler::startEvent(const std::string& name, Flags flags) {
 	if (mEnabled && (flags & Flags::Internal) ) {
 		// '/' is used as a "path delimiter", so it cannot be used in the event name.
 		if (name.find('/') != std::string::npos) {

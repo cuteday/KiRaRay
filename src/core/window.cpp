@@ -1217,6 +1217,7 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 	deviceDesc.numDeviceExtensions	 = vecDeviceExt.size();
 
 	m_NvrhiDevice = nvrhi::vulkan::createDevice(deviceDesc);
+	gpContext->setDefaultVkDevice(m_NvrhiDevice.Get());
 
 	if (m_DeviceParams.enableNvrhiValidationLayer) {
 		m_ValidationLayer = nvrhi::validation::createValidationLayer(m_NvrhiDevice);
@@ -1250,6 +1251,7 @@ void DeviceManager::DestroyDeviceAndSwapChain() {
 	m_NvrhiDevice	  = nullptr;
 	m_ValidationLayer = nullptr;
 	m_RendererString.clear();
+	gpContext->setDefaultVkDevice(nullptr);
 
 	if (m_DebugReportCallback) {
 		m_VulkanInstance.destroyDebugReportCallbackEXT(m_DebugReportCallback);

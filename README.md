@@ -10,11 +10,10 @@
 > __Working in progress (?) project__  
 > This project is only for learning purpose with limited features, and not sure if it will continue developing.
 
-- [x] Interactive orbit camera controlling.
 - [x] GPU path tracing (a megakernel version and a wavefront version).
 - [x] Post processing passes (e.g., tonemapping, accumulating and denoising).
 - [x] Basic support for multiple scenes formats (e.g., OBJ, glTF2 and pbrt-v3).
-- [x] Basic CPU/GPU performance profiling.
+- [x] Basic support for Vulkan and CUDA/OptiX interoperation.
 
 ### Build and run
 
@@ -170,7 +169,7 @@ Switch to *Release* build for normal performance! The megakernel pathtracer shou
 
 #### Writing new render passes.
 
-It is possible to write your own render pass (either using vulkan or cuda/optix, or mixed) by extending the `RenderPass` class. Some basic examples demonstrating both rasterization and cuda-based render passes are provided [here](src/misc/samples/). Check these [post-processing passes](src/render/passes/) for more working examples. The current implementation for Vulkan-CUDA interoperation is rather naive, but might be improved later.
+It is possible to write your own render pass (either using vulkan or cuda/optix, or mixed) by extending the `RenderPass` class. Some basic example passes demonstrating rasterization and cuda-vulkan interoperation are provided [here](src/misc/samples/). Check these [post-processing passes](src/render/passes/) for more working examples. The current implementation for Vulkan-CUDA interoperation is rather naive, but might be improved later.
 
 
 ### Epilogue

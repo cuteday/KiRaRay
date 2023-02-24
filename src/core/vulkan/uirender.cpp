@@ -1,6 +1,8 @@
 #include <stddef.h>
 
 #include <window.h>
+
+#include "render/profiler/profiler.h"
 #include "uirender.h"
 #include "shader.h"
 
@@ -360,6 +362,7 @@ bool UIRenderer::updateGeometry(nvrhi::ICommandList *commandList) {
 }
 
 void UIRenderer::render(RenderFrame::SharedPtr frame) {
+	PROFILE("UI Render");
 	ImGui::Render();
 
 	ImDrawData *drawData = ImGui::GetDrawData();
