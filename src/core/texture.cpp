@@ -51,7 +51,6 @@ bool Image::loadImage(const fs::path &filepath, bool flip, bool srgb) {
 		}
 		mFormat = Format::RGBAfloat;
 	} else if (stbi_is_hdr(filename.c_str())) {
-		stbi_set_flip_vertically_on_load(flip);
 		data =
 			(uchar *) stbi_loadf(filename.c_str(), &size[0], &size[1], &channels, STBI_rgb_alpha);
 		if (data == nullptr) {
@@ -119,15 +118,15 @@ bool Image::isHdr(const string &filepath) {
 	return (IsEXR(filepath.c_str()) == TINYEXR_SUCCESS) || stbi_is_hdr(filepath.c_str());
 }
 
-Image::SharedPtr Image::createFromFile(const string &filepath, bool flip, bool srgb) {
+Image::SharedPtr Image::createFromFile(const fs::path &filepath, bool flip, bool srgb) {
 	Image::SharedPtr pImage = Image::SharedPtr(new Image());
 	pImage->loadImage(filepath, flip, srgb);
 	return pImage;
 }
 
-Texture::SharedPtr Texture::createFromFile(const string &filepath, bool flip, bool srgb) {
+Texture::SharedPtr Texture::createFromFile(const fs::path &filepath, bool flip, bool srgb) {
 	Texture::SharedPtr pTexture = Texture::SharedPtr(new Texture());
-	logDebug("Attempting to load texture from " + filepath);
+	logDebug("Attempting to load texture from " + filepath.string());
 	pTexture->loadImage(filepath, flip, srgb);
 	return pTexture;
 }

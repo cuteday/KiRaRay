@@ -10,6 +10,42 @@
 
 KRR_NAMESPACE_BEGIN
 
+class CudaRenderTarget {
+public:
+	CudaRenderTarget() = default;
+	KRR_CALLABLE CudaRenderTarget(cudaSurfaceObject_t cudaFrame, uint32_t width,
+								  uint32_t height) :
+		mCudaFrame(cudaFrame), width(width), height(height) {}
+	~CudaRenderTarget() = default;
+
+	KRR_DEVICE Color4f read(uint32_t x, uint32_t y) const {
+		float4 res{};
+#ifdef __NVCC__
+		surf2Dread(&res, mCudaFrame, x * sizeof(float4), height - 1 - y);
+		return Color4f(res);
+#endif
+		return {};
+	}
+	KRR_DEVICE void write(const Color4f &value, uint32_t x, uint32_t y) {
+#ifdef __NVCC__
+		surf2Dwrite(float4(value), mCudaFrame, x * sizeof(float4), height - 1 - y);
+#endif
+	}
+	KRR_DEVICE Color4f read(uint32_t idx) const {
+		uint32_t x = idx % width, y = idx / width;
+		return read(x, y);
+	}
+	KRR_DEVICE void write(const Color4f &value, uint32_t idx) {
+		uint32_t x = idx % width, y = idx / width;
+		return write(value, x, y);
+	}
+
+	KRR_CALLABLE operator cudaSurfaceObject_t() const { return mCudaFrame; }
+
+	cudaSurfaceObject_t mCudaFrame{};
+	uint32_t width, height;
+};
+
 template <typename F>
 inline int GetBlockSize(F kernel) {
 	// https://developer.nvidia.com/blog/cuda-pro-tip-occupancy-api-simplifies-launch-configuration/

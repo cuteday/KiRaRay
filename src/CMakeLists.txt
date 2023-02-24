@@ -8,7 +8,6 @@ MESSAGE ("Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE ("Build output directory: ${CMAKE_BINARY_DIR}")
 MESSAGE ("CUDA include directory: ${CUDA_INCLUDE_DIRS}")
 MESSAGE ("Optix include directory: ${OptiX_INCLUDE}")
-MESSAGE ("OpenGL libs: ${OPENGL_gl_LIBRARY}")
 
 CONFIGURE_FILE (core/config.in.h ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
 
@@ -17,14 +16,7 @@ SET ( KRR_INCLUDE_ALL
 	${CMAKE_CURRENT_SOURCE_DIR}/core
 	${CMAKE_CURRENT_BINARY_DIR}/include
 	${KRR_MATH_INCLUDE_DIRS}
-	${ASSIMP_INCLUDE_DIRS}
-	${GLEW_INCLUDE_DIRS}
-	${GLFW_INCLUDE_DIRS}
-	${IMGUI_INCLUDE_DIRS}
-	${JSON_INCLUDE_DIRS}
-	${EIGEN_INCLUDE_DIRS}
-	${IMAGEIO_INCLUDE_DIRS}
-	${PBRTPARSER_INCLUDE_DIRS}
+	${KRR_EXT_INCLUDES}
 	${CUDA_INCLUDE_DIRS}
 	${OptiX_INCLUDE}
 )
@@ -42,15 +34,15 @@ SET ( KRR_CORE_SOURCE
 	core/window.cpp
 	core/logger.cpp
 	core/file.cpp
+	core/renderpass.cpp
 	core/texture.cpp
 )
 
 SET ( KRR_CORE_HEADERS
-	core/kiraray.h
 	core/common.h
 	# components
 	core/logger.h
-	core/io.h
+	core/input.h
 	core/window.h
 	core/taggedptr.h
 	core/file.h
@@ -92,7 +84,6 @@ SET(KRR_HEADERS
 	scene/scenegraph.h
 	# others
 	main/renderer.h
-	main/vulkan_renderer.h
 	util/check.h
 	util/string.h
 	util/image.h
@@ -136,6 +127,15 @@ SET(KRR_SHADER_MATERIALS
 	render/materials/dielectric.h
 )
 
+SET (KRR_SOURCE_VULKAN
+	core/vulkan/binding.cpp
+	core/vulkan/cufriends.cpp
+	core/vulkan/descriptor.cpp
+	core/vulkan/helperpass.cpp
+	core/vulkan/uirender.cpp
+	core/vulkan/textureloader.cpp
+)
+
 SET ( KRR_SHADERS
 	${KRR_SHADER_MATERIALS}
 	render/shared.h
@@ -150,6 +150,7 @@ SET ( KRR_SHADERS
 SET_SOURCE_FILES_PROPERTIES (
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
+	render/passes/denoise/denoise.cpp
 	util/tables.cpp
 	PROPERTIES LANGUAGE CUDA
 )
@@ -183,7 +184,7 @@ add_custom_target (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
 ###############################################################################
 
 INCLUDE_DIRECTORIES (${KRR_INCLUDE_ALL})
-INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/CompilePTX.cmake)
+INCLUDE (${KRR_PROJECT_ROOT}/common/build/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code 
 CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-path krr_soa_generated)
 CUDA_COMPILE_EMBED(WAVEFRONT_PTX render/wavefront/wavefront.cu krr-wavefront krr_soa_generated)
@@ -198,30 +199,13 @@ ADD_LIBRARY (KRR_PTX STATIC
 ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 
 ###############################################################################
-# some of the cuda code
-###############################################################################
-# ADD_LIBRARY (KRR_CUDA_CODE STATIC
-# 	core/device/cuda.cu
-# )
-# SET_PROPERTY(TARGET KRR_CUDA_CODE PROPERTY CUDA_SEPARABLE_COMPILATION ON)
-# SET_PROPERTY(TARGET KRR_CUDA_CODE PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-
-###############################################################################
 # linking and executables
 ###############################################################################
 SET(KRR_LIBS_ALL
-	assimp
 	cuda 
 	cublas
-	OpenGL::GL
-	libglew_static
-	glfw
-	imgui
-	pbrtParser
-	zlibstatic
-	${OPENGL_gl_LIBRARY}
+	krr_ext
 	${CUDA_LIBRARIES}
-	#Vulkan::Vulkan
 	KRR_PTX
 	krr_math
 	krr_cuda_cfg
@@ -232,6 +216,7 @@ ADD_LIBRARY ( krr_lib STATIC
 	${KRR_CORE_SOURCE}
 	${KRR_CORE_HEADERS}
 	${KRR_SOURCE}
+	${KRR_SOURCE_VULKAN}
 	${KRR_HEADERS}
 	${KRR_SHADERS}
 	# SOA (for dependency need, generate soa file before building libraray)
@@ -261,7 +246,7 @@ endif()
 
 IF (KRR_ENABLE_PYTHON)
 	ADD_LIBRARY(pykrr SHARED core/python/py.cpp)
-	TARGET_INCLUDE_DIRECTORIES(pykrr SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE} ${pybind11_INCLUDE_DIR} ${PYTHON_INCLUDE_DIRS})
+	TARGET_INCLUDE_DIRECTORIES(pykrr SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${pybind11_INCLUDE_DIR} ${PYTHON_INCLUDE_DIRS})
 	TARGET_LINK_LIBRARIES(pykrr PUBLIC krr_lib ${PYTHON_LIBRARIES} pybind11::module -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
 	pybind11_extension(pykrr)
 ENDIF()

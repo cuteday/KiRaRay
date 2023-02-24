@@ -35,14 +35,14 @@ public:
  * In most cases, changing the storage order will not affect the correctness of your application
  * (since matrix arithmetic operations, like indexing, ctor, etc., all agnostic to storage order),
  * except for cases like passing the internal data of matrices to shaders.
- * OpenGL/Vulkan (GLSL) assumes matrices being in column-major, so we use this by default.
+ * Both OpenGL/Vulkan (GLSL/HLSL) assumes matrices being in column-major, so we use this by default.
  */
 
 template <int Rows, int Cols, int Options = Eigen::ColMajor>
 using Matrixf = Matrix<float, Rows, Cols, Options>;
 
-using Matrix2f = Matrixf<2, 2>;
-using Matrix3f = Matrixf<3, 3>;
-using Matrix4f = Matrixf<4, 4>;
+using Matrix2f = Matrixf<2, 2, Eigen::ColMajor>;
+using Matrix3f = Matrixf<3, 3, Eigen::ColMajor>;
+using Matrix4f = Matrixf<4, 4, Eigen::ColMajor>;
 
 KRR_NAMESPACE_END

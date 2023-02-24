@@ -1,5 +1,4 @@
 #pragma once
-#include "kiraray.h"
 #include "window.h"
 #include "scene.h"
 #include "camera.h"
@@ -25,8 +24,8 @@ public:
 
 	void resize(const Vector2i& size) override;
 	void setScene(Scene::SharedPtr scene) override;
-	void beginFrame(CUDABuffer& frame) override;
-	void render(CUDABuffer& frame) override;
+	void beginFrame() override;
+	void render(RenderFrame::SharedPtr frame) override;
 	void renderUI() override;
 
 	void initialize();

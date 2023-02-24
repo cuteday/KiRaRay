@@ -1,10 +1,6 @@
 [submodule "src/ext/assimp"]
 	path = src/ext/assimp
 	url = https://github.com/assimp/assimp.git
-[submodule "src/ext/glew"]
-	path = src/ext/glew
-	url = https://github.com/Perlmint/glew-cmake.git
-	branch = glew-cmake-release
 [submodule "src/ext/glfw"]
 	path = src/ext/glfw
 	url = https://github.com/glfw/glfw.git
@@ -19,3 +15,6 @@
 [submodule "src/core/math/3rdparty/eigen"]
 	path = src/core/math/3rdparty/eigen
 	url = https://github.com/cuteday/Eigen.git
+[submodule "src/ext/nvrhi"]
+	path = src/ext/nvrhi
+	url = https://github.com/cuteday/nvrhi.git

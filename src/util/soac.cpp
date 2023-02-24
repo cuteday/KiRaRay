@@ -270,7 +270,7 @@ int main(int argc, char* argv[]) {
 					if (tok == "[") {
 						std::string arraySize = "";
 						while ((tok = getToken(false)) != "]") {
-							arraySize += tok;
+							arraySize += std::string(tok);
 						}
 						// just pass it through without interpretation
 						member.arraySizes[member.arraySizes.size() - 1] =

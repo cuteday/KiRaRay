@@ -1,5 +1,5 @@
 #pragma once
-
+#include <device/cuda.h>
 
 #include "sampler.h"
 #include "scene.h"
@@ -36,7 +36,7 @@ struct LaunchParamsPT {
 	LightSampler lightSampler;
 	Scene::SceneData sceneData;
 
-	Color4f* colorBuffer{ nullptr };
+	CudaRenderTarget colorBuffer;
 	OptixTraversableHandle traversable{ 0 };
 };
 

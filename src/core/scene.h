@@ -1,30 +1,21 @@
 #pragma once
-#include "assimp/scene.h"
-#include "assimp/Importer.hpp"
-
 #include "common.h"
 #include "mesh.h"
 #include "light.h"
 #include "camera.h"
 #include "texture.h"
-#include "kiraray.h"
 #include "interop.h"
 #include "device/buffer.h"
 #include "device/memory.h"
-#include "host/memory.h"
 #include "render/lightsampler.h"
 
 KRR_NAMESPACE_BEGIN
-
 using namespace io;
 
 typedef struct {
 	MeshData* mesh;
 } HitgroupSBTData;
 
-/* The scene class is in poccess of components like camera, cameracontroller, etc.
- * The update(), eventHandler(), renderUI(), of them is called within this class;
- */
 class Scene {
 public:
 	using SharedPtr = std::shared_ptr<Scene>;

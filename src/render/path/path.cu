@@ -211,7 +211,7 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 		color += path.L;
 	}
 	color /= float(launchParams.spp);
-	launchParams.colorBuffer[fbIndex] = Color4f(color, 1.f);
+	launchParams.colorBuffer.write(Color4f(color, 1.f), fbIndex);
 }
 
 KRR_NAMESPACE_END

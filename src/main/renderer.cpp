@@ -3,114 +3,65 @@
 
 KRR_NAMESPACE_BEGIN
 
-void RenderApp::resize(const Vector2i size) {
-	WindowApp::resize(size);
-	for (auto p : mpPasses)
-		p->resize(size);
+RenderApp::RenderApp() {
+	if (!gpContext) gpContext = std::make_shared<Context>();
+}
+
+void RenderApp::BackBufferResized() {
+	DeviceManager::BackBufferResized();
 	if (mpScene)
-		mpScene->getCamera().setAspectRatio((float) size[0] / size[1]);
+		mpScene->getCamera().setAspectRatio((float) 
+			m_DeviceParams.backBufferWidth /
+			m_DeviceParams.backBufferHeight);
 	CUDA_SYNC_CHECK();
 }
 
-// Process signals passed down from direct imgui callback (imgui do not capture it)
-void RenderApp::onMouseEvent(io::MouseEvent &mouseEvent) {
-	if (mPaused)
-		return;
-	if (mpScene && mpScene->onMouseEvent(mouseEvent))
-		return;
-	for (auto p : mpPasses)
-		if (p->onMouseEvent(mouseEvent))
-			return;
+bool RenderApp::onMouseEvent(io::MouseEvent &mouseEvent) {
+	if (DeviceManager::onMouseEvent(mouseEvent)) return true;
+	if (mpScene && mpScene->onMouseEvent(mouseEvent)) return true;
+	return false;
 }
 
-void RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
+bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 	if (keyEvent.type == io::KeyboardEvent::Type::KeyPressed) {
 		switch (keyEvent.key) { // top-prior operations captured by application
 			case io::KeyboardEvent::Key::F1:
 				mShowUI = !mShowUI;
-				return;
-			case io::KeyboardEvent::Key::F3:
+				return true;
+			case io::KeyboardEvent::Key::F2:
 				captureFrame();
-				return;
+				return true;
 		}
 	}
-	if (mPaused)
-		return;
-	// passing down signals...
-	if (mpScene && mpScene->onKeyEvent(keyEvent))
-		return;
-	for (auto p : mpPasses)
-		if (p->onKeyEvent(keyEvent))
-			return;
+	if (DeviceManager::onKeyEvent(keyEvent)) return true;
+	if (mpScene && mpScene->onKeyEvent(keyEvent)) return true;
+	return false;
 }
 
 void RenderApp::setScene(Scene::SharedPtr scene) {
 	mpScene = scene;
-	for (auto p : mpPasses)
-		if (p)
-			p->setScene(scene);
-}
-
-void RenderApp::render() {
-	if (!mpScene)
-		return;
-	if (!mPaused) { // Froze all updates if paused
-		mpScene->update();
-		for (auto p : mpPasses)
-			if(p) p->beginFrame(fbBuffer);
-		for (auto p : mpPasses)
-			if(p) p->render(fbBuffer);
-		for (auto p : mpPasses)
-			if(p) p->endFrame(fbBuffer);
-	} else {
-		// temporary workaround...
-		PROFILE("Paused");
-		Sleep(10);
-	}
-	if (Profiler::instance().isEnabled())
-		Profiler::instance().endFrame();
+	for (auto p : m_RenderPasses)
+		if (p) p->setScene(scene);
 }
 
 void RenderApp::run() {
-	int width, height;
-	glfwGetFramebufferSize(handle, &width, &height);
-	resize(Vector2i(width, height));
-
-	while (!glfwWindowShouldClose(handle)
-		&& !gpContext->shouldQuit()) {
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-
-		render();
-
-		draw();
-		renderUI();
-		{
-			PROFILE("Draw UI");
-			ui::Render();
-			ImGui_ImplOpenGL3_RenderDrawData(ui::GetDrawData());
-			if (ui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-				ui::UpdatePlatformWindows();
-				ui::RenderPlatformWindowsDefault();
-			}
-		}
-
-		glfwSwapBuffers(handle);
-		glfwPollEvents();
-
-		mFrameCount++;
-		if (mSaveFrames && mFrameCount % mSaveFrameInterval == 0)
-			captureFrame(mSaveHDR);
-
-		if (mSpp && mFrameCount >= mSpp) {
-			Log(Info, "Render process finished, saving results and quitting...");
-			captureFrame(mSaveHDR, File::outputDir() / "result.exr");
-			break;
-		}
-	}
-
+	initialize();
+	DeviceManager::RunMessageLoop();
 	finalize();
+}
+
+void RenderApp::Render() {
+	if (mpScene) mpScene->update();
+	BeginFrame();
+	for (auto it : m_RenderPasses) it->beginFrame();
+	renderUI();
+	for (auto it : m_RenderPasses) {
+		it->render(m_RenderFramebuffers[GetCurrentBackBufferIndex()]);
+		GetDevice()->waitForIdle();
+		CUDA_SYNC_CHECK();
+	}
+	for (auto it : m_RenderPasses)  it->endFrame();
+	if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
 }
 
 void RenderApp::renderUI() {
@@ -121,7 +72,7 @@ void RenderApp::renderUI() {
 		return;
 	Profiler::instance().setEnabled(showProfiler);
 	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.8); // this sets the global transparency of UI windows.
-	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5);
+	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5);	// this sets the transparency of the main menubar.
 	if (ui::BeginMainMenuBar()) {
 		ui::PopStyleVar(1);
 		if (ui::BeginMenu("Views")) {
@@ -132,7 +83,6 @@ void RenderApp::renderUI() {
 			ui::EndMenu();
 		}
 		if (ui::BeginMenu("Render")) {
-			ui::MenuItem("Pause", NULL, &mPaused);
 			ui::EndMenu();
 		}
 		if (ui::BeginMenu("Tools")) {
@@ -148,8 +98,6 @@ void RenderApp::renderUI() {
 
 	if (showDashboard) {
 		ui::Begin(KRR_PROJECT_NAME, &showDashboard);
-		ui::Checkbox("Pause", &mPaused);
-		ui::SameLine();
 		ui::Checkbox("Profiler", &showProfiler);
 		ui::Checkbox("Save HDR", &mSaveHDR);
 		ui::SameLine();
@@ -159,8 +107,6 @@ void RenderApp::renderUI() {
 			static char loadConfigBuf[512];
 			static char saveConfigBuf[512] = "common/configs/saved_config.json";
 			strcpy(loadConfigBuf, mConfigPath.c_str());
-			if (ui::InputInt2("Frame size", (int *) &fbSize))
-				resize(fbSize);
 			ui::InputText("Load path: ", loadConfigBuf, sizeof(loadConfigBuf));
 			if (ui::Button("Load config"))
 				loadConfig(fs::path(loadConfigBuf));
@@ -168,12 +114,9 @@ void RenderApp::renderUI() {
 			if (ui::Button("Save config"))
 				saveConfig(saveConfigBuf);
 		}
-		// if (ui::CollapsingHeader("Performance")) {
-		//	mFrameRate.plotFrameTimeGraph();
-		// }
 		if (mpScene && ui::CollapsingHeader("Scene"))
 			mpScene->renderUI();
-		for (auto p : mpPasses)
+		for (auto p : m_RenderPasses)
 			if (p && ui::CollapsingHeader(p->getName().c_str()))
 				p->renderUI();
 		ui::End();
@@ -201,22 +144,10 @@ void RenderApp::renderUI() {
 	ui::PopStyleVar();
 }
 
-void RenderApp::draw() {
-	PROFILE("Blit framebuffer");
-	WindowApp::draw();
-}
-
 void RenderApp::captureFrame(bool hdr, fs::path filename) {
 	string extension = hdr ? ".exr" : ".png";
-	Image image(fbSize, Image::Format::RGBAfloat);
-	fbBuffer.copy_to_host(image.data(), fbSize[0] * fbSize[1] * 4 * sizeof(float));
-	fs::path filepath(filename);
-	if (filename.empty()) // use default path for screen shots
-		filepath = File::outputDir() / ("frame_" + std::to_string(mFrameCount) + extension);
-	if (!fs::exists(filepath.parent_path()))
-		fs::create_directories(filepath.parent_path());
-	image.saveImage(filepath);
-	logSuccess("Rendering saved to " + filepath.string());
+
+	Log(Error, "Not Implemented!");
 }
 
 void RenderApp::saveConfig(string path) {
@@ -227,10 +158,10 @@ void RenderApp::saveConfig(string path) {
 		path.empty() ? dirpath / ("config_" + Log::nowToString("%H_%M_%S") + ".json") : path;
 
 	json config			 = mConfig;
-	config["resolution"] = fbSize;
+	config["resolution"] = 0;
 	config["scene"]		 = *mpScene;
 	json passes			 = {};
-	for (RenderPass::SharedPtr p : mpPasses) {
+	for (RenderPass::SharedPtr p : m_RenderPasses) {
 		json p_cfg{ { "name", p->getName() }, { "enable", p->enabled() } };
 		passes.push_back(p_cfg);
 	}
@@ -239,7 +170,6 @@ void RenderApp::saveConfig(string path) {
 	logSuccess("Saved config file to " + filepath.string());
 }
 
-//template <typename T, std::enable_if_t<std::is_same_v<T, json>>>
 void RenderApp::loadConfig(const json config) {
 	// set global configurations if eligiable
 	if (config.contains("global"))
@@ -257,7 +187,6 @@ void RenderApp::loadConfig(const json config) {
 	}
 
 	if (config.contains("passes")) {
-		mpPasses.clear();
 		for (const json &p : config["passes"]) {
 			string name = p.at("name");
 			Log(Info, "Creating specified render pass: %s", name.c_str());
@@ -268,7 +197,7 @@ void RenderApp::loadConfig(const json config) {
 				pass = RenderPassFactory::createInstance(name);
 			}
 			pass->setEnable(p.value("enable", true));
-			mpPasses.push_back(pass);
+			AddRenderPassToBack(pass);
 		}
 	} else
 		logWarning("No specified render pass in configuration!");
@@ -291,8 +220,12 @@ void RenderApp::loadConfig(const json config) {
 	}
 	if (scene)
 		setScene(scene);
-	if (config.contains("resolution"))
-		resize(config.value("resolution", fbSize));
+	if (config.contains("resolution")) {
+		Vector2i windowDimension = config.at("resolution");
+		m_DeviceParams.backBufferWidth = windowDimension[0];
+		m_DeviceParams.backBufferHeight = windowDimension[1];
+		UpdateWindowSize();
+	}	
 	mConfig		= config;
 }
 
@@ -302,11 +235,18 @@ void RenderApp::loadConfigFrom(fs::path path) {
 	mConfigPath = path.string();
 }
 
-void RenderApp::finalize() { 
-	for (auto pass : mpPasses) {
-		pass->finalize();
-	}
+void RenderApp::initialize() { 
+	CreateWindowDeviceAndSwapChain(m_DeviceParams, KRR_PROJECT_NAME);
+	auto uiRenderer = std::make_shared<UIRenderer>(this);
+	AddRenderPassToBack(uiRenderer);
+	for (auto pass : m_RenderPasses) pass->initialize();
 }
 
+void RenderApp::finalize() { 
+	for (auto pass : m_RenderPasses) 
+		pass->finalize();
+	m_RenderPasses.clear();
+	Shutdown();
+}
 
 KRR_NAMESPACE_END

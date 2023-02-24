@@ -1,15 +1,11 @@
 #pragma once
-
-#include "kiraray.h"
 #include "raytracing.h"
 #include "render/sampling.h"
 #include "sampler.h"
-#include "io.h"
+#include "input.h"
 
 KRR_NAMESPACE_BEGIN
-
 using namespace io;
-
 
 class Camera {
 public:

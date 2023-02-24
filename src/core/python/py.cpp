@@ -1,25 +1,22 @@
+#include "common.h"
+
+#include "main/renderer.h"
+#include "scene/importer.h"
+#include "render/passes/denoise/denoise.h"
+// put these headers before pybind or it causes a _DEBUG definition contradict
+
 #include <optional>
 #include "py.h"
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 #include <pybind11_json.hpp>
 
-#include "common.h"
-
-#include "render/wavefront/integrator.h"
-#include "render/passes/accumulate/accumulate.h"
-#include "render/passes/tonemapping/tonemapping.h"
-#include "render/passes/denoise/denoise.h"
-#include "render/path/pathtracer.h"
-#include "main/renderer.h"
-#include "scene/importer.h"
-
 KRR_NAMESPACE_BEGIN
 
 void run(const json& config) {
 	static bool initialized{};
 	if (!gpContext) gpContext.reset(new Context());
-	RenderApp app(KRR_PROJECT_NAME);
+	RenderApp app;
 	app.loadConfig(config);
 	app.run();
 	CUDA_SYNC_CHECK();
@@ -66,7 +63,7 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 		gpumem_normals.copy_from_host((float *) buf_normals.ptr, buf_normals.size);
 	}
 
-	denoiser.denoise((float *) gpumem_rgb.data(), (float *) gpumem_normals.data(),
+	denoiser.denoise((CUstream)0, (float *) gpumem_rgb.data(), (float *) gpumem_normals.data(),
 					 (float *) gpumem_albedo.data(), (float *) gpumem_result.data());
 	cudaDeviceSynchronize();
 	gpumem_result.copy_to_host((float *) buf_result.ptr, buf_result.size);

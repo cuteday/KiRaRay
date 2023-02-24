@@ -210,7 +210,7 @@ public:
 		
 		float cosThetaO = AbsCosTheta(wo), cosThetaI = AbsCosTheta(wi);
 		Vector3f wh = wi + wo;
-		if (cosThetaI == 0 || cosThetaO == 0) return Vector3f::Zero();
+		if (cosThetaI == 0 || cosThetaO == 0) return Color::Zero();
 		if (!any(wh)) return 0;
 		wh = normalize(wh);
 		Color F = Fr(wo, wh);

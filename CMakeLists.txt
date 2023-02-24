@@ -26,7 +26,7 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # check if submodules are recursively fetched.
-if (NOT IS_DIRECTORY "${KRR_PROJECT_ROOT}/src/ext/glew")
+if (NOT IS_DIRECTORY "${KRR_PROJECT_ROOT}/src/ext/glfw")
 	message(FATAL_ERROR
 		"Some external dependencies are missing. "
 		"It is most possible that the \"--recursive\" flag is forgotten when cloning this project, "
@@ -133,7 +133,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/pybind11/tool
 find_package(PythonLibsNew)
 if (PYTHONLIBS_FOUND)
 	set(KRR_ENABLE_PYTHON ON)
-	message("Find python at ${PYTHON_INCLUDE_DIRS}")
+	set(PYBIND11_PYTHON_VERSION ${PYTHON_VERSION})
+	message("Find python at ${PYTHON_INCLUDE_DIRS}, selected version: ${PYTHON_VERSION}")
 else()
 	message("Do not find python, disable python binding")
 endif()
@@ -148,14 +149,6 @@ elseif(UNIX AND NOT APPLE)
 else()
 	set(KRR_PLATFORM_KNOWN 1)
 endif()
-
-###############################################################################
-# other dependencies
-###############################################################################
-INCLUDE (${KRR_PROJECT_ROOT}/common/cmake/FindOptiX.cmake)
-find_package(OpenGL REQUIRED)
-# Vulkan support 
-# find_package(Vulkan REQUIRED)
 
 # ADD_SUBDIRECTORY (common)
 ADD_SUBDIRECTORY (src)

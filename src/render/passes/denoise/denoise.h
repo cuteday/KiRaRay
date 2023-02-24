@@ -21,7 +21,7 @@ public:
 
 	void initialize();	
 
-	void denoise(float *rgb, float *normal, float *albedo, float *result);
+	void denoise(CUstream stream, float *rgb, float *normal, float *albedo, float *result);
 	
 	void resize(Vector2i size);
 	
@@ -45,7 +45,7 @@ public:
 	KRR_REGISTER_PASS_DEC(DenoisePass);
 	KRR_CLASS_DEFINE(DenoisePass, mUseGeometry);
 
-	void render(CUDABuffer &frame) override;
+	void render(RenderFrame::SharedPtr frame) override;
 	void renderUI() override;
 	void resize(const Vector2i& size) override;
 
@@ -53,6 +53,7 @@ public:
 
 private:
 	bool mUseGeometry{};
+	TypedBuffer<Color4f> mColorBuffer;
 	DenoiseBackend mBackend;
 };
 

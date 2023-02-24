@@ -12,32 +12,33 @@ void AccumulatePass::reset() {
 	mStartTime = mCurrentTime = CpuTimer::getCurrentTimePoint();
 }
 
-void AccumulatePass::render(CUDABuffer& frame) {
+void AccumulatePass::render(RenderFrame::SharedPtr frame) {
 	if (!mEnable) return;
 	PROFILE("Accumulate pass");
 	if (mpScene->getChanges()) reset();
-	Vector4f* accumBuffer = (Vector4f*)mAccumBuffer->data();
-	Vector4f* currentBuffer = (Vector4f*)frame.data();
+	Color4f *accumBuffer = (Color4f *) mAccumBuffer->data();
+	CudaRenderTarget currentBuffer = frame->getCudaRenderTarget();
 	GPUParallelFor(mFrameSize[0] * mFrameSize[1], KRR_DEVICE_LAMBDA(int i) {
 		float currentWeight = 1.f / (mAccumCount + 1);
+		Color4f currentPixel = currentBuffer.read(i);
 		if (mAccumCount > 0) {
 			if (mMode == Mode::MovingAverage) // moving average mode
-				accumBuffer[i] = utils::lerp(accumBuffer[i], currentBuffer[i], currentWeight);
+				accumBuffer[i] =
+					utils::lerp(accumBuffer[i], currentPixel, currentWeight);
 			else if (!mMaxAccumCount || mAccumCount < mMaxAccumCount) // sum mode
-				accumBuffer[i] = accumBuffer[i] + currentBuffer[i];
+				accumBuffer[i] = accumBuffer[i] + currentPixel;
 		} else {
-			accumBuffer[i] = currentBuffer[i];
+			accumBuffer[i] = currentPixel;
 		}
 		if (mMode == Mode::MovingAverage)
-			currentBuffer[i] = accumBuffer[i];
+			currentBuffer.write(accumBuffer[i], i);
 		else
-			currentBuffer[i] = accumBuffer[i] * currentWeight;
+			currentBuffer.write(accumBuffer[i] * currentWeight, i);
 	});
 	if (!mMaxAccumCount || mAccumCount < mMaxAccumCount) {
 		mAccumCount++;
 		mCurrentTime = CpuTimer::getCurrentTimePoint();
 	}
-
 }
 
 void AccumulatePass::resize(const Vector2i &size) {

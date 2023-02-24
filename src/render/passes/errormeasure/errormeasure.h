@@ -22,9 +22,9 @@ public:
 
 	ErrorMeasurePass() = default;
 	~ErrorMeasurePass() = default;
-	void beginFrame(CUDABuffer &frame) override;
-	void render(CUDABuffer &frame) override;
-	void endFrame(CUDABuffer &frame) override;
+	void beginFrame() override;
+	void render(RenderFrame::SharedPtr frame) override;
+	void endFrame() override;
 	void renderUI() override;
 	void resize(const Vector2i& size) override;
 	void finalize() override;
@@ -40,8 +40,7 @@ protected:
 
 	void reset();
 	bool loadReferenceImage(const string &path);
-	static float calculateMetric(ErrorMetric metric, 
-		const Color4f *frame, const Color4f *reference, size_t n_elements);
+	
 	Image mReferenceImage;
 	TypedBuffer<Color4f> mReferenceImageBuffer;
 	ErrorMetric mMetric{ ErrorMetric::RelMSE };

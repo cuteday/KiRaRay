@@ -45,13 +45,13 @@ tempCodeRunnerFile.py
 CMakeSettings.json
 
 # Build
-build
-out
+/build
+/out
 .DS_Store
 
 # Assets and resource data
 temp
-common/outputs
-common/scenes
-common/images
+/common/outputs
+/common/scenes
+/common/images
 imgui.ini
