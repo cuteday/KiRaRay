@@ -8,7 +8,7 @@
 ### Features
 
 > __Working in progress (?) project__  
-> This project is only for learning purpose with very limited features, and not sure if it will continue developing.
+> This project is only for learning purpose with limited features, and not sure if it will continue developing.
 
 - [x] Interactive orbit camera controlling.
 - [x] GPU path tracing (a megakernel version and a wavefront version).
@@ -168,17 +168,16 @@ Switch to *Release* build for normal performance! The megakernel pathtracer shou
 
 *Kiraray* provided limited support for importing scenes like OBJ, glTF2 with [Assimp](https://github.com/assimp/assimp.git) as the default scene importer. Some commonly used material properties (e.g., roughness, metallic) and textures (normal, emission, opacity, etc.) are supported. [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes, and all pbrt materials are roughly approximated with the Disney Principled BSDF. Most of the scenes [here](https://benedikt-bitterli.me/resources/) could be loaded, while some of the materials might be visually biased.
 
-#### Correctness 
+#### Writing new render passes.
 
-Currently, both of the two versions of the pathtracers (Megakernel / Wavefront), as well as the NEE implementation, could produce consistent and unbiased results. The core logic of the implementation should be largely correct, while many small bugs may still exist.
+It is possible to write your own render pass (either using vulkan or cuda/optix, or mixed) by extending the `RenderPass` class. Some basic examples demonstrating both rasterization and cuda-based render passes are provided [here](src/misc/samples/). Check these [post-processing passes](src/render/passes/) for more working examples. The current implementation for Vulkan-CUDA interoperation is rather naive, but might be improved later.
+
 
 ### Epilogue
 
-Although the main purpose of this project is to let me (a beginner) learn c++ and optix, 
-I really wish to add more features and make it a fully-functional path-tracing renderer. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i am so lazy, trying to sleep as more as possible (\*/ω＼\*).
+Although the main purpose of this project is to let me (a beginner) learn c++ and optix, I really wish to add more features and make it a fully-functional renderer with support for both ray-tracing and rasterization based techniques, combined via vulkan-cuda interopration. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i am so lazy, trying to sleep as more as possible (\*/ω＼\*).
 
-For anyone that (accidentally) found this project: any questions, suggestions are appreciated. 
-Bug reports might not be necessary since any part of this project could possibly produce unexpected errors ;  ;
+For anyone that (accidentally) found this project: any questions and suggestions are appreciated. Bug reports might not be necessary since any part of this project could possibly produce unexpected errors ;  ;
 
 ### Credits
 - The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).

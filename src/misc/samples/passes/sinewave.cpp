@@ -190,7 +190,6 @@ public:
 
 		Matrix4f view = look_at(eye, center, up);
 		Matrix4f proj = perspective(radians(45.f), float(fbInfo.width) / fbInfo.height, 0.1f, 10.f);
-		//proj(1, 1) *= -1.0f; // Flip y axis
 		ConstantBufferEntry cb;
 		cb.mvp = proj * view;
 		m_commandList->writeBuffer(m_constantBuffer, &cb, sizeof(ConstantBufferEntry));
