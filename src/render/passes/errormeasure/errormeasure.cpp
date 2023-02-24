@@ -92,7 +92,7 @@ void ErrorMeasurePass::reset() {
 }
 
 bool ErrorMeasurePass::loadReferenceImage(const string &path) {
- 	bool success = mReferenceImage.loadImage(path, false, false);
+ 	bool success = mReferenceImage.loadImage(path, true, false);
 	if (success) {
 		// TODO: find out why saving an exr image yields this permutation on pixel format?
 		mReferenceImage.permuteChannels(Vector4i{ 3, 0, 1, 2});

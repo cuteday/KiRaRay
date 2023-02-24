@@ -34,9 +34,8 @@ public:
 	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler& sampler) {
 		Ray ray;
 		/* 1. Statified sample on the film plane (within the fragment) */
-		Vector2f p = (Vector2f)pixel + sampler.get2D(); // uniform sample + box filter
-		Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1); // ndc in [-1, 1]^2
-		ndc[1] *= -1;	// the 0-th pixel is at top-left corner...
+		Vector2f p = (Vector2f)pixel + Vector2f(0.5f) + sampler.get2D(); // uniform sample + box filter
+		Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
 		if (mData.lensRadius > 0) {			/*Thin lens*/
 			/* 2. Sample the lens (uniform) */
 			Vector3f focalPoint = mData.pos + ndc[0] * mData.u + ndc[1] * mData.v + mData.w;

@@ -21,14 +21,14 @@ public:
 	KRR_DEVICE Color4f read(uint32_t x, uint32_t y) const {
 		float4 res{};
 #ifdef __NVCC__
-		surf2Dread(&res, mCudaFrame, x * sizeof(float4), y);
+		surf2Dread(&res, mCudaFrame, x * sizeof(float4), height - 1 - y);
 		return Color4f(res);
 #endif
 		return {};
 	}
 	KRR_DEVICE void write(const Color4f &value, uint32_t x, uint32_t y) {
 #ifdef __NVCC__
-		surf2Dwrite(float4(value), mCudaFrame, x * sizeof(float4), y);
+		surf2Dwrite(float4(value), mCudaFrame, x * sizeof(float4), height - 1 - y);
 #endif
 	}
 	KRR_DEVICE Color4f read(uint32_t idx) const {
