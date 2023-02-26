@@ -9,12 +9,12 @@
 #include "main/renderer.h"
 #include "vulkan/textureloader.h"
 #include "vulkan/shader.h"
-#include "vulkan/cufriends.h"
+#include "vulkan/cuvk.h"
 
 KRR_NAMESPACE_BEGIN
 
 using namespace vkrhi;
-using namespace cufriends;
+using namespace cuvk;
 
 const char g_WindowTitle[] = "Sine Wave Simulator";
 
@@ -29,10 +29,10 @@ public:
 	
 	void initialize() {
 		m_sim = SineWaveSimulation(256, 256);
-		m_cuFriend = std::make_shared<CudaVulkanFriend>(getVulkanDevice());
+		m_CuVkHandler = std::make_shared<CuVkHandler>(getVulkanDevice());
 	
 		// initialize CUDA
-		int cuda_device = m_cuFriend->initCUDA();	// selected cuda device 
+		int cuda_device = m_CuVkHandler->initCUDA();	// selected cuda device 
 		if (cuda_device == -1) {
 			Log(Error, "No CUDA-Vulkan interop capable device found\n");
 			exit(EXIT_FAILURE);
@@ -90,7 +90,7 @@ public:
 		heightBufferDesc.byteSize		= sizeof(float) * m_sim.getWidth() * m_sim.getHeight();
 		heightBufferDesc.debugName		= "HeightBuffer";
 		heightBufferDesc.initialState	= nvrhi::ResourceStates::CopyDest;
-		m_heightBuffer = m_cuFriend->createExternalBuffer(heightBufferDesc);
+		m_heightBuffer = m_CuVkHandler->createExternalBuffer(heightBufferDesc);
 
 		m_constantBuffer = getVulkanDevice()->createBuffer(nvrhi::utils::CreateStaticConstantBufferDesc(
 										  sizeof(ConstantBufferEntry), "ConstantBuffer")
@@ -139,7 +139,7 @@ public:
 		m_commandList->close();
 		getVulkanDevice()->executeCommandList(m_commandList);
 
-		m_cuFriend->importVulkanBufferToCudaPtr((void**)&m_cudaHeightData, m_cudaHeightMem, m_heightBuffer);
+		m_CuVkHandler->importVulkanBufferToCudaPtr((void**)&m_cudaHeightData, m_cudaHeightMem, m_heightBuffer);
 		m_sim.initSimulation(m_cudaHeightData);
 
 		Log(Info, "Creating binding set and layout");
@@ -216,7 +216,7 @@ private:
 	double m_elapsedTime{0};
 	cudaStream_t m_stream{0};
 
-	std::shared_ptr<CudaVulkanFriend> m_cuFriend;
+	std::shared_ptr<CuVkHandler> m_CuVkHandler;
 	SineWaveSimulation m_sim;
 	float *m_cudaHeightData;
 	cudaExternalMemory_t m_cudaHeightMem;

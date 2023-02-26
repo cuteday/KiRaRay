@@ -33,7 +33,7 @@ struct DeviceCreationParameters {
 	uint32_t backBufferWidth		= 1280;
 	uint32_t backBufferHeight		= 720;
 	uint32_t refreshRate			= 0;
-	uint32_t swapChainBufferCount	= 3;
+	uint32_t swapChainBufferCount	= 2;
 	nvrhi::Format swapChainFormat	= nvrhi::Format::SRGBA8_UNORM;
 	nvrhi::Format renderFormat		= nvrhi::Format::RGBA32_FLOAT;
 	uint32_t swapChainSampleCount	= 1;
@@ -43,8 +43,8 @@ struct DeviceCreationParameters {
 	bool enableNvrhiValidationLayer = true;
 	bool vsyncEnabled				= false;
 	bool enableRayTracingExtensions = false;
-	bool enableComputeQueue			= false;
-	bool enableCopyQueue			= false;
+	bool enableComputeQueue			= true;
+	bool enableCopyQueue			= true;
 	bool enablePerMonitorDPI		= false;
 	bool enableCudaInterop			= true;
 
@@ -217,6 +217,16 @@ public:
 		std::function<void(DeviceManager &)> afterPresent  = nullptr;
 	} m_callbacks;
 
+
+	
+protected:
+	nvrhi::vulkan::DeviceHandle m_NvrhiDevice;
+	nvrhi::DeviceHandle m_ValidationLayer;
+
+	nvrhi::CommandListHandle m_CommandList;
+	vkrhi::CuVkSemaphore m_PresentSemaphore;
+	vkrhi::CuVkSemaphore m_GraphicsSemaphore;
+	
 private:
 	bool createInstance();
 	bool createWindowSurface();
@@ -257,7 +267,6 @@ private:
 			VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
 			VK_NV_MESH_SHADER_EXTENSION_NAME,
 			VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
-			VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
 		},
 	};
 
@@ -313,18 +322,11 @@ private:
 	std::vector<nvrhi::TextureHandle> m_RenderImages;
 	uint32_t m_SwapChainIndex = -1;
 
-	nvrhi::vulkan::DeviceHandle m_NvrhiDevice;
-	nvrhi::DeviceHandle m_ValidationLayer;
-
-	nvrhi::CommandListHandle m_CommandList;
-	vk::Semaphore m_PresentSemaphore;
-
 	std::queue<nvrhi::EventQueryHandle> m_FramesInFlight;
 	std::vector<nvrhi::EventQueryHandle> m_QueryPool;
 
-	std::shared_ptr<vkrhi::CudaVulkanFriend> m_CUFriend;
+	std::shared_ptr<vkrhi::CuVkHandler> m_CuVkHandler;
 
-private:
 	static VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(VkDebugReportFlagsEXT flags,
 															  VkDebugReportObjectTypeEXT objType,
 															  uint64_t obj, size_t location,

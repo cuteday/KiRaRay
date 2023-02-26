@@ -53,14 +53,15 @@ void RenderApp::run() {
 void RenderApp::Render() {
 	if (mpScene) mpScene->update();
 	BeginFrame();
+	auto framebuffer = m_RenderFramebuffers[GetCurrentBackBufferIndex()];
 	for (auto it : m_RenderPasses) it->beginFrame();
 	renderUI();
 	for (auto it : m_RenderPasses) {
-		it->render(m_RenderFramebuffers[GetCurrentBackBufferIndex()]);
-		GetDevice()->waitForIdle();
-		CUDA_SYNC_CHECK();
+		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(m_GraphicsSemaphore);
+		it->render(framebuffer);
+		if (it->isCudaPass()) framebuffer->cudaUpdateVulkan();
 	}
-	for (auto it : m_RenderPasses)  it->endFrame();
+	for (auto it : m_RenderPasses) it->endFrame();
 	// If profiler::endframe is called, it queries the gpu time and thus 
 	// may cause a cpu-gpu synchronization. Disable it if not necessary.
 	if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();

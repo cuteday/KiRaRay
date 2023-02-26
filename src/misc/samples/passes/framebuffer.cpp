@@ -7,7 +7,7 @@
 #include "main/renderer.h"
 #include "vulkan/textureloader.h"
 #include "vulkan/shader.h"
-#include "vulkan/cufriends.h"
+#include "vulkan/cuvk.h"
 #include "deviceprog.h"
 
 KRR_NAMESPACE_BEGIN
@@ -20,12 +20,11 @@ private:
 	nvrhi::ShaderHandle m_PixelShader;
 	nvrhi::GraphicsPipelineHandle m_Pipeline;
 	nvrhi::CommandListHandle m_CommandList;
-	std::shared_ptr<vkrhi::CudaVulkanFriend> m_CUFriend;
+	std::shared_ptr<vkrhi::CuVkHandler> m_CuVkHandler;
 	float m_ElapsedTime{};
 	CUstream m_CudaStream{};
-	vk::Semaphore m_CudaUpdateVkSem, m_VkUpdateCudaSem;
-	cudaExternalSemaphore_t m_CudaExtCudaUpdateVkSem, m_CudaExtVkUpdateCudaSem;
-
+	vkrhi::CuVkSemaphore m_CudaUpdateVkSem, m_VkUpdateCudaSem;
+	
 public:
 	using RenderPass::RenderPass;
 
@@ -42,7 +41,7 @@ public:
 		m_PixelShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_ps", nullptr,
 													nvrhi::ShaderType::Pixel);
 		
-		m_CUFriend = std::make_shared<vkrhi::CudaVulkanFriend>(getVulkanDevice());
+		m_CuVkHandler = std::make_shared<vkrhi::CuVkHandler>(getVulkanDevice());
 
 		if (!m_VertexShader || !m_PixelShader) 
 			Log(Fatal, "Shader initialization failed");
@@ -50,10 +49,8 @@ public:
 		CUDA_CHECK(cudaStreamCreate(&m_CudaStream));
 
 		m_CommandList = getVulkanDevice()->createCommandList();
-		m_CUFriend->createExternalSemaphore(m_CudaUpdateVkSem);
-		m_CUFriend->createExternalSemaphore(m_VkUpdateCudaSem);
-		m_CudaExtCudaUpdateVkSem = m_CUFriend->importVulkanSemaphoreToCuda(m_CudaUpdateVkSem);
-		m_CudaExtVkUpdateCudaSem = m_CUFriend->importVulkanSemaphoreToCuda(m_VkUpdateCudaSem);
+		m_CudaUpdateVkSem = m_CuVkHandler->createCuVkSemaphore();
+		m_VkUpdateCudaSem = m_CuVkHandler->createCuVkSemaphore();
 	}
 
 	void resizing() override { 
@@ -92,8 +89,8 @@ public:
 		m_CommandList->close();
 		getVulkanDevice()->executeCommandList(m_CommandList);
 
-		vkrhi::CudaVulkanFriend::cudaWaitExternalSemaphore(m_CudaStream, 0,
-														   &m_CudaExtVkUpdateCudaSem);
+		vkrhi::CuVkHandler::cudaWaitExternalSemaphore(m_CudaStream, 0,
+														   &m_VkUpdateCudaSem.cuda());
 		auto cudaRenderTarget		  = frame->getCudaRenderTarget();
 		drawScreen(m_CudaStream, cudaRenderTarget, m_ElapsedTime, fbInfo.width,
 				   fbInfo.height);

@@ -1,7 +1,7 @@
 #pragma once
 #pragma init_seg(lib)
 #include <nvrhi/vulkan.h>
-#include <vulkan/cufriends.h>
+#include <vulkan/cuvk.h>
 
 #include "common.h"
 #include "logger.h"
@@ -20,10 +20,13 @@ class RenderFrame {
 public:
 	using SharedPtr = std::shared_ptr<RenderFrame>;
 
-	RenderFrame(vkrhi::FramebufferHandle &framebuffer) :
+	RenderFrame(vkrhi::FramebufferHandle framebuffer) :
 		mFramebuffer(framebuffer) {}
 
-	~RenderFrame() { }
+	~RenderFrame() { 
+		vk::Device device = mDevice->getNativeObject(nvrhi::ObjectTypes::VK_Device);
+		device.destroySemaphore(mSemaphore.vk_sem);
+	}
 
 	operator vkrhi::FramebufferHandle() const { return mFramebuffer; }
 	operator vkrhi::IFramebuffer *() const { return mFramebuffer.Get(); }
@@ -43,15 +46,37 @@ public:
 		return CudaRenderTarget(mCudaFrame, width, height);		
 	}
 
-	void initialize(vkrhi::DeviceHandle device) {
-		auto cuFriend = std::make_unique<vkrhi::CudaVulkanFriend>(device);
+	void initialize(vkrhi::vulkan::IDevice *device) {
+		auto cuFriend = std::make_unique<vkrhi::CuVkHandler>(device);
+		mDevice		  = device;
 		mCudaFrame = cuFriend->mapVulkanTextureToCudaSurface(
 			mFramebuffer->getDesc().colorAttachments[0].texture,
 			cudaArrayColorAttachment);
+		mSemaphore = cuFriend->createCuVkSemaphore(true);
 	}
 
+	void vulkanUpdateCuda(cudaExternalSemaphore_t cudaSem, CUstream stream = 0) {
+		auto cuFriend = std::make_unique<vkrhi::CuVkHandler>(mDevice);
+		auto *device	   = dynamic_cast<vkrhi::vulkan::Device *>(mDevice);
+		uint64_t waitValue = device->getQueue(vkrhi::CommandQueue::Graphics)
+								->getLastSubmittedID();
+		cudaExternalSemaphore_t waitSemaphores[] = {cudaSem};
+		cuFriend->cudaWaitExternalSemaphore(stream, waitValue, waitSemaphores);
+	}
+
+	void cudaUpdateVulkan(CUstream stream = 0) {
+		auto cuFriend = std::make_unique<vkrhi::CuVkHandler>(mDevice);
+		cuFriend->cudaSignalExternalSemaphore(stream, ++mSemaphoreValue,
+											  &mSemaphore.cuda());
+		mDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics,
+									   mSemaphore, mSemaphoreValue);
+	}
+
+	vkrhi::vulkan::IDevice *mDevice;
 	vkrhi::FramebufferHandle mFramebuffer;
 	cudaSurfaceObject_t mCudaFrame{};
+	uint64_t mSemaphoreValue{};
+	vkrhi::CuVkSemaphore mSemaphore{};
 };
 
 class RenderPass{
@@ -91,6 +116,11 @@ public:
 	virtual void onWindowPosUpdate(int xpos, int ypos) {}
 	virtual bool onMouseEvent(const io::MouseEvent& mouseEvent) { return false; }
 	virtual bool onKeyEvent(const io::KeyboardEvent& keyEvent) { return false; }
+
+	// Is this render pass contains any cuda/vulkan-based operations? 
+	// Used mainly for synchronization between these two GAPIs.
+	virtual bool isCudaPass() const { return true; }	
+	virtual bool isVulkanPass() const { return true; } 
 
 	virtual string getName() const { return "RenderPass"; }
 	virtual bool enabled() const { return mEnable; }

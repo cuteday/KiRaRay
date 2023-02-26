@@ -425,17 +425,14 @@ void DeviceManager::Animate(double elapsedTime) {
 
 void DeviceManager::Render() {
 	BeginFrame();
+	auto framebuffer = m_RenderFramebuffers[GetCurrentBackBufferIndex()];
+	for (auto it : m_RenderPasses) it->beginFrame();
 	for (auto it : m_RenderPasses) {
-		it->beginFrame();
+		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(m_GraphicsSemaphore);
+		it->render(framebuffer);
+		if (it->isCudaPass()) framebuffer->cudaUpdateVulkan();
 	}
-	for (auto it : m_RenderPasses) {
-		it->render(m_RenderFramebuffers[GetCurrentBackBufferIndex()]);
-		GetDevice()->waitForIdle();
-		CUDA_SYNC_CHECK();
-	}
-	for (auto it : m_RenderPasses) {
-		it->endFrame();
-	}
+	for (auto it : m_RenderPasses) it->endFrame();
 }
 
 void DeviceManager::UpdateAverageFrameTime(double elapsedTime) {
@@ -1140,7 +1137,7 @@ bool DeviceManager::createSwapChain() {
 		textureDesc.sampleCount		 = 1;
 
 		nvrhi::TextureHandle renderImage = m_DeviceParams.enableCudaInterop
-											   ? m_CUFriend->createExternalTexture(textureDesc)
+											   ? m_CuVkHandler->createExternalTexture(textureDesc)
 											   : m_NvrhiDevice->createTexture(textureDesc);
 		m_RenderImages.push_back(renderImage);
 	}
@@ -1224,19 +1221,27 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 	}
 
 	if (m_DeviceParams.enableCudaInterop) {
-		m_CUFriend = std::make_unique<vkrhi::CudaVulkanFriend>(GetDevice());
-		m_CUFriend->initCUDA();
+		m_CuVkHandler = std::make_unique<vkrhi::CuVkHandler>(GetDevice());
+		m_CuVkHandler->initCUDA();
 	}
 
-	m_CommandList	   = m_NvrhiDevice->createCommandList();
-	m_PresentSemaphore = m_VulkanDevice.createSemaphore(vk::SemaphoreCreateInfo());
-	m_HelperPass	   = std::make_unique<CommonRenderPasses>(GetDevice());
-	m_BindingCache	   = std::make_unique<BindingCache>(GetDevice());
+	vkrhi::CommandListParameters;
+	m_PresentSemaphore = m_CuVkHandler->createCuVkSemaphore(false); 
+	m_GraphicsSemaphore = m_CuVkHandler->createCuVkSemaphore(true); 
+	// [not that descent] to make cuda wait for previous vulkan operations, 
+	// I use the following dirty routines to replace the queue semaphore with a
+	// vulkan-exported semaphore.
+	auto* graphicsQueue = dynamic_cast<vkrhi::vulkan::Device *>(m_NvrhiDevice.Get())
+		->getQueue(nvrhi::CommandQueue::Graphics);
+	m_VulkanDevice.destroySemaphore(graphicsQueue->trackingSemaphore);
+	graphicsQueue->trackingSemaphore = m_GraphicsSemaphore;
 
+	m_CommandList  = m_NvrhiDevice->createCommandList();
+	m_HelperPass   = std::make_unique<CommonRenderPasses>(GetDevice());
+	m_BindingCache = std::make_unique<BindingCache>(GetDevice());
 	CHECK(createSwapChain())
 
 #undef CHECK
-
 	return true;
 }
 
@@ -1244,7 +1249,7 @@ void DeviceManager::DestroyDeviceAndSwapChain() {
 	destroySwapChain();
 
 	m_VulkanDevice.destroySemaphore(m_PresentSemaphore);
-	m_PresentSemaphore = vk::Semaphore();
+	m_PresentSemaphore = {};
 
 	m_CommandList = nullptr;
 
@@ -1297,7 +1302,7 @@ void DeviceManager::Present() {
 
 	vk::PresentInfoKHR info = vk::PresentInfoKHR()
 								  .setWaitSemaphoreCount(1)
-								  .setPWaitSemaphores(&m_PresentSemaphore)
+								  .setPWaitSemaphores(&m_PresentSemaphore.vulkan())
 								  .setSwapchainCount(1)
 								  .setPSwapchains(&m_SwapChain)
 								  .setPImageIndices(&m_SwapChainIndex);

@@ -20,7 +20,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-namespace cufriends {
+namespace cuvk {
 #ifdef _WIN64
 class WindowsSecurityAttributes {
 protected:
@@ -164,13 +164,29 @@ static vk::MemoryPropertyFlags pickBufferMemoryProperties(const nvrhi::BufferDes
 	return flags;
 }
 
-using namespace cufriends;
+using namespace cuvk;
 
-class CudaVulkanFriend {
+class CuVkSemaphore {
+public:
+	vk::Semaphore vk_sem;
+	cudaExternalSemaphore_t cuda_sem;
+
+	CuVkSemaphore() = default;
+	CuVkSemaphore(vk::Semaphore vk, cudaExternalSemaphore_t cuda) :
+		vk_sem(vk), cuda_sem(cuda) {}
+
+	vk::Semaphore& vulkan(){ return vk_sem; }
+	cudaExternalSemaphore_t& cuda() { return cuda_sem; }
+
+	operator vk::Semaphore() const { return vk_sem; }
+	operator cudaExternalSemaphore_t() const { return cuda_sem; }
+};
+
+class CuVkHandler {
 public:
 	using Buffer = nvrhi::vulkan::Buffer;
 
-	CudaVulkanFriend(nvrhi::DeviceHandle device):
+	CuVkHandler(nvrhi::DeviceHandle device):
 		m_device(*dynamic_cast<nvrhi::vulkan::Device*>(device.Get())),
 		m_context(dynamic_cast<nvrhi::vulkan::Device*>(device.Get())->getContext()) {}
 
@@ -377,18 +393,31 @@ public:
 		return nvrhi::TextureHandle::Create(texture);
 	}
 
-	void createExternalSemaphore(vk::Semaphore& vkSem) const {
+	void createExternalSemaphore(vk::Semaphore& vkSem, bool timeline = false) const {
+		auto semType = timeline ? vk::SemaphoreType::eTimeline : vk::SemaphoreType::eBinary;
+		auto timelineCreateInfo = vk::SemaphoreTypeCreateInfo()
+									  .setSemaphoreType(semType)
+									  .setInitialValue(0);
+
 		vk::SemaphoreCreateInfo semaphoreInfo = {};
 		semaphoreInfo.sType					  = vk::StructureType::eSemaphoreCreateInfo;
 		vk::ExportSemaphoreCreateInfoKHR exportSemaphoreCreateInfo = {};
 		exportSemaphoreCreateInfo.sType		  = vk::StructureType::eExportSemaphoreCreateInfoKHR;
-		exportSemaphoreCreateInfo.pNext		  = NULL;
+		exportSemaphoreCreateInfo.pNext		  = &timelineCreateInfo;
 		exportSemaphoreCreateInfo.handleTypes = getDefaultSemaphoreHandleType();
 		semaphoreInfo.pNext					  = &exportSemaphoreCreateInfo;
+
 
 		if (m_context.device.createSemaphore(&semaphoreInfo, nullptr, &vkSem) != vk::Result::eSuccess) {
 			throw std::runtime_error("failed to create synchronization objects for a CUDA-Vulkan!");
 		}
+	}
+
+	CuVkSemaphore createCuVkSemaphore(bool timeline = false) const { 
+		CuVkSemaphore sem;
+		createExternalSemaphore(sem.vk_sem, timeline);
+		sem.cuda_sem = importVulkanSemaphoreToCuda(sem.vk_sem, timeline);
+		return sem;
 	}
 	
 	void importVulkanMemoryToCuda(cudaExternalMemory_t &cudaMem, 
@@ -553,15 +582,21 @@ public:
 	}
 
 	
-	cudaExternalSemaphore_t importVulkanSemaphoreToCuda(vk::Semaphore &vkSem) {
+	cudaExternalSemaphore_t importVulkanSemaphoreToCuda(vk::Semaphore &vkSem, bool timeline = false) const {
 		cudaExternalSemaphoreHandleDesc externalSemaphoreHandleDesc = {};
 		vk::ExternalSemaphoreHandleTypeFlagBits handleType = getDefaultSemaphoreHandleType();
 		if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32) {
-			externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32;
+			externalSemaphoreHandleDesc.type = 
+				timeline ? cudaExternalSemaphoreHandleTypeTimelineSemaphoreWin32
+				: cudaExternalSemaphoreHandleTypeOpaqueWin32;
 		} else if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32Kmt) {
-			externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32Kmt;
+			externalSemaphoreHandleDesc.type = 
+				timeline ? cudaExternalSemaphoreHandleTypeTimelineSemaphoreWin32
+				:cudaExternalSemaphoreHandleTypeOpaqueWin32Kmt;
 		} else if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd) {
-			externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueFd;
+			externalSemaphoreHandleDesc.type = 
+				timeline ? cudaExternalSemaphoreHandleTypeTimelineSemaphoreFd
+						 : cudaExternalSemaphoreHandleTypeOpaqueFd;
 		} else {
 			throw std::runtime_error("Unknown handle type requested!");
 		}

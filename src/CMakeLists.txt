@@ -129,7 +129,7 @@ SET(KRR_SHADER_MATERIALS
 
 SET (KRR_SOURCE_VULKAN
 	core/vulkan/binding.cpp
-	core/vulkan/cufriends.cpp
+	core/vulkan/cuvk.cpp
 	core/vulkan/descriptor.cpp
 	core/vulkan/helperpass.cpp
 	core/vulkan/uirender.cpp

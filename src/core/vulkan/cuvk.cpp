@@ -1,8 +1,8 @@
-#include "cufriends.h"
+#include "cuvk.h"
 
 KRR_NAMESPACE_BEGIN
 
-using namespace cufriends;
+using namespace cuvk;
 using namespace vkrhi;
 
 #ifdef _WIN64
