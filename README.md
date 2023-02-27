@@ -24,10 +24,11 @@
 
 - Nvidia gpu (Turing or higher if possible).
 - OptiX 7.3+ and CUDA 11.x.
-- [Vulkan SDK](https://vulkan.lunarg.com/) (1.2+).
+- [Vulkan SDK](https://vulkan.lunarg.com/) (1.3+).
 
-This project is only tested with optix 7.3/4 and cuda 11.4/5/6 on Windows (MSVC). It do not compile on Linux. *KiRaRay* now uses Vulkan for better interoperability with CUDA, and extensibility to rasterization-based render passes. If Vulkan is not desired, check the [legacy-GL](https://github.com/cuteday/KiRaRay/tree/legacy-GL) branch that instead depends on OpenGL.
+This project is developed with optix 7.4 and cuda 11.6 on Windows (MSVC). It do not compile on Linux. 
 
+> *KiRaRay* now uses Vulkan for better interoperability with CUDA, and extensibility to rasterization-based render passes. If Vulkan is not desired, check the [legacy-GL](https://github.com/cuteday/KiRaRay/tree/legacy-GL) branch that instead depends on OpenGL.
 
 #### Cloning the repository
 
