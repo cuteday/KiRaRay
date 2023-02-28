@@ -5,7 +5,6 @@
 #include "assimp/pbrmaterial.h"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
-//#include "assimp/GltfMaterial.h"
 
 #include "light.h"
 #include "logger.h"
@@ -322,7 +321,7 @@ void AssimpImporter::processMesh(aiMesh *pAiMesh, aiMatrix4x4 transform) {
 	}
 
 	if (pAiMesh->mMaterialIndex >= 0 &&
-		pAiMesh->mMaterialIndex < mpScene->mData.materials->size()) {
+		pAiMesh->mMaterialIndex < mpScene->materials.size()) {
 		mesh.materialId = pAiMesh->mMaterialIndex + 1;
 	}
 
@@ -346,8 +345,8 @@ void AssimpImporter::traverseNode(aiNode *node, aiMatrix4x4 transform) {
 }
 
 void AssimpImporter::loadMaterials(const string &modelFolder) {
-	mpScene->mData.materials->reserve(mpAiScene->mNumMaterials + 1LL);
-	mpScene->mData.materials->push_back(Material(0, "default material"));
+	mpScene->materials.reserve(mpAiScene->mNumMaterials + 1LL);
+	mpScene->materials.push_back(Material(0, "default material"));
 	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
 		const aiMaterial *aiMaterial  = mpAiScene->mMaterials[i];
 		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);
@@ -356,7 +355,7 @@ void AssimpImporter::loadMaterials(const string &modelFolder) {
 			return;
 		}
 		pMaterial->toDevice();
-		mpScene->mData.materials->push_back(*pMaterial);
+		mpScene->materials.push_back(*pMaterial);
 	}
 }
 

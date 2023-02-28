@@ -10,7 +10,6 @@
 
 KRR_NAMESPACE_BEGIN
 
-
 class OptiXWavefrontBackend : public OptiXBackend {
 public:
 	OptiXWavefrontBackend() = default;
@@ -43,7 +42,7 @@ protected:
 	OptixShaderBindingTable shadowSBT{};
 	OptixTraversableHandle optixTraversable{};
 
-	Scene::SceneData sceneData{};
+	rt::SceneData sceneData{};
 
 	inter::vector<RaygenRecord> raygenClosestRecords;
 	inter::vector<HitgroupRecord> hitgroupClosestRecords;

@@ -10,7 +10,6 @@
 #include <filesystem>
 #include <cstdio>
 
-
 #include "texture.h"
 #include "window.h"
 #include "logger.h"
