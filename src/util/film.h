@@ -74,7 +74,7 @@ public:
 						  [] KRR_DEVICE(const WeightedPixel &d) -> Pixel { return d.pixel / d.weight; });
 		Image frame(m_size, Image::Format::RGBAfloat, false);
 		tmp.copy_to_host(frame.data(), n_pixels * sizeof(Color4f));
-		frame.saveImage(filepath);
+		frame.saveImage(filepath, true);
 	}
 
 private:

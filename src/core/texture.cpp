@@ -77,11 +77,11 @@ bool Image::loadImage(const fs::path &filepath, bool flip, bool srgb) {
 	return true;
 }
 
-bool Image::saveImage(const fs::path &filepath) {
+bool Image::saveImage(const fs::path &filepath, bool flip) {
 	string extension = filepath.extension().string();
 	uint nElements	 = mSize[0] * mSize[1] * 4;
 	if (extension == ".png") {
-		stbi_flip_vertically_on_write(true);
+		stbi_flip_vertically_on_write(flip);
 		if (mFormat == Format::RGBAuchar) {
 			stbi_write_png(filepath.string().c_str(), mSize[0], mSize[1], 4, mData, 0);
 		} else if (mFormat == Format::RGBAfloat) {
@@ -92,6 +92,7 @@ bool Image::saveImage(const fs::path &filepath) {
 			stbi_write_png(filepath.string().c_str(), mSize[0], mSize[1], 4, data, 0);
 			delete[] data;
 		}
+		stbi_flip_vertically_on_write(false);
 		return true;
 	} else if (extension == ".exr") {
 		if (mFormat != Format::RGBAfloat) {
@@ -99,7 +100,7 @@ bool Image::saveImage(const fs::path &filepath) {
 			return false;
 		}
 		tinyexr::save_exr(reinterpret_cast<float *>(mData), mSize[0], mSize[1], 4, 4,
-						  filepath.string().c_str(), true);
+						  filepath.string().c_str(), flip);
 	} else {
 		logError("Image::saveImage Unknown image extension: " + extension);
 		return false;

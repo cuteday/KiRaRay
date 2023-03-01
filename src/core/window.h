@@ -86,7 +86,9 @@ public:
 	void RunMessageLoop();
 
 	// returns the size of the window in screen coordinates
-	void GetWindowDimensions(int &width, int &height);
+	Vector2i GetWindowDimensions() const;
+	void GetWindowDimensions(int &width, int &height) const;
+
 	// returns the screen coordinate to pixel coordinate scale factor
 	void GetDPIScaleInfo(float &x, float &y) const {
 		x = m_DPIScaleFactorX;
@@ -126,7 +128,7 @@ protected:
 	virtual void BackBufferResizing();
 	virtual void BackBufferResized();
 
-	virtual void Animate(double elapsedTime);
+	virtual void Tick(double elapsedTime);
 	virtual void Render();
 	virtual void UpdateAverageFrameTime(double elapsedTime);
 
@@ -171,14 +173,17 @@ public:
 	[[nodiscard]] GLFWwindow *GetWindow() const { return m_Window; }
 	[[nodiscard]] size_t GetFrameIndex() const { return m_FrameIndex; }
 
-	virtual nvrhi::ITexture *GetCurrentBackBuffer() {
+	virtual nvrhi::ITexture *GetCurrentBackBuffer() const {
 		return m_SwapChainImages[m_SwapChainIndex].rhiHandle;
 	}
-	virtual nvrhi::ITexture *GetBackBuffer(size_t index) {
+	virtual nvrhi::ITexture *GetBackBuffer(size_t index) const {
 		if (index < m_SwapChainImages.size()) return m_SwapChainImages[index].rhiHandle;
 		return nullptr;
 	}
-	virtual nvrhi::ITexture *GetRenderImage(size_t index) {
+	virtual nvrhi::ITexture *GetCurrentRenderImage() const {
+		return m_RenderImages[m_SwapChainIndex];
+	}
+	virtual nvrhi::ITexture *GetRenderImage(size_t index) const {
 		if (index < m_RenderImages.size()) return m_RenderImages[index];
 		return nullptr;
 	}
@@ -209,8 +214,8 @@ public:
 
 	struct PipelineCallbacks {
 		std::function<void(DeviceManager &)> beforeFrame   = nullptr;
-		std::function<void(DeviceManager &)> beforeAnimate = nullptr;
-		std::function<void(DeviceManager &)> afterAnimate  = nullptr;
+		std::function<void(DeviceManager &)> beforeTick = nullptr;
+		std::function<void(DeviceManager &)> afterTick  = nullptr;
 		std::function<void(DeviceManager &)> beforeRender  = nullptr;
 		std::function<void(DeviceManager &)> afterRender   = nullptr;
 		std::function<void(DeviceManager &)> beforePresent = nullptr;

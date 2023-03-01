@@ -52,8 +52,6 @@ public:
 	void endFrame() override;
 	void render(RenderFrame::SharedPtr frame) override;
 	void resizing() override;
-	void renderUI() override {}
-	void resize(const Vector2i &size) override {}
 
 	virtual bool onMouseEvent(const io::MouseEvent &mouseEvent) override;
 	virtual bool onKeyEvent(const io::KeyboardEvent &keyEvent) override;

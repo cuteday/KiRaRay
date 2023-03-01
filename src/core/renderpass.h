@@ -24,8 +24,10 @@ public:
 		mFramebuffer(framebuffer) {}
 
 	~RenderFrame() { 
-		vk::Device device = mDevice->getNativeObject(nvrhi::ObjectTypes::VK_Device);
-		device.destroySemaphore(mSemaphore.vk_sem);
+		if (mDevice) {	// this RenderFrame is once initialized.
+			vk::Device device = mDevice->getNativeObject(nvrhi::ObjectTypes::VK_Device);
+			device.destroySemaphore(mSemaphore.vk_sem);
+		}
 	}
 
 	operator vkrhi::FramebufferHandle() const { return mFramebuffer; }

@@ -417,10 +417,8 @@ void DeviceManager::BackBufferResized() {
 	}
 }
 
-void DeviceManager::Animate(double elapsedTime) {
-	for (auto it : m_RenderPasses) {
-		it->tick(float(elapsedTime));
-	}
+void DeviceManager::Tick(double elapsedTime) {
+	for (auto it : m_RenderPasses) it->tick(float(elapsedTime));
 }
 
 void DeviceManager::Render() {
@@ -433,6 +431,16 @@ void DeviceManager::Render() {
 		if (it->isCudaPass()) framebuffer->cudaUpdateVulkan();
 	}
 	for (auto it : m_RenderPasses) it->endFrame();
+
+	m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics,
+										m_PresentSemaphore, 0);
+	m_CommandList->open(); 
+	m_HelperPass->BlitTexture(
+		m_CommandList, m_SwapChainFramebuffers[m_SwapChainIndex],
+		GetRenderImage(m_SwapChainIndex), m_BindingCache.get());
+	m_CommandList->close();
+	m_NvrhiDevice->executeCommandList(m_CommandList,
+									  nvrhi::CommandQueue::Graphics);
 }
 
 void DeviceManager::UpdateAverageFrameTime(double elapsedTime) {
@@ -460,9 +468,9 @@ void DeviceManager::RunMessageLoop() {
 		double elapsedTime = curTime - m_PreviousFrameTimestamp;
 
 		if (m_windowVisible) {
-			if (m_callbacks.beforeAnimate) m_callbacks.beforeAnimate(*this);
-			Animate(elapsedTime);
-			if (m_callbacks.afterAnimate) m_callbacks.afterAnimate(*this);
+			if (m_callbacks.beforeTick) m_callbacks.beforeTick(*this);
+			Tick(elapsedTime);
+			if (m_callbacks.afterTick) m_callbacks.afterTick(*this);
 			if (m_callbacks.beforeRender) m_callbacks.beforeRender(*this);
 			Render();
 			if (m_callbacks.afterRender) m_callbacks.afterRender(*this);
@@ -484,7 +492,12 @@ void DeviceManager::RunMessageLoop() {
 	GetDevice()->waitForIdle();
 }
 
-void DeviceManager::GetWindowDimensions(int &width, int &height) {
+Vector2i DeviceManager::GetWindowDimensions() const {
+	return {(int32_t) m_DeviceParams.backBufferWidth, 
+			(int32_t) m_DeviceParams.backBufferHeight};
+}
+
+void DeviceManager::GetWindowDimensions(int &width, int &height) const {
 	width  = m_DeviceParams.backBufferWidth;
 	height = m_DeviceParams.backBufferHeight;
 }
@@ -1291,14 +1304,6 @@ void DeviceManager::BeginFrame() {
 }
 
 void DeviceManager::Present() {
-
-	m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
-	m_CommandList->open(); // umm...
-	// blit the contents of render to swapchain image...
-	m_HelperPass->BlitTexture(m_CommandList, m_SwapChainFramebuffers[m_SwapChainIndex],
-							  GetRenderImage(m_SwapChainIndex), m_BindingCache.get());
-	m_CommandList->close();
-	m_NvrhiDevice->executeCommandList(m_CommandList, nvrhi::CommandQueue::Graphics);
 
 	vk::PresentInfoKHR info = vk::PresentInfoKHR()
 								  .setWaitSemaphoreCount(1)

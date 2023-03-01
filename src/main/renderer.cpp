@@ -3,8 +3,21 @@
 
 KRR_NAMESPACE_BEGIN
 
+namespace { // status bits
+static bool sShowUI				 = true;
+static bool sSaveHDR			 = false;
+static bool sSaveFrames			 = false;
+static bool sRequestScreenshot	 = false;
+static size_t sSaveFrameInterval = 2;
+}
+
 RenderApp::RenderApp() {
 	if (!gpContext) gpContext = std::make_shared<Context>();
+}
+
+void RenderApp::BackBufferResizing() { 
+	if (mpUIRenderer) mpUIRenderer->resizing();
+	DeviceManager::BackBufferResizing();
 }
 
 void RenderApp::BackBufferResized() {
@@ -17,6 +30,7 @@ void RenderApp::BackBufferResized() {
 }
 
 bool RenderApp::onMouseEvent(io::MouseEvent &mouseEvent) {
+	if (mpUIRenderer->onMouseEvent(mouseEvent)) return true;
 	if (DeviceManager::onMouseEvent(mouseEvent)) return true;
 	if (mpScene && mpScene->onMouseEvent(mouseEvent)) return true;
 	return false;
@@ -26,13 +40,14 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 	if (keyEvent.type == io::KeyboardEvent::Type::KeyPressed) {
 		switch (keyEvent.key) { // top-prior operations captured by application
 			case io::KeyboardEvent::Key::F1:
-				mShowUI = !mShowUI;
+				sShowUI = !sShowUI;
 				return true;
 			case io::KeyboardEvent::Key::F2:
 				captureFrame();
 				return true;
 		}
 	}
+	if (mpUIRenderer->onKeyEvent(keyEvent)) return true;
 	if (DeviceManager::onKeyEvent(keyEvent)) return true;
 	if (mpScene && mpScene->onKeyEvent(keyEvent)) return true;
 	return false;
@@ -40,8 +55,7 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 
 void RenderApp::setScene(Scene::SharedPtr scene) {
 	mpScene = scene;
-	for (auto p : m_RenderPasses)
-		if (p) p->setScene(scene);
+	for (auto p : m_RenderPasses) if (p) p->setScene(scene);
 }
 
 void RenderApp::run() {
@@ -50,18 +64,47 @@ void RenderApp::run() {
 	finalize();
 }
 
+void RenderApp::Tick(double elapsedTime) {
+	for (auto it : m_RenderPasses) it->tick(float(elapsedTime));
+	mpUIRenderer->tick(float(elapsedTime));
+}
+
 void RenderApp::Render() {
+	mFrameCount++;	// so we denote the first frame as #1.
+	if (sSaveFrames && mFrameCount % sSaveFrameInterval == 0)
+		sRequestScreenshot = true;
+
 	if (mpScene) mpScene->update();
 	BeginFrame();
 	auto framebuffer = m_RenderFramebuffers[GetCurrentBackBufferIndex()];
+	mpUIRenderer->beginFrame();
 	for (auto it : m_RenderPasses) it->beginFrame();
-	renderUI();
 	for (auto it : m_RenderPasses) {
 		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(m_GraphicsSemaphore);
 		it->render(framebuffer);
 		if (it->isCudaPass()) framebuffer->cudaUpdateVulkan();
 	}
 	for (auto it : m_RenderPasses) it->endFrame();
+
+	if (sRequestScreenshot) {
+		captureFrame(sSaveHDR);
+		sRequestScreenshot = false;
+	}
+
+	// UI render. This is better done after taking screenshot.
+	renderUI();
+	mpUIRenderer->render(framebuffer);
+	mpUIRenderer->endFrame();
+	m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
+	// Blit render buffer, from the render texture (usually HDR) to swapchain texture.
+	m_CommandList->open();
+	m_HelperPass->BlitTexture(
+		m_CommandList, m_SwapChainFramebuffers[GetCurrentBackBufferIndex()],
+		GetCurrentRenderImage(), m_BindingCache.get());
+	m_CommandList->close();
+	m_NvrhiDevice->executeCommandList(m_CommandList,
+									  nvrhi::CommandQueue::Graphics);
+
 	// If profiler::endframe is called, it queries the gpu time and thus 
 	// may cause a cpu-gpu synchronization. Disable it if not necessary.
 	if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
@@ -71,7 +114,7 @@ void RenderApp::renderUI() {
 	static bool showProfiler{};
 	static bool showFps{ true };
 	static bool showDashboard{ true };
-	if (!mShowUI)
+	if (!sShowUI)
 		return;
 	Profiler::instance().setEnabled(showProfiler);
 	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.8); // this sets the global transparency of UI windows.
@@ -79,7 +122,7 @@ void RenderApp::renderUI() {
 	if (ui::BeginMainMenuBar()) {
 		ui::PopStyleVar(1);
 		if (ui::BeginMenu("Views")) {
-			ui::MenuItem("Global UI", NULL, &mShowUI);
+			ui::MenuItem("Global UI", NULL, &sShowUI);
 			ui::MenuItem("Dashboard", NULL, &showDashboard);
 			ui::MenuItem("FPS Counter", NULL, &showFps);
 			ui::MenuItem("Profiler", NULL, &showProfiler);
@@ -89,11 +132,9 @@ void RenderApp::renderUI() {
 			ui::EndMenu();
 		}
 		if (ui::BeginMenu("Tools")) {
-			if (ui::MenuItem("Save config"))
-				saveConfig("");
-			ui::MenuItem("Save HDR", NULL, &mSaveHDR);
-			if (ui::MenuItem("Screen shot"))
-				captureFrame();
+			if (ui::MenuItem("Save config")) saveConfig("");
+			ui::MenuItem("Save HDR", NULL, &sSaveHDR);
+			if (ui::MenuItem("Screen shot")) sRequestScreenshot = true;
 			ui::EndMenu();
 		}
 		ui::EndMainMenuBar();
@@ -102,10 +143,9 @@ void RenderApp::renderUI() {
 	if (showDashboard) {
 		ui::Begin(KRR_PROJECT_NAME, &showDashboard);
 		ui::Checkbox("Profiler", &showProfiler);
-		ui::Checkbox("Save HDR", &mSaveHDR);
+		ui::Checkbox("Save HDR", &sSaveHDR);
 		ui::SameLine();
-		if (ui::Button("Screen shot"))
-			captureFrame(mSaveHDR);
+		if (ui::Button("Screen shot")) sRequestScreenshot = true;
 		if (ui::CollapsingHeader("Configuration")) {
 			static char loadConfigBuf[512];
 			static char saveConfigBuf[512] = "common/configs/saved_config.json";
@@ -150,7 +190,38 @@ void RenderApp::renderUI() {
 void RenderApp::captureFrame(bool hdr, fs::path filename) {
 	string extension = hdr ? ".exr" : ".png";
 
-	Log(Error, "Not Implemented!");
+	vkrhi::TextureHandle renderTexture = GetCurrentRenderImage();
+	vkrhi::TextureDesc textureDesc	   = renderTexture->getDesc();
+	textureDesc.format				   = vkrhi::Format::RGBA32_FLOAT;
+	textureDesc.initialState		   = nvrhi::ResourceStates::RenderTarget;
+	textureDesc.isRenderTarget		   = true;
+	textureDesc.keepInitialState	   = true;
+	auto stagingTexture				   = GetDevice()->createStagingTexture(
+		   textureDesc, vkrhi::CpuAccessMode::Read);
+	auto commandList = GetDevice()->createCommandList();
+	commandList->open();
+	commandList->copyTexture(stagingTexture, vkrhi::TextureSlice(),
+							 renderTexture, vkrhi::TextureSlice());
+	commandList->close();
+	GetDevice()->executeCommandList(commandList);
+	
+	size_t pitch;
+	auto *data =
+		GetDevice()->mapStagingTexture(stagingTexture, vkrhi::TextureSlice(),
+									   vkrhi::CpuAccessMode::Read, &pitch);
+
+	Image screenshot(GetWindowDimensions(), Image::Format::RGBAfloat);
+	memcpy(screenshot.data(), data, screenshot.getSizeInBytes());
+	GetDevice()->unmapStagingTexture(stagingTexture);
+
+	fs::path filepath(filename);
+	if (filename.empty()) // use default path for screen shots
+		filepath = File::outputDir() /
+				   ("frame_" + std::to_string(mFrameCount) + extension);
+	if (!fs::exists(filepath.parent_path()))
+		fs::create_directories(filepath.parent_path());
+	screenshot.saveImage(filepath);
+	logSuccess("Rendering saved to " + filepath.string());
 }
 
 void RenderApp::saveConfig(string path) {
@@ -160,8 +231,10 @@ void RenderApp::saveConfig(string path) {
 	fs::path filepath =
 		path.empty() ? dirpath / ("config_" + Log::nowToString("%H_%M_%S") + ".json") : path;
 
+	Vector2i resolution;
+	GetWindowDimensions(resolution[0], resolution[1]);
 	json config			 = mConfig;
-	config["resolution"] = 0;
+	config["resolution"] = resolution;
 	config["scene"]		 = *mpScene;
 	json passes			 = {};
 	for (RenderPass::SharedPtr p : m_RenderPasses) {
@@ -183,10 +256,9 @@ void RenderApp::loadConfig(const json config) {
 
 	if (config.contains("renderer")) {
 		const json render_config = config.at("renderer");
-		mSpp					 = render_config.value("spp", 0);
-		mSaveHDR				 = render_config.value("save_hdr", true);
-		mSaveFrames				 = render_config.value("save_frames", false);
-		mSaveFrameInterval		 = render_config.value("save_frame_interval", 5);
+		sSaveHDR				 = render_config.value("save_hdr", true);
+		sSaveFrames				 = render_config.value("save_frames", false);
+		sSaveFrameInterval		 = render_config.value("save_frame_interval", 5);
 	}
 
 	if (config.contains("passes")) {
@@ -240,14 +312,15 @@ void RenderApp::loadConfigFrom(fs::path path) {
 
 void RenderApp::initialize() { 
 	CreateWindowDeviceAndSwapChain(m_DeviceParams, KRR_PROJECT_NAME);
-	auto uiRenderer = std::make_shared<UIRenderer>(this);
-	AddRenderPassToBack(uiRenderer);
+	mpUIRenderer = std::make_shared<UIRenderer>(this);
+	mpUIRenderer->initialize();
 	for (auto pass : m_RenderPasses) pass->initialize();
 }
 
 void RenderApp::finalize() { 
 	for (auto pass : m_RenderPasses) 
 		pass->finalize();
+	mpUIRenderer.reset();
 	m_RenderPasses.clear();
 	Shutdown();
 }

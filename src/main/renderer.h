@@ -19,14 +19,14 @@ public:
 	RenderApp();
 	~RenderApp() = default;
 
-	void BackBufferResizing() override {}
+	void BackBufferResizing() override;
 	void BackBufferResized() override;
 	void Render() override;
+	void Tick(double elapsedTime /*delta time*/) override;
 
 	void initialize();
 	void finalize();
 
-	// Process signals passed down from direct imgui callback (imgui do not capture it)
 	virtual bool onMouseEvent(io::MouseEvent &mouseEvent) override;
 	virtual bool onKeyEvent(io::KeyboardEvent &keyEvent) override;
 
@@ -42,15 +42,11 @@ public:
 	void loadConfig(const json config);
 
 private:
-	bool mShowUI{ true };
-	bool mSaveFrames{ false };
-	size_t mSaveFrameInterval{ 2 };
-	bool mSaveHDR{ true };
-
 	int mFrameCount{ 0 };
 	int mSpp{ 0 };			// Samples needed tobe rendered, 0 means unlimited.
 	FrameRate mFrameRate;
 	Scene::SharedPtr mpScene;
+	UIRenderer::SharedPtr mpUIRenderer;
 	ProfilerUI::UniquePtr mpProfilerUI;
 	json mConfig{};
 	string mConfigPath{};

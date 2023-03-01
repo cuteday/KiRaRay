@@ -1,6 +1,3 @@
-// we want a image->texture->material class 
-// a gpu buffer should be a member of texture class, a texture cache may also needed
-
 // TODO: reorganize and clean up constructors (and "createFromFile" methods)
 #pragma once
 #include <map>
@@ -31,7 +28,7 @@ public:
 	~Image() {}
 
 	bool loadImage(const fs::path& filepath, bool flip = false, bool srgb = false);
-	bool saveImage(const fs::path& filepath);
+	bool saveImage(const fs::path &filepath, bool flip = false);
 
 	static bool isHdr(const string& filepath);
 	static Image::SharedPtr createFromFile(const fs::path& filepath, bool flip = false, bool srgb = false);
