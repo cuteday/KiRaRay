@@ -194,8 +194,6 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 }
 } // namespace assimp
 
-using namespace texture;
-
 void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial, TextureType type,
 								 const std::string &filename, bool flip) {
 	assert(pMaterial);
@@ -354,7 +352,6 @@ void AssimpImporter::loadMaterials(const string &modelFolder) {
 			logError("Failed to create material...");
 			return;
 		}
-		pMaterial->toDevice();
 		mpScene->materials.push_back(*pMaterial);
 	}
 }

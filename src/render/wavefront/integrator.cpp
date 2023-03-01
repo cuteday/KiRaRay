@@ -77,7 +77,7 @@ void WavefrontPathTracer::handleHit() {
 
 void WavefrontPathTracer::handleMiss() {
 	PROFILE("Process escaped rays");
-	rt::SceneData &sceneData = mpScene->mpSceneRT->getSceneData();
+	const rt::SceneData &sceneData = mpScene->mpSceneRT->getSceneData();
 	ForAllQueued(
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
 			Color L = {};

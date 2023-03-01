@@ -36,18 +36,12 @@ public:
 	void setCameraController(const OrbitCameraController &cameraController) {
 		*mpCameraController = cameraController;
 	}
-	void addInfiniteLight(const InfiniteLight& infiniteLight);
+	void addEnvironmentMap(const Texture& infiniteLight);
 	
 	void loadConfig(const json &config) { 
 		mpCamera = std::make_shared<Camera>(config.at("camera")); 
 		mpCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
 		mpCameraController->setCamera(mpCamera);
-		if (config.contains("envLights")) 
-			for (auto &light : config.at("envLights")) {
-				InfiniteLight l{};
-				from_json(light, l);
-				addInfiniteLight(l);
-			}
 	}
 	
 	AABB getAABB() const { return mAABB; }
@@ -62,7 +56,7 @@ public:
 
 	std::vector<Mesh> meshes;
 	std::vector<Material> materials{};
-	std::vector<InfiniteLight> infiniteLights{};
+	std::vector<Texture> environments{};
 
 	Camera::SharedPtr mpCamera;
 	OrbitCameraController::SharedPtr mpCameraController;
@@ -74,23 +68,10 @@ public:
 };
 
 namespace rt {
-class TextureData {
-public:
-	Color4f mValue{};
-	cudaTextureObject_t mCudaTexture{};
-};
-
-class MaterialData {
-public:
-	Material::MaterialParams mMaterialParams;
-	TextureData mTextures[(uint32_t) Material::TextureType::Count];
-	MaterialType mBsdfType{MaterialType::Disney};
-	Material::ShadingModel mShadingModel{Material::ShadingModel::MetallicRoughness};
-};
 
 class SceneData {
 public:
-	inter::vector<Material> *materials{};
+	inter::vector<MaterialData> *materials{};
 	inter::vector<MeshData> *meshes{};
 	inter::vector<Light> *lights{};
 	inter::vector<InfiniteLight> *infiniteLights{};

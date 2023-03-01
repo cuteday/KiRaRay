@@ -29,8 +29,8 @@ void Scene::renderUI() {
 	}
 }
 
-void Scene::addInfiniteLight(const InfiniteLight& infiniteLight){
-	infiniteLights.push_back(infiniteLight);
+void Scene::addEnvironmentMap(const Texture &infiniteLight) {
+	environments.push_back(infiniteLight);
 }
 
 bool Scene::onMouseEvent(const MouseEvent& mouseEvent){
@@ -52,7 +52,7 @@ void Scene::initializeSceneRT() {
 
 void RTScene::toDevice() {
 	cudaDeviceSynchronize();
-	mDeviceData.materials = gpContext->alloc->new_object<inter::vector<Material>>();
+	mDeviceData.materials = gpContext->alloc->new_object<inter::vector<rt::MaterialData>>();
 	mDeviceData.meshes	= gpContext->alloc->new_object<inter::vector<rt::MeshData>>();
 	mDeviceData.lights	= gpContext->alloc->new_object<inter::vector<Light>>();
 	mDeviceData.infiniteLights = gpContext->alloc->new_object<inter::vector<InfiniteLight>>();
@@ -71,8 +71,8 @@ void RTScene::renderUI() {
 	}
 	if (ui::CollapsingHeader("Materials")) {
 		for (int i = 0; i < mDeviceData.materials->size(); i++) {
-			if (ui::CollapsingHeader(
-					(*mDeviceData.materials)[i].getName().c_str())) {
+			if (ui::CollapsingHeader((*mDeviceData.materials)[i]
+					.getHostMaterialPtr()->getName().c_str())) {
 				(*mDeviceData.materials)[i].renderUI();
 			}
 		}
@@ -80,39 +80,51 @@ void RTScene::renderUI() {
 }
 
 void RTScene::updateSceneData() {
-	auto meshes = mpScene->meshes;
-	
 	/* Upload mesh data to device... */
-	mDeviceData.meshes->resize(mpScene->meshes.size());
-	for (size_t idx = 0; idx < mDeviceData.meshes->size(); idx++) {
+	auto meshes = mpScene->meshes;
+	mDeviceData.meshes->resize(meshes.size());
+	for (size_t idx = 0; idx < meshes.size(); idx++) {
 		auto& mesh = mpScene->meshes[idx];
 		auto &meshData = (*mDeviceData.meshes)[idx];
 		meshData.vertices.alloc_and_copy_from_host(mesh.vertices);
 		meshData.indices.alloc_and_copy_from_host(mesh.indices);
 		meshData.materialId = mesh.materialId;
 	}
-	
+
+	/* Upload texture and material data to device... */
 	auto materials = mpScene->materials;
-	mDeviceData.materials->assign(materials.begin(), materials.end());
-	auto infiniteLights = mpScene->infiniteLights;
-	mDeviceData.infiniteLights->assign(infiniteLights.begin(),
-									   infiniteLights.end());
+	mDeviceData.materials->resize(materials.size());
+	for (size_t idx = 0; idx < materials.size(); idx++) {
+		auto &material	   = mpScene->materials[idx];
+		auto &materialData = (*mDeviceData.materials)[idx];
+		materialData.initializeFromHost(material);
+	}
 	processLights();
 }
 
 void RTScene::processLights() {
 	mDeviceData.lights->clear();
 	cudaDeviceSynchronize();
+
+	auto infiniteLights = mpScene->environments;
+	mDeviceData.infiniteLights->reserve(infiniteLights.size());
+	for (auto& infiniteLight : infiniteLights) {
+		rt::TextureData textureData;
+		textureData.initializeFromHost(infiniteLight);
+		mDeviceData.infiniteLights->push_back(InfiniteLight(textureData));
+	}
+
 	uint nMeshes = mpScene->meshes.size();
 	for (uint meshId = 0; meshId < nMeshes; meshId++) {
 		Mesh &mesh		   = mpScene->meshes[meshId];
-		Material &material = (*mDeviceData.materials)[mesh.materialId];
+		Material &material = mpScene->materials[mesh.materialId];
+		rt::MaterialData &materialData = (*mDeviceData.materials)[mesh.materialId];
 		rt::MeshData &meshData = (*mDeviceData.meshes)[meshId];
 		if (material.hasEmission() || mesh.Le.any()) {
-			Texture &texture =
-				material.getTexture(Material::TextureType::Emissive);
-			Color3f Le = material.hasEmission() ? Color3f(texture.getConstant())
-												: mesh.Le;
+			rt::TextureData &textureData =
+				materialData.getTexture(Material::TextureType::Emissive);
+			Color3f Le = material.hasEmission()
+							 ? Color3f(textureData.getConstant()) : mesh.Le;
 			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld", 
 					 " constant emission(?): %f", mesh.indices.size(), luminance(Le));
 			std::vector<Triangle> primitives = mesh.createTriangles(&meshData);
@@ -122,7 +134,7 @@ void RTScene::processLights() {
 			std::vector<DiffuseAreaLight> lights(n_primitives);
 			for (size_t triId = 0; triId < n_primitives; triId++) {
 				lights[triId] = DiffuseAreaLight(Shape(&meshData.primitives[triId]),
-												 texture, Le, true, 1.f);
+									 textureData, Le, true, 1.f);
 			}
 			meshData.lights.alloc_and_copy_from_host(lights);
 			for (size_t triId = 0; triId < n_primitives; triId++) 

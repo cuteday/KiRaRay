@@ -27,7 +27,7 @@ public:
 		bool twoSided = true, float scale = 1.f)
 		: shape(shape), Le(Le), twoSided(twoSided), scale(scale) {}
 
-	DiffuseAreaLight(Shape &shape, Texture &texture, Vector3f Le = {},
+	DiffuseAreaLight(Shape &shape, const rt::TextureData &texture, Vector3f Le = {},
 		bool twoSided = true, float scale = 1.f) :
 		shape(shape),
 		texture(texture),
@@ -54,12 +54,8 @@ public:
 	__device__ inline Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
 		if (!twoSided && dot(n, w) < 0.f) return Color::Zero(); // hit backface
 
-		if (texture.isOnDevice()) {
-			return scale * texture.tex(uv);
-		}
-		else {
-			return scale * Le;
-		}
+		if (texture.isValid()) return scale * texture.tex(uv).head<3>();
+		else return scale * Le;
 	}
 
 	KRR_CALLABLE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
@@ -69,7 +65,7 @@ public:
 
 private:
 	Shape shape;
-	Texture texture{};		// emissive image texture
+	rt::TextureData texture{};		// emissive image texture
 	Color Le{ 0 };
 	bool twoSided{true};
 	float scale{1};
@@ -83,13 +79,8 @@ public:
 	InfiniteLight(Color tint, float scale = 1, float rotation = 0)
 		:tint(tint), scale(scale), rotation(rotation) {}
 
-	InfiniteLight(const Texture &image, Vector3f tint = Vector3f::Ones(), float scale = 1, float rotation = 0)
+	InfiniteLight(const rt::TextureData &image, Vector3f tint = Vector3f::Ones(), float scale = 1, float rotation = 0)
 		:image(image), tint(tint), scale(scale), rotation(rotation) {}
-
-	InfiniteLight(const string image, Vector3f tint = Vector3f::Ones(), float scale = 1, float rotation = 0)
-		:tint(tint), scale(scale), rotation(rotation) {
-		setImage(image);
-	}
 
 	__device__ inline LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
 		LightSample ls = {};
@@ -111,18 +102,12 @@ public:
 	__device__ inline Color Li(Vector3f wi) const {
 		Color L = tint * scale;
 
-		if (!image.isOnDevice()) return L;
+		if (!image.isValid()) return L;
 		Vector2f uv = utils::cartesianToSphericalNormalized(wi);
 		uv[0] = fmod(uv[0] + rotation, 1.f);
-		L *= image.tex(uv);
+		L *= image.tex(uv).head<3>();
 
 		return L;
-	}
-
-	void setImage(const string& filename) {
-		logDebug("Loading environment texture from: " + filename);
-		image.loadImage(filename);
-		image.toDevice();
 	}
 
 	void renderUI();
@@ -131,8 +116,6 @@ public:
 		p.scale	   = j.value("scale", 1.f);
 		p.tint	   = j.value("tint", Color{ 1 });
 		p.rotation = j.value("rotation", 0);
-		if (j.contains("image"))
-			p.setImage(j.at("image"));
 	}
 
 	friend void to_json(json &j, const InfiniteLight &p) {
@@ -144,7 +127,7 @@ public:
 	}
 
 private: 
-	Texture image{};
+	rt::TextureData image{};
 	float scale{1};
 	float rotation{0};
 	Color tint{1};

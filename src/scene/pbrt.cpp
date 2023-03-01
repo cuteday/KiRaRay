@@ -210,7 +210,6 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	}
 	if (matParams.IoR == 1)		// 1-ETA is not plausible for transmission
 		matParams.IoR = 1.001;
-	material->toDevice();
 	size_t materialId = scene->materials.size();
 	scene->materials.push_back(*material);
 	materials[mat] = materialId;

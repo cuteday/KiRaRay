@@ -32,14 +32,12 @@ KRR_DEVICE_FUNCTION Color rgbToNormal(Color rgb) { return 2 * rgb - Color::Ones(
 } // namespace
 
 template <typename T>
-KRR_DEVICE_FUNCTION T sampleTexture(Texture &texture, Vector2f uv, T fallback) {
+KRR_DEVICE_FUNCTION T sampleTexture(const rt::TextureData &texture, Vector2f uv,
+									T fallback = {}) {
 	if (texture.isValid()) {
-		if (texture.isOnDevice()) {
-			cudaTextureObject_t cudaTexture = texture.getCudaTexture();
+		if (cudaTextureObject_t cudaTexture = texture.getCudaTexture()) 
 			return tex2D<float4>(cudaTexture, uv[0], uv[1]);
-		} 
-		else
-			return texture.getConstant();
+		else return texture.getConstant();
 	}
 	return fallback;
 }
@@ -56,10 +54,11 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	return hitInfo;
 }
 
-KRR_DEVICE_FUNCTION bool alphaKilled(inter::vector<Material> *materials) {
+KRR_DEVICE_FUNCTION bool alphaKilled(inter::vector<rt::MaterialData> *materials) {
 	HitInfo hitInfo			= getHitInfo();
-	Material &material		= (*materials)[hitInfo.mesh->materialId];
-	Texture &opaticyTexture = material.mTextures[(uint) Material::TextureType::Transmission];
+	rt::MaterialData &material		= (*materials)[hitInfo.mesh->materialId];
+	rt::TextureData &opaticyTexture =
+		material.mTextures[(uint) Material::TextureType::Transmission];
 	if (!opaticyTexture.isValid())
 		return false;
 
@@ -83,7 +82,7 @@ KRR_DEVICE_FUNCTION bool alphaKilled(inter::vector<Material> *materials) {
 }
 
 KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitInfo,
-											Material &material) {
+											const rt::MaterialData &material) {
 	// [NOTE] about local shading frame (tangent space, TBN, etc.)
 	// The shading normal sd.frame.N and face normal sd.geoN is always points towards the outside of
 	// the object, we can use this convention to determine whether an incident ray is coming from
@@ -121,15 +120,18 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	else
 		sd.light = nullptr;
 
-	Material::MaterialParams &materialParams = material.mMaterialParams;
+	const Material::MaterialParams &materialParams = material.mMaterialParams;
 
 	sd.IoR					= materialParams.IoR;
 	sd.bsdfType				= material.mBsdfType;
 	sd.specularTransmission = materialParams.specularTransmission;
 
-	Texture &diffuseTexture	 = material.mTextures[(uint) Material::TextureType::Diffuse];
-	Texture &specularTexture = material.mTextures[(uint) Material::TextureType::Specular];
-	Texture &normalTexture	 = material.mTextures[(uint) Material::TextureType::Normal];
+	const rt::TextureData &diffuseTexture = 
+		material.mTextures[(uint) Material::TextureType::Diffuse];
+	const rt::TextureData &specularTexture =
+		material.mTextures[(uint) Material::TextureType::Specular];
+	const rt::TextureData &normalTexture =
+		material.mTextures[(uint) Material::TextureType::Normal];
 
 	Vector4f diff	   = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
 	Vector4f spec	   = sampleTexture(specularTexture, sd.uv, materialParams.specular);
