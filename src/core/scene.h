@@ -74,7 +74,22 @@ public:
 };
 
 namespace rt {
-struct SceneData {
+class TextureData {
+public:
+	Color4f mValue{};
+	cudaTextureObject_t mCudaTexture{};
+};
+
+class MaterialData {
+public:
+	Material::MaterialParams mMaterialParams;
+	TextureData mTextures[(uint32_t) Material::TextureType::Count];
+	MaterialType mBsdfType{MaterialType::Disney};
+	Material::ShadingModel mShadingModel{Material::ShadingModel::MetallicRoughness};
+};
+
+class SceneData {
+public:
 	inter::vector<Material> *materials{};
 	inter::vector<MeshData> *meshes{};
 	inter::vector<Light> *lights{};

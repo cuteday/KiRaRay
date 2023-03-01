@@ -231,7 +231,7 @@ void Material::renderUI() {
 	ui::DragFloat4("Diffuse", (float *) &mMaterialParams.diffuse, 1e-3, 0, 5);
 	ui::DragFloat4("Specular", (float *) &mMaterialParams.specular, 1e-3, 0, 1);
 	ui::DragFloat("Specular transmission", &mMaterialParams.specularTransmission, 1e-3, 0, 1);
-	ui::Checkbox("Double sided", &mDoubleSided);
+	//ui::Checkbox("Double sided", &mDoubleSided);
 	if (ui::CollapsingHeader("Texture slots")) {
 		for (int i = 0; i < (int) TextureType::Count; i++) {
 			if (mTextures[i].isValid() && ui::CollapsingHeader(textureTypes[i])) {

@@ -207,7 +207,6 @@ public:
 	Texture mTextures[(uint32_t)TextureType::Count];
 	MaterialType mBsdfType{ MaterialType::Disney };
 	ShadingModel mShadingModel{ ShadingModel::MetallicRoughness };
-	bool mDoubleSided = false;
 	uint mMaterialId;
 };
 

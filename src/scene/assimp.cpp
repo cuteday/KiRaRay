@@ -161,7 +161,7 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 	// Double-Sided
 	int isDoubleSided;
 	if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS) {
-		pMaterial->mDoubleSided = true;
+		//pMaterial->mDoubleSided = true;
 	}
 
 	if (importMode == ImportMode::GLTF2) {
