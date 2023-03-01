@@ -23,7 +23,7 @@ struct LaunchParamsBDPT {
 
 	Camera camera;
 	LightSampler lightSampler;
-	Scene::SceneData sceneData;
+	rt::SceneData sceneData;
 
 	CudaRenderTarget colorBuffer;
 	BDPTPathStateBuffer *pathState{ nullptr };

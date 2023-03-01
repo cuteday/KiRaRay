@@ -210,9 +210,8 @@ size_t loadMaterial(Scene::SharedPtr scene,
 	}
 	if (matParams.IoR == 1)		// 1-ETA is not plausible for transmission
 		matParams.IoR = 1.001;
-	material->toDevice();
-	size_t materialId = scene->mData.materials->size();
-	scene->mData.materials->push_back(*material);
+	size_t materialId = scene->materials.size();
+	scene->materials.push_back(*material);
 	materials[mat] = materialId;
 	return materialId;
 }
@@ -273,7 +272,7 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 	}
 		
 	scene->makeSingleLevel();						// since currently kiraray supports only single gas...
-	pScene->mData.materials->push_back(Material(0, "default material")); // the default material for shapes without
+	pScene->materials.push_back(Material(0, "default material")); // the default material for shapes without
 														 // material
 
 	std::map<pbrt::Material::SP, size_t> pbrtMaterials; // loaded materials and its parametric id

@@ -12,21 +12,12 @@
 KRR_NAMESPACE_BEGIN
 using namespace io;
 
-typedef struct {
-	MeshData* mesh;
-} HitgroupSBTData;
+class RTScene;
+class VKScene;
 
 class Scene {
 public:
 	using SharedPtr = std::shared_ptr<Scene>;
-
-	struct SceneData {
-		inter::vector<Material>* materials{ };
-		inter::vector<MeshData>* meshes{ };
-		inter::vector<Light>* lights{ };
-		inter::vector<InfiniteLight>* infiniteLights{ };
-		LightSampler lightSampler;
-	};
 
 	Scene();
 	~Scene() = default;
@@ -37,9 +28,6 @@ public:
 	bool update();
 	bool getChanges() const { return mHasChanges; };
 	void renderUI();
-	void toDevice();
-
-	void processLights();
 
 	Camera& getCamera() { return *mpCamera; }
 	CameraController& getCameraController() { return *mpCameraController; }
@@ -48,39 +36,79 @@ public:
 	void setCameraController(const OrbitCameraController &cameraController) {
 		*mpCameraController = cameraController;
 	}
-	void addInfiniteLight(const InfiniteLight& infiniteLight);
+	void addEnvironmentMap(const Texture& infiniteLight);
 	
 	void loadConfig(const json &config) { 
 		mpCamera = std::make_shared<Camera>(config.at("camera")); 
 		mpCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
 		mpCameraController->setCamera(mpCamera);
-		if (config.contains("envLights")) 
-			for (auto &light : config.at("envLights")) {
-				InfiniteLight l{};
-				from_json(light, l);
-				addInfiniteLight(l);
-			}
 	}
-
-	SceneData getSceneData() const { return mData; }
+	
 	AABB getAABB() const { return mAABB; }
 
 	friend void to_json(json& j, const Scene& scene) { 
 		j = json{ 
 			{ "camera", *scene.mpCamera }, 
-			{ "cameraController", *std::dynamic_pointer_cast<OrbitCameraController>(scene.mpCameraController) },
+			{ "cameraController", *std::dynamic_pointer_cast
+				<OrbitCameraController>(scene.mpCameraController) },
 		};
-		for (int l = 0; l < scene.mData.infiniteLights->size(); l++) {
-			j["envLights"].push_back(scene.mData.infiniteLights->operator[](l));
-		}
 	}
 
 	std::vector<Mesh> meshes;
-	SceneData mData;
+	std::vector<Material> materials{};
+	std::vector<Texture> environments{};
+
 	Camera::SharedPtr mpCamera;
 	OrbitCameraController::SharedPtr mpCameraController;
 	AABB mAABB;
 	bool mHasChanges = false;
+
+	std::shared_ptr<RTScene> mpSceneRT;
+	void initializeSceneRT();
+};
+
+namespace rt {
+
+class SceneData {
+public:
+	inter::vector<MaterialData> *materials{};
+	inter::vector<MeshData> *meshes{};
+	inter::vector<Light> *lights{};
+	inter::vector<InfiniteLight> *infiniteLights{};
+	LightSampler lightSampler;
+};
+}
+
+class RTScene {
+public:
+	using SharedPtr = std::shared_ptr<RTScene>;
+
+	RTScene() = default;
+	RTScene(Scene* scene) : mpScene(scene){}
+	~RTScene() = default;
+
+	void toDevice();
+	void renderUI();
+	void updateSceneData();
+	rt::SceneData getSceneData() const { return mDeviceData; }
+
+private:
+	void processLights();
+
+	Scene* mpScene;
+	rt::SceneData mDeviceData;
+};
+
+class VKScene {
+public:
+	using SharedPtr = std::shared_ptr<VKScene>;
+	
+	VKScene() = default;
+	VKScene(Scene* scene) : mpScene(scene) {}
+	~VKScene() = default;
+
+private:
+	Scene* mpScene;
 };
 
 KRR_NAMESPACE_END

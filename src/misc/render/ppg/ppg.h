@@ -14,7 +14,7 @@ typedef struct {
 
 	bool enableTraining;
 	PixelStateBuffer* pixelState;
-	Scene::SceneData sceneData;
+	rt::SceneData sceneData;
 	GuidedPathStateBuffer* guidedState;
 	OptixTraversableHandle traversable;
 } LaunchParamsPPG;

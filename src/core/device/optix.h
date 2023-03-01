@@ -6,6 +6,7 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "raytracing.h"
 #include "scene.h"
 
 KRR_NAMESPACE_BEGIN

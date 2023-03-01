@@ -5,7 +5,6 @@
 #include "assimp/pbrmaterial.h"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
-//#include "assimp/GltfMaterial.h"
 
 #include "light.h"
 #include "logger.h"
@@ -162,7 +161,7 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 	// Double-Sided
 	int isDoubleSided;
 	if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS) {
-		pMaterial->mDoubleSided = true;
+		//pMaterial->mDoubleSided = true;
 	}
 
 	if (importMode == ImportMode::GLTF2) {
@@ -194,8 +193,6 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 	return pMaterial;
 }
 } // namespace assimp
-
-using namespace texture;
 
 void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial, TextureType type,
 								 const std::string &filename, bool flip) {
@@ -322,7 +319,7 @@ void AssimpImporter::processMesh(aiMesh *pAiMesh, aiMatrix4x4 transform) {
 	}
 
 	if (pAiMesh->mMaterialIndex >= 0 &&
-		pAiMesh->mMaterialIndex < mpScene->mData.materials->size()) {
+		pAiMesh->mMaterialIndex < mpScene->materials.size()) {
 		mesh.materialId = pAiMesh->mMaterialIndex + 1;
 	}
 
@@ -346,8 +343,8 @@ void AssimpImporter::traverseNode(aiNode *node, aiMatrix4x4 transform) {
 }
 
 void AssimpImporter::loadMaterials(const string &modelFolder) {
-	mpScene->mData.materials->reserve(mpAiScene->mNumMaterials + 1LL);
-	mpScene->mData.materials->push_back(Material(0, "default material"));
+	mpScene->materials.reserve(mpAiScene->mNumMaterials + 1LL);
+	mpScene->materials.push_back(Material(0, "default material"));
 	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
 		const aiMaterial *aiMaterial  = mpAiScene->mMaterials[i];
 		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);
@@ -355,8 +352,7 @@ void AssimpImporter::loadMaterials(const string &modelFolder) {
 			logError("Failed to create material...");
 			return;
 		}
-		pMaterial->toDevice();
-		mpScene->mData.materials->push_back(*pMaterial);
+		mpScene->materials.push_back(*pMaterial);
 	}
 }
 

@@ -18,37 +18,28 @@ struct VertexAttribute {
 	Vector3f bitangent;
 };
 
-struct MeshData {
-	VertexAttribute *vertices{ nullptr };
-	Vector3i *indices{ nullptr };
-
-	uint materialId{ 0 };
-	DiffuseAreaLight* lights{ nullptr };
-};
+namespace rt {
+	struct MeshData {
+		TypedBuffer<VertexAttribute> vertices;
+		TypedBuffer<Vector3i> indices;
+		TypedBuffer<Triangle> primitives;
+		TypedBuffer<DiffuseAreaLight> lights;
+		uint materialId;
+	};
+}
 
 class Mesh {
 public:
-
-	void toDevice() {
-		mData.vertices = (VertexAttribute *) vertices.data();
-		mData.indices = (Vector3i*)indices.data();
-		mData.materialId = materialId;
-		mData.lights = lights.data();
-	}
-
-	std::vector<Triangle> createTriangles(MeshData* mesh) const;
+	std::vector<Triangle> createTriangles(rt::MeshData* mesh) const;
 	
-	inter::vector<VertexAttribute> vertices;
-	inter::vector<Vector3i> indices;
-
-	inter::vector<Triangle> emissiveTriangles;
-	inter::vector<DiffuseAreaLight> lights;
+	std::vector<VertexAttribute> vertices;
+	std::vector<Vector3i> indices;
 
 	AABB getAABB() const;
 
 	uint materialId{};
-	MeshData mData;
 	Color Le{};		/* A mesh-specific area light, used when importing pbrt formats. */
 };
+
 
 KRR_NAMESPACE_END

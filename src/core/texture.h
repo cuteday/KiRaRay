@@ -15,19 +15,8 @@
 #include "render/materials/bxdf.h"
 
 KRR_NAMESPACE_BEGIN
-
-namespace texture {
-	typedef struct{
-		string path;
-	} TextureProp;
-	typedef struct {
-		string name;
-	} MaterialProp;
-	extern std::map<uint, TextureProp> textureProps;
-	extern std::map<uint, MaterialProp> materialProps;
-}
  
-class Image {	// Not available on GPU
+class Image {
 public:
 	using SharedPtr = std::shared_ptr<Image>;
 	
@@ -55,7 +44,7 @@ public:
 	template <int DIM>
 	inline void permuteChannels(const Vector<int, DIM> permutation);
 	size_t getSizeInBytes() const { return mChannels * mSize[0] * mSize[1] * getElementSize(); }
-	uchar* data() { return mData; }
+	uchar* data() const { return mData; }
 	void reset(uchar *data) { mData = data; }
 	
 private:
@@ -113,41 +102,22 @@ public:
 		mValid = true;
 		mValue = value;
 	};
+
 	void loadImage(const fs::path &filepath, bool flip = false, bool srgb = false) {
 		mValid = mImage.loadImage(filepath, flip, srgb);
 	}
+	bool isValid() const { return mValid; }
 	Image &getImage() { return mImage; }
 	KRR_CALLABLE Color4f getConstant() const { return mValue; }
+	string getFilemame() { return mFilename; }
 
-	KRR_CALLABLE bool isValid() const { return mValid; }
-	KRR_CALLABLE bool isOnDevice() const { return mCudaTexture != 0; }
-	
-	KRR_CALLABLE cudaTextureObject_t getCudaTexture()const { return mCudaTexture; }
-	
-	__device__ Color tex(Vector2f uv) const {
-#ifdef __NVCC__ 
-		Color color = (Vector3f) tex2D<float4>(mCudaTexture, uv[0], uv[1]);
-		return color;
-#endif 
-		return {};
-	}
-
-	void toDevice();
-
-	void renderUI();
-	string getFilemame() {
-		if (mTextureId)
-			return texture::textureProps[mTextureId].path;
-		return "unknown filepath";
-	}
 	static Texture::SharedPtr createFromFile(const fs::path &filepath, bool flip = false,
 											 bool srgb = false);
 
 	bool mValid{ false };
 	Color4f mValue{};	 /* If this is a constant texture, the value should be set. */
 	Image mImage;
-	cudaTextureObject_t mCudaTexture = 0;
-	cudaArray_t mCudaArray = 0;
+	string mFilename;
 	uint mTextureId;
 };
 
@@ -185,30 +155,58 @@ public:
 	bool determineSrgb(string filename, TextureType type);
 
 	bool hasEmission() { 
-		return mTextures[(int)TextureType::Emissive].isValid(); 
+		return mTextures[(int)TextureType::Emissive].mValid; 
 	}
 
-	KRR_CALLABLE Texture getTexture(TextureType type) {
-		return mTextures[(uint)type];
-	}
-
-	KRR_CALLABLE cudaTextureObject_t getCudaTexture(TextureType type) {
-		return mTextures[(uint)type].getCudaTexture();
-	}
-
-	void toDevice();
-	void renderUI();
-	string getName() {
-		return texture::materialProps.count(mMaterialId) ? 
-			texture::materialProps[mMaterialId].name : "unknown";
-	}
+	Texture getTexture(TextureType type) { return mTextures[(uint)type]; }
+	string getName() { return mMaterialName; }
 
 	MaterialParams mMaterialParams;
-	Texture mTextures[5];
+	Texture mTextures[(uint32_t)TextureType::Count];
 	MaterialType mBsdfType{ MaterialType::Disney };
 	ShadingModel mShadingModel{ ShadingModel::MetallicRoughness };
-	bool mDoubleSided = false;
+	string mMaterialName;
 	uint mMaterialId;
 };
+
+namespace rt {
+class TextureData {
+public:
+	Color4f mValue{};
+	cudaTextureObject_t mCudaTexture{};
+	bool mValid{};
+
+	void initializeFromHost(Texture &texture);
+
+	KRR_CALLABLE bool isValid() const { return mValid; }
+	KRR_CALLABLE cudaTextureObject_t getCudaTexture() const {
+		return mCudaTexture;
+	}
+	KRR_CALLABLE Color4f getConstant() const { return mValue; }
+	KRR_DEVICE Color4f tex(Vector2f uv) const {
+#ifdef __NVCC__
+		if (mCudaTexture) return tex2D<float4>(mCudaTexture, uv[0], uv[1]);
+#endif
+		return mValue;
+	}
+};
+
+class MaterialData {
+public:
+	Material::MaterialParams mMaterialParams;
+	TextureData mTextures[(uint32_t) Material::TextureType::Count];
+	MaterialType mBsdfType{MaterialType::Disney};
+	Material::ShadingModel mShadingModel{Material::ShadingModel::MetallicRoughness};
+	Material *mpMaterialHost;
+
+	void initializeFromHost(Material& material);
+	Material *getHostMaterialPtr() const { return mpMaterialHost; }
+
+	KRR_CALLABLE TextureData getTexture(Material::TextureType type) const {
+		return mTextures[(uint32_t) type];
+	}
+	void renderUI();
+};
+}
 
 KRR_NAMESPACE_END

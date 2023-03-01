@@ -35,7 +35,7 @@ public:
 
 	void setScene(Scene::SharedPtr scene) override {
 		mpScene = scene;
-		mpScene->toDevice();
+		mpScene->initializeSceneRT();
 		buildAS();
 		buildSBT();
 		logSuccess("Scene set...");

@@ -77,10 +77,12 @@ void BDPTIntegrator::buildSBT() {
 
 	// build hitgroup records
 	uint numMeshes = mpScene->meshes.size();
+	rt::SceneData &sceneData = mpScene->mpSceneRT->getSceneData();
+	
 	for (uint meshId = 0; meshId < numMeshes; meshId++) {
 		for (uint rayId = 0; rayId < 3; rayId++) {
 			HitgroupRecord rec;
-			MeshData *mesh = &(*mpScene->mData.meshes)[meshId];
+			rt::MeshData *mesh = &(*sceneData.meshes)[meshId];
 			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayId], &rec));
 			rec.data = { mesh };
 			hitgroupRecords.push_back(rec);
@@ -120,7 +122,7 @@ void BDPTIntegrator::render(RenderFrame::SharedPtr frame) {
 		launchParams.fbSize		 = mFrameSize;
 		launchParams.colorBuffer = frame->getCudaRenderTarget();
 		launchParams.camera		 = mpScene->getCamera();
-		launchParams.sceneData	 = mpScene->getSceneData();
+		launchParams.sceneData	 = mpScene->mpSceneRT->getSceneData();
 		launchParams.frameID++;
 		cudaMemcpy(launchParamsDevice, &launchParams, sizeof(LaunchParamsBDPT),
 				   cudaMemcpyHostToDevice);

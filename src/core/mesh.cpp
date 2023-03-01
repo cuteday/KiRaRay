@@ -5,7 +5,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-std::vector<Triangle> Mesh::createTriangles(MeshData* mesh) const {
+std::vector<Triangle> Mesh::createTriangles(rt::MeshData* mesh) const {
 	uint nTriangles = indices.size();
 	std::vector<Triangle> triangles;
 	for (uint i = 0; i < nTriangles; i++) {

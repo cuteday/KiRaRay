@@ -25,9 +25,9 @@ void PPGPathTracer::resize(const Vector2i& size) {
 }
 
 void PPGPathTracer::setScene(Scene::SharedPtr scene) {
-	scene->toDevice();
+	scene->initializeSceneRT();
 	mpScene = scene;
-	lightSampler = scene->getSceneData().lightSampler;
+	lightSampler = scene->mpSceneRT->getSceneData().lightSampler;
 	initialize();
 	backend->setScene(*scene);
 	AABB aabb = scene->getAABB();
@@ -78,7 +78,7 @@ void PPGPathTracer::handleHit() {
 
 void PPGPathTracer::handleMiss() {
 	PROFILE("Process escaped rays");
-	Scene::SceneData& sceneData = mpScene->mData;
+	const rt::SceneData& sceneData = mpScene->mpSceneRT->getSceneData();
 	ForAllQueued(missRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const MissRayWorkItem & w) {
 		Color3f L = {};

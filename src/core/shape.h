@@ -10,8 +10,6 @@
 
 KRR_NAMESPACE_BEGIN
 
-
-
 struct ShapeSample {
 	Interaction intr;
 	float pdf;
@@ -26,7 +24,7 @@ class Triangle{
 public:
 	Triangle() = default;
 
-	Triangle(uint triId, MeshData* mesh) :
+	Triangle(uint triId, rt::MeshData* mesh) :
 		primId(triId), mesh(mesh) {}
 
 	KRR_CALLABLE float area()const {
@@ -119,14 +117,14 @@ public:
 		return pdf;
 	}
 
-	MeshData* getMesh() {
+	rt::MeshData* getMesh() {
 		return mesh;
 	}
 
 private:
 	friend class Mesh;
 	uint primId;
-	MeshData* mesh{nullptr};
+	rt::MeshData* mesh{nullptr};
 };
 
 

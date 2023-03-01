@@ -1,8 +1,6 @@
 #pragma once
 
 #include "common.h"
-
-
 #include "util/math_utils.h"
 
 #define KRR_RAY_TMAX	(1e20f)
@@ -10,10 +8,15 @@
 
 KRR_NAMESPACE_BEGIN
 
-
-
+namespace rt {
+class MeshData;
+}
 class Material;
 class Light;
+
+typedef struct {
+	rt::MeshData *mesh;
+} HitgroupSBTData;
 
 enum class MaterialType {
 	Diffuse = 0,

@@ -138,7 +138,7 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo	   = getHitInfo();
 	ShadingData &sd	   = *getPRD<ShadingData>();
-	Material &material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
+	const rt::MaterialData &material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
 	prepareShadingData(sd, hitInfo, material);
 }
 

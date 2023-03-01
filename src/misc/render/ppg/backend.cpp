@@ -63,8 +63,10 @@ void OptiXPPGBackend::setScene(Scene &scene) {
 	missClosestRecords.push_back(missRecord);
 	OPTIX_CHECK(optixSbtRecordPackHeader(missShadowPG, &missRecord));
 	missShadowRecords.push_back(missRecord);
-	for (MeshData &meshData : *scene.mData.meshes) {
-		hitgroupRecord.data = { &meshData };
+
+	sceneData = scene.mpSceneRT->getSceneData();
+	for (rt::MeshData &meshData : *sceneData.meshes) {
+		hitgroupRecord.data = {&meshData};
 		OPTIX_CHECK(optixSbtRecordPackHeader(hitClosestPG, &hitgroupRecord));
 		hitgroupClosestRecords.push_back(hitgroupRecord);
 		OPTIX_CHECK(optixSbtRecordPackHeader(hitShadowPG, &hitgroupRecord));
@@ -91,9 +93,8 @@ void OptiXPPGBackend::setScene(Scene &scene) {
 
 	if (!launchParams)
 		launchParams = gpContext->alloc->new_object<LaunchParamsPPG>();
-	launchParams->sceneData	  = scene.mData;
+	launchParams->sceneData	  = sceneData;
 	launchParams->traversable = optixTraversable;
-	sceneData				  = scene.mData;
 }
 
 void OptiXPPGBackend::traceClosest(int numRays, RayQueue *currentRayQueue,
