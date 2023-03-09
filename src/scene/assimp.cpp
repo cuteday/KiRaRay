@@ -103,8 +103,10 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 	float opacity = 1;
 	if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS) {
 		pMaterial->mMaterialParams.diffuse[3] = opacity;
-		if (opacity < 1.f)
+		if (opacity < 1.f) {
 			pMaterial->mMaterialParams.specularTransmission = 1 - opacity;
+			pMaterial->mBsdfType = MaterialType::Dielectric;
+		}
 		logDebug("opacity: " + to_string(opacity));
 	}
 
