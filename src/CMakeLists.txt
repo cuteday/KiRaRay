@@ -81,7 +81,6 @@ SET(KRR_HEADERS
 	render/profiler/fps.h
 	render/profiler/ui.h
 	scene/importer.h
-	scene/scenegraph.h
 	# others
 	main/renderer.h
 	util/check.h
@@ -234,15 +233,7 @@ TARGET_COMPILE_DEFINITIONS (krr_lib PUBLIC ${KRR_DEFINITIONS})
 TARGET_INCLUDE_DIRECTORIES (krr_lib SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE})
 TARGET_LINK_LIBRARIES(krr_lib PUBLIC ${KRR_LIBS_ALL})
 
-# The additional implementation of algorithms (in the static libraray "krr_starlight_lib") is not built by default
-# You can turn this on via CMake options (-DKRR_BUILD_STARLIGHT=ON)
-if (KRR_BUILD_STARLIGHT)
-	set(KRR_BUILD_STARLIGHT 1)
-	# ADD LIBRARY FROM MISC  (a.k.a. kirara startlight)
-	ADD_SUBDIRECTORY (misc)
-	TARGET_LINK_LIBRARIES (krr_lib PUBLIC krr_starlight_lib -WHOLEARCHIVE:$<TARGET_FILE:krr_starlight_lib>)
-	SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} ${KRR_MISC_INCLUDE_ALL} PARENT_SCOPE) # export include dirs 
-endif()
+ADD_SUBDIRECTORY (misc)
 
 IF (KRR_ENABLE_PYTHON)
 	ADD_LIBRARY(pykrr SHARED core/python/py.cpp)

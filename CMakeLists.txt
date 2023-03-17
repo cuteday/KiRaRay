@@ -16,6 +16,11 @@ OPTION (KRR_BUILD_STARLIGHT
 	OFF
 )
 
+OPTION (KRR_BUILD_EXAMPLES 
+	"Build the additional examples (see misc/samples)."
+	OFF
+)
+
 ###############################################################################
 # Build type and C++ compiler setup
 ###############################################################################

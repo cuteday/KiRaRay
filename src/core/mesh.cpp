@@ -1,5 +1,4 @@
 #pragma once
-
 #include "mesh.h"
 #include "shape.h"
 

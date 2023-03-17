@@ -30,17 +30,6 @@
 		},
 		{
 			"enable": true,
-			"name": "ErrorMeasurePass",
-			"params": {
-				"metric": "rel_mse",
-				"reference": "common/configs/example.exr",
-				"interval": 10,
-				"continuous": true,
-				"log": true
-			}
-		},
-		{
-			"enable": true,
 			"name": "ToneMappingPass",
 			"params": {
 				"exposure": 5,

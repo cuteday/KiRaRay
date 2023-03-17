@@ -12,4 +12,5 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	config = json.load(open(args.config))
+	# the application use pybind_json to forward json objects to c++ code
 	pykrr.run(config=config)

@@ -1,6 +1,6 @@
 ## Samples
 
-This directory contains some basic examples that demonstrate how to implement a new render pass in *KiRaRay*. To compile these examples, turn on `KRR_BUILD_STARLIGHT` in CMake options or via commandline argument `-DKRR_BUILD_STARLIGHT=ON`.
+This directory contains some basic examples that demonstrate how to implement a new render pass in *KiRaRay*. To compile these examples, turn on `KRR_BUILD_EXAMPLES` in CMake options or via commandline argument `-DKRR_BUILD_EXAMPLES=ON`.
 
 Note that the main focus of this project is still ray-tracing, while it provides basic support and extensibility for rasterztion-based rendering. The vulkan part of *KiRaRay* is wrapped by [nv-rhi](https://github.com/NVIDIAGameWorks/nvrhi), and part of the rendering pipeline implementation is adapted from [donut](https://github.com/NVIDIAGameWorks/donut).
 

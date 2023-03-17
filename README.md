@@ -8,11 +8,11 @@
 ### Features
 
 > __Working in progress (?) project__  
-> This project is only for learning purpose with limited features, and not sure if it will continue developing.
+> This project is purposed for learning only with limited features.
 
-- [x] GPU path tracing (a megakernel version and a wavefront version).
-- [x] Post processing passes (e.g., tonemapping, accumulating and denoising).
-- [x] Basic support for multiple scenes formats (e.g., OBJ, glTF2 and pbrt-v3).
+- [x] GPU path tracing (megakernel/wavefront).
+- [x] Post processing passes (e.g. denoising).
+- [x] Basic support for importing multiple scenes formats.
 - [x] Basic support for Vulkan and CUDA/OptiX interoperation.
 
 ### Build and run
@@ -22,95 +22,41 @@
 
 #### Requirements
 
-- Nvidia gpu (Turing or higher if possible).
-- OptiX 7.3+ and CUDA 11.x.
+- Nvidia RTX GPU (Turing or higher).
+- [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix) 7.3+ and [CUDA](https://developer.nvidia.com/cuda-toolkit) 11.x.
 - [Vulkan SDK](https://vulkan.lunarg.com/) (1.3+).
 
-This project is developed with optix 7.4 and cuda 11.6 on Windows (MSVC). It do not compile on Linux. 
+This project is developed with optix 7.4 and cuda 11.6 on Windows (MSVC). It cannot compile on Linux. 
 
 > *KiRaRay* now uses Vulkan for better interoperability with CUDA, and extensibility to rasterization-based render passes. If Vulkan is not desired, check the [legacy-GL](https://github.com/cuteday/KiRaRay/tree/legacy-GL) branch that instead depends on OpenGL.
 
 #### Cloning the repository
 
-*KiRaRay* uses external dependencies as submodules, so fetch them recursively with `--recursive` when cloning:
+*KiRaRay* uses thirdparty dependencies as submodules so fetch them recursively when cloning:
 
 ~~~bash
-git clone --recursive --depth=1 https://github.com/cuteday/KiRaRay.git
+git clone --recursive https://github.com/cuteday/KiRaRay.git
 ~~~
 
 #### Building
 
-This project uses cmake to build, no additional setting is needed. Make sure cuda is installed and added to PATH. While it tries to guess the optix installation path (i.e., the default installation path), you may specify the `OptiX_INSTALL_DIR` environment variable manually in case it failed.
+This project uses cmake to build, Make sure cuda is installed and added to PATH, and `OptiX_INSTALL_DIR` environment variable points to the OptiX installation directory.
 
 #### Running
 
-Specify the json configuration file as command line argument to start the renderer. The [example](common/configs/example.json) configuration will be used if no argument is provided:
+Specify the json configuration file as command line argument to start the renderer, as the example below. Check the [example configuration](common/configs/example.json) for how to configure the renderer.
 
 ~~~bash
 build/src/kiraray.exe common/configs/example.json
 ~~~
 
-Render passes may contain configurable parameters that can be serialize/deserialized in to json elements. A configuration file must contain the render passes setup (expand below for an example), with some optional parameters. 
-
-<details>
-<summary>Click for example configuration </summary>
-
-Currently, the render passes are simply executed in a sequential manner, each with optional configurable parameters. One can always head to the source code for the detailed parameters. The following configuration shows a simplea standard render pipeline:
-
-~~~json
-{
-	"model": "common/assets/scenes/cbox/cbox.obj",
-	"resolution": [
-		750,
-		750
-	],
-	"passes": [
-		{
-			"enable": true,
-			"name": "WavefrontPathTracer",
-			"params": {
-				"nee": true,
-				"rr": 0.8,
-				"max depth": 6
-			}
-		},
-		{
-			"enable": true,
-			"name": "AccumulatePass",
-			"params": {
-				"spp": 0,
-				"mode": "moving average"
-			}
-		},
-		{
-			"enable": true,
-			"name": "DenoisePass"
-		},
-		{
-			"enable": true,
-			"name": "ToneMappingPass",
-			"params": {
-				"exposure": 5,
-				"operator": "aces"
-			}
-		}
-	],
-}
-~~~
-
-
-
 </details>
-
-One can also save the current parameters (including camera parameters, render passes and scene file path, etc.) to a configuration file via the option in main menu bar.
 
 #### Usage
 
 **Camera controlling.** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
 
-**Hot keys.** `F1` for showing/hiding UI,  `F2` for showing/hiding the profiler, and `F3` for screen shots.
-
-**Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11), including a wrapper of OptiX's built-in AI denoiser. See [scripts](common/scripts) for details.
+**Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11), see [scripts](common/scripts) for details.
 
 ### Galleries
 
@@ -119,22 +65,15 @@ One can also save the current parameters (including camera parameters, render pa
 
 ### Algorithms
 
-I tried to implement some algorithms designed for path tracing, during me playing with my toy renderer. Check it out at the [misc](src/misc) directory. Expand the entry below for details. 
+I tried to implement some algorithms designed for path tracing (see [misc](src/misc) for details). 
 <details>
-<summary>Click to expand (・ω< )★ </summary>
+<summary>Click for details (・ω< )★ </summary>
 
-I collapsed this since they are not relevant to the main feature of *KiRaRay*, and are not interesting at all to people like me. Please do note that these code is just for playing (while I sadly find it not interesting when implementing them). These code is not performance-optimized, nor it will be maintained. Also, no guarantee for correctness, since I'm just a little noob on graphics \_(:з」∠)\_.
-
-These additional implementations as such is not built along with *KiRaRay* by default. Turn a strange CMake option `KRR_BUILD_STARLIGHT` on (`-DKRR_BUILD_STARLIGHT=ON`) if one want to build them.
+Turn the CMake option `KRR_BUILD_STARLIGHT` on if one wants to build these additional algorithm implementations. Note that these code may not be maintained as the main repository.
 
 #### Path Guiding
 
-This implements [Practical Path Guiding (PPG)](https://github.com/Tom94/practical-path-guiding), which is a path guiding algorithm targeted for offline rendering (and not that "practical" for real-time applications). What I did is largely to simply move the original implementation from CPU to GPU, and this makes its performance far from optimized. The operations that modifying the spatio-directional tree are still on host code (maybe this should be parallelized on GPU). The performance is not quite satisfying (about 70% more time per frame). 
-
-<p align=center>
-<img src="common/demo/pt_ppg.jpg" alt="pt_ppg" width="600" />
-
-The above image shows an 1spp rendering of a somewhat challenging scene (*veach-ajar*), where PPG is trained using MC estimates of ~500spp. The noise got reduced (maybe not much of them), but the performance also dropped drastically (only <20fps@720p on my device). The code is located [here](src/misc/render/ppg). The `PGGPathTracer` could be invoked with the configuration at [configs/misc](common/configs/misc/ppg.json). One can refer to the code implementation for all the configurable parameters:
+This implements [Practical Path Guiding (PPG)](https://github.com/Tom94/practical-path-guiding), which is a path guiding algorithm targeted for CPU offline rendering. What I did is largely to simply move the original implementation from CPU to GPU. The performance is not quite satisfying for real-time purposes on GPUs. 
 
 ~~~json
 	"params": {
@@ -160,17 +99,17 @@ I also implemented a later [Variance-aware](https://github.com/iRath96/variance-
 
 ### Additional Information
 
-#### Performance
+##### Performance
 
-Switch to *Release* build for normal performance! The megakernel pathtracer should run at about 30 spp per second at 1920*1080 on an RTX 3070, if the average path length is less than 5. The [wavefront pathtracer](https://research.nvidia.com/publication/2013-07_megakernels-considered-harmful-wavefront-path-tracing-gpus) however, expected to be faster than the megakernel version, is currently slightly slower due to my poor implementation (it does run significantly faster when next event estimation is enabled though). 
+Currently, the renderer runs extremely slow on *Debug* build for unknown reasons. Please switch to *Release* build for normal performance.
 
-#### Scene loading
+##### Scene loading
 
-*Kiraray* provided limited support for importing scenes like OBJ, glTF2 with [Assimp](https://github.com/assimp/assimp.git) as the default scene importer. Some commonly used material properties (e.g., roughness, metallic) and textures (normal, emission, opacity, etc.) are supported. [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes, and all pbrt materials are roughly approximated with the Disney Principled BSDF. Most of the scenes [here](https://benedikt-bitterli.me/resources/) could be loaded, while some of the materials might be visually biased.
+*Kiraray* provided limited support for importing scenes like OBJ, glTF2 using [Assimp](https://github.com/assimp/assimp.git). [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes (get some [here](https://benedikt-bitterli.me/resources/)).
 
-#### Writing new render passes.
+##### Writing new render passes.
 
-It is possible to write your own render pass (either using vulkan or cuda/optix, or mixed) by extending the `RenderPass` class. Some basic example passes demonstrating rasterization and cuda-vulkan interoperation are provided [here](src/misc/samples/). Check these [post-processing passes](src/render/passes/) for more working examples. The current implementation for Vulkan-CUDA interoperation is rather naive, but might be improved later.
+It is possible to write your own render pass, see the examples [here](src/misc/samples/). Check these [post-processing passes](src/render/passes/) for more working examples.
 
 
 ### Epilogue
@@ -181,6 +120,6 @@ For anyone that (accidentally) found this project: any questions and suggestions
 
 ### Credits
 - The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).
-- Some of the code (e.g., bsdf evaluation, wavefront path) are adapted from [pbrt](https://github.com/mmp/pbrt-v4), [Donut](https://github.com/NVIDIAGameWorks/donut) and [Falcor](https://github.com/NVIDIAGameWorks/Falcor). 
-- *KiRaRay* implements a [tiny math library](https://github.com/cuteday/KiRaRay/tree/main/src/core/math) wrapper built upon [Eigen](http://eigen.tuxfamily.org/) for efficient vector/matrix arithmetic.
+- Some of the code are adapted from [pbrt](https://github.com/mmp/pbrt-v4), [donut](https://github.com/NVIDIAGameWorks/donut) and [falcor](https://github.com/NVIDIAGameWorks/Falcor). 
+- *KiRaRay* implements a [tiny math wrapper](https://github.com/cuteday/KiRaRay/tree/main/src/core/math) upon [eigen](http://eigen.tuxfamily.org/) for efficient vector/matrix arithmetic.
 - [ImGui](https://github.com/ocornut/imgui) is used to build simple user interfaces for this project. 
