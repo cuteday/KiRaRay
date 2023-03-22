@@ -9,6 +9,8 @@
 #include "device/memory.h"
 #include "render/lightsampler.h"
 
+#include <nvrhi/vulkan.h>
+
 KRR_NAMESPACE_BEGIN
 using namespace io;
 
@@ -109,6 +111,9 @@ public:
 
 private:
 	Scene* mpScene;
+
+	vkrhi::BufferHandle mMaterialConstantsBuffer;
+	vkrhi::BufferHandle mMeshDataBuffer;
 };
 
 KRR_NAMESPACE_END

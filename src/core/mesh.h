@@ -19,13 +19,32 @@ struct VertexAttribute {
 };
 
 namespace rt {
-	struct MeshData {
-		TypedBuffer<VertexAttribute> vertices;
-		TypedBuffer<Vector3i> indices;
-		TypedBuffer<Triangle> primitives;
-		TypedBuffer<DiffuseAreaLight> lights;
-		uint materialId;
-	};
+struct MeshData {
+	TypedBuffer<VertexAttribute> vertices;
+	TypedBuffer<Vector3i> indices;
+	TypedBuffer<Triangle> primitives;
+	TypedBuffer<DiffuseAreaLight> lights;
+	uint materialId;
+};
+}
+
+namespace rs {
+struct MeshData {
+	uint numIndices;
+	uint numVertices;
+	int indexBufferIndex;
+	uint indexOffset;
+
+	int vertexBufferIndex;
+	uint positionOffset;
+	uint prevPositionOffset;
+	uint texCoord1Offset;
+
+	uint texCoord2Offset;
+	uint normalOffset;
+	uint tangentOffset;
+	uint materialIndex;
+};
 }
 
 class Mesh {

@@ -1,0 +1,7 @@
+#include "scene.h"
+
+KRR_NAMESPACE_BEGIN
+
+
+
+KRR_NAMESPACE_END
