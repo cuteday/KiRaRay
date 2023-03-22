@@ -1,9 +1,12 @@
 #pragma once
 #include <common.h>
+#include <scene.h>
 
 #include <nvrhi/vulkan.h>
 
 KRR_NAMESPACE_BEGIN
+
+namespace vkrhi {using namespace nvrhi;}
 
 class VKScene {
 public:
@@ -13,8 +16,9 @@ public:
 	VKScene(Scene *scene) : mpScene(scene) {}
 	~VKScene() = default;
 
-private:
+protected:	
 	Scene *mpScene;
+	vkrhi::vulkan::DeviceHandle mDevice;
 
 	vkrhi::BufferHandle mMaterialConstantsBuffer;
 	vkrhi::BufferHandle mMeshDataBuffer;

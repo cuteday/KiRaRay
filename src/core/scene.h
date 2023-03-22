@@ -12,6 +12,7 @@
 #include <nvrhi/vulkan.h>
 
 KRR_NAMESPACE_BEGIN
+
 using namespace io;
 
 class RTScene;
@@ -66,7 +67,9 @@ public:
 	bool mHasChanges = false;
 
 	std::shared_ptr<RTScene> mpSceneRT;
+	std::shared_ptr<VKScene> mpSceneVK;
 	void initializeSceneRT();
+	void initializeSceneVK();
 };
 
 namespace rt {
@@ -101,19 +104,5 @@ private:
 	rt::SceneData mDeviceData;
 };
 
-class VKScene {
-public:
-	using SharedPtr = std::shared_ptr<VKScene>;
-	
-	VKScene() = default;
-	VKScene(Scene* scene) : mpScene(scene) {}
-	~VKScene() = default;
-
-private:
-	Scene* mpScene;
-
-	vkrhi::BufferHandle mMaterialConstantsBuffer;
-	vkrhi::BufferHandle mMeshDataBuffer;
-};
 
 KRR_NAMESPACE_END

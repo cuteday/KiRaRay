@@ -1,5 +1,6 @@
 #include "bindless.h"
 #include "window.h"
+#include "vulkan/scene.h"
 
 KRR_NAMESPACE_BEGIN
 
