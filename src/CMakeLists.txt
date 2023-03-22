@@ -105,6 +105,7 @@ SET (KRR_SOURCE
 	render/bdpt/integrator.cpp
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
+	render/rasterize/bindless.cpp
 	render/profiler/profiler.cpp
 	render/profiler/ui.cpp
 	scene/assimp.cpp
