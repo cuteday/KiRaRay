@@ -28,17 +28,16 @@ struct MeshData {
 	uint numIndices;
 	uint numVertices;
 	int indexBufferIndex;
-	uint indexOffset;
-
 	int vertexBufferIndex;
-	uint positionOffset;
-	uint prevPositionOffset;
-	uint texCoord1Offset;
 
-	uint texCoord2Offset;
+	uint positionOffset;
 	uint normalOffset;
+	uint texCoordOffset;
 	uint tangentOffset;
+
+	uint bitangentOffset;
 	uint materialIndex;
+	int2 padding;
 };
 
 ConstantBuffer<ViewConstants> g_ViewConstants : register(b0);
@@ -47,7 +46,8 @@ ConstantBuffer<ViewConstants> g_ViewConstants : register(b0);
 StructuredBuffer<MeshData> t_MeshData : register(t0);
 StructuredBuffer<MaterialConstants> t_MaterialConstants : register(t1);
 SamplerState s_MaterialSampler;
-// bindless buffer arrays actually binds to a register range.
+// the above bindings are implicitly assigned to register space 0.
+// the bindless buffer arrays below actually bind to a register range.
 [[vk::binding(0, 1)]] t_BindlessBuffers[] : register(t0, space1);	// register space, check it out later
 [[vk::binding(1, 1)]] t_BindlessTextures[] : register(t0, space2);
 

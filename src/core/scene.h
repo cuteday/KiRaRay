@@ -17,6 +17,7 @@ using namespace io;
 
 class RTScene;
 class VKScene;
+class DescriptorTableManager;
 
 class Scene {
 public:
@@ -29,7 +30,7 @@ public:
 	bool onKeyEvent(const KeyboardEvent& keyEvent);
 
 	bool update();
-	bool getChanges() const { return mHasChanges; };
+	bool getChanges() const { return mHasChanges; }
 	void renderUI();
 
 	Camera& getCamera() { return *mpCamera; }
@@ -58,8 +59,8 @@ public:
 	}
 
 	std::vector<Mesh> meshes;
-	std::vector<Material> materials{};
-	std::vector<Texture> environments{};
+	std::vector<Material> materials;
+	std::vector<Texture> environments;
 
 	Camera::SharedPtr mpCamera;
 	OrbitCameraController::SharedPtr mpCameraController;
@@ -69,7 +70,8 @@ public:
 	std::shared_ptr<RTScene> mpSceneRT;
 	std::shared_ptr<VKScene> mpSceneVK;
 	void initializeSceneRT();
-	void initializeSceneVK();
+	void initializeSceneVK(nvrhi::ICommandList *commandList,
+						   DescriptorTableManager *descriptorTable = nullptr);
 };
 
 namespace rt {

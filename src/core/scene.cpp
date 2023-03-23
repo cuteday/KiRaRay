@@ -2,6 +2,7 @@
 #include "scene.h"
 
 #include "device/context.h"
+#include "scene.h"
 
 KRR_NAMESPACE_BEGIN
 

@@ -10,6 +10,15 @@ KRR_NAMESPACE_BEGIN
 class Triangle;
 class DiffuseAreaLight;
 
+enum class VertexAttributeType {
+	Position,
+	Normal,
+	Texcoord,
+	Tangent,
+	Bitangent,
+	Count
+};
+
 struct VertexAttribute {
 	Vector3f vertex;
 	Vector3f normal;
@@ -25,25 +34,6 @@ struct MeshData {
 	TypedBuffer<Triangle> primitives;
 	TypedBuffer<DiffuseAreaLight> lights;
 	uint materialId;
-};
-}
-
-namespace rs {
-struct MeshData {
-	uint numIndices;
-	uint numVertices;
-	int indexBufferIndex;
-	uint indexOffset;
-
-	int vertexBufferIndex;
-	uint positionOffset;
-	uint prevPositionOffset;
-	uint texCoord1Offset;
-
-	uint texCoord2Offset;
-	uint normalOffset;
-	uint tangentOffset;
-	uint materialIndex;
 };
 }
 
