@@ -285,9 +285,6 @@ bool AssimpImporter::import(const string &filepath,
 	traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
 	logDebug("Total imported meshes: " +
 			 std::to_string(mpScene->meshes.size()));
-	// std::cout << "AABB: " << pScene->getAABB().center() <<
-	// pScene->getAABB().diagonal()
-	//		  << std::endl;
 
 	Assimp::DefaultLogger::kill();
 	return true;
@@ -295,14 +292,10 @@ bool AssimpImporter::import(const string &filepath,
 
 void AssimpImporter::processMesh(aiMesh *pAiMesh, aiMatrix4x4 transform) {
 	Mesh mesh;
-	mesh.vertices.reserve(pAiMesh->mNumVertices);
 	mesh.indices.reserve(pAiMesh->mNumFaces);
-	CUDA_SYNC_CHECK();
 
 	assert(pAiMesh->HasNormals());
 	for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
-		VertexAttribute vertex;
-
 		Vector3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
 		Vector3f T, B;
 
@@ -315,21 +308,15 @@ void AssimpImporter::processMesh(aiMesh *pAiMesh, aiMatrix4x4 transform) {
 			//  tbn as world-local transformations
 			T = normalize(T - normal * dot(normal, T));
 			B = normalize(cross(normal, T));
-		} else {
-			// generate tangents and bitangents here (instead of runtime)
-			T = getPerpendicular(normal);
-			B = normalize(cross(normal, T));
+			mesh.tangents.push_back(T);
+			mesh.bitangents.push_back(B);	
 		}
-		vertex.vertex = aiCast(pAiMesh->mVertices[i]);
+		mesh.positions.push_back(aiCast(pAiMesh->mVertices[i]));
 		if (pAiMesh->HasTextureCoords(0)) {
 			Vector3f texcoord = Vector3f(aiCast(pAiMesh->mTextureCoords[0][i]));
-			vertex.texcoord	  = texcoord;
-		}
-		vertex.tangent	 = T;
-		vertex.bitangent = B;
-		vertex.normal	 = normal;
-
-		mesh.vertices.push_back(vertex);
+			mesh.texcoords.push_back(texcoord);
+		} else Log(Debug, "Lost UV coords when importing with Assimp");
+		mesh.normals.push_back(normal);					
 	}
 
 	for (uint i = 0; i < pAiMesh->mNumFaces; i++) {

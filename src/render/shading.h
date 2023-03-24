@@ -29,7 +29,7 @@ KRR_DEVICE_FUNCTION float getMetallic(Color diffuse, Color spec) {
 
 KRR_DEVICE_FUNCTION Color rgbToNormal(Color rgb) { return 2 * rgb - Color::Ones(); }
 
-} // namespace
+} 
 
 template <typename T>
 KRR_DEVICE_FUNCTION T sampleTexture(const rt::TextureData &texture, Vector2f uv,
@@ -65,9 +65,10 @@ KRR_DEVICE_FUNCTION bool alphaKilled(inter::vector<rt::MaterialData> *materials)
 	Vector3f b				  = hitInfo.barycentric;
 	const rt::MeshData &mesh	  = *hitInfo.mesh;
 	Vector3i v				  = mesh.indices[hitInfo.primitiveId];
-	const VertexAttribute &v0 = mesh.vertices[v[0]], v1 = mesh.vertices[v[1]],
-						  v2 = mesh.vertices[v[2]];
-	Vector2f uv				 = b[0] * v0.texcoord + b[1] * v1.texcoord + b[2] * v2.texcoord;
+	Vector2f uv{};
+	if (mesh.texcoords.size())
+		uv = b[0] * mesh.texcoords[v[0]] + b[1] * mesh.texcoords[v[1]] +
+					  b[2] * mesh.texcoords[v[2]];
 
 	Vector3f opacity = sampleTexture(opaticyTexture, uv, Color3f(1));
 	float alpha		 = 1 - luminance(opacity);
@@ -89,36 +90,45 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	// outside of the object.
 
 	Vector3f b		   = hitInfo.barycentric;
-	rt::MeshData &mesh	   = *hitInfo.mesh;
+	rt::MeshData &mesh = *hitInfo.mesh;
 	Vector3i v		   = mesh.indices[hitInfo.primitiveId];
-	VertexAttribute v0 = mesh.vertices[v[0]], v1 = mesh.vertices[v[1]], v2 = mesh.vertices[v[2]];
-
+	
 	sd.wo  = normalize(hitInfo.wo);
-	sd.pos = b[0] * v0.vertex + b[1] * v1.vertex + b[2] * v2.vertex;
 
-	Vector3f face_normal = normalize(cross(v1.vertex - v0.vertex, v2.vertex - v0.vertex));
+	Vector3f p0 = mesh.positions[v[0]], p1 = mesh.positions[v[1]],
+			 p2 = mesh.positions[v[2]];
+	
+	sd.pos = b[0] * p0 + b[1] * p1  + b[2] * p2;
 
-	if (any(v0.normal)) {
-		sd.frame.N = normalize(b[0] * v0.normal + b[1] * v1.normal + b[2] * v2.normal);
-		sd.frame.T = normalize(b[0] * v0.tangent + b[1] * v1.tangent + b[2] * v2.tangent);
-	} else { // if the model does not contain normal...
+	Vector3f face_normal = normalize(cross(p1 - p0, p2 - p0));
+
+	if (mesh.normals.size())
+		sd.frame.N = normalize(b[0] * mesh.normals[v[0]] +
+							   b[1] * mesh.normals[v[1]] +
+							   b[2] * mesh.normals[v[2]]);
+	else  // if the model does not contain normal...
 		sd.frame.N = face_normal;
-		sd.frame.T = getPerpendicular(face_normal);
-	}
 
+	if (mesh.tangents.size()) 
+		sd.frame.T = normalize(b[0] * mesh.tangents[v[0]] + 
+							   b[1] * mesh.tangents[v[1]] +
+							   b[2] * mesh.tangents[v[2]]);
+	else sd.frame.T = getPerpendicular(sd.frame.N);
 	// re-orthogonize the tangent space
 	// since tbn may become not orthogonal after the interpolation process.
 	// or they are not orthogonal at the beginning (when we import the models)
 	sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.N, sd.frame.T));
 	sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
 
-	Vector2f uv[3] = { v0.texcoord, v1.texcoord, v2.texcoord };
-	sd.uv		   = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
+	if (mesh.texcoords.size()) {
+		Vector2f uv[3] = {mesh.texcoords[v[0]], mesh.texcoords[v[1]],
+						  mesh.texcoords[v[2]]};
+		sd.uv		   = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
+	}
 
 	if (mesh.lights.size())
 		sd.light = &mesh.lights[hitInfo.primitiveId];
-	else
-		sd.light = nullptr;
+	else sd.light = nullptr;
 
 	const Material::MaterialParams &materialParams = material.mMaterialParams;
 

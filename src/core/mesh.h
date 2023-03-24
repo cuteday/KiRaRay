@@ -10,7 +10,7 @@ KRR_NAMESPACE_BEGIN
 class Triangle;
 class DiffuseAreaLight;
 
-enum class VertexAttributeType {
+enum class VertexAttribute {
 	Position,
 	Normal,
 	Texcoord,
@@ -19,17 +19,13 @@ enum class VertexAttributeType {
 	Count
 };
 
-struct VertexAttribute {
-	Vector3f vertex;
-	Vector3f normal;
-	Vector2f texcoord;
-	Vector3f tangent;
-	Vector3f bitangent;
-};
-
 namespace rt {
 struct MeshData {
-	TypedBuffer<VertexAttribute> vertices;
+	TypedBuffer<Vector3f> positions;
+	TypedBuffer<Vector3f> normals;
+	TypedBuffer<Vector2f> texcoords;
+	TypedBuffer<Vector3f> tangents;
+	TypedBuffer<Vector3f> bitangents;
 	TypedBuffer<Vector3i> indices;
 	TypedBuffer<Triangle> primitives;
 	TypedBuffer<DiffuseAreaLight> lights;
@@ -41,7 +37,11 @@ class Mesh {
 public:
 	std::vector<Triangle> createTriangles(rt::MeshData* mesh) const;
 	
-	std::vector<VertexAttribute> vertices;
+	std::vector<Vector3f> positions;
+	std::vector<Vector3f> normals;
+	std::vector<Vector2f> texcoords;
+	std::vector<Vector3f> tangents;
+	std::vector<Vector3f> bitangents;
 	std::vector<Vector3i> indices;
 
 	AABB getAABB() const;

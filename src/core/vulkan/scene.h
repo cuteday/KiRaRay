@@ -17,12 +17,12 @@ public:
 	vkrhi::BufferHandle vertexBuffer;
 	DescriptorHandle indexBufferDescriptor;
 	DescriptorHandle vertexBufferDescriptor;
-	std::array<vkrhi::BufferRange, size_t(VertexAttributeType::Count)> vertexBufferRanges;
+	std::array<vkrhi::BufferRange, size_t(VertexAttribute::Count)> vertexBufferRanges;
 
-	bool hasAttribute(VertexAttributeType attr) const {
+	bool hasAttribute(VertexAttribute attr) const {
 		return vertexBufferRanges[(int) attr].byteSize != 0;
 	}
-	vkrhi::BufferRange& getVertexBufferRange(VertexAttributeType attr) {
+	vkrhi::BufferRange& getVertexBufferRange(VertexAttribute attr) {
 		return vertexBufferRanges[(int) attr];
 	}
 };
