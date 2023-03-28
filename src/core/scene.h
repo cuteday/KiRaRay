@@ -70,7 +70,7 @@ public:
 	std::shared_ptr<RTScene> mpSceneRT;
 	std::shared_ptr<VKScene> mpSceneVK;
 	void initializeSceneRT();
-	void initializeSceneVK(nvrhi::ICommandList *commandList,
+	void initializeSceneVK(nvrhi::vulkan::IDevice* device,
 						   DescriptorTableManager *descriptorTable = nullptr);
 };
 

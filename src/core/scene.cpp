@@ -91,7 +91,6 @@ void RTScene::updateSceneData() {
 		meshData.normals.alloc_and_copy_from_host(mesh.normals);
 		meshData.texcoords.alloc_and_copy_from_host(mesh.texcoords);
 		meshData.tangents.alloc_and_copy_from_host(mesh.tangents);
-		meshData.bitangents.alloc_and_copy_from_host(mesh.bitangents);
 		meshData.indices.alloc_and_copy_from_host(mesh.indices);
 		meshData.materialId = mesh.materialId;
 	}

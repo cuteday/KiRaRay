@@ -38,19 +38,17 @@ struct MeshData {
 	uint texCoordOffset;
 	uint tangentOffset;		
 
-	uint bitangentOffset;
 	uint materialIndex;			// this indexes the material constants buffer
-	Vector2i padding;
+	Vector3i padding;
 };
 
 struct MaterialConstants {
-	Color3f baseColor;
-	float roughness;
+	Color4f baseColor;
+	Color4f specularColor;
 
-	Color3f specularColor;
+	float IoR;
 	float opacity;
-
-	Color3f emissiveColor;
+	int metalRough;
 	int flags;
 
 	int baseTextureIndex;		// these indices go to the bindless textures
@@ -65,14 +63,19 @@ public:
 	using SharedPtr = std::shared_ptr<VKScene>;
 
 	VKScene() = default;
-	VKScene(Scene *scene) : mpScene(scene) {}
+	VKScene(Scene *scene, vkrhi::vulkan::IDevice* device) : 
+		mpScene(scene), mDevice(device) {}
 	~VKScene() = default;
+
+	[[nodiscard]] vkrhi::IBuffer* getMaterialBuffer() const { return mMaterialConstantsBuffer; }
+	[[nodiscard]] vkrhi::IBuffer* getGeometryBuffer() const { return mMeshDataBuffer; }
 
 protected:	
 	friend Scene;
-	void writeMeshBuffers(vkrhi::ICommandList *commandList) const;
-	void writeMaterialBuffer(vkrhi::ICommandList *commandList) const;
-	void writeGeometryBuffer(vkrhi::ICommandList *commandList) const;
+	void writeMeshBuffers(vkrhi::ICommandList *commandList);
+	void writeMaterialBuffer(vkrhi::ICommandList *commandList);
+	void writeGeometryBuffer(vkrhi::ICommandList *commandList);
+	void writeDescriptorTable(DescriptorTableManager *descriptorTable);
 
 	Scene *mpScene;
 	vkrhi::vulkan::DeviceHandle mDevice;

@@ -29,6 +29,11 @@ void BindlessRender::initialize() {
 	mDescriptorTableManager = std::make_shared<DescriptorTableManager>(
 		getVulkanDevice(), mBindlessLayout);
 
+	/* Initialize scene data on vulkan device. */
+	// TODO: It seems possible to share the device buffer between vulkan and cuda/optix.
+	mpScene->initializeSceneVK(getVulkanDevice(), mDescriptorTableManager.get());
+	std::shared_ptr<VKScene> scene = mpScene->mpSceneVK;
+
 	mCommandList = getVulkanDevice()->createCommandList();
 	
 	/* Create view constant buffer */
@@ -46,8 +51,10 @@ void BindlessRender::initialize() {
 	bindingSetDesc.bindings = {
 		vkrhi::BindingSetItem::ConstantBuffer(0, mViewConstants),
 		vkrhi::BindingSetItem::PushConstants(1, sizeof(uint)),
-		vkrhi::BindingSetItem::StructuredBuffer_SRV(0, nullptr),
-		vkrhi::BindingSetItem::StructuredBuffer_SRV(1, nullptr)
+		/* Mesh data constants (for indexing bindless buffers) */
+		vkrhi::BindingSetItem::StructuredBuffer_SRV(0, scene->getGeometryBuffer()),
+		/* Material data constants (for indexing bindless buffers) */
+		vkrhi::BindingSetItem::StructuredBuffer_SRV(1, scene->getMaterialBuffer())
 	};
 	vkrhi::utils::CreateBindingSetAndLayout(
 		getVulkanDevice(), vkrhi::ShaderType::All, 0, bindingSetDesc,
@@ -113,6 +120,16 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 	state.bindings	  = {mBindingSet,
 						 mDescriptorTableManager->GetDescriptorTable()};
 	mCommandList->setGraphicsState(state);
+
+	for (int i = 0; i < mpScene->meshes.size(); i++) {
+		int meshId = i;
+		mCommandList->setPushConstants(&meshId, sizeof(int));
+		
+		vkrhi::DrawArguments args;
+		args.instanceCount = 1;
+		args.vertexCount   = mpScene->meshes[i].indices.size() * 3;
+		mCommandList->draw(args);
+	}
 	
 	/* Blit framebuffer. */
 	// We may not draw to the backbuffer directly due to unknown format and depth buffer.

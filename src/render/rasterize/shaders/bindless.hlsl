@@ -9,19 +9,18 @@ struct InstantConstants {
 };
 
 struct MaterialConstants {
-	float3 baseColor;
-	float roughness;
+	float4 baseColor;
+	float4 specularColor;
 
-	float3 specularColor;
+	float IoR;
 	float opacity;
+	int metalRough;
+	int flags;
 
-	float3 emissiveColor;
-	int baseTextureIndex;
-
+	int baseTextureIndex; 
 	int specularTextureIndex;
 	int normalTextureIndex;
 	int emissiveTextureIndex;
-	int flags;
 };
 
 struct MeshData {
@@ -35,9 +34,8 @@ struct MeshData {
 	uint texCoordOffset;
 	uint tangentOffset;
 
-	uint bitangentOffset;
 	uint materialIndex;
-	int2 padding;
+	int3 padding;
 };
 
 ConstantBuffer<ViewConstants> g_ViewConstants : register(b0);

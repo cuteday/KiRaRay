@@ -15,7 +15,6 @@ enum class VertexAttribute {
 	Normal,
 	Texcoord,
 	Tangent,
-	Bitangent,
 	Count
 };
 
@@ -25,7 +24,6 @@ struct MeshData {
 	TypedBuffer<Vector3f> normals;
 	TypedBuffer<Vector2f> texcoords;
 	TypedBuffer<Vector3f> tangents;
-	TypedBuffer<Vector3f> bitangents;
 	TypedBuffer<Vector3i> indices;
 	TypedBuffer<Triangle> primitives;
 	TypedBuffer<DiffuseAreaLight> lights;
@@ -41,7 +39,6 @@ public:
 	std::vector<Vector3f> normals;
 	std::vector<Vector2f> texcoords;
 	std::vector<Vector3f> tangents;
-	std::vector<Vector3f> bitangents;
 	std::vector<Vector3i> indices;
 
 	AABB getAABB() const;

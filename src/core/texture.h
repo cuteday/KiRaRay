@@ -188,24 +188,6 @@ public:
 	}
 };
 
-namespace rs {
-struct MaterialConstants {
-	Color3f baseColor;
-	float roughness;
-	
-	Color3f specularColor;
-	float opacity;
-	
-	Color3f emissiveColor;
-	int baseTextureIndex;
-	
-	int specularTextureIndex;
-	int normalTextureIndex;
-	int emissiveTextureIndex;
-	int flags;
-};
-}
-
 class MaterialData {
 public:
 	Material::MaterialParams mMaterialParams;

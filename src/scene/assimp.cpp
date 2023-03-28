@@ -302,14 +302,11 @@ void AssimpImporter::processMesh(aiMesh *pAiMesh, aiMatrix4x4 transform) {
 		if (pAiMesh->HasTangentsAndBitangents() &&
 			(pAiMesh->mTangents != NULL)) {
 			T = aiCast(pAiMesh->mTangents[i]);
-			// Vector3f B = aiCast(pAiMesh->mBitangents[i]);
 			//  in assimp the tangents and bitangents are not necessarily
 			//  orthogonal! however we need them to be orthonormal since we use
 			//  tbn as world-local transformations
 			T = normalize(T - normal * dot(normal, T));
-			B = normalize(cross(normal, T));
 			mesh.tangents.push_back(T);
-			mesh.bitangents.push_back(B);	
 		}
 		mesh.positions.push_back(aiCast(pAiMesh->mVertices[i]));
 		if (pAiMesh->HasTextureCoords(0)) {
