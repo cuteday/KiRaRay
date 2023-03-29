@@ -111,11 +111,12 @@ createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
 	float opacity = 1;
 	if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS) {
 		pMaterial->mMaterialParams.diffuse[3] = opacity;
-		if (opacity < 1.f) {
+		if (opacity == 0.f) {
 			pMaterial->mMaterialParams.specularTransmission = 1 - opacity;
 			pMaterial->mBsdfType = MaterialType::Dielectric;
+			Log(Info, "The material %s has a opacity: %f", nameStr.c_str(),
+				opacity);
 		}
-		logDebug("opacity: " + to_string(opacity));
 	}
 
 	// Shininess
@@ -145,6 +146,8 @@ createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
 		Color transmission = 1.f - Color(color[0], color[1], color[2]);
 		pMaterial->mMaterialParams.specularTransmission =
 			luminance(transmission);
+		if (luminance(transmission) > 1 - M_EPSILON)
+			pMaterial->mBsdfType = MaterialType::Dielectric; 
 		logDebug("transmission: " + to_string(luminance(transmission)));
 	}
 
