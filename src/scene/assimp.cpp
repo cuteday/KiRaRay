@@ -57,6 +57,9 @@ static const std::vector<TextureMapping> sTextureMapping = {
 	 Material::TextureType::Specular}};
 
 float convertSpecPowerToRoughness(float specPower) {
+	// normally, the specular weight (Ns) ranges 0 - 1000.
+	// for rendering specular surfaces, we let it be specular when Ns >= 1000.
+	if (specPower >= 1000) return 0;
 	return clamp(sqrt(2.0f / (specPower + 2.0f)), 0.f, 1.f);
 }
 
@@ -120,6 +123,8 @@ createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
 	if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS) {
 		// Convert OBJ/MTL Phong exponent to glossiness.
 		if (importMode == ImportMode::OBJ) {
+			Log(Debug, "The OBJ material %s has a shininess of %f",
+				nameStr.c_str(), shininess);
 			float roughness = convertSpecPowerToRoughness(shininess);
 			shininess		= 1.f - roughness;
 		}
