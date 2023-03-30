@@ -29,8 +29,8 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name dependencies)
 	target_compile_options ("${lib_name}" PRIVATE
 							-Xcudafe=--display_error_number 
 							-Xcudafe=--diag_suppress=3089
-							-Xcudafe=--diag_suppress=1290		# disable "passing arguments... " warning
-							-Xcudafe=--diag_suppress=20044)		# disable "extern declaration... is treated as a static definition" warning
+							-Xcudafe=--diag_suppress=1290)		# disable "passing arguments... " warning
+							#-Xcudafe=--diag_suppress=20044)		# disable "extern declaration... is treated as a static definition" warning
 	target_compile_options("${lib_name}" PRIVATE ${CUDA_NVCC_FLAGS})
 	# CUDA integration in Visual Studio seems broken as even if "Use
 	# Host Preprocessor Definitions" is checked, the host preprocessor
