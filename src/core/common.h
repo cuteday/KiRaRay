@@ -55,7 +55,11 @@ typedef unsigned char uchar;
 # define KRR_DEVICE   __device__
 # define KRR_HOST     __host__
 # define KRR_FORCEINLINE __forceinline__
+# if defined(KRR_DEVICE_CODE)
 # define KRR_CONST	__device__ const 
+# else
+# define KRR_CONST	const
+#endif
 # define KRR_GLOBAL	__global__
 #else
 # define KRR_DEVICE			/* ignore */
