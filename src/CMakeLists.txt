@@ -105,6 +105,7 @@ SET (KRR_SOURCE
 	render/bdpt/integrator.cpp
 	render/wavefront/integrator.cpp
 	render/wavefront/backend.cpp
+	render/rasterize/bindless.cpp
 	render/profiler/profiler.cpp
 	render/profiler/ui.cpp
 	scene/assimp.cpp
@@ -130,6 +131,7 @@ SET (KRR_SOURCE_VULKAN
 	core/vulkan/binding.cpp
 	core/vulkan/cuvk.cpp
 	core/vulkan/descriptor.cpp
+	core/vulkan/scene.cpp
 	core/vulkan/helperpass.cpp
 	core/vulkan/uirender.cpp
 	core/vulkan/textureloader.cpp

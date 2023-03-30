@@ -23,8 +23,6 @@ void MegakernelPathTracer::initialize() {
 	logSuccess("Megakernel PathTracer::Optix context set!");
 }
 
-//MegakernelPathTracer::MegakernelPathTracer() { initialize(); }
-
 MegakernelPathTracer::~MegakernelPathTracer() {
 	gpContext->alloc->deallocate_object(launchParamsDevice);
 }
@@ -81,7 +79,6 @@ void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 	mpScene->initializeSceneRT();
 	buildAS();
 	buildSBT();
-	logSuccess("Scene set...");
 }
 
 void MegakernelPathTracer::buildSBT() {

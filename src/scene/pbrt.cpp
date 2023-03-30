@@ -265,27 +265,23 @@ Mesh createMesh(pbrt::Shape::SP shape, const Matrix4f transform) {
 	if (m->normal.size() < n_vertices)
 		Log(Debug,
 			"The current mesh has %zd normals but %d vertices, thus the "
-			"normal(s) are ignored.",
-			m->normal.size(), n_vertices);
+			"normal(s) are ignored.", m->normal.size(), n_vertices);
 	Matrixf<3, 3> rot = transform.topLeftCorner(3, 3).inverse().transpose();
-	mesh.vertices.reserve(n_vertices);
 	mesh.indices.reserve(n_vertices);
 	for (int i = 0; i < n_vertices; i++) {
-		VertexAttribute vertex;
 		Vector4f local_vertex(cast(m->vertex[i]), 1);
 		Vector4f transformed_vertex = transform * local_vertex;
 		Vector3f transformed_normal{};
-		if (m->normal.size()) transformed_normal = rot * cast(m->normal[i]);
-		vertex.vertex = transformed_vertex;
-		vertex.normal = transformed_normal;
-		if (m->texcoord.size()) vertex.texcoord = cast(m->texcoord[i]);
-		vertex.tangent	 = getPerpendicular(vertex.normal);
-		vertex.bitangent = normalize(cross(vertex.normal, vertex.tangent));
-		mesh.vertices.push_back(vertex);
+		if (m->normal.size()) {
+			transformed_normal = rot * cast(m->normal[i]);
+			mesh.normals.push_back(transformed_normal);
+		}
+		if (m->texcoord.size()) 
+			mesh.texcoords.push_back(cast(m->texcoord[i]));		
+		mesh.positions.push_back(transformed_vertex);
 	}
-	for (int i = 0; i < n_faces; i++) {
+	for (int i = 0; i < n_faces; i++) 
 		mesh.indices.push_back(cast(m->index[i]));
-	}
 	return mesh;
 }
 

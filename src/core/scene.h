@@ -9,11 +9,15 @@
 #include "device/memory.h"
 #include "render/lightsampler.h"
 
+#include <nvrhi/vulkan.h>
+
 KRR_NAMESPACE_BEGIN
+
 using namespace io;
 
 class RTScene;
 class VKScene;
+class DescriptorTableManager;
 
 class Scene {
 public:
@@ -26,7 +30,7 @@ public:
 	bool onKeyEvent(const KeyboardEvent& keyEvent);
 
 	bool update();
-	bool getChanges() const { return mHasChanges; };
+	bool getChanges() const { return mHasChanges; }
 	void renderUI();
 
 	Camera& getCamera() { return *mpCamera; }
@@ -55,8 +59,8 @@ public:
 	}
 
 	std::vector<Mesh> meshes;
-	std::vector<Material> materials{};
-	std::vector<Texture> environments{};
+	std::vector<Material> materials;
+	std::vector<Texture> environments;
 
 	Camera::SharedPtr mpCamera;
 	OrbitCameraController::SharedPtr mpCameraController;
@@ -64,7 +68,10 @@ public:
 	bool mHasChanges = false;
 
 	std::shared_ptr<RTScene> mpSceneRT;
+	std::shared_ptr<VKScene> mpSceneVK;
 	void initializeSceneRT();
+	void initializeSceneVK(nvrhi::vulkan::IDevice* device,
+						   DescriptorTableManager *descriptorTable = nullptr);
 };
 
 namespace rt {
@@ -99,16 +106,5 @@ private:
 	rt::SceneData mDeviceData;
 };
 
-class VKScene {
-public:
-	using SharedPtr = std::shared_ptr<VKScene>;
-	
-	VKScene() = default;
-	VKScene(Scene* scene) : mpScene(scene) {}
-	~VKScene() = default;
-
-private:
-	Scene* mpScene;
-};
 
 KRR_NAMESPACE_END

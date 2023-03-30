@@ -15,9 +15,8 @@ std::vector<Triangle> Mesh::createTriangles(rt::MeshData* mesh) const {
 
 AABB Mesh::getAABB() const {
 	AABB aabb;
-	for (const VertexAttribute &v : vertices) {
-		aabb.extend(v.vertex);
-	}
+	for (const auto &v : positions) 
+		aabb.extend(v);
 	return aabb;
 }
 

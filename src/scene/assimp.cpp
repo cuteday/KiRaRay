@@ -57,6 +57,9 @@ static const std::vector<TextureMapping> sTextureMapping = {
 	 Material::TextureType::Specular}};
 
 float convertSpecPowerToRoughness(float specPower) {
+	// normally, the specular weight (Ns) ranges 0 - 1000.
+	// for rendering specular surfaces, we let it be specular when Ns >= 1000.
+	if (specPower >= 1000) return 0;
 	return clamp(sqrt(2.0f / (specPower + 2.0f)), 0.f, 1.f);
 }
 
@@ -108,11 +111,12 @@ createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
 	float opacity = 1;
 	if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS) {
 		pMaterial->mMaterialParams.diffuse[3] = opacity;
-		if (opacity < 1.f) {
+		if (opacity == 0.f) {
 			pMaterial->mMaterialParams.specularTransmission = 1 - opacity;
 			pMaterial->mBsdfType = MaterialType::Dielectric;
+			Log(Info, "The material %s has a opacity: %f", nameStr.c_str(),
+				opacity);
 		}
-		logDebug("opacity: " + to_string(opacity));
 	}
 
 	// Shininess
@@ -120,6 +124,8 @@ createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
 	if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS) {
 		// Convert OBJ/MTL Phong exponent to glossiness.
 		if (importMode == ImportMode::OBJ) {
+			Log(Debug, "The OBJ material %s has a shininess of %f",
+				nameStr.c_str(), shininess);
 			float roughness = convertSpecPowerToRoughness(shininess);
 			shininess		= 1.f - roughness;
 		}
@@ -140,6 +146,8 @@ createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
 		Color transmission = 1.f - Color(color[0], color[1], color[2]);
 		pMaterial->mMaterialParams.specularTransmission =
 			luminance(transmission);
+		if (luminance(transmission) > 1 - M_EPSILON)
+			pMaterial->mBsdfType = MaterialType::Dielectric; 
 		logDebug("transmission: " + to_string(luminance(transmission)));
 	}
 
@@ -285,9 +293,6 @@ bool AssimpImporter::import(const string &filepath,
 	traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
 	logDebug("Total imported meshes: " +
 			 std::to_string(mpScene->meshes.size()));
-	// std::cout << "AABB: " << pScene->getAABB().center() <<
-	// pScene->getAABB().diagonal()
-	//		  << std::endl;
 
 	Assimp::DefaultLogger::kill();
 	return true;
@@ -295,41 +300,28 @@ bool AssimpImporter::import(const string &filepath,
 
 void AssimpImporter::processMesh(aiMesh *pAiMesh, aiMatrix4x4 transform) {
 	Mesh mesh;
-	mesh.vertices.reserve(pAiMesh->mNumVertices);
 	mesh.indices.reserve(pAiMesh->mNumFaces);
-	CUDA_SYNC_CHECK();
 
 	assert(pAiMesh->HasNormals());
 	for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
-		VertexAttribute vertex;
-
 		Vector3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
 		Vector3f T, B;
 
 		if (pAiMesh->HasTangentsAndBitangents() &&
 			(pAiMesh->mTangents != NULL)) {
 			T = aiCast(pAiMesh->mTangents[i]);
-			// Vector3f B = aiCast(pAiMesh->mBitangents[i]);
 			//  in assimp the tangents and bitangents are not necessarily
 			//  orthogonal! however we need them to be orthonormal since we use
 			//  tbn as world-local transformations
 			T = normalize(T - normal * dot(normal, T));
-			B = normalize(cross(normal, T));
-		} else {
-			// generate tangents and bitangents here (instead of runtime)
-			T = getPerpendicular(normal);
-			B = normalize(cross(normal, T));
+			mesh.tangents.push_back(T);
 		}
-		vertex.vertex = aiCast(pAiMesh->mVertices[i]);
+		mesh.positions.push_back(aiCast(pAiMesh->mVertices[i]));
 		if (pAiMesh->HasTextureCoords(0)) {
 			Vector3f texcoord = Vector3f(aiCast(pAiMesh->mTextureCoords[0][i]));
-			vertex.texcoord	  = texcoord;
-		}
-		vertex.tangent	 = T;
-		vertex.bitangent = B;
-		vertex.normal	 = normal;
-
-		mesh.vertices.push_back(vertex);
+			mesh.texcoords.push_back(texcoord);
+		} else Log(Debug, "Lost UV coords when importing with Assimp");
+		mesh.normals.push_back(normal);					
 	}
 
 	for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
