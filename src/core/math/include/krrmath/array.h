@@ -31,6 +31,7 @@ public:
 		return *this;
 	}
 
+	KRR_CALLABLE bool hasInf() const { return this->isInf().any(); }
 	KRR_CALLABLE friend Array max(const Array &arr1, const Array &arr2) { return arr1.max(arr2); }
 	KRR_CALLABLE friend Array min(const Array &arr1, const Array &arr2) { return arr1.min(arr2); }
 	KRR_CALLABLE friend Array abs(const Array &arr) { return arr.abs(); }

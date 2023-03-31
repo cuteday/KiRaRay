@@ -136,7 +136,7 @@ void WavefrontPathTracer::generateScatterRays() {
 
 			/* sample BSDF */
 			BSDFSample sample = BxDF::sample(sd, woLocal, sampler, (int) sd.bsdfType);
-			if (sample.pdf && any(sample.f)) {
+			if (sample.pdf != 0 && sample.f.any()) {
 				Vector3f wiWorld = sd.frame.toWorld(sample.wi);
 				RayWorkItem r	 = {};
 				Vector3f p		 = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);

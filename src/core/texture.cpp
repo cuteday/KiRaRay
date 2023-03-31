@@ -171,6 +171,7 @@ void MaterialData::renderUI() {
 	ui::DragFloat4("Specular", (float *) &mMaterialParams.specular, 1e-3, 0, 1);
 	ui::DragFloat("Specular transmission",
 				  &mMaterialParams.specularTransmission, 1e-3, 0, 1);
+	ui::DragFloat("Index of Refraction", &mMaterialParams.IoR, 1e-3, 0.1, 5);
 }
 
 void TextureData::initializeFromHost(Texture &texture) {

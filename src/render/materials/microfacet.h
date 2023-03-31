@@ -161,8 +161,7 @@ inline Vector3f GGXMicrofacetDistribution::Sample(const Vector3f& wo,
 #ifdef KRR_GGX_SAMPLE_LEGACY
 	bool flip = wo[2] < 0;
 	Vector3f wh = GGXSample(flip ? -wo : wo, alphax, alphay, u[0], u[1]);
-	if (flip) wh = -wh;
-	return wh;
+	return flip ? -wh : wh;
 #else
 	Vector3f wh = normalize(Vector3f(alphax * wo[0], alphay * wo[1], wo[2]));
 	if (wh[2] < 0)
@@ -290,6 +289,7 @@ public:
 	KRR_CALLABLE MicrofacetBtdf(const Color &T, float eta, float alpha_x, float alpha_y)
 		: T(T), etaT(eta) {
 		distribution = { alpha_x, alpha_y };
+		etaT		 = max(1.01f, etaT);
 	}
 
 	KRR_CALLABLE void setup(const ShadingData& sd) {
@@ -342,11 +342,12 @@ public:
 			return BSDFSample(ft, wi, 1, BSDF_SPECULAR_TRANSMISSION);
 		}
 
-		Vector2f u = sg.get2D();
-		Vector3f wh = distribution.Sample(wo, u);
+		Vector3f wh = distribution.Sample(wo, sg.get2D());
 		
-		if (!Refract(wo, wh, etaT, &eta, &sample.wi)) return {};   // etaI / etaT
-
+		if (!Refract(wo, wh, etaT, &eta, &sample.wi)) 
+			return {}; // etaI / etaT
+			
+		// TODO: pdf() produces NaNs!
 		sample.pdf = pdf(wo, sample.wi);
 		sample.f = f(wo, sample.wi);
 		sample.flags = BSDF_GLOSSY_TRANSMISSION;
