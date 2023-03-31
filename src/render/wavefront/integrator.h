@@ -81,13 +81,17 @@ public:
 			{ "nee", p.enableNEE }, 
 			{ "max_depth", p.maxDepth },
 			{ "rr", p.probRR },
+			{ "enable_clamp", p.enableClamp },
+			{ "clamp_max", p.clampMax }
 		};
 	}
 
 	friend void from_json(const json &j, WavefrontPathTracer &p) {
-		p.enableNEE = j.value("nee", true);
-		p.maxDepth	= j.value("max_depth", 10);
-		p.probRR	= j.value("rr", 0.8);
+		p.enableNEE	  = j.value("nee", true);
+		p.maxDepth	  = j.value("max_depth", 10);
+		p.probRR	  = j.value("rr", 0.8);
+		p.enableClamp = j.value("enable_clamp", false);
+		p.clampMax	  = j.value("clamp_max", 1e3f);
 	}
 };
 

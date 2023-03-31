@@ -23,7 +23,7 @@ public:
 		RGBAfloat,
 	};
 	
-	Image() {};
+	Image() {}
 	Image(Vector2i size, Format format = Format::RGBAuchar, bool srgb = false);
 	~Image() {}
 
