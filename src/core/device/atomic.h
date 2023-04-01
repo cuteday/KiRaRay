@@ -6,7 +6,6 @@
 /* This interface is exclusively designed for KiRaRay, and is completely 
 	based on my imagination since I am not familiar with CPP's atomic API :-) */
 
-//#define KRR_LEGACY_CUDA_ATOMICS
 #ifdef KRR_DEVICE_CODE
 #if (__CUDA_ARCH__ < 700)
 #define KRR_LEGACY_CUDA_ATOMICS

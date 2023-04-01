@@ -4,19 +4,23 @@
 #include "device/buffer.h"
 #include "util/math_utils.h"
 
-#include "thrust/reduce.h"
-#include "thrust/transform_reduce.h"
-#include "thrust/execution_policy.h"
+#include <thrust/sort.h>
+#include <thrust/transform_reduce.h>
+#include <thrust/execution_policy.h>
 
-#define METRIC_IN_SRGB	0
-#define ERROR_EPS 1e-2f
+#define METRIC_IN_SRGB					0
+#define ERROR_EPS						1e-3f
+#define CLAMP_PIXEL_ERROR				0 
+#define CLAMP_PIXEL_ERROR_THRESHOLD		10.f
+#define DISCARD_FIREFLIES				1
+#define DISCARD_FIREFLIES_PRECENTAGE	0.0001f
 
 KRR_NAMESPACE_BEGIN
 
 namespace {
-TypedBuffer<Color3f> intermediateResult;
+TypedBuffer<float> intermediateResult;
 
-Color3f *initialize_metric(size_t n_elements) {
+float *initialize_metric(size_t n_elements) {
 	if (intermediateResult.size() < n_elements) {
 		intermediateResult.resize(n_elements);
 	}
@@ -24,30 +28,30 @@ Color3f *initialize_metric(size_t n_elements) {
 }
 }
 
-KRR_CALLABLE Color mse(const Color& y, const Color& ref) {
-	return (y - ref).abs().pow(2); 
+KRR_CALLABLE float mse(const Color& y, const Color& ref) {
+	return (y - ref).abs().pow(2).mean(); 
 }
 
-KRR_CALLABLE Color mape(const Color &y, const Color &ref) { 
-	return (y - ref).abs() / (ref + ERROR_EPS);
+KRR_CALLABLE float mape(const Color &y, const Color &ref) { 
+	return ((y - ref).abs() / (ref + ERROR_EPS)).mean();
 }
 
-KRR_CALLABLE Color smape(const Color &y, const Color &ref) { 
-	return (y - ref).abs() / (ref + y + ERROR_EPS);
+KRR_CALLABLE float smape(const Color &y, const Color &ref) { 
+	return ((y - ref).abs() / (ref + y + ERROR_EPS)).mean();
 }
 
 // is in fact MRSE...
-KRR_CALLABLE Color rel_mse(const Color &y, const Color &ref) {
-	Color ret{}, diff = (y - ref).abs();
-	for (int ch = 0; ch < Color::dim; ch++) {
-		ret[ch] = ref[ch] == 0.f ? 0.f : pow2(diff[ch] / ref[ch]);
-	}
-	return ret;
+KRR_CALLABLE float rel_mse(const Color &y, const Color &ref) {
+	return ((y - ref) / (ref + ERROR_EPS)).square().mean();
+	//Color ret{}, diff = (y - ref).abs();
+	//for (int ch = 0; ch < Color::dim; ch++)
+	//	ret[ch] = ref[ch] == 0.f ? 0.f : pow2(diff[ch] / (ref[ch]));
+	//return ret.mean();
 }
 
 float calc_metric(const CudaRenderTarget & frame, const Color4f *reference, 
 	size_t n_elements, ErrorMetric metric) {
-	Color3f *error_buffer = initialize_metric(n_elements);
+	float *error_buffer = initialize_metric(n_elements);
 	GPUParallelFor(n_elements, [=] KRR_DEVICE(int i) {	
 		Color y = frame.read(i);
 		Color ref = reference[i];
@@ -55,7 +59,7 @@ float calc_metric(const CudaRenderTarget & frame, const Color4f *reference,
 		y = utils::linear2srgb(y);
 		ref = utils::linear2srgb(ref);
 #endif
-		Color error;
+		float error;
 		switch (metric) {
 			case ErrorMetric::MSE:
 				error = mse(y, ref);
@@ -72,11 +76,20 @@ float calc_metric(const CudaRenderTarget & frame, const Color4f *reference,
 		}
 		error_buffer[i] = error;
 	});
-	
+
+#if DISCARD_FIREFLIES
+	thrust::sort(thrust::device, error_buffer, error_buffer + n_elements);
+	n_elements = n_elements * (1.f - DISCARD_FIREFLIES_PRECENTAGE);
+#endif
+
 	return thrust::transform_reduce(
 			   thrust::device, error_buffer, error_buffer + n_elements,
-				[] KRR_DEVICE(const Color3f &val) -> float {
-					return val.mean(); }, 0.f, thrust::plus<float>()) / n_elements;
+				[] KRR_DEVICE(const float &val) -> float {
+#if CLAMP_PIXEL_ERROR 
+					return min(val, CLAMP_PIXEL_ERROR_THRESHOLD);
+#endif
+					return val;
+				}, 0.f, thrust::plus<float>()) / n_elements;
 }
 
 KRR_NAMESPACE_END
