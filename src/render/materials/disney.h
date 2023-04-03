@@ -321,7 +321,8 @@ public:
 		} else if (comp < pDiffuse + pSpecRefl) {
 			sample = microfacetBrdf.sample(wo, sg, mode);
 			sample.pdf *= pSpecRefl;
-			if (pDiffuse) {
+			if (pDiffuse && sample.isNonSpecular()) {
+				// TODO: validate if you should disable other components when sampled an delta component.
 				sample.f += disneyDiffuse.f(wo, sample.wi);
 				sample.f += disneyRetro.f(wo, sample.wi);
 				sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;

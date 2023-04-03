@@ -64,7 +64,9 @@ void WavefrontPathTracer::handleHit() {
 		hitLightRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const HitLightWorkItem &w) {
 			Color Le		= w.light.L(w.p, w.n, w.uv, w.wo);
 			float misWeight = 1;
-			if (enableNEE && w.depth && (w.bsdfType & BSDF_SMOOTH)) {
+			// Simple understanding: if the sampled component is a delta func, then
+			// it has infinite values and has 1 MIS weights.
+			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				Light light = w.light;
 				Interaction intr(w.p, w.wo, w.n, w.uv);
 				float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(light);
@@ -84,7 +86,7 @@ void WavefrontPathTracer::handleMiss() {
 			Interaction intr(w.ray.origin);
 			for (const InfiniteLight &light : *sceneData.infiniteLights) {
 				float misWeight = 1;
-				if (enableNEE && w.depth && (w.bsdfType & BSDF_SMOOTH)) {
+				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 					float bsdfPdf  = w.pdf;
 					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
 					misWeight	   = evalMIS(bsdfPdf, lightPdf);

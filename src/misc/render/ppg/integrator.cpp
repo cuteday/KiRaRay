@@ -106,7 +106,7 @@ void PPGPathTracer::handleIntersections() {
 		w.thp /= probRR;
 		
 		const ShadingData& sd = w.sd;
-		BSDFType bsdfType = BxDF::flags(sd, (int)w.sd.bsdfType);
+		BSDFType bsdfType = sd.getBsdfType();
 		Vector3f woLocal = sd.frame.toLocal(sd.wo);
 
 		/* Statistics for mixed bsdf-guided sampling */
@@ -388,7 +388,7 @@ KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler,
 	BSDFSample sample = {};
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 
-	if (!m_isBuilt || !dTree || !enableGuiding || !(bsdfType & BSDF_SMOOTH) 
+	if (!m_isBuilt || !dTree || !enableGuiding || (bsdfType & BSDF_SPECULAR)
 		|| bsdfSamplingFraction == 1 || depth >= MAX_GUIDED_DEPTH) {
 		sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
 		bsdfPdf = sample.pdf;
@@ -420,7 +420,7 @@ KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int d
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 	
 	bsdfPdf = dTreePdf = 0;
-	if (!m_isBuilt || !dTree || !enableGuiding || !(bsdfType & BSDF_SMOOTH) 
+	if (!m_isBuilt || !dTree || !enableGuiding || (bsdfType & BSDF_SPECULAR)
 		|| alpha == 1 || depth >= MAX_GUIDED_DEPTH) {
 		return bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
 	}

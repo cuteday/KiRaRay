@@ -51,7 +51,7 @@ struct BSDFSample {
 	KRR_CALLABLE bool isGlossy() const { return flags & BSDF_GLOSSY; }
 	KRR_CALLABLE bool isReflective() const { return flags & BSDF_REFLECTION; }
 	KRR_CALLABLE bool isTransmissive() const { return flags & BSDF_TRANSMISSION; }
-	KRR_CALLABLE bool isNonSpecular() const { return flags & (BSDF_DIFFUSE | BSDF_GLOSSY); }
+	KRR_CALLABLE bool isNonSpecular() const { return flags & BSDF_SMOOTH; }
 						
 };
 
