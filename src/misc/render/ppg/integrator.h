@@ -38,10 +38,10 @@ public:
 	/* params:
 	 *	wi: scatter direction in local shading frame
 	 */
-	KRR_CALLABLE float evalPdf(float& bsdfPdf, float& dTreePdf, int depth,
+	KRR_CALLABLE float evalPdf(float& bsdfPdf, float& guidingPdf, int depth,
 		const ShadingData& sd, Vector3f wiLocal, float alpha, const DTreeWrapper* dTree, BSDFType bsdfType = BSDF_UNSET) const;
 	KRR_CALLABLE BSDFSample sample(Sampler& sampler, const ShadingData& sd,
-		float& bsdfPdf, float& dTreePdf, int depth,
+								   float &bsdfPdf, float &guidingPdf, int depth,
 		float bsdfSamplingFraction, const DTreeWrapper* dTree, BSDFType bsdfType = BSDF_UNSET) const;
 
 	/* This adaptively changes the topology for the S-Tree and D-Tree (the building tree). 
@@ -65,6 +65,10 @@ public:
 	int m_sTreeThreshold{ 12000 };						/* The subdivision threshold for the statistical weight of the S-Tree. */
 	float m_dTreeThreshold{ 0.01 };						/* The subdivision / prune threshold for the D-Tree (the energy fraction of spherical area). */
 	
+	/* RIS Guiding parameters */
+	bool m_enableRisGuiding{false};
+	int m_risSampleCount{2};
+
 	/* The following state parameters are used in offline setup with a given budget. */
 	void nextIteration();								/* Do the works for entering NEXT, e.g., rebuild, save image */
 	void resetGuiding();								/* Reset the SD-Tree to the beginning. */
@@ -102,7 +106,9 @@ public:
 			{ "auto_build", p.m_autoBuild },
 			{ "budget", p.m_task },
 			{ "save_intermediate", p.m_saveIntermediate },
-			{ "training_iter", p.m_trainingIterations }
+			{ "training_iter", p.m_trainingIterations },
+			{ "enable_ris_guiding", p.m_enableRisGuiding },
+			{ "ris_sample_count", p.m_risSampleCount }
 		});
 	}
 
@@ -123,6 +129,8 @@ public:
 		p.m_task				 = j.value("budget", RenderTask{});
 		p.m_saveIntermediate	 = j.value("save_intermediate", false);
 		p.m_trainingIterations	 = j.value("training_iter", -1);
+		p.m_enableRisGuiding	 = j.value("enable_ris_guiding", false);
+		p.m_risSampleCount		 = j.value("ris_sample_count", 2);
 	}
 };
 

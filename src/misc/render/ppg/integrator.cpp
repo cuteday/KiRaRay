@@ -383,7 +383,7 @@ void PPGPathTracer::finalize() {
 }
 
 KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler, 
-	const ShadingData& sd, float& bsdfPdf, float& dTreePdf, int depth,
+	const ShadingData& sd, float& bsdfPdf, float& guidingPdf, int depth,
 	float bsdfSamplingFraction, const DTreeWrapper* dTree, BSDFType bsdfType) const {
 	BSDFSample sample = {};
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
@@ -392,34 +392,49 @@ KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler,
 		|| bsdfSamplingFraction == 1 || depth >= MAX_GUIDED_DEPTH) {
 		sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
 		bsdfPdf = sample.pdf;
-		dTreePdf = 0;
+		guidingPdf = 0;
 		return sample;
 	}
-
-	Vector3f result;
-	if (bsdfSamplingFraction > 0 && sampler.get1D() < bsdfSamplingFraction) {
-		sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
-		bsdfPdf = sample.pdf;
-		dTreePdf = dTree->pdf(sd.frame.toWorld(sample.wi));
-		sample.pdf = bsdfSamplingFraction * bsdfPdf + (1 - bsdfSamplingFraction) * dTreePdf;
-		return sample;
+	
+	/* NOTE: RIS sample count == 1 equivalents to disabling RIS. */
+	int risSampleCount = m_enableRisGuiding ? m_risSampleCount : 1;
+	BSDFSample sample_r;
+	float w_r{}, sum_w{}, bsdfPdf_r{}, guidingPdf_r{};
+	for (int r = 0; r < risSampleCount; r++) {
+		if (bsdfSamplingFraction > 0 &&
+			sampler.get1D() < bsdfSamplingFraction) {
+			sample_r  = BxDF::sample(sd, woLocal, sampler, (int) sd.bsdfType);
+			bsdfPdf_r = sample_r.pdf;
+			guidingPdf_r = dTree->pdf(sd.frame.toWorld(sample.wi));
+		} else {
+			sample_r.wi	   = sd.frame.toLocal(dTree->sample(sampler));
+			sample_r.f	   = BxDF::f(sd, woLocal, sample.wi, (int) sd.bsdfType);
+			sample_r.flags = BSDF_GLOSSY | (SameHemisphere(sample.wi, woLocal)
+									? BSDF_REFLECTION : BSDF_TRANSMISSION);
+			bsdfPdf_r	 = BxDF::pdf(sd, woLocal, sample.wi, (int) sd.bsdfType);
+			guidingPdf_r = dTree->pdf(sd.frame.toWorld(sample.wi));
+		}
+		sample_r.pdf = bsdfSamplingFraction * bsdfPdf_r +
+					   (1 - bsdfSamplingFraction) * guidingPdf_r;
+		sum_w +=
+			(w_r = sample_r.f.mean() /*fs*/ * fabs(sample_r.wi[2]) /*cosine*/ *
+				   guidingPdf_r /*propto Li*/ / sample_r.pdf /*MIS pdf*/);
+		if (sampler.get1D() < w_r / sum_w) {
+			sample	   = sample_r;
+			guidingPdf = guidingPdf_r;
+			bsdfPdf	   = bsdfPdf_r;
+		}
 	}
-	else {
-		sample.wi = sd.frame.toLocal(dTree->sample(sampler));
-		sample.f = BxDF::f(sd, woLocal, sample.wi, (int)sd.bsdfType);
-		sample.flags = BSDF_GLOSSY | (SameHemisphere(sample.wi, woLocal) ?
-			BSDF_REFLECTION : BSDF_TRANSMISSION);
-		sample.pdf = evalPdf(bsdfPdf, dTreePdf, depth, sd, sample.wi,
-			bsdfSamplingFraction, dTree, sample.flags /*The bsdf lobe type is needed (in case for delta lobes)*/);
-		return sample;
-	}
+	sample.pdf = sample.f.mean() * guidingPdf * fabs(sample.wi[2]) *
+					m_risSampleCount / sum_w;
+	return sample;
 }
 
-KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int depth,
+KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& guidingPdf, int depth,
 	const ShadingData& sd, Vector3f wiLocal, float alpha, const DTreeWrapper* dTree, BSDFType bsdfType) const {
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
-	
-	bsdfPdf = dTreePdf = 0;
+	/* TODO: handle NEE/MIS + RIS cases. */
+	bsdfPdf = guidingPdf = 0;
 	if (!m_isBuilt || !dTree || !enableGuiding || (bsdfType & BSDF_SPECULAR)
 		|| alpha == 1 || depth >= MAX_GUIDED_DEPTH) {
 		return bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
@@ -427,13 +442,13 @@ KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int d
 	if (alpha > 0) {
 		bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
 		if (isinf(bsdfPdf) || isnan(bsdfPdf)) {
-			return bsdfPdf = dTreePdf = 0;
+			return bsdfPdf = guidingPdf = 0;
 		}
 	}
 	if (alpha < 1) {
-		dTreePdf = dTree->pdf(sd.frame.toWorld(wiLocal));
+		guidingPdf = dTree->pdf(sd.frame.toWorld(wiLocal));
 	}
-	return alpha * bsdfPdf + (1 - alpha) * dTreePdf;
+	return alpha * bsdfPdf + (1 - alpha) * guidingPdf;
 }
 
 void PPGPathTracer::filterFrame(Film *image) { 
