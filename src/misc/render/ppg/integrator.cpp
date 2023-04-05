@@ -398,35 +398,35 @@ KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler,
 	
 	/* NOTE: RIS sample count == 1 equivalents to disabling RIS. */
 	int risSampleCount = m_enableRisGuiding ? m_risSampleCount : 1;
-	BSDFSample sample_r;
-	float w_r{}, sum_w{}, bsdfPdf_r{}, guidingPdf_r{};
+	float sum_w		   = 0; 
 	for (int r = 0; r < risSampleCount; r++) {
-		if (bsdfSamplingFraction > 0 &&
-			sampler.get1D() < bsdfSamplingFraction) {
+		BSDFSample sample_r;
+		float w_r{}, bsdfPdf_r{}, guidingPdf_r{};
+		if (bsdfSamplingFraction > 0 && sampler.get1D() < bsdfSamplingFraction) {
 			sample_r  = BxDF::sample(sd, woLocal, sampler, (int) sd.bsdfType);
 			bsdfPdf_r = sample_r.pdf;
-			guidingPdf_r = dTree->pdf(sd.frame.toWorld(sample.wi));
+			guidingPdf_r = dTree->pdf(sd.frame.toWorld(sample_r.wi));
 		} else {
 			sample_r.wi	   = sd.frame.toLocal(dTree->sample(sampler));
-			sample_r.f	   = BxDF::f(sd, woLocal, sample.wi, (int) sd.bsdfType);
-			sample_r.flags = BSDF_GLOSSY | (SameHemisphere(sample.wi, woLocal)
+			sample_r.f	= BxDF::f(sd, woLocal, sample_r.wi, (int) sd.bsdfType);
+			sample_r.flags = BSDF_GLOSSY | (SameHemisphere(sample_r.wi, woLocal)
 									? BSDF_REFLECTION : BSDF_TRANSMISSION);
-			bsdfPdf_r	 = BxDF::pdf(sd, woLocal, sample.wi, (int) sd.bsdfType);
-			guidingPdf_r = dTree->pdf(sd.frame.toWorld(sample.wi));
+			bsdfPdf_r = BxDF::pdf(sd, woLocal, sample_r.wi, (int) sd.bsdfType);
+			guidingPdf_r = dTree->pdf(sd.frame.toWorld(sample_r.wi));
 		}
 		sample_r.pdf = bsdfSamplingFraction * bsdfPdf_r +
 					   (1 - bsdfSamplingFraction) * guidingPdf_r;
-		sum_w +=
-			(w_r = sample_r.f.mean() /*fs*/ * fabs(sample_r.wi[2]) /*cosine*/ *
-				   guidingPdf_r /*propto Li*/ / sample_r.pdf /*MIS pdf*/);
-		if (sampler.get1D() < w_r / sum_w) {
+		w_r = sample_r.f.mean() /*fs*/ * fabs(sample_r.wi[2]) /*cosine*/ *
+				guidingPdf_r /*propto <Li>*/ / sample_r.pdf /*MIS pdf*/;
+		sum_w += w_r;
+		if (sampler.get1D() <= w_r / sum_w) {
 			sample	   = sample_r;
 			guidingPdf = guidingPdf_r;
 			bsdfPdf	   = bsdfPdf_r;
 		}
 	}
 	sample.pdf = sample.f.mean() * guidingPdf * fabs(sample.wi[2]) *
-					m_risSampleCount / sum_w;
+					risSampleCount / sum_w;
 	return sample;
 }
 

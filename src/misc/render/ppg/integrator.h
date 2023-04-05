@@ -67,7 +67,7 @@ public:
 	
 	/* RIS Guiding parameters */
 	bool m_enableRisGuiding{false};
-	int m_risSampleCount{2};
+	int m_risSampleCount{1};
 
 	/* The following state parameters are used in offline setup with a given budget. */
 	void nextIteration();								/* Do the works for entering NEXT, e.g., rebuild, save image */
@@ -130,7 +130,7 @@ public:
 		p.m_saveIntermediate	 = j.value("save_intermediate", false);
 		p.m_trainingIterations	 = j.value("training_iter", -1);
 		p.m_enableRisGuiding	 = j.value("enable_ris_guiding", false);
-		p.m_risSampleCount		 = j.value("ris_sample_count", 2);
+		p.m_risSampleCount		 = j.value("ris_sample_count", 1);
 	}
 };
 
