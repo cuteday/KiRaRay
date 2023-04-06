@@ -219,11 +219,9 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 								  scatterRayQueue, nextRayQueue(depth));
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
 			handleHit();
-			if (depth || !transparentBackground)
-				handleMiss();
+			handleMiss();
 			// Break on maximum depth, but incorprate contribution from emissive hits.
-			if (depth == maxDepth)
-				break;
+			if (depth == maxDepth) break;
 			// [STEP#2.3] evaluate materials & bsdfs, and generate shadow rays
 			generateScatterRays();
 			// [STEP#2.4] trace shadow rays (next event estimation)
@@ -254,9 +252,6 @@ void WavefrontPathTracer::renderUI() {
 	ui::Checkbox("Clamping pixel value", &enableClamp);
 	if (enableClamp)
 		ui::DragFloat("Max:", &clampMax, 1, 1, 1e5f, "%.1f");
-	if (ui::CollapsingHeader("Misc")) {
-		ui::Checkbox("Transparent background", &transparentBackground);
-	}
 }
 
 KRR_REGISTER_PASS_DEF(WavefrontPathTracer);

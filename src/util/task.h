@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
 #include "window.h"
-#include "host/timer.h"
+#include "device/timer.h"
 
 KRR_NAMESPACE_BEGIN
 

@@ -10,7 +10,6 @@
 #include "device/context.h"
 #include "device/cuda.h"
 #include "device/atomic.h"
-#include "host/synchronize.h"
 
 #include "util/check.h"
 

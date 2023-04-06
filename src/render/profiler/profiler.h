@@ -6,7 +6,7 @@
 #include <cuda_runtime.h>
 
 #include "common.h"
-#include "host/timer.h"
+#include "device/timer.h"
 #include "device/timer.h"
 
 KRR_NAMESPACE_BEGIN

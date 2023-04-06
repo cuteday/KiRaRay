@@ -15,7 +15,11 @@ class CUDABuffer {
 public:
 	CUDABuffer() = default;
 	CUDABuffer(size_t size) { resize(size); }
-	~CUDABuffer() { free(); }
+	~CUDABuffer() { 
+	#ifdef KRR_DEVICE_CODE
+		free(); 
+	#endif
+	}
 
 	KRR_CALLABLE void setPtr(void* ptr) { d_ptr = ptr; }
 	KRR_CALLABLE CUdeviceptr data() const { return (CUdeviceptr)d_ptr; }
@@ -114,7 +118,12 @@ class TypedBuffer {
 public:
 	KRR_CALLABLE TypedBuffer() = default;
 	KRR_HOST TypedBuffer(size_t size) { resize(size); }
-	KRR_CALLABLE ~TypedBuffer(){};
+	KRR_CALLABLE ~TypedBuffer() {
+	#ifdef KRR_DEVICE_CODE
+		clear();
+	#endif
+	}
+
 	/* copy constructor */
 	TypedBuffer(const TypedBuffer& other) {
 		alloc_and_copy_from_device(other.d_ptr, other.m_size);

@@ -61,9 +61,6 @@ public:
 	ScatterRayQueue* scatterRayQueue{ };
 	PixelStateBuffer* pixelState;
 
-	// custom properties
-	bool transparentBackground{ };
-
 	// path tracing parameters
 	int frameId{ 0 };
 	int maxQueueSize;

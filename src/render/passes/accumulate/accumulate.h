@@ -5,7 +5,7 @@
 #include "window.h"
 #include "renderpass.h"
 
-#include "host/timer.h"
+#include "device/timer.h"
 #include "device/buffer.h"
 
 KRR_NAMESPACE_BEGIN

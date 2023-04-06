@@ -4,7 +4,7 @@
 
 #include "common.h"
 #include "texture.h"
-#include "host/timer.h"
+#include "device/timer.h"
 #include "device/context.h"
 #include "device/buffer.h"
 

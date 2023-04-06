@@ -209,7 +209,7 @@ void PPGPathTracer::render(RenderFrame::SharedPtr frame) {
 				nextRayQueue(depth));
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
 			handleHit();
-			if (depth || !transparentBackground) handleMiss();
+			handleMiss();
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
 			// [STEP#2.3] handle intersections and shadow rays
@@ -318,9 +318,6 @@ void PPGPathTracer::renderUI() {
 	ui::Checkbox("Clamping pixel value", &enableClamp);
 	if (enableClamp) 
 		ui::DragFloat("Max:", &clampMax, 1, 500);
-	if (ui::CollapsingHeader("Misc")) {
-		ui::Checkbox("Transparent background", &transparentBackground);
-	}
 }
 
 void PPGPathTracer::resetGuiding() {
@@ -396,7 +393,6 @@ KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler,
 		return sample;
 	}
 
-	Vector3f result;
 	if (bsdfSamplingFraction > 0 && sampler.get1D() < bsdfSamplingFraction) {
 		sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
 		bsdfPdf = sample.pdf;

@@ -58,16 +58,13 @@ SET ( KRR_CORE_HEADERS
 	core/sampler.h
 	# cuda device backend and host-device interops
 	core/interop.h
-	core/host/memory.h
-	core/host/synchronize.h
-	core/host/timer.h
+	core/device/timer.h
 	core/device/atomic.h
 	core/device/memory.h
 	core/device/context.h
 	core/device/buffer.h
 	core/device/optix.h
 	core/device/cuda.h
-	core/device/timer.h
 )
 
 SET(KRR_HEADERS

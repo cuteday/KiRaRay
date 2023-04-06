@@ -5,7 +5,7 @@
 #include "logger.h"
 #include "window.h"
 
-#include "host/timer.h"
+#include "device/timer.h"
 #include "util/ema.h"
 
 KRR_NAMESPACE_BEGIN
