@@ -16,7 +16,7 @@ public:
 	CUDABuffer() = default;
 	CUDABuffer(size_t size) { resize(size); }
 	~CUDABuffer() { 
-	#ifdef KRR_DEVICE_CODE
+	#ifndef KRR_DEVICE_CODE
 		free(); 
 	#endif
 	}
@@ -119,7 +119,7 @@ public:
 	KRR_CALLABLE TypedBuffer() = default;
 	KRR_HOST TypedBuffer(size_t size) { resize(size); }
 	KRR_CALLABLE ~TypedBuffer() {
-	#ifdef KRR_DEVICE_CODE
+	#ifndef KRR_DEVICE_CODE
 		clear();
 	#endif
 	}

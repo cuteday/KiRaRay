@@ -16,8 +16,7 @@ WavefrontPathTracer::WavefrontPathTracer(Scene &scene) {
 template <typename... Args>
 KRR_DEVICE_FUNCTION void WavefrontPathTracer::debugPrint(uint pixelId, const char *fmt,
 														 Args &&...args) {
-	if (pixelId == debugPixel)
-		printf(fmt, std::forward<Args>(args)...);
+	if (pixelId == debugPixel) printf(fmt, std::forward<Args>(args)...);
 }
 
 void WavefrontPathTracer::initialize() {
@@ -25,36 +24,22 @@ void WavefrontPathTracer::initialize() {
 	maxQueueSize	 = mFrameSize[0] * mFrameSize[1];
 	CUDA_SYNC_CHECK(); // necessary, preventing kernel accessing memories tobe free'ed...
 	for (int i = 0; i < 2; i++) {
-		if (rayQueue[i])
-			rayQueue[i]->resize(maxQueueSize, alloc);
-		else
-			rayQueue[i] = alloc.new_object<RayQueue>(maxQueueSize, alloc);
+		if (rayQueue[i]) rayQueue[i]->resize(maxQueueSize, alloc);
+		else rayQueue[i] = alloc.new_object<RayQueue>(maxQueueSize, alloc);
 	}
-	if (missRayQueue)
-		missRayQueue->resize(maxQueueSize, alloc);
-	else
-		missRayQueue = alloc.new_object<MissRayQueue>(maxQueueSize, alloc);
-	if (hitLightRayQueue)
-		hitLightRayQueue->resize(maxQueueSize, alloc);
-	else
-		hitLightRayQueue = alloc.new_object<HitLightRayQueue>(maxQueueSize, alloc);
-	if (shadowRayQueue)
-		shadowRayQueue->resize(maxQueueSize, alloc);
-	else
-		shadowRayQueue = alloc.new_object<ShadowRayQueue>(maxQueueSize, alloc);
-	if (scatterRayQueue)
-		scatterRayQueue->resize(maxQueueSize, alloc);
-	else
-		scatterRayQueue = alloc.new_object<ScatterRayQueue>(maxQueueSize, alloc);
-	if (pixelState)
-		pixelState->resize(maxQueueSize, alloc);
-	else
-		pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
+	if (missRayQueue) missRayQueue->resize(maxQueueSize, alloc);
+	else missRayQueue = alloc.new_object<MissRayQueue>(maxQueueSize, alloc);
+	if (hitLightRayQueue) hitLightRayQueue->resize(maxQueueSize, alloc);
+	else hitLightRayQueue = alloc.new_object<HitLightRayQueue>(maxQueueSize, alloc);
+	if (shadowRayQueue) shadowRayQueue->resize(maxQueueSize, alloc);
+	else shadowRayQueue = alloc.new_object<ShadowRayQueue>(maxQueueSize, alloc);
+	if (scatterRayQueue) scatterRayQueue->resize(maxQueueSize, alloc);
+	else scatterRayQueue = alloc.new_object<ScatterRayQueue>(maxQueueSize, alloc);
+	if (pixelState) pixelState->resize(maxQueueSize, alloc);
+	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
 	cudaDeviceSynchronize();
-	if (!camera)
-		camera = alloc.new_object<Camera>();
-	if (!backend)
-		backend = new OptiXWavefrontBackend();
+	if (!camera) camera = alloc.new_object<Camera>();
+	if (!backend) backend = new OptiXWavefrontBackend();
 	CUDA_SYNC_CHECK();
 }
 
@@ -121,18 +106,20 @@ void WavefrontPathTracer::generateScatterRays() {
 				Vector3f wiLocal		  = sd.frame.toLocal(wiWorld);
 
 				float lightPdf	= sampledLight.pdf * ls.pdf;
-				float bsdfPdf	= BxDF::pdf(sd, woLocal, wiLocal, (int) sd.bsdfType);
+				float misWeight{1};
 				Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType);
-				float misWeight = evalMIS(lightPdf, bsdfPdf);
-				if (misWeight > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
+				if (enableMIS) {
+					float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int) sd.bsdfType);
+					misWeight	  = evalMIS(lightPdf, bsdfPdf);
+				}
+				if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
 					sw.Li				 = ls.L;
 					sw.a	   = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
 					sw.pixelId = w.pixelId;
 					sw.tMax	   = 1;
-					if (sw.a.any())
-						shadowRayQueue->push(sw);
+					if (sw.a.any()) shadowRayQueue->push(sw);
 				}
 			}
 
@@ -218,8 +205,10 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 								  currentRayQueue(depth), missRayQueue, hitLightRayQueue,
 								  scatterRayQueue, nextRayQueue(depth));
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
-			handleHit();
-			handleMiss();
+			if (!depth || !enableNEE || enableMIS) {
+				handleHit();
+				handleMiss();
+			}
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
 			// [STEP#2.3] evaluate materials & bsdfs, and generate shadow rays
@@ -245,6 +234,9 @@ void WavefrontPathTracer::renderUI() {
 	ui::InputInt("Max bounces", &maxDepth, 1);
 	ui::SliderFloat("Russian roulette", &probRR, 0, 1);
 	ui::Checkbox("Enable NEE", &enableNEE);
+	// If MIS is disabled while NEE is enabled,
+	// The paths that hits the lights will not contribute.
+	if (enableNEE) ui::Checkbox("Enable MIS", &enableMIS);
 	ui::Text("Debugging");
 	ui::Checkbox("Debug output", &debugOutput);
 	if (debugOutput)

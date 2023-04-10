@@ -122,17 +122,20 @@ void PPGPathTracer::handleIntersections() {
 			Vector3f wiLocal = sd.frame.toLocal(wiWorld);
 
 			float lightPdf = sampledLight.pdf * ls.pdf;
-			float scatterPdf = PPGPathTracer::evalPdf(bsdfPdf, dTreePdf, w.depth, sd, wiLocal,
-				m_bsdfSamplingFraction, dTree, bsdfType);
-			Color bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int)sd.bsdfType);
-			float misWeight = evalMIS(lightPdf, scatterPdf);
-			if (misWeight > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
+			float misWeight{1};
+			Color bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType);
+			if (enableMIS) {
+				float scatterPdf = PPGPathTracer::evalPdf(bsdfPdf, dTreePdf, w.depth, 
+					sd, wiLocal, m_bsdfSamplingFraction, dTree, bsdfType);
+				misWeight = evalMIS(lightPdf, scatterPdf);
+			}
+			if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
 				ShadowRayWorkItem sw = {};
-				sw.ray = shadowRay;
-				sw.Li = ls.L;
+				sw.ray				 = shadowRay;
+				sw.Li				 = ls.L;
 				sw.a = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
 				sw.pixelId = w.pixelId;
-				sw.tMax = 1;
+				sw.tMax	   = 1;
 				if (sw.a.any()) shadowRayQueue->push(sw);
 			}
 		}
@@ -208,8 +211,10 @@ void PPGPathTracer::render(RenderFrame::SharedPtr frame) {
 				scatterRayQueue,
 				nextRayQueue(depth));
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
-			handleHit();
-			handleMiss();
+			if (!depth || !enableNEE || enableMIS) {
+				handleHit();
+				handleMiss();
+			}
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
 			// [STEP#2.3] handle intersections and shadow rays
@@ -283,6 +288,7 @@ void PPGPathTracer::renderUI() {
 	ui::InputInt("Max bounces", &maxDepth, 1);
 	ui::SliderFloat("Russian roulette", &probRR, 0, 1);
 	ui::Checkbox("Enable NEE", &enableNEE);
+	if (enableNEE) ui::Checkbox("Enable MIS", &enableMIS);
 
 	ui::Text("Path guiding");
 	ui::Text("Target distribution mode: %s", distribution_names[(int)m_distribution]);

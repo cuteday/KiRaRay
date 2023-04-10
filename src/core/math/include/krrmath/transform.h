@@ -7,7 +7,8 @@
 #include "matrix.h"
 #include "constants.h"
 
-#define KRR_CLIPSPACE_RIGHTHANDED 1
+#define KRR_CLIPSPACE_RIGHTHANDED	1
+#define KRR_CLIPSPACE_Z_FROM_ZERO	1
 
 // Adapted from GLM's clip space transform implementation.
 
@@ -24,9 +25,14 @@ KRR_CALLABLE Matrix<T, 4, 4, Options> perspective(T fovy, T aspect, T zNear, T z
 
 	result(0, 0) = static_cast<T>(1) / (aspect * tanHalfFovy);
 	result(1, 1) = static_cast<T>(1) / (tanHalfFovy);
-	result(2, 2) = -(zFar + zNear) / (zFar - zNear);
 	result(3, 2) = -static_cast<T>(1);
+#if KRR_CLIPSPACE_Z_FROM_ZERO
+	result(2, 2) = -zFar / (zFar - zNear);
+	result(2, 3) = -(zFar * zNear) / (zFar - zNear);
+#else 
+	result(2, 2) = -(zFar + zNear) / (zFar - zNear);
 	result(2, 3) = -(static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+#endif
 	return result;
 }
 
@@ -36,10 +42,15 @@ KRR_CALLABLE Matrix<T, 4, 4, Options> orthogonal(T left, T right, T bottom, T to
 
 	result(0, 0) = static_cast<T>(2) / (right - left);
 	result(1, 1) = static_cast<T>(2) / (top - bottom);
-	result(2, 2) = -static_cast<T>(2) / (zFar - zNear);
 	result(0, 3) = -(right + left) / (right - left);
 	result(1, 3) = -(top + bottom) / (top - bottom);
+#if KRR_CLIPSPACE_Z_FROM_ZERO
+	result(2, 2) = -static_cast<T>(1) / (zFar - zNear);
+	result(2, 3) = -zNear / (zFar - zNear);
+#else
+	result(2, 2) = -static_cast<T>(2) / (zFar - zNear);
 	result(2, 3) = -(zFar + zNear) / (zFar - zNear);
+#endif
 	return result;
 }
 
@@ -77,9 +88,14 @@ KRR_CALLABLE Matrix<T, 4, 4, Options> perspective(T fovy, T aspect, T zNear, T z
 
 	result(0, 0) = static_cast<T>(1) / (aspect * tanHalfFovy);
 	result(1, 1) = static_cast<T>(1) / (tanHalfFovy);
-	result(2, 2) = (zFar + zNear) / (zFar - zNear);
 	result(3, 2) = static_cast<T>(1);
+#if KRR_CLIPSPACE_Z_FROM_ZERO
+	result(2, 2) = zFar / (zFar - zNear);
+	result(2, 3) = -(zFar * zNear) / (zFar - zNear);
+#else
+	result(2, 2) = (zFar + zNear) / (zFar - zNear);
 	result(2, 3) = -(static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+#endif
 	return result;
 }
 
@@ -90,10 +106,15 @@ KRR_CALLABLE Matrix<T, 4, 4, Options> orthogonal(T left, T right, T bottom, T to
 
 	result(0, 0) = static_cast<T>(2) / (right - left);
 	result(1, 1) = static_cast<T>(2) / (top - bottom);
-	result(2, 2) = static_cast<T>(2) / (zFar - zNear);
 	result(0, 3) = -(right + left) / (right - left);
 	result(1, 3) = -(top + bottom) / (top - bottom);
+#if KRR_CLIPSPACE_Z_FROM_ZERO
+	result(2, 2) = static_cast<T>(1) / (zFar - zNear);
+	result(2, 3) = -zNear / (zFar - zNear);
+#else
+	result(2, 2) = static_cast<T>(2) / (zFar - zNear);
 	result(2, 3) = -(zFar + zNear) / (zFar - zNear);
+#endif
 	return result;
 }
 

@@ -14,7 +14,6 @@
 KRR_NAMESPACE_BEGIN
 
 void run(const json& config) {
-	static bool initialized{};
 	if (!gpContext) gpContext.reset(new Context());
 	RenderApp app;
 	app.loadConfig(config);

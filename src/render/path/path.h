@@ -22,10 +22,8 @@ struct LaunchParamsPT {
 	Vector2i fbSize = Vector2i::Zero();
 	// per pixel debugging output
 	bool debugOutput	= false;
-	Vector2i debugPixel = { 960, 540 };
-	// path tracing parameters
-	bool NEE = false; // enable next event estimation (and multiple importance sampling)
-	
+	bool NEE			= false; // enable next event estimation (and MIS)
+	Vector2i debugPixel = {960, 540};
 	int maxDepth		 = 10;
 	float probRR		 = 0.8;
 	float clampThreshold = 1e4f; // clamp max radiance contrib per frame
@@ -50,10 +48,6 @@ struct PathData {
 	LightSampler lightSampler;	// randomly choosing a light source
 	LightSampleContext ctx;		// last context used for direct light sampling
 	Ray ray;					// The last scattered ray
-};
-
-struct ShadowRayData {
-	bool visible = false;
 };
 
 KRR_NAMESPACE_END

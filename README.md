@@ -17,7 +17,7 @@
 
 ### Build and run
 
-| *Windows* | [![Building](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml/badge.svg)](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml) |
+| *Windows (MSVC)* | [![Build](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml/badge.svg)](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml) |
 | --------- | ------------------------------------------------------------ |
 
 #### Requirements
