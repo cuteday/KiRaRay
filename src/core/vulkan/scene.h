@@ -38,8 +38,9 @@ struct MeshData {
 	uint texCoordOffset;
 	uint tangentOffset;		
 
+	uint indexOffset;
 	uint materialIndex;			// this indexes the material constants buffer
-	Vector3i padding;
+	Vector2i padding;
 };
 
 struct MaterialConstants {

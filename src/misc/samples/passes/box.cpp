@@ -253,8 +253,6 @@ public:
 				radians(30.f), float(fbinfo.width) / float(fbinfo.height),
 				0.01f, 1000.f);
 			Matrix4f mvp = projMatrix * viewMatrix * modelMatrix;
-			// std::cout << "Proj: \n" << projMatrix << "\n";
-			// std::cout << "View: \n" << viewMatrix << "\n";
 			modelConstants[viewIndex].viewProjMatrix = mvp;
 		}
 

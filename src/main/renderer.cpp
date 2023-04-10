@@ -322,6 +322,8 @@ void RenderApp::finalize() {
 		pass->finalize();
 	mpUIRenderer.reset();
 	m_RenderPasses.clear();
+	mpScene.reset();
+	// Destroy created vulkan resources before destroy vulkan device
 	Shutdown();
 }
 

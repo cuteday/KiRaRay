@@ -17,13 +17,12 @@ void BindlessRender::initialize() {
 		vkrhi::ShaderType::Pixel);
 
 	vkrhi::BindlessLayoutDesc bindlessLayoutDesc;
-	bindlessLayoutDesc.visibility = vkrhi::ShaderType::All;
-	bindlessLayoutDesc.firstSlot   = 0;
-	bindlessLayoutDesc.maxCapacity = 1024;
+	bindlessLayoutDesc.visibility	  = vkrhi::ShaderType::All;
+	bindlessLayoutDesc.firstSlot	  = 0;
+	bindlessLayoutDesc.maxCapacity	  = 1024;
 	bindlessLayoutDesc.registerSpaces = {
 		nvrhi::BindingLayoutItem::RawBuffer_SRV(1),
-		nvrhi::BindingLayoutItem::Texture_SRV(2)
-	};
+		nvrhi::BindingLayoutItem::Texture_SRV(2)};
 	mBindlessLayout = getVulkanDevice()->createBindlessLayout(bindlessLayoutDesc);
 	
 	mDescriptorTableManager = std::make_shared<DescriptorTableManager>(
@@ -74,13 +73,13 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 		textureDesc.keepInitialState = true;
 		textureDesc.isRenderTarget	 = true;
 
-		textureDesc.debugName = "ColorBuffer";
-		textureDesc.format	  = vkrhi::Format::RGBA32_FLOAT;
+		textureDesc.debugName	 = "ColorBuffer";
+		textureDesc.format		 = vkrhi::Format::RGBA32_FLOAT;
 		textureDesc.initialState = vkrhi::ResourceStates::RenderTarget;
-		mColorBuffer		  = getVulkanDevice()->createTexture(textureDesc);
+		mColorBuffer = getVulkanDevice()->createTexture(textureDesc);
 		
 		textureDesc.debugName	 = "DepthBuffer";
-		textureDesc.format = vkrhi::Format::D24S8;
+		textureDesc.format		 = vkrhi::Format::D24S8;
 		textureDesc.initialState = vkrhi::ResourceStates::DepthWrite;
 		mDepthBuffer = getVulkanDevice()->createTexture(textureDesc);
 		
@@ -90,12 +89,12 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 		mFramebuffer = getVulkanDevice()->createFramebuffer(framebufferDesc);
 
 		vkrhi::GraphicsPipelineDesc pipelineDesc;
-		pipelineDesc.VS = mVertexShader;
-		pipelineDesc.PS = mPixelShader;
-		pipelineDesc.primType = vkrhi::PrimitiveType::TriangleList;
+		pipelineDesc.VS				= mVertexShader;
+		pipelineDesc.PS				= mPixelShader;
+		pipelineDesc.primType		= vkrhi::PrimitiveType::TriangleList;
 		pipelineDesc.bindingLayouts = {mBindingLayout, mBindlessLayout};
 		pipelineDesc.renderState.rasterState.frontCounterClockwise = true;
-		pipelineDesc.renderState.rasterState.cullMode = vkrhi::RasterCullMode::Back;
+		pipelineDesc.renderState.rasterState.cullMode = vkrhi::RasterCullMode::None;
 		pipelineDesc.renderState.depthStencilState.depthTestEnable = true;
 		pipelineDesc.renderState.depthStencilState.depthFunc =
 			vkrhi::ComparisonFunc::GreaterOrEqual;
@@ -110,15 +109,22 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 
 	/* Set view constants */
 	ViewConstants viewConstants;
+	const Camera &camera	  = getScene()->getCamera();
+	viewConstants.viewToClip  = camera.getProjectionMatrix();
+	viewConstants.worldToView = camera.getViewMatrix();
+	viewConstants.worldToClip = camera.getViewProjectionMatrix();
+
 	mCommandList->writeBuffer(mViewConstants, &viewConstants,
 							  sizeof(viewConstants));
 
 	/* Draw geometries. */
 	vkrhi::GraphicsState state;
-	state.pipeline = mGraphicsPipeline;
+	state.pipeline	  = mGraphicsPipeline;
 	state.framebuffer = mFramebuffer;
 	state.bindings	  = {mBindingSet,
 						 mDescriptorTableManager->GetDescriptorTable()};
+	state.viewport.addViewportAndScissorRect(
+		vkrhi::Viewport(0, fbInfo.width, 0, fbInfo.height, 0.f, 1.f));
 	mCommandList->setGraphicsState(state);
 
 	for (int i = 0; i < mpScene->meshes.size(); i++) {
@@ -143,11 +149,11 @@ void BindlessRender::renderUI() {
 }
 
 void BindlessRender::resize(const Vector2i &size) {
-	mDepthBuffer = nullptr;
-	mColorBuffer = nullptr;
-	mFramebuffer = nullptr;
+	mDepthBuffer	  = nullptr;
+	mColorBuffer	  = nullptr;
+	mFramebuffer	  = nullptr;
 	mGraphicsPipeline = nullptr;
-	mBindingCache->Clear();
+	if(mBindingCache) mBindingCache->Clear();
 }
 
 KRR_REGISTER_PASS_DEF(BindlessRender);

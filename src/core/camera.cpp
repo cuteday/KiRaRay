@@ -23,10 +23,22 @@ void Camera::renderUI() {
 	ui::DragFloat("Focal distance", &mData.focalDistance, 0.01f, 1.f, 100.f);
 }
 
+Matrix4f Camera::getViewMatrix() const {
+	return look_at(mData.pos, mData.target, Vector3f{0, 1, 0});
+}
+
+Matrix4f Camera::getProjectionMatrix() const {
+	float fovy = 2 * atan2(mData.filmSize[1] / 2, mData.focalLength);
+	return perspective(fovy, mData.aspectRatio, 0.0001f, 1000.f);
+}
+
+Matrix4f Camera::getViewProjectionMatrix() const {
+	return getProjectionMatrix() * getViewMatrix();
+}
+
 bool OrbitCameraController::update(){
 	Quaternionf rotate = Quaternionf::fromEuler(mData.yaw, mData.pitch, 0);
 	rotate.normalize();
-	//Quaternion rotate	  = normalize(Quaternion(mData.yaw, mData.pitch, 0));
 	Vector3f forward = rotate * Vector3f(0, 0, -1);
 	Vector3f pos = mData.target - forward * mData.radius;
 

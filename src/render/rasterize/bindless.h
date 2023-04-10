@@ -13,6 +13,8 @@ class BindlessRender : public RenderPass {
 public:
 	struct ViewConstants {
 		Matrix4f worldToView;
+		Matrix4f viewToClip;
+		Matrix4f worldToClip;
 	};
 	
 	using RenderPass::RenderPass;
@@ -44,6 +46,14 @@ private:
 	std::shared_ptr<DescriptorTableManager> mDescriptorTableManager;
 	std::shared_ptr<BindingCache> mBindingCache;
 	std::shared_ptr<CommonRenderPasses> mHelperPass;
+
+	friend void to_json(json& j, const BindlessRender& p) {
+
+	}
+
+	friend void from_json(const json& j, BindlessRender& p) {
+
+	}
 };
 
 KRR_NAMESPACE_END

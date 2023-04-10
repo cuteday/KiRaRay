@@ -14,7 +14,7 @@ public:
 	struct CameraData {
 		Vector2f filmSize{ 42.666667f, 24.0f };	// sensor size in mm [width, height]
 		float focalLength{ 21 };				// distance from sensor to lens, in mm
-		float focalDistance{ 10 };				// distance from length to focal point, in scene units (m)
+		float focalDistance{ 10 };				// distance from lens to focal point, in scene units (m)
 		float lensRadius{ 0 };					// aperture radius, in mm
 		float aspectRatio{ 1.777777f };			// width divides height
 
@@ -66,10 +66,14 @@ public:
 	KRR_CALLABLE void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; }
 	KRR_CALLABLE void setFilmSize(Vector2f& size) { mData.filmSize = size; }
 	KRR_CALLABLE void setfocalDistance(float focalDistance) { mData.focalDistance = focalDistance; }
-	KRR_CALLABLE void setfocalDLength(float focalLength) { mData.focalLength = focalLength; }
+	KRR_CALLABLE void setfocalLength(float focalLength) { mData.focalLength = focalLength; }
 	KRR_CALLABLE void setPosition(Vector3f& pos) { mData.pos = pos; }
 	KRR_CALLABLE void setTarget(Vector3f& target) { mData.target = target; }
 	KRR_CALLABLE void setUp(Vector3f& up) { mData.up = up; }
+
+	Matrix4f getViewMatrix() const;
+	Matrix4f getProjectionMatrix() const;
+	Matrix4f getViewProjectionMatrix() const;
 
 protected:
 	KRR_CLASS_DEFINE(Camera, mData);

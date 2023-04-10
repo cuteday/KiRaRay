@@ -134,6 +134,8 @@ void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 
 void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 	/* Fill mesh data buffer on host. */
+	/* Normally, a instance is from a mesh, which may contain several geometries.
+		In kiraray, we simply ignore this (i.e. the concept of geometry and instances). */
 	for (int i = 0; i < mpScene->meshes.size(); i++) {
 		const auto &mesh = mpScene->meshes[i];
 		rs::MeshData meshData;
@@ -143,7 +145,7 @@ void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 		// the descriptorHandle.Get will return -1 if invalid.
 		meshData.indexBufferIndex = mMeshBuffers[i].indexBufferDescriptor.Get();
 		meshData.vertexBufferIndex = mMeshBuffers[i].vertexBufferDescriptor.Get();
-		
+		meshData.indexOffset = 0;
 		meshData.positionOffset = mMeshBuffers[i].hasAttribute(VertexAttribute::Position)
 			? mMeshBuffers[i].getVertexBufferRange(VertexAttribute::Position).byteOffset : ~0u;
 		meshData.normalOffset = mMeshBuffers[i].hasAttribute(VertexAttribute::Normal)
