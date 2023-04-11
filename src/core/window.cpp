@@ -361,7 +361,7 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 	m_DeviceParams.backBufferHeight = 0;
 
 	UpdateWindowSize();
-
+	m_NvrhiDevice->waitForIdle();
 	return true;
 }
 
@@ -1246,6 +1246,7 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 	// vulkan-exported semaphore.
 	auto* graphicsQueue = dynamic_cast<vkrhi::vulkan::Device *>(m_NvrhiDevice.Get())
 		->getQueue(nvrhi::CommandQueue::Graphics);
+	m_VulkanDevice.waitIdle();
 	m_VulkanDevice.destroySemaphore(graphicsQueue->trackingSemaphore);
 	graphicsQueue->trackingSemaphore = m_GraphicsSemaphore;
 
@@ -1260,7 +1261,7 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 
 void DeviceManager::DestroyDeviceAndSwapChain() {
 	destroySwapChain();
-
+	m_VulkanDevice.waitIdle();
 	m_VulkanDevice.destroySemaphore(m_PresentSemaphore);
 	m_PresentSemaphore = {};
 

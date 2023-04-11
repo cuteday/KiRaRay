@@ -7,9 +7,6 @@
 #include "matrix.h"
 #include "constants.h"
 
-#define KRR_CLIPSPACE_RIGHTHANDED	1
-#define KRR_CLIPSPACE_Z_FROM_ZERO	1
-
 // Adapted from GLM's clip space transform implementation.
 
 KRR_NAMESPACE_BEGIN

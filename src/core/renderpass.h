@@ -26,6 +26,7 @@ public:
 	~RenderFrame() { 
 		if (mDevice) {	// this RenderFrame is once initialized.
 			vk::Device device = mDevice->getNativeObject(nvrhi::ObjectTypes::VK_Device);
+			device.waitIdle();
 			device.destroySemaphore(mSemaphore.vk_sem);
 		}
 	}

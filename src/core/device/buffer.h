@@ -17,7 +17,7 @@ public:
 	CUDABuffer(size_t size) { resize(size); }
 	~CUDABuffer() { 
 	#ifndef KRR_DEVICE_CODE
-		free(); 
+	//	free(); 
 	#endif
 	}
 
@@ -116,11 +116,11 @@ private:
 template <typename T>
 class TypedBuffer {
 public:
-	KRR_CALLABLE TypedBuffer() = default;
-	KRR_HOST TypedBuffer(size_t size) { resize(size); }
-	KRR_CALLABLE ~TypedBuffer() {
+	TypedBuffer() = default;
+	TypedBuffer(size_t size) { resize(size); }
+	~TypedBuffer() {
 	#ifndef KRR_DEVICE_CODE
-		clear();
+	//	clear();
 	#endif
 	}
 

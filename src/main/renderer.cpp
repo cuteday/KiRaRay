@@ -315,6 +315,7 @@ void RenderApp::initialize() {
 	mpUIRenderer = std::make_shared<UIRenderer>(this);
 	mpUIRenderer->initialize();
 	for (auto pass : m_RenderPasses) pass->initialize();
+	m_NvrhiDevice->waitForIdle();
 }
 
 void RenderApp::finalize() { 
