@@ -97,15 +97,15 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 		pipelineDesc.renderState.rasterState.cullMode = vkrhi::RasterCullMode::None;
 		pipelineDesc.renderState.depthStencilState.depthTestEnable = true;
 		pipelineDesc.renderState.depthStencilState.depthFunc =
-			vkrhi::ComparisonFunc::GreaterOrEqual;
+			vkrhi::ComparisonFunc::LessOrEqual;
 		mGraphicsPipeline = getVulkanDevice()->createGraphicsPipeline(pipelineDesc, mFramebuffer);
 	}
 	
 	mCommandList->open();
 	mCommandList->clearTextureFloat(mColorBuffer, vkrhi::AllSubresources,
-									vkrhi::Color(0));
+									vkrhi::Color(0.2, 0.2, 0.2, 1));
 	mCommandList->clearDepthStencilTexture(mDepthBuffer, vkrhi::AllSubresources,
-										   true, 0, true, 0);
+										   true, 1, true, 0);
 
 	/* Set view constants */
 	ViewConstants viewConstants;
@@ -127,13 +127,12 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 		vkrhi::Viewport(0, fbInfo.width, 0, fbInfo.height, 0.f, 1.f));
 	mCommandList->setGraphicsState(state);
 
-	for (int i = 0; i < mpScene->meshes.size(); i++) {
-		int meshId = i;
+	for (int meshId = 0; meshId < mpScene->meshes.size(); meshId++) {
 		mCommandList->setPushConstants(&meshId, sizeof(int));
 		
 		vkrhi::DrawArguments args;
 		args.instanceCount = 1;
-		args.vertexCount   = mpScene->meshes[i].indices.size() * 3;
+		args.vertexCount   = mpScene->meshes[meshId].indices.size() * 3;
 		mCommandList->draw(args);
 	}
 	

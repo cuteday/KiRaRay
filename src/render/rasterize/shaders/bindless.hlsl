@@ -57,6 +57,8 @@ void vs_main(
 	in uint i_vertexID: SV_VertexID,
 	out float4 o_position: SV_Position,
 	out float2 o_uv: TEXCOORD,
+	//out float3 o_normal: NORMAL,
+	//out float3 o_tangent: TANGENT,
 	out uint o_material: MATERIAL) {
 	
 	MeshData mesh = t_MeshData[g_RenderConstants.meshID];
@@ -69,8 +71,12 @@ void vs_main(
 		asfloat(vertexBuffer.Load2(mesh.texCoordOffset + index * 8 /*sizeof(float2)*/));
 	float3 position = mesh.positionOffset == ~0u ? 0 : 
 		asfloat(vertexBuffer.Load3(mesh.positionOffset + index * 12 /*sizeof(float3)*/));
+	float3 normal = mesh.normalOffset == ~0u ? 0 : 
+		asfloat(vertexBuffer.Load3(mesh.normalOffset + index * 12 /*sizeof(float3)*/));
+	float3 tangent = mesh.tangentOffset == ~0u ? 0 : 
+		asfloat(vertexBuffer.Load3(mesh.tangentOffset + index * 12 /*sizeof(float3)*/));
 
-	float4 clipSpacePosition = mul(g_ViewConstants.viewToClip, float4(position, 1.0));
+	float4 clipSpacePosition = mul(g_ViewConstants.worldToClip, float4(position, 1.0));
 
 	o_uv = texcoord;
 	o_position = clipSpacePosition;
@@ -80,6 +86,8 @@ void vs_main(
 void ps_main(
 	in float4 i_position: SV_Position,
 	in float2 i_uv: TEXCOORD,
+	//in float3 i_normal: NORMAL,
+	//in float3 i_tangent: TANGENT,
 	nointerpolation in uint i_material: MATERIAL,
 	out float4 o_color: SV_Target0) {
 	

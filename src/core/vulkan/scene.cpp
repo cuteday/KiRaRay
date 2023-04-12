@@ -9,11 +9,12 @@ void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device,
 	vkrhi::CommandListHandle commandList = device->createCommandList();
 	commandList->open();
 	mpSceneVK->writeMeshBuffers(commandList);
+	/* Create descriptors for bindless (vertex) buffers. */
+	if (descriptorTable) mpSceneVK->writeDescriptorTable(descriptorTable);
 	mpSceneVK->writeMaterialBuffer(commandList);
 	mpSceneVK->writeGeometryBuffer(commandList);
 	commandList->close();
 	device->executeCommandList(commandList);
-	if (descriptorTable) mpSceneVK->writeDescriptorTable(descriptorTable);
 	device->waitForIdle();
 }
 
