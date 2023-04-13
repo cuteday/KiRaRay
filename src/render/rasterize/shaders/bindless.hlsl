@@ -47,7 +47,7 @@ ConstantBuffer<ViewConstants> g_ViewConstants : register(b0);
 
 StructuredBuffer<MeshData> t_MeshData : register(t0);
 StructuredBuffer<MaterialConstants> t_MaterialConstants : register(t1);
-SamplerState s_MaterialSampler;
+SamplerState s_MaterialSampler : register(s0);
 // the above bindings are implicitly assigned to register space 0.
 // the bindless buffer arrays below actually bind to a register range.
 [[vk::binding(0, 1)]] ByteAddressBuffer t_BindlessBuffers[] : register(t0, space1);	// register space, check it out later
@@ -94,6 +94,10 @@ void ps_main(
 	MaterialConstants material = t_MaterialConstants[i_material];
 
 	float4 diffuse = material.baseColor;
+	if (material.baseTextureIndex >= 0) {
+		diffuse *= t_BindlessTextures[material.baseTextureIndex].Sample(
+			s_MaterialSampler, i_uv);
+	}
 
 	o_color = float4(diffuse.rgb, 1);
 }

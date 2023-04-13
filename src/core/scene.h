@@ -71,7 +71,7 @@ public:
 	std::shared_ptr<VKScene> mpSceneVK;
 	void initializeSceneRT();
 	void initializeSceneVK(nvrhi::vulkan::IDevice* device,
-						   DescriptorTableManager *descriptorTable = nullptr);
+		std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr);
 };
 
 namespace rt {

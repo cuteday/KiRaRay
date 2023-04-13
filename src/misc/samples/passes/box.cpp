@@ -172,8 +172,7 @@ public:
 		std::filesystem::path textureFileName =
 			"src/misc/samples/passes/assets/shii_001.png";
 		std::shared_ptr<LoadedTexture> texture =
-			textureCache.LoadTextureFromFile(textureFileName, true, nullptr,
-											 m_CommandList);
+			textureCache.LoadTextureFromFile(textureFileName, true, m_CommandList);
 		m_Texture = texture->texture;
 
 		m_CommandList->close();

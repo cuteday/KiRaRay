@@ -74,7 +74,7 @@ protected:
 
 	bool m_GenerateMipmaps = true;
 
-	Log::Level m_InfoLogSeverity	 = Log::Level::Info;
+	Log::Level m_InfoLogSeverity	 = Log::Level::Debug;
 	Log::Level m_ErrorLogSeverity = Log::Level::Warning;
 
 	std::atomic<uint32_t> m_TexturesRequested = 0;
@@ -84,7 +84,7 @@ protected:
 	bool FindTextureInCache(const std::filesystem::path &path,
 							std::shared_ptr<TextureData> &texture);
 	std::shared_ptr<Blob> ReadTextureFile(const std::filesystem::path &path) const;
-	bool FillTextureData(const std::shared_ptr<Image> &image,
+	bool FillTextureData(const Image &image,
 						 const std::shared_ptr<TextureData> &texture) const;
 	void FinalizeTexture(std::shared_ptr<TextureData> texture, CommonRenderPasses *passes,
 						 nvrhi::ICommandList *commandList);
@@ -102,8 +102,12 @@ public:
 	// (must be open). The `passes` argument is optional, and mip generation is disabled if it's
 	// NULL.
 	std::shared_ptr<LoadedTexture> LoadTextureFromFile(const std::filesystem::path &path, bool sRGB,
-													   CommonRenderPasses *passes,
-													   nvrhi::ICommandList *commandList);
+													   nvrhi::ICommandList *commandList,
+													   CommonRenderPasses *passes = nullptr);
+
+	std::shared_ptr<LoadedTexture> LoadTextureFromImage(const Image &image,
+													   nvrhi::ICommandList *commandList,
+													   CommonRenderPasses *passes = nullptr);
 
 	// Synchronous read and decode, deferred upload and mip generation (in the
 	// ProcessRenderingThreadCommands queue).

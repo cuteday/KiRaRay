@@ -1,6 +1,7 @@
 #include "bindless.h"
 #include "window.h"
 #include "vulkan/scene.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -24,13 +25,11 @@ void BindlessRender::initialize() {
 		nvrhi::BindingLayoutItem::RawBuffer_SRV(1),
 		nvrhi::BindingLayoutItem::Texture_SRV(2)};
 	mBindlessLayout = getVulkanDevice()->createBindlessLayout(bindlessLayoutDesc);
-	
 	mDescriptorTableManager = std::make_shared<DescriptorTableManager>(
 		getVulkanDevice(), mBindlessLayout);
-
 	/* Initialize scene data on vulkan device. */
 	// TODO: It seems possible to share the device buffer between vulkan and cuda/optix.
-	mpScene->initializeSceneVK(getVulkanDevice(), mDescriptorTableManager.get());
+	mpScene->initializeSceneVK(getVulkanDevice(), mDescriptorTableManager);
 	std::shared_ptr<VKScene> scene = mpScene->mpSceneVK;
 
 	mCommandList = getVulkanDevice()->createCommandList();
@@ -53,7 +52,8 @@ void BindlessRender::initialize() {
 		/* Mesh data constants (for indexing bindless buffers) */
 		vkrhi::BindingSetItem::StructuredBuffer_SRV(0, scene->getGeometryBuffer()),
 		/* Material data constants (for indexing bindless buffers) */
-		vkrhi::BindingSetItem::StructuredBuffer_SRV(1, scene->getMaterialBuffer())
+		vkrhi::BindingSetItem::StructuredBuffer_SRV(1, scene->getMaterialBuffer()),
+		vkrhi::BindingSetItem::Sampler(0, mHelperPass->m_AnisotropicWrapSampler)
 	};
 	vkrhi::utils::CreateBindingSetAndLayout(
 		getVulkanDevice(), vkrhi::ShaderType::All, 0, bindingSetDesc,
@@ -61,6 +61,7 @@ void BindlessRender::initialize() {
 }
 
 void BindlessRender::render(RenderFrame::SharedPtr frame) {
+	PROFILE("Bindless Rendering");
 	vkrhi::IFramebuffer *framebuffer = frame->getFramebuffer();
 	const auto &fbInfo				 = framebuffer->getFramebufferInfo();
 

@@ -52,6 +52,6 @@ CMakeSettings.json
 # Assets and resource data
 temp
 /common/outputs
-/common/scenes
+/common/assets/scenes/local
 /common/images
 imgui.ini

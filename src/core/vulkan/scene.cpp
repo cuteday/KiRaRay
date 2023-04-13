@@ -4,13 +4,12 @@
 KRR_NAMESPACE_BEGIN
 
 void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device, 
-	DescriptorTableManager *descriptorTable) { 
-	mpSceneVK = std::make_shared<VKScene>(this, device); 
+	std::shared_ptr<DescriptorTableManager> descriptorTable) { 
+	mpSceneVK = std::make_shared<VKScene>(this, device, descriptorTable); 
 	vkrhi::CommandListHandle commandList = device->createCommandList();
 	commandList->open();
-	mpSceneVK->writeMeshBuffers(commandList);
-	/* Create descriptors for bindless (vertex) buffers. */
-	if (descriptorTable) mpSceneVK->writeDescriptorTable(descriptorTable);
+	mpSceneVK->writeMeshBuffers(commandList);		// bindless buffers
+	mpSceneVK->writeMaterialTextures(commandList);	// bindless textures
 	mpSceneVK->writeMaterialBuffer(commandList);
 	mpSceneVK->writeGeometryBuffer(commandList);
 	commandList->close();
@@ -101,18 +100,56 @@ void VKScene::writeMeshBuffers(vkrhi::ICommandList *commandList) {
 		commandList->setPermanentBufferState(buffers.vertexBuffer, 
 			vkrhi::ResourceStates::VertexBuffer | vkrhi::ResourceStates::ShaderResource);
 		commandList->commitBarriers();
+
+		if (mDescriptorTable) {
+			/* Create descriptors for bindless (vertex) buffers and textures. */
+			buffers.indexBufferDescriptor = mDescriptorTable->CreateDescriptorHandle(
+				vkrhi::BindingSetItem::RawBuffer_SRV(0, buffers.indexBuffer));
+			buffers.vertexBufferDescriptor = mDescriptorTable->CreateDescriptorHandle(
+				vkrhi::BindingSetItem::RawBuffer_SRV(0, buffers.vertexBuffer));
+		}
+	}
+}
+
+void VKScene::writeMaterialTextures(vkrhi::ICommandList* commandList) {
+	mMaterialTextures.clear();
+	if (!mTextureLoader) mTextureLoader =
+			std::make_shared<TextureCache>(mDevice, mDescriptorTable);
+	for (auto material : mpScene->materials) {
+		mMaterialTextures.push_back(rs::MaterialTextures());
+		auto &textures = mMaterialTextures.back();
+		for (int type = 0; type < (int) Material::TextureType::Count; type++) {
+			if (material.mTextures[type].getImage().isValid()) {
+				Log(Debug, "Loading texture slot %d for material %s", type, material.getName());
+				// Upload texture to vulkan device...
+				const Image &image = material.mTextures[type].getImage();
+				auto loadedTexture = mTextureLoader->LoadTextureFromImage(image, commandList);
+				textures.textures[type] = loadedTexture;
+			}
+		}
 	}
 }
 
 void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 	/* Fill material constants buffer on host. */
-	for (const auto& material : mpScene->materials) {
+	for (int i = 0; i < mpScene->materials.size(); i++) {
+		const auto &material = mpScene->materials[i];
 		rs::MaterialConstants materialConstants;
 		materialConstants.baseColor = material.mMaterialParams.diffuse;
 		materialConstants.specularColor = material.mMaterialParams.specular;
 		materialConstants.IoR			= material.mMaterialParams.IoR;
 		materialConstants.opacity = material.mMaterialParams.specularTransmission;
 		materialConstants.metalRough = material.mShadingModel == Material::ShadingModel::MetallicRoughness;
+		
+		const auto &textures = mMaterialTextures[i];
+		materialConstants.baseTextureIndex =
+			textures.getDescriptor(Material::TextureType::Diffuse);
+		materialConstants.specularTextureIndex =
+			textures.getDescriptor(Material::TextureType::Specular);
+		materialConstants.normalTextureIndex =
+			textures.getDescriptor(Material::TextureType::Normal);
+		materialConstants.emissiveTextureIndex =
+			textures.getDescriptor(Material::TextureType::Emissive);
 		mMaterialConstants.push_back(materialConstants);
 	}
 	
@@ -171,15 +208,5 @@ void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 	
 	commandList->writeBuffer(mMeshDataBuffer, mMeshData.data(), bufferDesc.byteSize, 0);
 }
-
-void VKScene::writeDescriptorTable(DescriptorTableManager *descriptorTable) {
-	for (rs::MeshBuffers &buffers : mMeshBuffers) {
-		buffers.indexBufferDescriptor = descriptorTable->CreateDescriptorHandle(
-			vkrhi::BindingSetItem::RawBuffer_SRV(0, buffers.indexBuffer));
-		buffers.vertexBufferDescriptor = descriptorTable->CreateDescriptorHandle(
-				vkrhi::BindingSetItem::RawBuffer_SRV(0, buffers.vertexBuffer));
-	}
-}
-
 
 KRR_NAMESPACE_END
