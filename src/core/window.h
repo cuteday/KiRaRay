@@ -66,14 +66,14 @@ public:
 	DeviceManager()			 = default;
 	virtual ~DeviceManager() = default;
 
-	[[nodiscard]] virtual vk::Device GetNativeDevice() const { return m_VulkanDevice; }
+	[[nodiscard]] virtual vk::Device GetNativeDevice() const { return mVulkanDevice; }
 
 	[[nodiscard]] virtual nvrhi::vulkan::IDevice *GetDevice() const {
-		return dynamic_cast<nvrhi::vulkan::IDevice*>(m_NvrhiDevice.Get());
+		return dynamic_cast<nvrhi::vulkan::IDevice*>(mNvrhiDevice.Get());
 	}
 
 	[[nodiscard]] virtual nvrhi::IDevice* GetValidationLayer() const {
-		return m_ValidationLayer;
+		return mValidationLayer;
 	}
 
 	bool CreateWindowDeviceAndSwapChain(const DeviceCreationParameters &params,
@@ -91,37 +91,37 @@ public:
 
 	// returns the screen coordinate to pixel coordinate scale factor
 	void GetDPIScaleInfo(float &x, float &y) const {
-		x = m_DPIScaleFactorX;
-		y = m_DPIScaleFactorY;
+		x = mDPIScaleFactorX;
+		y = mDPIScaleFactorY;
 	}
 
 protected:
-	bool m_windowVisible = false;
+	bool mwindowVisible = false;
 
-	DeviceCreationParameters m_DeviceParams;
-	GLFWwindow *m_Window = nullptr;
+	DeviceCreationParameters mDeviceParams;
+	GLFWwindow *mWindow = nullptr;
 	// set to true if running on NV GPU
-	bool m_IsNvidia = false;
-	std::list<RenderPass::SharedPtr> m_RenderPasses;
+	bool mIsNvidia = false;
+	std::list<RenderPass::SharedPtr> mRenderPasses;
 	// timestamp in seconds for the previous frame
-	double m_PreviousFrameTimestamp = .0;
+	double mPreviousFrameTimestamp = .0;
 	// current DPI scale info (updated when window moves)
-	float m_DPIScaleFactorX = 1.f;
-	float m_DPIScaleFactorY = 1.f;
-	bool m_RequestedVSync	= false;
+	float mDPIScaleFactorX = 1.f;
+	float mDPIScaleFactorY = 1.f;
+	bool mRequestedVSync	= false;
 
-	double m_AverageFrameTime		  = .0;
-	double m_AverageTimeUpdateInterval= .5;
-	double m_FrameTimeSum			  = .0;
-	int m_NumberOfAccumulatedFrames	  =  0;
+	double mAverageFrameTime		  = .0;
+	double mAverageTimeUpdateInterval= .5;
+	double mFrameTimeSum			  = .0;
+	int mNumberOfAccumulatedFrames	  =  0;
 
-	uint32_t m_FrameIndex;
+	uint32_t mFrameIndex;
 
-	std::vector<nvrhi::FramebufferHandle> m_SwapChainFramebuffers;
-	std::vector<RenderFrame::SharedPtr> m_RenderFramebuffers;
+	std::vector<nvrhi::FramebufferHandle> mSwapChainFramebuffers;
+	std::vector<RenderFrame::SharedPtr> mRenderFramebuffers;
 
-	std::unique_ptr<CommonRenderPasses> m_HelperPass;
-	std::unique_ptr<BindingCache> m_BindingCache;
+	std::unique_ptr<CommonRenderPasses> mHelperPass;
+	std::unique_ptr<BindingCache> mBindingCache;
 
 	void UpdateWindowSize();
 
@@ -135,19 +135,19 @@ protected:
 	// device-specific methods
 	virtual bool CreateDeviceAndSwapChain();
 	virtual void DestroyDeviceAndSwapChain();
-	virtual void ResizeSwapChain() { if (m_VulkanDevice) createSwapChain(); }
+	virtual void ResizeSwapChain() { if (mVulkanDevice) createSwapChain(); }
 	virtual void BeginFrame();
 	virtual void Present();
 
 public:
-	[[nodiscard]] virtual const char *GetRendererString() const { return m_RendererString.c_str(); }
-	const DeviceCreationParameters &GetDeviceParams() { return m_DeviceParams; }
-	[[nodiscard]] double GetAverageFrameTimeSeconds() const { return m_AverageFrameTime; }
-	[[nodiscard]] double GetPreviousFrameTimestamp() const { return m_PreviousFrameTimestamp; }
-	void SetFrameTimeUpdateInterval(double seconds) { m_AverageTimeUpdateInterval = seconds; }
-	[[nodiscard]] bool IsVsyncEnabled() const { return m_DeviceParams.vsyncEnabled; }
+	[[nodiscard]] virtual const char *GetRendererString() const { return mRendererString.c_str(); }
+	const DeviceCreationParameters &GetDeviceParams() { return mDeviceParams; }
+	[[nodiscard]] double GetAverageFrameTimeSeconds() const { return mAverageFrameTime; }
+	[[nodiscard]] double GetPreviousFrameTimestamp() const { return mPreviousFrameTimestamp; }
+	void SetFrameTimeUpdateInterval(double seconds) { mAverageTimeUpdateInterval = seconds; }
+	[[nodiscard]] bool IsVsyncEnabled() const { return mDeviceParams.vsyncEnabled; }
 	virtual void SetVsyncEnabled(bool enabled) {
-		m_RequestedVSync = enabled; /* will be processed later */
+		mRequestedVSync = enabled; /* will be processed later */
 	}
 	virtual void ReportLiveObjects() {}
 	
@@ -158,7 +158,7 @@ public:
 	}
 	inline Vector2i getMousePos() const {
 		double x, y;
-		glfwGetCursorPos(m_Window, &x, &y);
+		glfwGetCursorPos(mWindow, &x, &y);
 		return {(int) x, (int) y};
 	}
 	
@@ -170,25 +170,25 @@ public:
 	virtual bool onMouseEvent(io::MouseEvent &mouseEvent);
 	virtual bool onKeyEvent(io::KeyboardEvent &keyEvent);
 
-	[[nodiscard]] GLFWwindow *GetWindow() const { return m_Window; }
-	[[nodiscard]] size_t GetFrameIndex() const { return m_FrameIndex; }
+	[[nodiscard]] GLFWwindow *GetWindow() const { return mWindow; }
+	[[nodiscard]] size_t GetFrameIndex() const { return mFrameIndex; }
 
 	virtual nvrhi::ITexture *GetCurrentBackBuffer() const {
-		return m_SwapChainImages[m_SwapChainIndex].rhiHandle;
+		return mSwapChainImages[mSwapChainIndex].rhiHandle;
 	}
 	virtual nvrhi::ITexture *GetBackBuffer(size_t index) const {
-		if (index < m_SwapChainImages.size()) return m_SwapChainImages[index].rhiHandle;
+		if (index < mSwapChainImages.size()) return mSwapChainImages[index].rhiHandle;
 		return nullptr;
 	}
 	virtual nvrhi::ITexture *GetCurrentRenderImage() const {
-		return m_RenderImages[m_SwapChainIndex];
+		return mRenderImages[mSwapChainIndex];
 	}
 	virtual nvrhi::ITexture *GetRenderImage(size_t index) const {
-		if (index < m_RenderImages.size()) return m_RenderImages[index];
+		if (index < mRenderImages.size()) return mRenderImages[index];
 		return nullptr;
 	}
-	virtual size_t GetCurrentBackBufferIndex() { return m_SwapChainIndex; }
-	virtual size_t GetBackBufferCount() { return m_SwapChainImages.size(); }
+	virtual size_t GetCurrentBackBufferIndex() { return mSwapChainIndex; }
+	virtual size_t GetBackBufferCount() { return mSwapChainImages.size(); }
 
 	void Shutdown();
 	void SetWindowTitle(const char *title);
@@ -220,17 +220,17 @@ public:
 		std::function<void(DeviceManager &)> afterRender   = nullptr;
 		std::function<void(DeviceManager &)> beforePresent = nullptr;
 		std::function<void(DeviceManager &)> afterPresent  = nullptr;
-	} m_callbacks;
+	} mcallbacks;
 
 
 	
 protected:
-	nvrhi::vulkan::DeviceHandle m_NvrhiDevice;
-	nvrhi::DeviceHandle m_ValidationLayer;
+	nvrhi::vulkan::DeviceHandle mNvrhiDevice;
+	nvrhi::DeviceHandle mValidationLayer;
 
-	nvrhi::CommandListHandle m_CommandList;
-	vkrhi::CuVkSemaphore m_PresentSemaphore;
-	vkrhi::CuVkSemaphore m_GraphicsSemaphore;
+	nvrhi::CommandListHandle mCommandList;
+	vkrhi::CuVkSemaphore mPresentSemaphore;
+	vkrhi::CuVkSemaphore mGraphicsSemaphore;
 	
 private:
 	bool createInstance();
@@ -275,7 +275,7 @@ private:
 		},
 	};
 
-	VulkanExtensionSet m_CudaInteropExtensions = {
+	VulkanExtensionSet mCudaInteropExtensions = {
 		{VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
 		 VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,},
 		{},
@@ -291,46 +291,46 @@ private:
 #endif
 		}};
 
-	std::unordered_set<std::string> m_RayTracingExtensions = {
+	std::unordered_set<std::string> mRayTracingExtensions = {
 		VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
 		VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
 		VK_KHR_RAY_QUERY_EXTENSION_NAME, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME};
 
-	std::string m_RendererString;
+	std::string mRendererString;
 
-	vk::Instance m_VulkanInstance;
-	vk::DebugReportCallbackEXT m_DebugReportCallback;
+	vk::Instance mVulkanInstance;
+	vk::DebugReportCallbackEXT mDebugReportCallback;
 
-	vk::PhysicalDevice m_VulkanPhysicalDevice;
-	int m_GraphicsQueueFamily = -1;
-	int m_ComputeQueueFamily  = -1;
-	int m_TransferQueueFamily = -1;
-	int m_PresentQueueFamily  = -1;
+	vk::PhysicalDevice mVulkanPhysicalDevice;
+	int mGraphicsQueueFamily = -1;
+	int mComputeQueueFamily  = -1;
+	int mTransferQueueFamily = -1;
+	int mPresentQueueFamily  = -1;
 
-	vk::Device m_VulkanDevice;
-	vk::Queue m_GraphicsQueue;
-	vk::Queue m_ComputeQueue;
-	vk::Queue m_TransferQueue;
-	vk::Queue m_PresentQueue;
+	vk::Device mVulkanDevice;
+	vk::Queue mGraphicsQueue;
+	vk::Queue mComputeQueue;
+	vk::Queue mTransferQueue;
+	vk::Queue mPresentQueue;
 
-	vk::SurfaceKHR m_WindowSurface;
+	vk::SurfaceKHR mWindowSurface;
 
-	vk::SurfaceFormatKHR m_SwapChainFormat;
-	vk::SwapchainKHR m_SwapChain;
+	vk::SurfaceFormatKHR mSwapChainFormat;
+	vk::SwapchainKHR mSwapChain;
 
 	struct SwapChainImage {
 		vk::Image image;
 		nvrhi::TextureHandle rhiHandle;
 	};
 
-	std::vector<SwapChainImage> m_SwapChainImages;
-	std::vector<nvrhi::TextureHandle> m_RenderImages;
-	uint32_t m_SwapChainIndex = -1;
+	std::vector<SwapChainImage> mSwapChainImages;
+	std::vector<nvrhi::TextureHandle> mRenderImages;
+	uint32_t mSwapChainIndex = -1;
 
-	std::queue<nvrhi::EventQueryHandle> m_FramesInFlight;
-	std::vector<nvrhi::EventQueryHandle> m_QueryPool;
+	std::queue<nvrhi::EventQueryHandle> mFramesInFlight;
+	std::vector<nvrhi::EventQueryHandle> mQueryPool;
 
-	std::shared_ptr<vkrhi::CuVkHandler> m_CuVkHandler;
+	std::shared_ptr<vkrhi::CuVkHandler> mCuVkHandler;
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(VkDebugReportFlagsEXT flags,
 															  VkDebugReportObjectTypeEXT objType,
@@ -340,7 +340,7 @@ private:
 		const DeviceManager *manager = (const DeviceManager *) userData;
 
 		if (manager) {
-			const auto &ignored = manager->m_DeviceParams.ignoredVulkanValidationMessageLocations;
+			const auto &ignored = manager->mDeviceParams.ignoredVulkanValidationMessageLocations;
 			const auto found	= std::find(ignored.begin(), ignored.end(), location);
 			if (found != ignored.end()) return VK_FALSE;
 		}
@@ -351,7 +351,7 @@ private:
 		return VK_FALSE;
 	}
 
-	std::string m_WindowTitle;
+	std::string mWindowTitle;
 };
 
 KRR_NAMESPACE_END
