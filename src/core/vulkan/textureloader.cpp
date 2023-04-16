@@ -292,13 +292,13 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFile(const std::file
 
 	if (image->isValid()) {
 		if (FillTextureData(*image, texture)) {
-
 			TextureLoaded(texture);
 			FinalizeTexture(texture, passes, commandList);
 		}
-	} else
+	} else {
 		Log(Error, "Failed to load texture from an invalid image!");
-
+		return nullptr;
+	}
 	++m_TexturesLoaded;
 	return texture;
 }
@@ -311,12 +311,12 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromImage(const Image& i
 	
 	if (image.isValid()) {
 		if (FillTextureData(image, texture)) {
-			
 			TextureLoaded(texture);
 			FinalizeTexture(texture, passes, commandList);
 		}
 	} else {
 		Log(Error, "Failed to load texture from an invalid image!");
+		return nullptr;
 	}
 	
 	++m_TexturesLoaded;

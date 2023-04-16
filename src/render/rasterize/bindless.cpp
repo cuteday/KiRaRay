@@ -5,6 +5,20 @@
 
 KRR_NAMESPACE_BEGIN
 
+class GBufferRenderTargets {
+protected:
+	Vector2i mSize{};
+	uint mSampleCount{};
+
+public:
+	vkrhi::TextureHandle depth;
+	vkrhi::TextureHandle diffuse;
+	vkrhi::TextureHandle specular;
+	vkrhi::TextureHandle normals;
+	vkrhi::TextureHandle emissive;
+
+};
+
 void BindlessRender::initialize() {
 	mShaderLoader = std::make_shared<ShaderLoader>(getVulkanDevice());
 	mBindingCache = std::make_shared<BindingCache>(getVulkanDevice());

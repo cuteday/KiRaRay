@@ -281,8 +281,8 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 		return false;
 	}
 
-	this->m_DeviceParams = params;
-	m_RequestedVSync	 = params.vsyncEnabled;
+	this->mDeviceParams = params;
+	mRequestedVSync	 = params.vsyncEnabled;
 
 	glfwSetErrorCallback(ApiCallbacks::errorCallback);
 
@@ -309,174 +309,174 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // Ignored for fullscreen
 
-	m_Window = glfwCreateWindow(
+	mWindow = glfwCreateWindow(
 		params.backBufferWidth, params.backBufferHeight, windowTitle ? windowTitle : "",
 		params.startFullscreen ? glfwGetPrimaryMonitor() : nullptr, nullptr);
 
-	if (m_Window == nullptr) {
+	if (mWindow == nullptr) {
 		return false;
 	}
 
 	if (params.startFullscreen) {
-		glfwSetWindowMonitor(m_Window, glfwGetPrimaryMonitor(), 0, 0,
-							 m_DeviceParams.backBufferWidth, m_DeviceParams.backBufferHeight,
-							 m_DeviceParams.refreshRate);
+		glfwSetWindowMonitor(mWindow, glfwGetPrimaryMonitor(), 0, 0,
+							 mDeviceParams.backBufferWidth, mDeviceParams.backBufferHeight,
+							 mDeviceParams.refreshRate);
 	} else {
 		int fbWidth = 0, fbHeight = 0;
-		glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
-		m_DeviceParams.backBufferWidth	= fbWidth;
-		m_DeviceParams.backBufferHeight = fbHeight;
+		glfwGetFramebufferSize(mWindow, &fbWidth, &fbHeight);
+		mDeviceParams.backBufferWidth	= fbWidth;
+		mDeviceParams.backBufferHeight = fbHeight;
 	}
 
-	if (windowTitle) m_WindowTitle = windowTitle;
+	if (windowTitle) mWindowTitle = windowTitle;
 
-	glfwSetWindowUserPointer(m_Window, this);
+	glfwSetWindowUserPointer(mWindow, this);
 
 	if (params.windowPosX != -1 && params.windowPosY != -1) {
-		glfwSetWindowPos(m_Window, params.windowPosX, params.windowPosY);
+		glfwSetWindowPos(mWindow, params.windowPosX, params.windowPosY);
 	}
 
 	if (params.startMaximized) {
-		glfwMaximizeWindow(m_Window);
+		glfwMaximizeWindow(mWindow);
 	}
 
-	glfwSetWindowPosCallback(m_Window, ApiCallbacks::windowPosCallback);
-	glfwSetWindowCloseCallback(m_Window, ApiCallbacks::windowCloseCallback);
-	glfwSetWindowRefreshCallback(m_Window, ApiCallbacks::windowRefreshCallback);
-	glfwSetWindowFocusCallback(m_Window, ApiCallbacks::windowFocusCallback);
-	glfwSetWindowIconifyCallback(m_Window, ApiCallbacks::windowIconifyCallback);
-	glfwSetKeyCallback(m_Window, ApiCallbacks::keyboardCallback);
-	glfwSetCursorPosCallback(m_Window, ApiCallbacks::mouseMoveCallback);
-	glfwSetMouseButtonCallback(m_Window, ApiCallbacks::mouseButtonCallback);
-	glfwSetScrollCallback(m_Window, ApiCallbacks::mouseWheelCallback);
-	//glfwSetCharCallback(m_Window, ApiCallbacks::charInputCallback);
-	glfwSetCharModsCallback(m_Window, ApiCallbacks::charInputModsCallback);
+	glfwSetWindowPosCallback(mWindow, ApiCallbacks::windowPosCallback);
+	glfwSetWindowCloseCallback(mWindow, ApiCallbacks::windowCloseCallback);
+	glfwSetWindowRefreshCallback(mWindow, ApiCallbacks::windowRefreshCallback);
+	glfwSetWindowFocusCallback(mWindow, ApiCallbacks::windowFocusCallback);
+	glfwSetWindowIconifyCallback(mWindow, ApiCallbacks::windowIconifyCallback);
+	glfwSetKeyCallback(mWindow, ApiCallbacks::keyboardCallback);
+	glfwSetCursorPosCallback(mWindow, ApiCallbacks::mouseMoveCallback);
+	glfwSetMouseButtonCallback(mWindow, ApiCallbacks::mouseButtonCallback);
+	glfwSetScrollCallback(mWindow, ApiCallbacks::mouseWheelCallback);
+	//glfwSetCharCallback(mWindow, ApiCallbacks::charInputCallback);
+	glfwSetCharModsCallback(mWindow, ApiCallbacks::charInputModsCallback);
 
 	if (!CreateDeviceAndSwapChain()) return false;
 
-	glfwShowWindow(m_Window);
+	glfwShowWindow(mWindow);
 
 	// reset the back buffer size state to enforce a resize event
-	m_DeviceParams.backBufferWidth	= 0;
-	m_DeviceParams.backBufferHeight = 0;
+	mDeviceParams.backBufferWidth	= 0;
+	mDeviceParams.backBufferHeight = 0;
 
 	UpdateWindowSize();
-	m_NvrhiDevice->waitForIdle();
+	mNvrhiDevice->waitForIdle();
 	return true;
 }
 
 void DeviceManager::AddRenderPassToFront(RenderPass::SharedPtr pRenderPass) {
-	m_RenderPasses.remove(pRenderPass);
-	m_RenderPasses.push_front(pRenderPass);
+	mRenderPasses.remove(pRenderPass);
+	mRenderPasses.push_front(pRenderPass);
 
 	pRenderPass->setDeviceManager(this);
 	pRenderPass->resizing();
-	pRenderPass->resize({int(m_DeviceParams.backBufferWidth),
-						 int(m_DeviceParams.backBufferHeight)});
+	pRenderPass->resize({int(mDeviceParams.backBufferWidth),
+						 int(mDeviceParams.backBufferHeight)});
 }
 
 void DeviceManager::AddRenderPassToBack(RenderPass::SharedPtr pRenderPass) {
-	m_RenderPasses.remove(pRenderPass);
-	m_RenderPasses.push_back(pRenderPass);
+	mRenderPasses.remove(pRenderPass);
+	mRenderPasses.push_back(pRenderPass);
 
 	pRenderPass->setDeviceManager(this);
 	pRenderPass->resizing();
-	pRenderPass->resize({int(m_DeviceParams.backBufferWidth),
-						 int(m_DeviceParams.backBufferHeight)});
+	pRenderPass->resize({int(mDeviceParams.backBufferWidth),
+						 int(mDeviceParams.backBufferHeight)});
 }
 
 void DeviceManager::RemoveRenderPass(RenderPass::SharedPtr pRenderPass) {
-	m_RenderPasses.remove(pRenderPass);
+	mRenderPasses.remove(pRenderPass);
 }
 
 void DeviceManager::BackBufferResizing() {
-	m_SwapChainFramebuffers.clear();
-	m_RenderFramebuffers.clear();
+	mSwapChainFramebuffers.clear();
+	mRenderFramebuffers.clear();
 
-	for (auto it : m_RenderPasses) {
+	for (auto it : mRenderPasses) {
 		it->resizing();
 	}
 }
 
 void DeviceManager::BackBufferResized() {
-	for (auto it : m_RenderPasses) {
-		it->resize({int(m_DeviceParams.backBufferWidth),
-					int(m_DeviceParams.backBufferHeight)});
+	for (auto it : mRenderPasses) {
+		it->resize({int(mDeviceParams.backBufferWidth),
+					int(mDeviceParams.backBufferHeight)});
 	}
 
 	uint32_t backBufferCount = GetBackBufferCount();
-	m_SwapChainFramebuffers.resize(backBufferCount);
-	m_RenderFramebuffers.resize(backBufferCount);
+	mSwapChainFramebuffers.resize(backBufferCount);
+	mRenderFramebuffers.resize(backBufferCount);
 	for (uint32_t index = 0; index < backBufferCount; index++) {
-		m_SwapChainFramebuffers[index] = GetDevice()->createFramebuffer(
+		mSwapChainFramebuffers[index] = GetDevice()->createFramebuffer(
 			nvrhi::FramebufferDesc().addColorAttachment(GetBackBuffer(index)));
 
-		m_RenderFramebuffers[index] = std::make_shared<RenderFrame>(GetDevice()->createFramebuffer(
+		mRenderFramebuffers[index] = std::make_shared<RenderFrame>(GetDevice()->createFramebuffer(
 			nvrhi::FramebufferDesc().addColorAttachment(GetRenderImage(index))));
-		m_RenderFramebuffers[index]->initialize(GetDevice());
+		mRenderFramebuffers[index]->initialize(GetDevice());
 	}
 }
 
 void DeviceManager::Tick(double elapsedTime) {
-	for (auto it : m_RenderPasses) it->tick(float(elapsedTime));
+	for (auto it : mRenderPasses) it->tick(float(elapsedTime));
 }
 
 void DeviceManager::Render() {
 	BeginFrame();
-	auto framebuffer = m_RenderFramebuffers[GetCurrentBackBufferIndex()];
-	for (auto it : m_RenderPasses) it->beginFrame();
-	for (auto it : m_RenderPasses) {
-		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(m_GraphicsSemaphore);
+	auto framebuffer = mRenderFramebuffers[GetCurrentBackBufferIndex()];
+	for (auto it : mRenderPasses) it->beginFrame();
+	for (auto it : mRenderPasses) {
+		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(mGraphicsSemaphore);
 		it->render(framebuffer);
 		if (it->isCudaPass()) framebuffer->cudaUpdateVulkan();
 	}
-	for (auto it : m_RenderPasses) it->endFrame();
+	for (auto it : mRenderPasses) it->endFrame();
 
-	m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics,
-										m_PresentSemaphore, 0);
-	m_CommandList->open(); 
-	m_HelperPass->BlitTexture(
-		m_CommandList, m_SwapChainFramebuffers[m_SwapChainIndex],
-		GetRenderImage(m_SwapChainIndex), m_BindingCache.get());
-	m_CommandList->close();
-	m_NvrhiDevice->executeCommandList(m_CommandList,
+	mNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics,
+										mPresentSemaphore, 0);
+	mCommandList->open(); 
+	mHelperPass->BlitTexture(
+		mCommandList, mSwapChainFramebuffers[mSwapChainIndex],
+		GetRenderImage(mSwapChainIndex), mBindingCache.get());
+	mCommandList->close();
+	mNvrhiDevice->executeCommandList(mCommandList,
 									  nvrhi::CommandQueue::Graphics);
 }
 
 void DeviceManager::UpdateAverageFrameTime(double elapsedTime) {
-	m_FrameTimeSum += elapsedTime;
-	m_NumberOfAccumulatedFrames += 1;
+	mFrameTimeSum += elapsedTime;
+	mNumberOfAccumulatedFrames += 1;
 
-	if (m_FrameTimeSum > m_AverageTimeUpdateInterval && m_NumberOfAccumulatedFrames > 0) {
-		m_AverageFrameTime			= m_FrameTimeSum / double(m_NumberOfAccumulatedFrames);
-		m_NumberOfAccumulatedFrames = 0;
-		m_FrameTimeSum				= 0.0;
+	if (mFrameTimeSum > mAverageTimeUpdateInterval && mNumberOfAccumulatedFrames > 0) {
+		mAverageFrameTime			= mFrameTimeSum / double(mNumberOfAccumulatedFrames);
+		mNumberOfAccumulatedFrames = 0;
+		mFrameTimeSum				= 0.0;
 	}
 }
 
 void DeviceManager::RunMessageLoop() {
-	m_PreviousFrameTimestamp = glfwGetTime();
+	mPreviousFrameTimestamp = glfwGetTime();
 
-	while (!glfwWindowShouldClose(m_Window) && !gpContext->shouldQuit()) {
+	while (!glfwWindowShouldClose(mWindow) && !gpContext->shouldQuit()) {
 
-		if (m_callbacks.beforeFrame) m_callbacks.beforeFrame(*this);
+		if (mcallbacks.beforeFrame) mcallbacks.beforeFrame(*this);
 
 		glfwPollEvents();
 		UpdateWindowSize();
 
 		double curTime	   = glfwGetTime();
-		double elapsedTime = curTime - m_PreviousFrameTimestamp;
+		double elapsedTime = curTime - mPreviousFrameTimestamp;
 
-		if (m_windowVisible) {
-			if (m_callbacks.beforeTick) m_callbacks.beforeTick(*this);
+		if (mwindowVisible) {
+			if (mcallbacks.beforeTick) mcallbacks.beforeTick(*this);
 			Tick(elapsedTime);
-			if (m_callbacks.afterTick) m_callbacks.afterTick(*this);
-			if (m_callbacks.beforeRender) m_callbacks.beforeRender(*this);
+			if (mcallbacks.afterTick) mcallbacks.afterTick(*this);
+			if (mcallbacks.beforeRender) mcallbacks.beforeRender(*this);
 			Render();
-			if (m_callbacks.afterRender) m_callbacks.afterRender(*this);
-			if (m_callbacks.beforePresent) m_callbacks.beforePresent(*this);
+			if (mcallbacks.afterRender) mcallbacks.afterRender(*this);
+			if (mcallbacks.beforePresent) mcallbacks.beforePresent(*this);
 			Present();
-			if (m_callbacks.afterPresent) m_callbacks.afterPresent(*this);
+			if (mcallbacks.afterPresent) mcallbacks.afterPresent(*this);
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(0));
@@ -484,73 +484,73 @@ void DeviceManager::RunMessageLoop() {
 		GetDevice()->runGarbageCollection();
 
 		UpdateAverageFrameTime(elapsedTime);
-		m_PreviousFrameTimestamp = curTime;
+		mPreviousFrameTimestamp = curTime;
 
-		++m_FrameIndex;
+		++mFrameIndex;
 	}
 
 	GetDevice()->waitForIdle();
 }
 
 Vector2i DeviceManager::GetWindowDimensions() const {
-	return {(int32_t) m_DeviceParams.backBufferWidth, 
-			(int32_t) m_DeviceParams.backBufferHeight};
+	return {(int32_t) mDeviceParams.backBufferWidth, 
+			(int32_t) mDeviceParams.backBufferHeight};
 }
 
 void DeviceManager::GetWindowDimensions(int &width, int &height) const {
-	width  = m_DeviceParams.backBufferWidth;
-	height = m_DeviceParams.backBufferHeight;
+	width  = mDeviceParams.backBufferWidth;
+	height = mDeviceParams.backBufferHeight;
 }
 
 void DeviceManager::UpdateWindowSize() {
 	int width;
 	int height;
-	glfwGetWindowSize(m_Window, &width, &height);
+	glfwGetWindowSize(mWindow, &width, &height);
 
 	if (width == 0 || height == 0) {
 		// window is minimized
-		m_windowVisible = false;
+		mwindowVisible = false;
 		return;
 	}
 
-	m_windowVisible = true;
+	mwindowVisible = true;
 
-	if (int(m_DeviceParams.backBufferWidth) != width ||
-		int(m_DeviceParams.backBufferHeight) != height ||
-		(m_DeviceParams.vsyncEnabled != m_RequestedVSync)) {
+	if (int(mDeviceParams.backBufferWidth) != width ||
+		int(mDeviceParams.backBufferHeight) != height ||
+		(mDeviceParams.vsyncEnabled != mRequestedVSync)) {
 		// window is not minimized, and the size has changed
 
 		BackBufferResizing();
 
-		m_DeviceParams.backBufferWidth	= width;
-		m_DeviceParams.backBufferHeight = height;
-		m_DeviceParams.vsyncEnabled		= m_RequestedVSync;
+		mDeviceParams.backBufferWidth	= width;
+		mDeviceParams.backBufferHeight = height;
+		mDeviceParams.vsyncEnabled		= mRequestedVSync;
 
 		ResizeSwapChain();
 		BackBufferResized();
 	}
 
-	m_DeviceParams.vsyncEnabled = m_RequestedVSync;
+	mDeviceParams.vsyncEnabled = mRequestedVSync;
 }
 
 void DeviceManager::onWindowPosUpdate(int x, int y) {
 #ifdef _WINDOWS
-	if (m_DeviceParams.enablePerMonitorDPI) {
-		HWND hwnd	 = glfwGetWin32Window(m_Window);
+	if (mDeviceParams.enablePerMonitorDPI) {
+		HWND hwnd	 = glfwGetWin32Window(mWindow);
 		auto monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
 
 		unsigned int dpiX;
 		unsigned int dpiY;
 		GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
 
-		m_DPIScaleFactorX = dpiX / 96.f;
-		m_DPIScaleFactorY = dpiY / 96.f;
+		mDPIScaleFactorX = dpiX / 96.f;
+		mDPIScaleFactorY = dpiY / 96.f;
 	}
 #endif
 }
 
 bool DeviceManager::onMouseEvent(io::MouseEvent &mouseEvent) {
-	for (auto it = m_RenderPasses.crbegin(); it != m_RenderPasses.crend(); it++) {
+	for (auto it = mRenderPasses.crbegin(); it != mRenderPasses.crend(); it++) {
 		bool ret = (*it)->onMouseEvent(mouseEvent);
 		if (ret) return true;
 	}
@@ -558,7 +558,7 @@ bool DeviceManager::onMouseEvent(io::MouseEvent &mouseEvent) {
 }
 
 bool DeviceManager::onKeyEvent(io::KeyboardEvent &keyEvent) {
-	for (auto it = m_RenderPasses.crbegin(); it != m_RenderPasses.crend(); it++) {
+	for (auto it = mRenderPasses.crbegin(); it != mRenderPasses.crend(); it++) {
 		bool ret = (*it)->onKeyEvent(keyEvent);
 		if (ret) return true;
 	}
@@ -570,16 +570,16 @@ static void ApplyDeadZone(Vector2f &v, const float deadZone = 0.1f) {
 }
 
 void DeviceManager::Shutdown() {
-	m_SwapChainFramebuffers.clear();
-	m_RenderFramebuffers.clear();
-	m_BindingCache.reset();
-	m_HelperPass.reset();
+	mSwapChainFramebuffers.clear();
+	mRenderFramebuffers.clear();
+	mBindingCache.reset();
+	mHelperPass.reset();
 
 	DestroyDeviceAndSwapChain();
 
-	if (m_Window) {
-		glfwDestroyWindow(m_Window);
-		m_Window = nullptr;
+	if (mWindow) {
+		glfwDestroyWindow(mWindow);
+		mWindow = nullptr;
 	}
 
 	glfwTerminate();
@@ -587,11 +587,11 @@ void DeviceManager::Shutdown() {
 
 void DeviceManager::SetWindowTitle(const char *title) {
 	assert(title);
-	if (m_WindowTitle == title) return;
+	if (mWindowTitle == title) return;
 
-	glfwSetWindowTitle(m_Window, title);
+	glfwSetWindowTitle(mWindow, title);
 
-	m_WindowTitle = title;
+	mWindowTitle = title;
 }
 
 template <typename T> static std::vector<T> setToVector(const std::unordered_set<T> &set) {
@@ -618,18 +618,18 @@ bool DeviceManager::createInstance() {
 	}
 
 	// add instance extensions requested by the user
-	for (const std::string &name : m_DeviceParams.requiredVulkanInstanceExtensions) {
+	for (const std::string &name : mDeviceParams.requiredVulkanInstanceExtensions) {
 		enabledExtensions.instance.insert(name);
 	}
-	for (const std::string &name : m_DeviceParams.optionalVulkanInstanceExtensions) {
+	for (const std::string &name : mDeviceParams.optionalVulkanInstanceExtensions) {
 		optionalExtensions.instance.insert(name);
 	}
 
 	// add layers requested by the user
-	for (const std::string &name : m_DeviceParams.requiredVulkanLayers) {
+	for (const std::string &name : mDeviceParams.requiredVulkanLayers) {
 		enabledExtensions.layers.insert(name);
 	}
-	for (const std::string &name : m_DeviceParams.optionalVulkanLayers) {
+	for (const std::string &name : mDeviceParams.optionalVulkanLayers) {
 		optionalExtensions.layers.insert(name);
 	}
 
@@ -641,7 +641,7 @@ bool DeviceManager::createInstance() {
 		if (optionalExtensions.instance.find(name) != optionalExtensions.instance.end()) {
 			enabledExtensions.instance.insert(name);
 		}
-		if (m_DeviceParams.enableCudaInterop && m_CudaInteropExtensions.instance.count(name)) {
+		if (mDeviceParams.enableCudaInterop && mCudaInteropExtensions.instance.count(name)) {
 			enabledExtensions.instance.insert(name);
 		}
 		requiredExtensions.erase(name);
@@ -657,7 +657,7 @@ bool DeviceManager::createInstance() {
 		return false;
 	}
 
-	logMessage(m_DeviceParams.infoLogSeverity, "Enabled Vulkan instance extensions:");
+	logMessage(mDeviceParams.infoLogSeverity, "Enabled Vulkan instance extensions:");
 	for (const auto &ext : enabledExtensions.instance) {
 		Log(Info, "%s", ext.c_str());
 	}
@@ -683,7 +683,7 @@ bool DeviceManager::createInstance() {
 		return false;
 	}
 
-	logMessage(m_DeviceParams.infoLogSeverity, "Enabled Vulkan layers:");
+	logMessage(mDeviceParams.infoLogSeverity, "Enabled Vulkan layers:");
 	for (const auto &layer : enabledExtensions.layers) {
 		Log(Info, "%s", layer.c_str());
 	}
@@ -701,14 +701,14 @@ bool DeviceManager::createInstance() {
 									  .setPpEnabledExtensionNames(instanceExtVec.data())
 									  .setPApplicationInfo(&applicationInfo);
 
-	const vk::Result res = vk::createInstance(&info, nullptr, &m_VulkanInstance);
+	const vk::Result res = vk::createInstance(&info, nullptr, &mVulkanInstance);
 	if (res != vk::Result::eSuccess) {
 		Log(Error, "Failed to create a Vulkan instance, error code = %s",
 			nvrhi::vulkan::resultToString(res));
 		return false;
 	}
 
-	VULKAN_HPP_DEFAULT_DISPATCHER.init(m_VulkanInstance);
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(mVulkanInstance);
 
 	return true;
 }
@@ -723,15 +723,15 @@ void DeviceManager::installDebugCallback() {
 			.setPUserData(this);
 
 	vk::Result res =
-		m_VulkanInstance.createDebugReportCallbackEXT(&info, nullptr, &m_DebugReportCallback);
+		mVulkanInstance.createDebugReportCallbackEXT(&info, nullptr, &mDebugReportCallback);
 	assert(res == vk::Result::eSuccess);
 }
 
 bool DeviceManager::pickPhysicalDevice() {
-	vk::Format requestedFormat = nvrhi::vulkan::convertFormat(m_DeviceParams.swapChainFormat);
-	vk::Extent2D requestedExtent(m_DeviceParams.backBufferWidth, m_DeviceParams.backBufferHeight);
+	vk::Format requestedFormat = nvrhi::vulkan::convertFormat(mDeviceParams.swapChainFormat);
+	vk::Extent2D requestedExtent(mDeviceParams.backBufferWidth, mDeviceParams.backBufferHeight);
 
-	auto devices = m_VulkanInstance.enumeratePhysicalDevices();
+	auto devices = mVulkanInstance.enumeratePhysicalDevices();
 
 	// Start building an error message in case we cannot find a device.
 	std::stringstream errorStream;
@@ -775,15 +775,15 @@ bool DeviceManager::pickPhysicalDevice() {
 		}
 
 		// check that this device supports our intended swap chain creation parameters
-		auto surfaceCaps   = dev.getSurfaceCapabilitiesKHR(m_WindowSurface);
-		auto surfaceFmts   = dev.getSurfaceFormatsKHR(m_WindowSurface);
-		auto surfacePModes = dev.getSurfacePresentModesKHR(m_WindowSurface);
+		auto surfaceCaps   = dev.getSurfaceCapabilitiesKHR(mWindowSurface);
+		auto surfaceFmts   = dev.getSurfaceFormatsKHR(mWindowSurface);
+		auto surfacePModes = dev.getSurfacePresentModesKHR(mWindowSurface);
 
-		if (surfaceCaps.minImageCount > m_DeviceParams.swapChainBufferCount ||
-			(surfaceCaps.maxImageCount < m_DeviceParams.swapChainBufferCount &&
+		if (surfaceCaps.minImageCount > mDeviceParams.swapChainBufferCount ||
+			(surfaceCaps.maxImageCount < mDeviceParams.swapChainBufferCount &&
 			 surfaceCaps.maxImageCount > 0)) {
 			errorStream << std::endl << "  - cannot support the requested swap chain image count:";
-			errorStream << " requested " << m_DeviceParams.swapChainBufferCount << ", available "
+			errorStream << " requested " << mDeviceParams.swapChainBufferCount << ", available "
 						<< surfaceCaps.minImageCount << " - " << surfaceCaps.maxImageCount;
 			deviceIsGood = false;
 		}
@@ -823,7 +823,7 @@ bool DeviceManager::pickPhysicalDevice() {
 		}
 
 		// check that we can present from the graphics queue
-		uint32_t canPresent = dev.getSurfaceSupportKHR(m_GraphicsQueueFamily, m_WindowSurface);
+		uint32_t canPresent = dev.getSurfaceSupportKHR(mGraphicsQueueFamily, mWindowSurface);
 		if (!canPresent) {
 			errorStream << std::endl << "  - cannot present";
 			deviceIsGood = false;
@@ -840,12 +840,12 @@ bool DeviceManager::pickPhysicalDevice() {
 
 	// pick the first discrete GPU if it exists, otherwise the first integrated GPU
 	if (!discreteGPUs.empty()) {
-		m_VulkanPhysicalDevice = discreteGPUs[0];
+		mVulkanPhysicalDevice = discreteGPUs[0];
 		return true;
 	}
 
 	if (!otherGPUs.empty()) {
-		m_VulkanPhysicalDevice = otherGPUs[0];
+		mVulkanPhysicalDevice = otherGPUs[0];
 		return true;
 	}
 
@@ -860,41 +860,41 @@ bool DeviceManager::findQueueFamilies(vk::PhysicalDevice physicalDevice) {
 	for (int i = 0; i < int(props.size()); i++) {
 		const auto &queueFamily = props[i];
 
-		if (m_GraphicsQueueFamily == -1) {
+		if (mGraphicsQueueFamily == -1) {
 			if (queueFamily.queueCount > 0 &&
 				(queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)) {
-				m_GraphicsQueueFamily = i;
+				mGraphicsQueueFamily = i;
 			}
 		}
 
-		if (m_ComputeQueueFamily == -1) {
+		if (mComputeQueueFamily == -1) {
 			if (queueFamily.queueCount > 0 &&
 				(queueFamily.queueFlags & vk::QueueFlagBits::eCompute) &&
 				!(queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)) {
-				m_ComputeQueueFamily = i;
+				mComputeQueueFamily = i;
 			}
 		}
 
-		if (m_TransferQueueFamily == -1) {
+		if (mTransferQueueFamily == -1) {
 			if (queueFamily.queueCount > 0 &&
 				(queueFamily.queueFlags & vk::QueueFlagBits::eTransfer) &&
 				!(queueFamily.queueFlags & vk::QueueFlagBits::eCompute) &&
 				!(queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)) {
-				m_TransferQueueFamily = i;
+				mTransferQueueFamily = i;
 			}
 		}
 
-		if (m_PresentQueueFamily == -1) {
+		if (mPresentQueueFamily == -1) {
 			if (queueFamily.queueCount > 0 &&
-				glfwGetPhysicalDevicePresentationSupport(m_VulkanInstance, physicalDevice, i)) {
-				m_PresentQueueFamily = i;
+				glfwGetPhysicalDevicePresentationSupport(mVulkanInstance, physicalDevice, i)) {
+				mPresentQueueFamily = i;
 			}
 		}
 	}
 
-	if (m_GraphicsQueueFamily == -1 || m_PresentQueueFamily == -1 ||
-		(m_ComputeQueueFamily == -1 && m_DeviceParams.enableComputeQueue) ||
-		(m_TransferQueueFamily == -1 && m_DeviceParams.enableCopyQueue)) {
+	if (mGraphicsQueueFamily == -1 || mPresentQueueFamily == -1 ||
+		(mComputeQueueFamily == -1 && mDeviceParams.enableComputeQueue) ||
+		(mTransferQueueFamily == -1 && mDeviceParams.enableCopyQueue)) {
 		return false;
 	}
 
@@ -903,19 +903,19 @@ bool DeviceManager::findQueueFamilies(vk::PhysicalDevice physicalDevice) {
 
 bool DeviceManager::createDevice() {
 	// figure out which optional extensions are supported
-	auto deviceExtensions = m_VulkanPhysicalDevice.enumerateDeviceExtensionProperties();
+	auto deviceExtensions = mVulkanPhysicalDevice.enumerateDeviceExtensionProperties();
 	for (const auto &ext : deviceExtensions) {
 		const std::string name = ext.extensionName;
 		if (optionalExtensions.device.find(name) != optionalExtensions.device.end()) {
 			enabledExtensions.device.insert(name);
 		}
 
-		if (m_DeviceParams.enableCudaInterop && m_CudaInteropExtensions.device.count(name)) {
+		if (mDeviceParams.enableCudaInterop && mCudaInteropExtensions.device.count(name)) {
 			enabledExtensions.device.insert(name);
 		}
 
-		if (m_DeviceParams.enableRayTracingExtensions &&
-			m_RayTracingExtensions.find(name) != m_RayTracingExtensions.end()) {
+		if (mDeviceParams.enableRayTracingExtensions &&
+			mRayTracingExtensions.find(name) != mRayTracingExtensions.end()) {
 			enabledExtensions.device.insert(name);
 		}
 	}
@@ -927,7 +927,7 @@ bool DeviceManager::createDevice() {
 	bool meshletsSupported		= false;
 	bool vrsSupported			= false;
 
-	logMessage(m_DeviceParams.infoLogSeverity, "Enabled Vulkan device extensions:");
+	logMessage(mDeviceParams.infoLogSeverity, "Enabled Vulkan device extensions:");
 	for (const auto &ext : enabledExtensions.device) {
 		Log(Info, "%s", ext.c_str());
 
@@ -945,11 +945,11 @@ bool DeviceManager::createDevice() {
 			vrsSupported = true;
 	}
 
-	std::unordered_set<int> uniqueQueueFamilies = {m_GraphicsQueueFamily, m_PresentQueueFamily};
+	std::unordered_set<int> uniqueQueueFamilies = {mGraphicsQueueFamily, mPresentQueueFamily};
 
-	if (m_DeviceParams.enableComputeQueue) uniqueQueueFamilies.insert(m_ComputeQueueFamily);
+	if (mDeviceParams.enableComputeQueue) uniqueQueueFamilies.insert(mComputeQueueFamily);
 
-	if (m_DeviceParams.enableCopyQueue) uniqueQueueFamilies.insert(m_TransferQueueFamily);
+	if (mDeviceParams.enableCopyQueue) uniqueQueueFamilies.insert(mTransferQueueFamily);
 
 	float priority = 1.f;
 	std::vector<vk::DeviceQueueCreateInfo> queueDesc;
@@ -1021,39 +1021,39 @@ bool DeviceManager::createDevice() {
 						  .setPpEnabledLayerNames(layerVec.data())
 						  .setPNext(&vulkan12features);
 
-	if (m_DeviceParams.deviceCreateInfoCallback)
-		m_DeviceParams.deviceCreateInfoCallback(deviceDesc);
+	if (mDeviceParams.deviceCreateInfoCallback)
+		mDeviceParams.deviceCreateInfoCallback(deviceDesc);
 
 	const vk::Result res =
-		m_VulkanPhysicalDevice.createDevice(&deviceDesc, nullptr, &m_VulkanDevice);
+		mVulkanPhysicalDevice.createDevice(&deviceDesc, nullptr, &mVulkanDevice);
 	if (res != vk::Result::eSuccess) {
 		Log(Error, "Failed to create a Vulkan physical device, error code = %s",
 			nvrhi::vulkan::resultToString(res));
 		return false;
 	}
 
-	m_VulkanDevice.getQueue(m_GraphicsQueueFamily, 0, &m_GraphicsQueue);
-	if (m_DeviceParams.enableComputeQueue)
-		m_VulkanDevice.getQueue(m_ComputeQueueFamily, 0, &m_ComputeQueue);
-	if (m_DeviceParams.enableCopyQueue)
-		m_VulkanDevice.getQueue(m_TransferQueueFamily, 0, &m_TransferQueue);
-	m_VulkanDevice.getQueue(m_PresentQueueFamily, 0, &m_PresentQueue);
+	mVulkanDevice.getQueue(mGraphicsQueueFamily, 0, &mGraphicsQueue);
+	if (mDeviceParams.enableComputeQueue)
+		mVulkanDevice.getQueue(mComputeQueueFamily, 0, &mComputeQueue);
+	if (mDeviceParams.enableCopyQueue)
+		mVulkanDevice.getQueue(mTransferQueueFamily, 0, &mTransferQueue);
+	mVulkanDevice.getQueue(mPresentQueueFamily, 0, &mPresentQueue);
 
-	VULKAN_HPP_DEFAULT_DISPATCHER.init(m_VulkanDevice);
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(mVulkanDevice);
 
 	// stash the renderer string
-	auto prop		 = m_VulkanPhysicalDevice.getProperties();
-	m_RendererString = std::string(prop.deviceName.data());
+	auto prop		 = mVulkanPhysicalDevice.getProperties();
+	mRendererString = std::string(prop.deviceName.data());
 
-	Log(Info, "Created Vulkan device: %s", m_RendererString.c_str());
-	if (!m_DeviceParams.enableCudaInterop) 
+	Log(Info, "Created Vulkan device: %s", mRendererString.c_str());
+	if (!mDeviceParams.enableCudaInterop) 
 		Log(Error, "You should enable CUDA Interopability to allow CUDA render passes");
 	return true;
 }
 
 bool DeviceManager::createWindowSurface() {
-	const VkResult res = glfwCreateWindowSurface(m_VulkanInstance, m_Window, nullptr,
-												 (VkSurfaceKHR *) &m_WindowSurface);
+	const VkResult res = glfwCreateWindowSurface(mVulkanInstance, mWindow, nullptr,
+												 (VkSurfaceKHR *) &mWindowSurface);
 	if (res != VK_SUCCESS) {
 		Log(Error, "Failed to create a GLFW window surface, error code = %s",
 			nvrhi::vulkan::resultToString(res));
@@ -1064,31 +1064,31 @@ bool DeviceManager::createWindowSurface() {
 }
 
 void DeviceManager::destroySwapChain() {
-	if (m_VulkanDevice) {
-		m_VulkanDevice.waitIdle();
+	if (mVulkanDevice) {
+		mVulkanDevice.waitIdle();
 	}
 
-	if (m_SwapChain) {
-		m_VulkanDevice.destroySwapchainKHR(m_SwapChain);
-		m_SwapChain = nullptr;
+	if (mSwapChain) {
+		mVulkanDevice.destroySwapchainKHR(mSwapChain);
+		mSwapChain = nullptr;
 	}
 
-	m_SwapChainImages.clear();
-	m_RenderImages.clear();
+	mSwapChainImages.clear();
+	mRenderImages.clear();
 }
 
 // This routine will be called whenever resizing...
 bool DeviceManager::createSwapChain() {
 	destroySwapChain();
 
-	m_SwapChainFormat = {vk::Format(nvrhi::vulkan::convertFormat(m_DeviceParams.swapChainFormat)),
+	mSwapChainFormat = {vk::Format(nvrhi::vulkan::convertFormat(mDeviceParams.swapChainFormat)),
 						 vk::ColorSpaceKHR::eSrgbNonlinear};
 
 	vk::Extent2D extent =
-		vk::Extent2D(m_DeviceParams.backBufferWidth, m_DeviceParams.backBufferHeight);
+		vk::Extent2D(mDeviceParams.backBufferWidth, mDeviceParams.backBufferHeight);
 
-	std::unordered_set<uint32_t> uniqueQueues = {uint32_t(m_GraphicsQueueFamily),
-												 uint32_t(m_PresentQueueFamily)};
+	std::unordered_set<uint32_t> uniqueQueues = {uint32_t(mGraphicsQueueFamily),
+												 uint32_t(mPresentQueueFamily)};
 
 	std::vector<uint32_t> queues = setToVector(uniqueQueues);
 
@@ -1096,10 +1096,10 @@ bool DeviceManager::createSwapChain() {
 
 	auto desc =
 		vk::SwapchainCreateInfoKHR()
-			.setSurface(m_WindowSurface)
-			.setMinImageCount(m_DeviceParams.swapChainBufferCount)
-			.setImageFormat(m_SwapChainFormat.format)
-			.setImageColorSpace(m_SwapChainFormat.colorSpace)
+			.setSurface(mWindowSurface)
+			.setMinImageCount(mDeviceParams.swapChainBufferCount)
+			.setImageFormat(mSwapChainFormat.format)
+			.setImageColorSpace(mSwapChainFormat.colorSpace)
 			.setImageExtent(extent)
 			.setImageArrayLayers(1)
 			.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment |
@@ -1110,12 +1110,12 @@ bool DeviceManager::createSwapChain() {
 			.setPQueueFamilyIndices(enableSwapChainSharing ? queues.data() : nullptr)
 			.setPreTransform(vk::SurfaceTransformFlagBitsKHR::eIdentity)
 			.setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
-			.setPresentMode(m_DeviceParams.vsyncEnabled ? vk::PresentModeKHR::eFifo
+			.setPresentMode(mDeviceParams.vsyncEnabled ? vk::PresentModeKHR::eFifo
 														: vk::PresentModeKHR::eImmediate)
 			.setClipped(true)
 			.setOldSwapchain(nullptr);
 
-	const vk::Result res = m_VulkanDevice.createSwapchainKHR(&desc, nullptr, &m_SwapChain);
+	const vk::Result res = mVulkanDevice.createSwapchainKHR(&desc, nullptr, &mSwapChain);
 	if (res != vk::Result::eSuccess) {
 		Log(Error, "Failed to create a Vulkan swap chain, error code = %s",
 			nvrhi::vulkan::resultToString(res));
@@ -1123,25 +1123,25 @@ bool DeviceManager::createSwapChain() {
 	}
 
 	// retrieve swap chain images
-	auto images = m_VulkanDevice.getSwapchainImagesKHR(m_SwapChain);
+	auto images = mVulkanDevice.getSwapchainImagesKHR(mSwapChain);
 	for (auto image : images) {
 		SwapChainImage sci;
 		sci.image = image;
 
 		nvrhi::TextureDesc textureDesc;
-		textureDesc.width			 = m_DeviceParams.backBufferWidth;
-		textureDesc.height			 = m_DeviceParams.backBufferHeight;
-		textureDesc.format			 = m_DeviceParams.swapChainFormat;
+		textureDesc.width			 = mDeviceParams.backBufferWidth;
+		textureDesc.height			 = mDeviceParams.backBufferHeight;
+		textureDesc.format			 = mDeviceParams.swapChainFormat;
 		textureDesc.debugName		 = "Swap chain image";
 		textureDesc.initialState	 = nvrhi::ResourceStates::Present;
 		textureDesc.keepInitialState = true;
 		textureDesc.isRenderTarget	 = true;
 
-		sci.rhiHandle = m_NvrhiDevice->createHandleForNativeTexture(
+		sci.rhiHandle = mNvrhiDevice->createHandleForNativeTexture(
 			nvrhi::ObjectTypes::VK_Image, nvrhi::Object(sci.image), textureDesc);
-		m_SwapChainImages.push_back(sci);
+		mSwapChainImages.push_back(sci);
 
-		textureDesc.format			 = m_DeviceParams.renderFormat;
+		textureDesc.format			 = mDeviceParams.renderFormat;
 		textureDesc.debugName		 = "Render Target";
 		textureDesc.initialState	 = nvrhi::ResourceStates::ShaderResource;
 		textureDesc.keepInitialState = true;
@@ -1149,19 +1149,19 @@ bool DeviceManager::createSwapChain() {
 		textureDesc.isUAV			 = true;
 		textureDesc.sampleCount		 = 1;
 
-		nvrhi::TextureHandle renderImage = m_DeviceParams.enableCudaInterop
-											   ? m_CuVkHandler->createExternalTexture(textureDesc)
-											   : m_NvrhiDevice->createTexture(textureDesc);
-		m_RenderImages.push_back(renderImage);
+		nvrhi::TextureHandle renderImage = mDeviceParams.enableCudaInterop
+											   ? mCuVkHandler->createExternalTexture(textureDesc)
+											   : mNvrhiDevice->createTexture(textureDesc);
+		mRenderImages.push_back(renderImage);
 	}
 
-	m_SwapChainIndex = 0;
+	mSwapChainIndex = 0;
 
 	return true;
 }
 
 bool DeviceManager::CreateDeviceAndSwapChain() {
-	if (m_DeviceParams.enableDebugRuntime) {
+	if (mDeviceParams.enableDebugRuntime) {
 		enabledExtensions.instance.insert("VK_EXT_debug_report");
 		enabledExtensions.layers.insert("VK_LAYER_KHRONOS_validation");
 	}
@@ -1180,26 +1180,26 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 	}
 	CHECK(createInstance())
 
-	if (m_DeviceParams.enableDebugRuntime) {
+	if (mDeviceParams.enableDebugRuntime) {
 		installDebugCallback();
 	}
 
-	if (m_DeviceParams.swapChainFormat == nvrhi::Format::SRGBA8_UNORM)
-		m_DeviceParams.swapChainFormat = nvrhi::Format::SBGRA8_UNORM;
-	else if (m_DeviceParams.swapChainFormat == nvrhi::Format::RGBA8_UNORM)
-		m_DeviceParams.swapChainFormat = nvrhi::Format::BGRA8_UNORM;
+	if (mDeviceParams.swapChainFormat == nvrhi::Format::SRGBA8_UNORM)
+		mDeviceParams.swapChainFormat = nvrhi::Format::SBGRA8_UNORM;
+	else if (mDeviceParams.swapChainFormat == nvrhi::Format::RGBA8_UNORM)
+		mDeviceParams.swapChainFormat = nvrhi::Format::BGRA8_UNORM;
 
 	// add device extensions requested by the user
-	for (const std::string &name : m_DeviceParams.requiredVulkanDeviceExtensions) {
+	for (const std::string &name : mDeviceParams.requiredVulkanDeviceExtensions) {
 		enabledExtensions.device.insert(name);
 	}
-	for (const std::string &name : m_DeviceParams.optionalVulkanDeviceExtensions) {
+	for (const std::string &name : mDeviceParams.optionalVulkanDeviceExtensions) {
 		optionalExtensions.device.insert(name);
 	}
 
 	CHECK(createWindowSurface())
 	CHECK(pickPhysicalDevice())
-	CHECK(findQueueFamilies(m_VulkanPhysicalDevice))
+	CHECK(findQueueFamilies(mVulkanPhysicalDevice))
 	CHECK(createDevice())
 
 	auto vecInstanceExt = stringSetToVector(enabledExtensions.instance);
@@ -1208,51 +1208,51 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 
 	nvrhi::vulkan::DeviceDesc deviceDesc;
 	deviceDesc.errorCB			  = &DefaultMessageCallback::GetInstance();
-	deviceDesc.instance			  = m_VulkanInstance;
-	deviceDesc.physicalDevice	  = m_VulkanPhysicalDevice;
-	deviceDesc.device			  = m_VulkanDevice;
-	deviceDesc.graphicsQueue	  = m_GraphicsQueue;
-	deviceDesc.graphicsQueueIndex = m_GraphicsQueueFamily;
-	if (m_DeviceParams.enableComputeQueue) {
-		deviceDesc.computeQueue		 = m_ComputeQueue;
-		deviceDesc.computeQueueIndex = m_ComputeQueueFamily;
+	deviceDesc.instance			  = mVulkanInstance;
+	deviceDesc.physicalDevice	  = mVulkanPhysicalDevice;
+	deviceDesc.device			  = mVulkanDevice;
+	deviceDesc.graphicsQueue	  = mGraphicsQueue;
+	deviceDesc.graphicsQueueIndex = mGraphicsQueueFamily;
+	if (mDeviceParams.enableComputeQueue) {
+		deviceDesc.computeQueue		 = mComputeQueue;
+		deviceDesc.computeQueueIndex = mComputeQueueFamily;
 	}
-	if (m_DeviceParams.enableCopyQueue) {
-		deviceDesc.transferQueue	  = m_TransferQueue;
-		deviceDesc.transferQueueIndex = m_TransferQueueFamily;
+	if (mDeviceParams.enableCopyQueue) {
+		deviceDesc.transferQueue	  = mTransferQueue;
+		deviceDesc.transferQueueIndex = mTransferQueueFamily;
 	}
 	deviceDesc.instanceExtensions	 = vecInstanceExt.data();
 	deviceDesc.numInstanceExtensions = vecInstanceExt.size();
 	deviceDesc.deviceExtensions		 = vecDeviceExt.data();
 	deviceDesc.numDeviceExtensions	 = vecDeviceExt.size();
 
-	m_NvrhiDevice = nvrhi::vulkan::createDevice(deviceDesc);
-	gpContext->setDefaultVkDevice(m_NvrhiDevice.Get());
+	mNvrhiDevice = nvrhi::vulkan::createDevice(deviceDesc);
+	gpContext->setDefaultVkDevice(mNvrhiDevice.Get());
 
-	if (m_DeviceParams.enableNvrhiValidationLayer) {
-		m_ValidationLayer = nvrhi::validation::createValidationLayer(m_NvrhiDevice);
+	if (mDeviceParams.enableNvrhiValidationLayer) {
+		mValidationLayer = nvrhi::validation::createValidationLayer(mNvrhiDevice);
 	}
 
-	if (m_DeviceParams.enableCudaInterop) {
-		m_CuVkHandler = std::make_unique<vkrhi::CuVkHandler>(GetDevice());
-		m_CuVkHandler->initCUDA();
+	if (mDeviceParams.enableCudaInterop) {
+		mCuVkHandler = std::make_unique<vkrhi::CuVkHandler>(GetDevice());
+		mCuVkHandler->initCUDA();
 	}
 
 	vkrhi::CommandListParameters;
-	m_PresentSemaphore = m_CuVkHandler->createCuVkSemaphore(false); 
-	m_GraphicsSemaphore = m_CuVkHandler->createCuVkSemaphore(true); 
+	mPresentSemaphore = mCuVkHandler->createCuVkSemaphore(false); 
+	mGraphicsSemaphore = mCuVkHandler->createCuVkSemaphore(true); 
 	// [not that descent] to make cuda wait for previous vulkan operations, 
 	// I use the following dirty routines to replace the queue semaphore with a
 	// vulkan-exported semaphore.
-	auto* graphicsQueue = dynamic_cast<vkrhi::vulkan::Device *>(m_NvrhiDevice.Get())
+	auto* graphicsQueue = dynamic_cast<vkrhi::vulkan::Device *>(mNvrhiDevice.Get())
 		->getQueue(nvrhi::CommandQueue::Graphics);
-	m_VulkanDevice.waitIdle();
-	m_VulkanDevice.destroySemaphore(graphicsQueue->trackingSemaphore);
-	graphicsQueue->trackingSemaphore = m_GraphicsSemaphore;
+	mVulkanDevice.waitIdle();
+	mVulkanDevice.destroySemaphore(graphicsQueue->trackingSemaphore);
+	graphicsQueue->trackingSemaphore = mGraphicsSemaphore;
 
-	m_CommandList  = m_NvrhiDevice->createCommandList();
-	m_HelperPass   = std::make_unique<CommonRenderPasses>(GetDevice());
-	m_BindingCache = std::make_unique<BindingCache>(GetDevice());
+	mCommandList  = mNvrhiDevice->createCommandList();
+	mHelperPass   = std::make_unique<CommonRenderPasses>(GetDevice());
+	mBindingCache = std::make_unique<BindingCache>(GetDevice());
 	CHECK(createSwapChain())
 
 #undef CHECK
@@ -1261,92 +1261,92 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 
 void DeviceManager::DestroyDeviceAndSwapChain() {
 	destroySwapChain();
-	m_VulkanDevice.waitIdle();
-	m_VulkanDevice.destroySemaphore(m_PresentSemaphore);
-	m_PresentSemaphore = {};
+	mVulkanDevice.waitIdle();
+	mVulkanDevice.destroySemaphore(mPresentSemaphore);
+	mPresentSemaphore = {};
 
-	m_CommandList = nullptr;
+	mCommandList = nullptr;
 
-	m_NvrhiDevice	  = nullptr;
-	m_ValidationLayer = nullptr;
-	m_RendererString.clear();
+	mNvrhiDevice	  = nullptr;
+	mValidationLayer = nullptr;
+	mRendererString.clear();
 	gpContext->setDefaultVkDevice(nullptr);
 
-	if (m_DebugReportCallback) {
-		m_VulkanInstance.destroyDebugReportCallbackEXT(m_DebugReportCallback);
+	if (mDebugReportCallback) {
+		mVulkanInstance.destroyDebugReportCallbackEXT(mDebugReportCallback);
 	}
 
-	if (m_VulkanDevice) {
-		m_VulkanDevice.destroy();
-		m_VulkanDevice = nullptr;
+	if (mVulkanDevice) {
+		mVulkanDevice.destroy();
+		mVulkanDevice = nullptr;
 	}
 
-	if (m_WindowSurface) {
-		assert(m_VulkanInstance);
-		m_VulkanInstance.destroySurfaceKHR(m_WindowSurface);
-		m_WindowSurface = nullptr;
+	if (mWindowSurface) {
+		assert(mVulkanInstance);
+		mVulkanInstance.destroySurfaceKHR(mWindowSurface);
+		mWindowSurface = nullptr;
 	}
 
-	if (m_VulkanInstance) {
-		m_VulkanInstance.destroy();
-		m_VulkanInstance = nullptr;
+	if (mVulkanInstance) {
+		mVulkanInstance.destroy();
+		mVulkanInstance = nullptr;
 	}
 }
 
 void DeviceManager::BeginFrame() {
 	const vk::Result res =
-		m_VulkanDevice.acquireNextImageKHR(m_SwapChain,
+		mVulkanDevice.acquireNextImageKHR(mSwapChain,
 										   std::numeric_limits<uint64_t>::max(), // timeout
-										   m_PresentSemaphore, vk::Fence(), &m_SwapChainIndex);
+										   mPresentSemaphore, vk::Fence(), &mSwapChainIndex);
 
 	assert(res == vk::Result::eSuccess);
 
-	m_NvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
+	mNvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, mPresentSemaphore, 0);
 }
 
 void DeviceManager::Present() {
 
 	vk::PresentInfoKHR info = vk::PresentInfoKHR()
 								  .setWaitSemaphoreCount(1)
-								  .setPWaitSemaphores(&m_PresentSemaphore.vulkan())
+								  .setPWaitSemaphores(&mPresentSemaphore.vulkan())
 								  .setSwapchainCount(1)
-								  .setPSwapchains(&m_SwapChain)
-								  .setPImageIndices(&m_SwapChainIndex);
+								  .setPSwapchains(&mSwapChain)
+								  .setPImageIndices(&mSwapChainIndex);
 
-	const vk::Result res = m_PresentQueue.presentKHR(&info);
+	const vk::Result res = mPresentQueue.presentKHR(&info);
 	assert(res == vk::Result::eSuccess || res == vk::Result::eErrorOutOfDateKHR);
 
-	if (m_DeviceParams.enableDebugRuntime) {
+	if (mDeviceParams.enableDebugRuntime) {
 		// according to vulkan-tutorial.com, "the validation layer implementation expects
 		// the application to explicitly synchronize with the GPU"
-		m_PresentQueue.waitIdle();
+		mPresentQueue.waitIdle();
 	} else {
 #ifndef _WIN32
-		if (m_DeviceParams.vsyncEnabled) {
-			m_PresentQueue.waitIdle();
+		if (mDeviceParams.vsyncEnabled) {
+			mPresentQueue.waitIdle();
 		}
 #endif
 
-		while (m_FramesInFlight.size() > m_DeviceParams.maxFramesInFlight) {
-			auto query = m_FramesInFlight.front();
-			m_FramesInFlight.pop();
+		while (mFramesInFlight.size() > mDeviceParams.maxFramesInFlight) {
+			auto query = mFramesInFlight.front();
+			mFramesInFlight.pop();
 
-			m_NvrhiDevice->waitEventQuery(query);
+			mNvrhiDevice->waitEventQuery(query);
 
-			m_QueryPool.push_back(query);
+			mQueryPool.push_back(query);
 		}
 
 		nvrhi::EventQueryHandle query;
-		if (!m_QueryPool.empty()) {
-			query = m_QueryPool.back();
-			m_QueryPool.pop_back();
+		if (!mQueryPool.empty()) {
+			query = mQueryPool.back();
+			mQueryPool.pop_back();
 		} else {
-			query = m_NvrhiDevice->createEventQuery();
+			query = mNvrhiDevice->createEventQuery();
 		}
 
-		m_NvrhiDevice->resetEventQuery(query);
-		m_NvrhiDevice->setEventQuery(query, nvrhi::CommandQueue::Graphics);
-		m_FramesInFlight.push(query);
+		mNvrhiDevice->resetEventQuery(query);
+		mNvrhiDevice->setEventQuery(query, nvrhi::CommandQueue::Graphics);
+		mFramesInFlight.push(query);
 	}
 }
 
