@@ -17,12 +17,79 @@ public:
 	vkrhi::TextureHandle normals;
 	vkrhi::TextureHandle emissive;
 
+	virtual bool isUpdateNeeded(Vector2i size, uint sampleCount) {
+		return mSize != size || mSampleCount != sampleCount;
+	}
+
+	virtual void initialize(vkrhi::vulkan::IDevice* device,
+		Vector2i size,
+		uint sampleCount) {
+		vkrhi::TextureDesc desc;
+		desc.width			  = size[0];
+		desc.height			  = size[1];
+		desc.initialState	  = vkrhi::ResourceStates::DepthWrite;
+		desc.keepInitialState = true;
+		desc.isRenderTarget	  = true;
+		desc.useClearValue	  = true;
+		desc.isTypeless		  = true;
+		desc.isUAV			  = false;
+		desc.sampleCount	  = sampleCount;
+		desc.mipLevels		  = 1;
+		desc.format			  = vkrhi::Format::D24S8;
+		desc.clearValue		  = vkrhi::Color(1.f);
+		desc.debugName		  = "DepthBuffer";
+		desc.dimension = sampleCount > 1 ? vkrhi::TextureDimension::Texture2DMS
+										 : vkrhi::TextureDimension::Texture2D;
+		depth				= device->createTexture(desc);
+	
+		mSize = size;
+		mSampleCount = sampleCount;
+	}
+
+	virtual void clear(vkrhi::ICommandList* commandList) {
+		const vkrhi::FormatInfo depthFormatInfo = vkrhi::getFormatInfo(depth->getDesc().format);
+		commandList->clearDepthStencilTexture(depth, vkrhi::AllSubresources, 
+			true, 1.f, depthFormatInfo.hasStencil, 0);
+	}
+};
+
+class RenderTargets : public GBufferRenderTargets {
+public:
+	vkrhi::TextureHandle color;		// potentially a MSAA texture
+
+	virtual void initialize(vkrhi::vulkan::IDevice *device, Vector2i size,
+							uint sampleCount) override {
+		GBufferRenderTargets::initialize(device, size, sampleCount);
+
+		vkrhi::TextureDesc desc;
+		desc.width			  = size[0];
+		desc.height			  = size[1];
+		desc.initialState	  = vkrhi::ResourceStates::RenderTarget;
+		desc.keepInitialState = true;
+		desc.isRenderTarget	  = true;
+		desc.useClearValue	  = true;
+		desc.sampleCount	  = sampleCount;
+		desc.mipLevels		  = 1;
+		desc.format			  = vkrhi::Format::RGBA32_FLOAT;
+		desc.clearValue		  = vkrhi::Color(0.f);
+		desc.debugName		  = "ColorBuffer";
+		desc.dimension = sampleCount > 1 ? vkrhi::TextureDimension::Texture2DMS
+										 : vkrhi::TextureDimension::Texture2D;
+		color		   = device->createTexture(desc);
+	}
+
+	virtual void clear(vkrhi::ICommandList *commandList) {
+		GBufferRenderTargets::clear(commandList);
+		commandList->clearTextureFloat(color, vkrhi::AllSubresources,
+											  vkrhi::Color(0.f));
+	}
 };
 
 void BindlessRender::initialize() {
 	mShaderLoader = std::make_shared<ShaderLoader>(getVulkanDevice());
 	mBindingCache = std::make_shared<BindingCache>(getVulkanDevice());
 	mHelperPass	  = std::make_shared<CommonRenderPasses>(getVulkanDevice(), mShaderLoader);
+	mRenderTargets = std::make_unique<RenderTargets>();
 	
 	mVertexShader = mShaderLoader->createShader(
 		"src/render/rasterize/shaders/bindless.hlsl", "vs_main", nullptr,
@@ -78,29 +145,26 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 	PROFILE("Bindless Rendering");
 	vkrhi::IFramebuffer *framebuffer = frame->getFramebuffer();
 	const auto &fbInfo				 = framebuffer->getFramebufferInfo();
+	int sampleCount = 1;
+	switch (mMSAA) {
+		case MSAA::MSAA_2X: sampleCount = 2; break;
+		case MSAA::MSAA_4X: sampleCount = 4; break;
+		case MSAA::MSAA_8X: sampleCount = 8; break;
+		default:;
+	}
+	if (!mRenderTargets ||
+		mRenderTargets->isUpdateNeeded(Vector2i{fbInfo.width, fbInfo.height},
+									   sampleCount)) {
+		mRenderTargets->initialize(getVulkanDevice(),
+			Vector2i{fbInfo.width, fbInfo.height}, sampleCount);
+		mGraphicsPipeline = nullptr;
+	}
 
 	if (!mGraphicsPipeline) {
 		/* Either first frame, or the backbuffer resized, or... */
-		vkrhi::TextureDesc textureDesc;
-		textureDesc.width			 = fbInfo.width;
-		textureDesc.height			 = fbInfo.height;
-		textureDesc.dimension		 = vkrhi::TextureDimension::Texture2D;
-		textureDesc.keepInitialState = true;
-		textureDesc.isRenderTarget	 = true;
-
-		textureDesc.debugName	 = "ColorBuffer";
-		textureDesc.format		 = vkrhi::Format::RGBA32_FLOAT;
-		textureDesc.initialState = vkrhi::ResourceStates::RenderTarget;
-		mColorBuffer = getVulkanDevice()->createTexture(textureDesc);
-		
-		textureDesc.debugName	 = "DepthBuffer";
-		textureDesc.format		 = vkrhi::Format::D24S8;
-		textureDesc.initialState = vkrhi::ResourceStates::DepthWrite;
-		mDepthBuffer = getVulkanDevice()->createTexture(textureDesc);
-		
 		vkrhi::FramebufferDesc framebufferDesc;
-		framebufferDesc.addColorAttachment(mColorBuffer, vkrhi::AllSubresources);
-		framebufferDesc.setDepthAttachment(mDepthBuffer);
+		framebufferDesc.addColorAttachment(mRenderTargets->color, vkrhi::AllSubresources);
+		framebufferDesc.setDepthAttachment(mRenderTargets->depth);
 		mFramebuffer = getVulkanDevice()->createFramebuffer(framebufferDesc);
 
 		vkrhi::GraphicsPipelineDesc pipelineDesc;
@@ -115,12 +179,8 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 			vkrhi::ComparisonFunc::LessOrEqual;
 		mGraphicsPipeline = getVulkanDevice()->createGraphicsPipeline(pipelineDesc, mFramebuffer);
 	}
-	
 	mCommandList->open();
-	mCommandList->clearTextureFloat(mColorBuffer, vkrhi::AllSubresources,
-									vkrhi::Color(0.2, 0.2, 0.2, 1));
-	mCommandList->clearDepthStencilTexture(mDepthBuffer, vkrhi::AllSubresources,
-										   true, 1, true, 0);
+	mRenderTargets->clear(mCommandList);
 
 	/* Set view constants */
 	ViewConstants viewConstants;
@@ -153,18 +213,21 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 	
 	/* Blit framebuffer. */
 	// We may not draw to the backbuffer directly due to unknown format and depth buffer.
-	mHelperPass->BlitTexture(mCommandList, framebuffer, mColorBuffer, mBindingCache.get());
+	auto& resolvedColor = framebuffer->getDesc().colorAttachments[0].texture;
+	if (sampleCount > 1)
+		mCommandList->resolveTexture(resolvedColor, vkrhi::TextureSubresourceSet(0, 1, 0, 1),
+			mRenderTargets->color, vkrhi::TextureSubresourceSet(0, 1, 0, 1));
+	else mHelperPass->BlitTexture(mCommandList, framebuffer, mRenderTargets->color, mBindingCache.get());
 	mCommandList->close();
 	getVulkanDevice()->executeCommandList(mCommandList);
 }
 
-void BindlessRender::renderUI() { 
-	ui::Text("Hello from bindless render pass");
+void BindlessRender::renderUI() {
+	const char *msaa_mode[] = {"None", "MSAA_2X", "MSAA_4X", "MSAA_8X"};
+	ui::Combo("MSAA", (int*) & mMSAA, msaa_mode, 4);
 }
 
 void BindlessRender::resize(const Vector2i &size) {
-	mDepthBuffer	  = nullptr;
-	mColorBuffer	  = nullptr;
 	mFramebuffer	  = nullptr;
 	mGraphicsPipeline = nullptr;
 	if(mBindingCache) mBindingCache->Clear();

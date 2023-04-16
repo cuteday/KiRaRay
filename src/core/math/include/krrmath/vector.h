@@ -72,6 +72,12 @@ public:
 		this->operator[](1) = y;
 	}
 
+	template <typename OT>
+	KRR_CALLABLE explicit Vector2(const OT& x, const OT& y) {
+		this->operator[](0) = static_cast<T>(x);
+		this->operator[](1) = static_cast<T>(y);
+	}
+
 #ifdef __CUDACC__
 
 	KRR_CALLABLE operator float2() const {
