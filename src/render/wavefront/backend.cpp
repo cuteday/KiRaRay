@@ -113,9 +113,6 @@ void OptiXWavefrontBackend::traceClosest(int numRays, RayQueue *currentRayQueue,
 		cudaMemcpy(launchParams, &params, sizeof(LaunchParams), cudaMemcpyHostToDevice);
 		OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream, (CUdeviceptr) launchParams,
 								sizeof(LaunchParams), &closestSBT, numRays, 1, 1));
-#ifdef KRR_DEBUG_BUILD
-		CUDA_SYNC_CHECK();
-#endif
 	}
 }
 
@@ -131,9 +128,6 @@ void OptiXWavefrontBackend::traceShadow(int numRays, ShadowRayQueue *shadowRayQu
 		cudaMemcpy(launchParams, &params, sizeof(LaunchParams), cudaMemcpyHostToDevice);
 		OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream, (CUdeviceptr) launchParams,
 								sizeof(LaunchParams), &shadowSBT, numRays, 1, 1));
-#ifdef KRR_DEBUG_BUILD
-		CUDA_SYNC_CHECK();
-#endif
 	}
 }
 

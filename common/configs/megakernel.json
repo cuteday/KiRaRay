@@ -1,5 +1,5 @@
 {
-	"model": "common/assets/scenes/local/kitchen/scene.pbrt",
+	"model": "common/assets/scenes/cbox/cbox.obj",
 	"resolution": [
 		750,
 		750
@@ -7,8 +7,24 @@
 	"passes": [
 		{
 			"enable": true,
-			"name": "BindlessRender",
-			"params": {}
+			"name": "MegakernelPathTracer",
+			"params": {
+				"nee": true,
+				"rr": 0.8,
+				"max_depth": 10
+			}
+		},
+		{
+			"enable": true,
+			"name": "AccumulatePass",
+			"params": {
+				"spp": 0,
+				"mode": "accumulate"
+			}
+		},
+		{
+			"enable": false,
+			"name": "DenoisePass"
 		},
 		{
 			"enable": true,
@@ -55,5 +71,6 @@
 				"yaw": 0.000348508358001709
 			}
 		}
-	}
+	},
+	"spp": 0
 }

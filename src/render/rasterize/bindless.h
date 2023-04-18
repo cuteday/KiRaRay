@@ -9,12 +9,21 @@
 
 KRR_NAMESPACE_BEGIN
 
+class RenderTargets;
+
 class BindlessRender : public RenderPass {
 public:
 	struct ViewConstants {
 		Matrix4f worldToView;
 		Matrix4f viewToClip;
 		Matrix4f worldToClip;
+	};
+
+	enum class MSAA {
+		NONE	 = 0, 
+		MSAA_2X	 = 1,
+		MSAA_4X	 = 2,
+		MSAA_8X	 = 3,
 	};
 	
 	using RenderPass::RenderPass;
@@ -38,14 +47,15 @@ private:
 	vkrhi::GraphicsPipelineHandle mGraphicsPipeline;
 
 	vkrhi::BufferHandle mViewConstants;
-	vkrhi::TextureHandle mDepthBuffer;
-	vkrhi::TextureHandle mColorBuffer;
 	vkrhi::FramebufferHandle mFramebuffer;
 
 	std::shared_ptr<ShaderLoader> mShaderLoader;
 	std::shared_ptr<DescriptorTableManager> mDescriptorTableManager;
 	std::shared_ptr<BindingCache> mBindingCache;
 	std::shared_ptr<CommonRenderPasses> mHelperPass;
+	std::unique_ptr<RenderTargets> mRenderTargets;
+
+	MSAA mMSAA{MSAA::MSAA_8X};
 
 	friend void to_json(json& j, const BindlessRender& p) {
 

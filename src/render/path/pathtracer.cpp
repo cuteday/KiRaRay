@@ -149,7 +149,6 @@ void MegakernelPathTracer::render(RenderFrame::SharedPtr frame) {
 	PROFILE("Megakernel Path Tracer");
 	{
 		PROFILE("Updating parameters");
-		CUDATrackedMemory::singleton.PrefetchToGPU();
 		launchParams.fbSize		 = mFrameSize;
 		launchParams.colorBuffer = frame->getCudaRenderTarget();
 		launchParams.camera		 = mpScene->getCamera();

@@ -118,7 +118,6 @@ void BDPTIntegrator::render(RenderFrame::SharedPtr frame) {
 	PROFILE("BDPT Integrator");
 	{
 		PROFILE("Updating parameters");
-		CUDATrackedMemory::singleton.PrefetchToGPU();
 		launchParams.fbSize		 = mFrameSize;
 		launchParams.colorBuffer = frame->getCudaRenderTarget();
 		launchParams.camera		 = mpScene->getCamera();

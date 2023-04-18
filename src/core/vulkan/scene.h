@@ -2,7 +2,9 @@
 #include <array>
 #include <common.h>
 #include <scene.h>
+
 #include "descriptor.h"
+#include "textureloader.h"
 
 #include <nvrhi/vulkan.h>
 
@@ -24,6 +26,28 @@ public:
 	}
 	vkrhi::BufferRange& getVertexBufferRange(VertexAttribute attr) {
 		return vertexBufferRanges[(int) attr];
+	}
+};
+
+class MaterialTextures {
+public:
+	std::array<std::shared_ptr<LoadedTexture>, 
+		size_t(Material::TextureType::Count)> textures;
+
+	bool hasTexture(Material::TextureType textureType) const {
+		return textures[(size_t) textureType].get();
+	}
+	[[nodiscard]] vkrhi::ITexture *
+		getTexture(Material::TextureType textureType) const {
+		if (!hasTexture(textureType)) {
+			Log(Error, "Attempt to get texture that a material do not pocess.");
+			return nullptr;
+		}
+		return textures[(size_t) textureType]->texture;
+	}
+	[[nodiscard]] int getDescriptor(Material::TextureType textureType) const {
+		if (!hasTexture(textureType)) return -1;
+		return textures[(size_t) textureType]->bindlessDescriptor.Get();
 	}
 };
 
@@ -64,8 +88,9 @@ public:
 	using SharedPtr = std::shared_ptr<VKScene>;
 
 	VKScene() = default;
-	VKScene(Scene *scene, vkrhi::vulkan::IDevice* device) : 
-		mpScene(scene), mDevice(device) {}
+	VKScene(Scene *scene, vkrhi::vulkan::IDevice* device, 
+		std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr) : 
+		mpScene(scene), mDevice(device), mDescriptorTable(descriptorTable) {}
 	~VKScene() = default;
 
 	[[nodiscard]] vkrhi::IBuffer* getMaterialBuffer() const { return mMaterialConstantsBuffer; }
@@ -74,15 +99,19 @@ public:
 protected:	
 	friend Scene;
 	void writeMeshBuffers(vkrhi::ICommandList *commandList);
+	void writeMaterialTextures(vkrhi::ICommandList *commandList);
+	
 	void writeMaterialBuffer(vkrhi::ICommandList *commandList);
 	void writeGeometryBuffer(vkrhi::ICommandList *commandList);
-	void writeDescriptorTable(DescriptorTableManager *descriptorTable);
 
-	Scene *mpScene;
-	vkrhi::vulkan::DeviceHandle mDevice;
+	Scene *mpScene{};
+	vkrhi::vulkan::DeviceHandle mDevice{};
+	std::shared_ptr<DescriptorTableManager> mDescriptorTable{};
+	std::shared_ptr<TextureCache> mTextureLoader;
 
 	std::vector<rs::MaterialConstants> mMaterialConstants;
 	std::vector<rs::MeshBuffers> mMeshBuffers;
+	std::vector<rs::MaterialTextures> mMaterialTextures;
 	std::vector<rs::MeshData> mMeshData;
 	vkrhi::BufferHandle mMaterialConstantsBuffer;
 	vkrhi::BufferHandle mMeshDataBuffer;

@@ -24,8 +24,8 @@ void RenderApp::BackBufferResized() {
 	DeviceManager::BackBufferResized();
 	if (mpScene)
 		mpScene->getCamera().setAspectRatio((float) 
-			m_DeviceParams.backBufferWidth /
-			m_DeviceParams.backBufferHeight);
+			mDeviceParams.backBufferWidth /
+			mDeviceParams.backBufferHeight);
 	CUDA_SYNC_CHECK();
 }
 
@@ -55,7 +55,7 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 
 void RenderApp::setScene(Scene::SharedPtr scene) {
 	mpScene = scene;
-	for (auto p : m_RenderPasses) if (p) p->setScene(scene);
+	for (auto p : mRenderPasses) if (p) p->setScene(scene);
 }
 
 void RenderApp::run() {
@@ -65,7 +65,7 @@ void RenderApp::run() {
 }
 
 void RenderApp::Tick(double elapsedTime) {
-	for (auto it : m_RenderPasses) it->tick(float(elapsedTime));
+	for (auto it : mRenderPasses) it->tick(float(elapsedTime));
 	mpUIRenderer->tick(float(elapsedTime));
 }
 
@@ -76,15 +76,15 @@ void RenderApp::Render() {
 
 	if (mpScene) mpScene->update();
 	BeginFrame();
-	auto framebuffer = m_RenderFramebuffers[GetCurrentBackBufferIndex()];
+	auto framebuffer = mRenderFramebuffers[GetCurrentBackBufferIndex()];
 	mpUIRenderer->beginFrame();
-	for (auto it : m_RenderPasses) it->beginFrame();
-	for (auto it : m_RenderPasses) {
-		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(m_GraphicsSemaphore);
+	for (auto it : mRenderPasses) it->beginFrame();
+	for (auto it : mRenderPasses) {
+		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(mGraphicsSemaphore);
 		it->render(framebuffer);
 		if (it->isCudaPass()) framebuffer->cudaUpdateVulkan();
 	}
-	for (auto it : m_RenderPasses) it->endFrame();
+	for (auto it : mRenderPasses) it->endFrame();
 
 	if (sRequestScreenshot) {
 		captureFrame(sSaveHDR);
@@ -95,14 +95,14 @@ void RenderApp::Render() {
 	renderUI();
 	mpUIRenderer->render(framebuffer);
 	mpUIRenderer->endFrame();
-	m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphore, 0);
+	mNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, mPresentSemaphore, 0);
 	// Blit render buffer, from the render texture (usually HDR) to swapchain texture.
-	m_CommandList->open();
-	m_HelperPass->BlitTexture(
-		m_CommandList, m_SwapChainFramebuffers[GetCurrentBackBufferIndex()],
-		GetCurrentRenderImage(), m_BindingCache.get());
-	m_CommandList->close();
-	m_NvrhiDevice->executeCommandList(m_CommandList,
+	mCommandList->open();
+	mHelperPass->BlitTexture(
+		mCommandList, mSwapChainFramebuffers[GetCurrentBackBufferIndex()],
+		GetCurrentRenderImage(), mBindingCache.get());
+	mCommandList->close();
+	mNvrhiDevice->executeCommandList(mCommandList,
 									  nvrhi::CommandQueue::Graphics);
 
 	// If profiler::endframe is called, it queries the gpu time and thus 
@@ -159,7 +159,7 @@ void RenderApp::renderUI() {
 		}
 		if (mpScene && ui::CollapsingHeader("Scene"))
 			mpScene->renderUI();
-		for (auto p : m_RenderPasses)
+		for (auto p : mRenderPasses)
 			if (p && ui::CollapsingHeader(p->getName().c_str()))
 				p->renderUI();
 		ui::End();
@@ -237,7 +237,7 @@ void RenderApp::saveConfig(string path) {
 	config["resolution"] = resolution;
 	config["scene"]		 = *mpScene;
 	json passes			 = {};
-	for (RenderPass::SharedPtr p : m_RenderPasses) {
+	for (RenderPass::SharedPtr p : mRenderPasses) {
 		json p_cfg{ { "name", p->getName() }, { "enable", p->enabled() } };
 		passes.push_back(p_cfg);
 	}
@@ -297,8 +297,8 @@ void RenderApp::loadConfig(const json config) {
 		setScene(scene);
 	if (config.contains("resolution")) {
 		Vector2i windowDimension = config.at("resolution");
-		m_DeviceParams.backBufferWidth = windowDimension[0];
-		m_DeviceParams.backBufferHeight = windowDimension[1];
+		mDeviceParams.backBufferWidth = windowDimension[0];
+		mDeviceParams.backBufferHeight = windowDimension[1];
 		UpdateWindowSize();
 	}	
 	mConfig		= config;
@@ -311,18 +311,18 @@ void RenderApp::loadConfigFrom(fs::path path) {
 }
 
 void RenderApp::initialize() { 
-	CreateWindowDeviceAndSwapChain(m_DeviceParams, KRR_PROJECT_NAME);
+	CreateWindowDeviceAndSwapChain(mDeviceParams, KRR_PROJECT_NAME);
 	mpUIRenderer = std::make_shared<UIRenderer>(this);
 	mpUIRenderer->initialize();
-	for (auto pass : m_RenderPasses) pass->initialize();
-	m_NvrhiDevice->waitForIdle();
+	for (auto pass : mRenderPasses) pass->initialize();
+	mNvrhiDevice->waitForIdle();
 }
 
 void RenderApp::finalize() { 
-	for (auto pass : m_RenderPasses) 
+	for (auto pass : mRenderPasses) 
 		pass->finalize();
 	mpUIRenderer.reset();
-	m_RenderPasses.clear();
+	mRenderPasses.clear();
 	mpScene.reset();
 	// Destroy created vulkan resources before destroy vulkan device
 	Shutdown();
