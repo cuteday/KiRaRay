@@ -38,59 +38,6 @@ SET ( KRR_CORE_SOURCE
 	core/texture.cpp
 )
 
-SET ( KRR_CORE_HEADERS
-	core/common.h
-	# components
-	core/logger.h
-	core/input.h
-	core/window.h
-	core/taggedptr.h
-	core/file.h
-	# rendering
-	core/raytracing.h
-	core/mesh.h
-	core/shape.h
-	core/light.h
-	core/renderpass.h
-	core/camera.h
-	core/scene.h
-	core/texture.h
-	core/sampler.h
-	# cuda device backend and host-device interops
-	core/interop.h
-	core/device/timer.h
-	core/device/atomic.h
-	core/device/memory.h
-	core/device/context.h
-	core/device/buffer.h
-	core/device/optix.h
-	core/device/cuda.h
-)
-
-SET(KRR_HEADERS
-	# render
-	render/path/pathtracer.h
-	render/wavefront/integrator.h
-	render/wavefront/workitem.h
-	render/wavefront/workqueue.h
-	render/wavefront/backend.h
-	render/profiler/profiler.h
-	render/profiler/fps.h
-	render/profiler/ui.h
-	scene/importer.h
-	# others
-	main/renderer.h
-	util/check.h
-	util/string.h
-	util/image.h
-	util/lowdiscrepancy.h
-	util/math_utils.h
-	util/tables.h
-	util/hash.h
-	util/vmf.h
-	util/ema.h
-)
-
 FILE (GLOB_RECURSE KRR_RENDER_PASSES
 	"render/passes/*.cpp"
 	"render/passes/*.cu"
@@ -112,18 +59,6 @@ SET (KRR_SOURCE
 	util/image.cpp
 )
 
-SET(KRR_SHADER_MATERIALS
-	render/materials/bxdf.h
-	render/materials/matutils.h
-	render/materials/diffuse.h
-	render/materials/fresnel.h
-	render/materials/microfacet.h
-	render/materials/disney.h
-	render/materials/fresnelblend.h
-	render/materials/principled.h
-	render/materials/dielectric.h
-)
-
 SET (KRR_SOURCE_VULKAN
 	core/vulkan/binding.cpp
 	core/vulkan/cuvk.cpp
@@ -132,17 +67,6 @@ SET (KRR_SOURCE_VULKAN
 	core/vulkan/helperpass.cpp
 	core/vulkan/uirender.cpp
 	core/vulkan/textureloader.cpp
-)
-
-SET ( KRR_SHADERS
-	${KRR_SHADER_MATERIALS}
-	render/shared.h
-	render/shading.h
-	render/sampling.h
-	render/bsdf.h
-	render/lightsampler.h
-	render/path/path.h
-	render/wavefront/wavefront.h
 )
 
 SET_SOURCE_FILES_PROPERTIES (
@@ -212,11 +136,8 @@ SET(KRR_LIBS_ALL
 
 ADD_LIBRARY ( krr_lib STATIC
 	${KRR_CORE_SOURCE}
-	${KRR_CORE_HEADERS}
 	${KRR_SOURCE}
 	${KRR_SOURCE_VULKAN}
-	${KRR_HEADERS}
-	${KRR_SHADERS}
 	# SOA (for dependency need, generate soa file before building libraray)
 	${KRR_SOA_GENERATED}
 	# PTX
