@@ -67,6 +67,30 @@ void ForAllQueued(const WorkQueue<WorkItem>* q, int nElements,
     }, stream);
 }
 
+class RayQUEUE : public SoAQueue<Ray, LightSampleContext, 
+    float, Color, BSDFType, uint, uint> {
+public:
+	using SoAQueue::SoAQueue;	
+	enum {
+		eRay,
+		eContext,
+		ePdf,
+		eThroughput,
+		eBsdfType,
+		eDepth,
+		ePixelId
+	};
+	
+    KRR_CALLABLE int pushCameraRay(Ray ray, uint pixelId) {
+		int index					 = allocate();
+		SoA::get<eRay>(index)		 = ray;
+		SoA::get<ePixelId>(index)	 = pixelId;
+		SoA::get<eDepth>(index)		 = 0;
+		SoA::get<eThroughput>(index) = Color(1.f);
+		return index;
+    }
+};
+
 class RayQueue : public WorkQueue<RayWorkItem> {
 public:
     using WorkQueue::WorkQueue;     // use parent constructor
@@ -82,6 +106,20 @@ public:
     }
 };
 
+class MissRayQUEUE : public SoAQueue<Ray, LightSampleContext,
+    float, Color, BSDFType, uint, uint> {
+	using SoAQueue::SoAQueue;
+	enum {
+		eRay,
+		eContext,
+		ePdf,
+		eThroughput,
+		eBsdfType,
+		eDepth,
+		ePixelId
+	};
+};
+
 class MissRayQueue : public WorkQueue<MissRayWorkItem> {
 public:
     using WorkQueue::WorkQueue;
@@ -92,16 +130,58 @@ public:
     }
 };
 
+class HitLightRayQUEUE : public SoAQueue<Light, LightSampleContext,
+    float, Vector3f, Vector3f, Vector3f, Vector2f, Color, BSDFType, uint, uint> {
+public:
+    using SoAQueue::SoAQueue;
+	enum {
+	    eLight, 
+        eContext, 
+        ePdf, 
+        ePosition,
+        eWo,
+        eNormal,
+        eUV,
+        eThroughput, 
+        eBsdfType,
+        eDepth,
+        ePixelId
+    };
+};
+
 class HitLightRayQueue : public WorkQueue<HitLightWorkItem> {
 public:
     using WorkQueue::WorkQueue;
     using WorkQueue::push;
 };
 
+class ShadowRayQUEUE : public SoAQueue<Ray, float, Color, Color, uint> {
+public:
+    using SoAQueue::SoAQueue;
+	enum {
+	    eRay,
+        eMaxT,
+        eLi,
+        eA,
+        ePixelId
+    };
+};
+
 class ShadowRayQueue : public WorkQueue<ShadowRayWorkItem> {
 public:
     using WorkQueue::WorkQueue;
     using WorkQueue::push;
+};
+
+class ScatterRayQUEUE : public SoAQueue<Color, ShadingData, uint, uint> {
+public:
+    using SoAQueue::SoAQueue;
+	enum {
+	    eThroughput,
+        eShadingData,
+        eDepth,
+        ePixelId
+    };
 };
 
 class ScatterRayQueue : public WorkQueue<ScatterRayWorkItem> {
