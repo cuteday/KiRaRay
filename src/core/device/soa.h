@@ -1,3 +1,4 @@
+// adapted from https://github.com/Lunarsong/StructureOfArrays
 #pragma once
 
 #include <stddef.h>
@@ -7,6 +8,7 @@
 #include <vector>
 
 #include <common.h>
+#include "atomic.h"
 #include "buffer.h"
 
 KRR_NAMESPACE_BEGIN
@@ -29,7 +31,7 @@ public:
 	SoA(size_t size) {
 		size_t array_index = 0;
 		int dummy_init[]   = {(new (get_array<Elements>(array_index))
-								   std::vector<Elements>(),
+								   TypedBuffer<Elements>(),
 							   ++array_index, 0)...};
 		(void) dummy_init; // avoids unused variable compiler warnings.
 	}
@@ -39,6 +41,7 @@ public:
 	SoA(SoA &&other) {
 		size_t idx		 = 0;
 		int dummy_init[] = {
+			// placement new https://isocpp.org/wiki/faq/dtors#placement-new
 			(new (get_array<Elements>(idx)) TypedBuffer<Elements>(
 				 std::move(*other.get_array<Elements>(idx))),
 			 ++idx, 0)...};
@@ -164,6 +167,34 @@ protected:
 	static const size_t kNumArrays = sizeof...(Elements);
 	size_t size_				   = 0;
 	ArrayType arrays_[kNumArrays];
+};
+
+template <typename ...Elements>
+class SoAQueue : public SoA<Elements...> {
+public:
+	SoAQueue() = default;
+	KRR_HOST SoAQueue(size_t size) : SoA<Elements...>(size) {}
+	KRR_HOST SoAQueue& operator=(const SoAQueue& q) {
+		SoAQueue<Elements...>::operator=(q);
+		m_size.store(q.m_size);
+		return *this;
+	}
+
+	KRR_CALLABLE int size() const { return m_size.load(); }
+
+	KRR_CALLABLE void reset() { m_size.store(0); }
+
+	KRR_CALLABLE int push(Elements&& ...e) {
+		int index = allocate();
+		SoA<Elements...>::assign(index, std::forward<Elements>(e)...);
+		return index;
+	}
+
+protected:
+	KRR_CALLABLE int allocate() { return m_size.fetch_add(1); }
+
+private:
+	atomic<int> m_size{0};
 };
 
 KRR_NAMESPACE_END

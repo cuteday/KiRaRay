@@ -2,7 +2,7 @@
 #include "common.h"
 #include <atomic>
 
-
+#include "device/soa.h"
 #include "device/cuda.h"
 #include "device/atomic.h"
 #include "logger.h"
@@ -22,6 +22,20 @@ public:
 		L_val	   = L_val + Color(L[pixelId]);
         L[pixelId] = L_val;
     }
+};
+
+class PixelStateSOA : public SoA<Color, PCGSampler> {
+public:
+	using SoA<Color, PCGSampler>::SoA;
+    enum { eColor, eSampler };
+
+	KRR_CALLABLE void setRadiance(int pixelId, Color L) {
+		SoA::get<eColor>(pixelId) = L;
+	}
+
+	KRR_CALLABLE void addRadiance(int pixelId, Color L) {
+		SoA::get<eColor>(pixelId) += L;
+	}
 };
 
 template <typename WorkItem>

@@ -52,6 +52,7 @@ public:
 	/* @addition VAPG filter the raw pixel estimate using a simple box filter. */
 	void filterFrame(Film *image);
 
+	PixelStateBuffer *pixelState;
 	GuidedRayQueue *guidedRayQueue;
 	OptiXPPGBackend* backend;
 

@@ -35,8 +35,8 @@ void WavefrontPathTracer::initialize() {
 	else shadowRayQueue = alloc.new_object<ShadowRayQueue>(maxQueueSize, alloc);
 	if (scatterRayQueue) scatterRayQueue->resize(maxQueueSize, alloc);
 	else scatterRayQueue = alloc.new_object<ScatterRayQueue>(maxQueueSize, alloc);
-	if (pixelState) pixelState->resize(maxQueueSize, alloc);
-	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
+	if (pixelState) pixelState->resize(maxQueueSize);
+	else pixelState = alloc.new_object<PixelStateSOA>(maxQueueSize);
 	cudaDeviceSynchronize();
 	if (!camera) camera = alloc.new_object<Camera>();
 	if (!backend) backend = new OptiXWavefrontBackend();
@@ -86,7 +86,7 @@ void WavefrontPathTracer::generateScatterRays() {
 	PROFILE("Generate scatter rays");
 	ForAllQueued(
 		scatterRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(ScatterRayWorkItem & w) {
-			Sampler sampler = &pixelState->sampler[w.pixelId];
+			Sampler sampler = &pixelState->get<PixelStateSOA::eSampler>(w.pixelId);
 			/*  Russian Roulette: If the path is terminated by this vertex,
 				then NEE should not be evaluated */
 			if (sampler.get1D() >= probRR)
@@ -147,7 +147,7 @@ void WavefrontPathTracer::generateCameraRays(int sampleId) {
 	RayQueue *cameraRayQueue = currentRayQueue(0);
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-			Sampler sampler		= &pixelState->sampler[pixelId];
+			Sampler sampler = &pixelState->get<PixelStateSOA::eSampler>(pixelId);			
 			Vector2i pixelCoord = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
 			Ray cameraRay		= camera->getRay(pixelCoord, mFrameSize, sampler);
 			cameraRayQueue->pushCameraRay(cameraRay, pixelId);
@@ -175,9 +175,10 @@ void WavefrontPathTracer::beginFrame() {
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
 			Vector2i pixelCoord	   = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
-			pixelState->L[pixelId] = 0;
-			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameId * samplesPerPixel);
-			pixelState->sampler[pixelId].advance(256 * pixelId);
+			pixelState->setRadiance(pixelId, 0);
+			pixelState->get<PixelStateSOA::eSampler>(pixelId).setPixelSample(
+				pixelCoord, frameId * samplesPerPixel);
+			pixelState->get<PixelStateSOA::eSampler>(pixelId).advance(256 * pixelId);
 		});
 }
 
@@ -220,9 +221,9 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 	}
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-			Color L = pixelState->L[pixelId] / float(samplesPerPixel);
-			if (enableClamp)
-				L = clamp(L, 0.f, clampMax);
+			Color L = pixelState->get<PixelStateSOA::eColor>(pixelId) 
+				/ float(samplesPerPixel);
+			if (enableClamp) L = clamp(L, 0.f, clampMax);
 			frameBuffer.write(Color4f(L, 1), pixelId);
 		});
 	frameId++;
