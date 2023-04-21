@@ -117,7 +117,7 @@ void OptiXWavefrontBackend::traceClosest(int numRays, RayQueue *currentRayQueue,
 }
 
 void OptiXWavefrontBackend::traceShadow(int numRays, ShadowRayQueue *shadowRayQueue,
-										PixelStateSOA *pixelState) {
+										PixelState *pixelState) {
 	if (optixTraversable) {
 		PROFILE("Trace shadow rays");
 		static LaunchParams params = {};

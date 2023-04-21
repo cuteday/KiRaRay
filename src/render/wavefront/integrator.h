@@ -59,7 +59,7 @@ public:
 	HitLightRayQueue* hitLightRayQueue{ };
 	ShadowRayQueue* shadowRayQueue{ };
 	ScatterRayQueue* scatterRayQueue{ };
-	PixelStateSOA *pixelState;
+	PixelState *pixelState;
 
 	// path tracing parameters
 	int frameId{ 0 };

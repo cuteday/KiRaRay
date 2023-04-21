@@ -10,6 +10,7 @@
 #include <common.h>
 #include "atomic.h"
 #include "buffer.h"
+#include "util/check.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -27,6 +28,8 @@ public:
 	template <size_t N>
 	using NthTypeOf =
 		typename std::tuple_element<N, std::tuple<Elements...>>::type;
+	using Tuple = typename std::tuple<Elements...>;
+
 	SoA() = default;
 	SoA(size_t size) {
 		size_t array_index = 0;
@@ -37,7 +40,6 @@ public:
 	}
 
 	SoA(const SoA &other) : SoA() { *this = other; }
-
 	SoA(SoA &&other) {
 		size_t idx		 = 0;
 		int dummy_init[] = {
@@ -53,6 +55,31 @@ public:
 
 	virtual ~SoA() {
 		FOR_EACH_ARRAY(~TypedBuffer());
+	}
+
+	struct Item {
+		KRR_CALLABLE operator Tuple() const { return soa->operator[](i); }
+
+		KRR_CALLABLE void operator=(const Tuple &a) {
+			size_t tuple_index = 0;
+			int dummy[]		   = { (soa->get<tuple_index>(index) = 
+				   (Elements)std::get<tuple_index>(a), ++tuple_index, 0)...};
+			(void) dummy;
+		}
+
+		SoA *soa;
+		int index;
+	};
+
+	KRR_CALLABLE Item operator[](int i) {
+		DCHECK_LT(i, size_);
+		return Item{this, i};
+	}
+
+	KRR_CALLABLE Tuple operator[](int i) const {
+		DCHECK_LT(i, size_);
+		size_t idx = 0;
+		return std::make_tuple<Elements...>((*get_array<Elements>(idx++)[i])...);
 	}
 
 	SoA &operator=(const SoA &other) {
@@ -196,5 +223,14 @@ protected:
 private:
 	atomic<int> m_size{0};
 };
+
+template <typename F, typename... Elements>
+void ForAllQueued(const SoAQueue<Elements...>* q, int nElements, 
+	F&& func, CUstream stream = 0) {
+	GPUParallelFor(nElements, [=] KRR_DEVICE(int index) mutable {
+        if (index >= q->size()) return;
+        func((*q)[index]);
+    }, stream);
+}
 
 KRR_NAMESPACE_END

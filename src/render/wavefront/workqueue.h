@@ -10,21 +10,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-class PixelStateBuffer : public SOA<PixelState> {
-public:
-    PixelStateBuffer() = default;
-    PixelStateBuffer(int n, Allocator alloc) : SOA<PixelState>(n, alloc) {}
-
-    KRR_CALLABLE void setRadiance(int pixelId, Color L_val){
-        L[pixelId] = L_val;
-    }
-	KRR_CALLABLE void addRadiance(int pixelId, Color L_val) {
-		L_val	   = L_val + Color(L[pixelId]);
-        L[pixelId] = L_val;
-    }
-};
-
-class PixelStateSOA : public SoA<Color, PCGSampler> {
+class PixelState : public SoA<Color, PCGSampler> {
 public:
 	using SoA<Color, PCGSampler>::SoA;
     enum { eColor, eSampler };

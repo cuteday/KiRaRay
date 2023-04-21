@@ -25,7 +25,7 @@ public:
 
 	void traceShadow(int numRays,
 		ShadowRayQueue* shadowRayQueue,
-		PixelStateSOA* pixelState);
+		PixelState* pixelState);
 
 protected:
 	OptixProgramGroup createRaygenPG(const char *entrypoint) const;

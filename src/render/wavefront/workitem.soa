@@ -17,11 +17,6 @@ flat Color;
 struct Ray{ Vector3f origin, dir; };
 struct LightSampleContext{ Vector3f p, n; };
 
-struct PixelState {
-	Color L;
-	PCGSampler sampler;
-};
-
 struct Frame {
 	Vector3f N; 
 	Vector3f T; 

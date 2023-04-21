@@ -11,11 +11,6 @@ using namespace shader;
 
 /* Remember to copy these definitions to workitem.soa whenever changing them. */
 
-struct PixelState {
-	Color L;
-	PCGSampler sampler;
-};
-
 struct RayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
