@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "krrmath/vector.h"
 #include "util/math_utils.h"
 
 #define KRR_RAY_TMAX	(1e20f)
@@ -31,21 +32,6 @@ public:
 	Vector3f dir;
 };
 
-class RayDifferential : public Ray {
-public:
-	bool hasDifferentials{ false };
-	Vector3f rxOrigin, ryOrigin;
-	Vector3f rxDir, ryDir;
-};
-
-KRR_CALLABLE Vector3f offsetRayOrigin(Vector3f p, Vector3f n, Vector3f w) {
-	Vector3f offset = n * KRR_RAY_EPS;
-	if (dot(n, w) < 0.f)
-		offset = -offset;
-	Vector3f po = p + offset;
-	return po;
-}
-
 struct Frame {
 	Frame() = default;
 
@@ -68,6 +54,14 @@ struct Frame {
 	Vector3f T;
 	Vector3f B;
 };
+
+KRR_CALLABLE Vector3f
+offsetRayOrigin(const Vector3f &p, const Vector3f &n, const Vector3f &w) {
+	Vector3f offset = n * KRR_RAY_EPS;
+	if (dot(n, w) < 0.f) offset = -offset;
+	Vector3f po = p + offset;
+	return po;
+}
 
 struct Interaction{
 	Interaction() = default;

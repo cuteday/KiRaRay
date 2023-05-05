@@ -34,10 +34,16 @@ OptixModule OptiXBackend::createOptiXModule(OptixDeviceContext optixContext, con
 #endif
 	OptixPipelineCompileOptions pipelineCompileOptions = getPipelineCompileOptions();
 
+#if (OPTIX_VERSION >= 70700)
+#define OPTIX_MODULE_CREATE optixModuleCreate
+#else
+#define OPTIX_MODULE_CREATE optixModuleCreateFromPTX
+#endif
+
 	char log[OPTIX_LOG_SIZE];
 	size_t logSize = sizeof(log);
 	OptixModule optixModule;
-	OPTIX_CHECK_WITH_LOG(optixModuleCreateFromPTX(
+	OPTIX_CHECK_WITH_LOG(OPTIX_MODULE_CREATE(
 		optixContext, &moduleCompileOptions, &pipelineCompileOptions,
 		ptx, strlen(ptx), log, &logSize, &optixModule),
 		log);
@@ -177,7 +183,7 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 		cudaStream,
 		&accelOptions,
 		triangleInputs.data(),
-		meshes.size(),
+		triangleInputs.size(),
 		tempBuffer.data(),
 		tempBuffer.size(),
 		outputBuffer.data(),
