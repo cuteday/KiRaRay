@@ -19,7 +19,7 @@ BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: AfterColon
 BreakConstructorInitializersBeforeComma: false
 BreakInheritanceList: AfterColon
-ColumnLimit:     80
+ColumnLimit:     100
 ConstructorInitializerIndentWidth: 4
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ContinuationIndentWidth: 4

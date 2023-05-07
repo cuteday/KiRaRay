@@ -9,6 +9,7 @@
 #include "quaternion.h"
 #include "aabb.h"
 #include "functors.h"
+#include "clipspace.h"
 #include "transform.h"
 #include "complex.h"
 #include <Eigen/Dense>

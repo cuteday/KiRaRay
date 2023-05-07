@@ -1,14 +1,8 @@
 # Then there are some misc files
 
 set ( KRR_PPG_PT
-	ppg/backend.h
-	ppg/backend.cpp
-	ppg/guideditem.h
-	ppg/integrator.h
 	ppg/integrator.cpp
-	ppg/tree.h
 	ppg/treemanip.cpp
-	ppg/ppg.h
 )
 
 SET_SOURCE_FILES_PROPERTIES (

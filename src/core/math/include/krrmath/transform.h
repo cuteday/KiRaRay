@@ -1,143 +1,51 @@
-// matrix transformation and clipspace arithmetric
+// Transform transformation and clipspace arithmetric
 #pragma once
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 #include "common.h"
 #include "vector.h"
-#include "matrix.h"
 #include "constants.h"
-
-// Adapted from GLM's clip space transform implementation.
 
 KRR_NAMESPACE_BEGIN
 
-#if KRR_CLIPSPACE_RIGHTHANDED
+template <typename T, int Dim, int Mode, int Options = Eigen::RowMajor>
+class Transform : public Eigen::Transform<T, Dim, Mode, Options> {
+public:
+	using Eigen::Transform<T, Dim, Mode, Options>::Transform;
+	
+	KRR_CALLABLE Transform(void)
+		: Eigen::Transform<T, Dim, Mode, Options>(Eigen::Transform<T, Dim, Mode, Options>::Zero()) {}
 
-template <typename T, int Options = math::ColMajor>
-KRR_CALLABLE Matrix<T, 4, 4, Options> perspective(T fovy, T aspect, T zNear, T zFar) {
-	assert(abs(aspect - std::numeric_limits<T>::epsilon()) > static_cast<T>(0));
+	template <typename U = T> /* Dummy parameter for enable_if */
+	KRR_CALLABLE Transform(typename std::enable_if_t<Dim == Mode, U> v) 
+		: Eigen::Transform<T, Dim, Mode, Options>(Vector<T, Dim>::Constant(v).asDiagonal()) {}
 
-	T const tanHalfFovy = tan(fovy / static_cast<T>(2));
-	Matrix<T, 4, 4, Options> result{Matrix<T, 4, 4, Options>::Zero()};
+	template <typename OtherDerived>
+	KRR_CALLABLE Transform(const Eigen::MatrixBase<OtherDerived> &other)
+		: Eigen::Transform<T, Dim, Mode, Options>(other) {}
 
-	result(0, 0) = static_cast<T>(1) / (aspect * tanHalfFovy);
-	result(1, 1) = static_cast<T>(1) / (tanHalfFovy);
-	result(3, 2) = -static_cast<T>(1);
-#if KRR_CLIPSPACE_Z_FROM_ZERO
-	result(2, 2) = -zFar / (zFar - zNear);
-	result(2, 3) = -(zFar * zNear) / (zFar - zNear);
-#else 
-	result(2, 2) = -(zFar + zNear) / (zFar - zNear);
-	result(2, 3) = -(static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
-#endif
-	return result;
-}
+	template <typename OtherDerived>
+	KRR_CALLABLE Transform &operator=(const Eigen::MatrixBase<OtherDerived> &other) {
+		this->Eigen::Transform<T, Dim, Mode, Options>::operator=(other);
+		return *this;
+	}
+};
 
-template <typename T, int Options = math::ColMajor>
-KRR_CALLABLE Matrix<T, 4, 4, Options> orthogonal(T left, T right, T bottom, T top, T zNear, T zFar) {
-	Matrix<T, 4, 4, Options> result{Matrix<T, 4, 4, Options>::Identity()};
+/* About storage order: 
+ * In most cases, changing the storage order will not affect the correctness of your application
+ * (since Transform arithmetic operations, like indexing, ctor, etc., all agnostic to storage order),
+ * except for cases like passing the internal data of matrices to shaders.
+ * Both OpenGL/Vulkan (GLSL/HLSL) assumes matrices being in column-major, so we use this by default.
+ */
 
-	result(0, 0) = static_cast<T>(2) / (right - left);
-	result(1, 1) = static_cast<T>(2) / (top - bottom);
-	result(0, 3) = -(right + left) / (right - left);
-	result(1, 3) = -(top + bottom) / (top - bottom);
-#if KRR_CLIPSPACE_Z_FROM_ZERO
-	result(2, 2) = -static_cast<T>(1) / (zFar - zNear);
-	result(2, 3) = -zNear / (zFar - zNear);
-#else
-	result(2, 2) = -static_cast<T>(2) / (zFar - zNear);
-	result(2, 3) = -(zFar + zNear) / (zFar - zNear);
-#endif
-	return result;
-}
+template <int Dim, int Mode, int Options = Eigen::RowMajor>
+using Transformf = Transform<float, Dim, Mode, Options>;
 
-template <typename T, int Options = math::ColMajor>
-Matrix<T, 4, 4, Options> look_at(Vector3<T> const &eye, Vector3<T> const &center,
-								 Vector3<T> const &up) {
-	Vector3<T> const f(normalize(center - eye));
-	Vector3<T> const s(normalize(cross(f, up)));
-	Vector3<T> const u(cross(s, f));
+template <int Dim, int Options = Eigen::RowMajor>
+using Affinef = Transformf<Dim, Options>;
 
-	Matrix<T, 4, 4, Options> result{Matrix<T, 4, 4, Options>::Identity()};
-	result(0, 0) = s[0];
-	result(0, 1) = s[1];
-	result(0, 2) = s[2];
-	result(1, 0) = u[0];
-	result(1, 1) = u[1];
-	result(1, 2) = u[2];
-	result(2, 0) = -f[0];
-	result(2, 1) = -f[1];
-	result(2, 2) = -f[2];
-	result(0, 3) = -dot(s, eye);
-	result(1, 3) = -dot(u, eye);
-	result(2, 3) = dot(f, eye);
-	return result;
-}
-
-#else
-
-template <typename T, int Options = math::ColMajor>
-KRR_CALLABLE Matrix<T, 4, 4, Options> perspective(T fovy, T aspect, T zNear, T zFar) {
-	assert(abs(aspect - std::numeric_limits<T>::epsilon()) > static_cast<T>(0));
-
-	T const tanHalfFovy = tan(fovy / static_cast<T>(2));
-	Matrix<T, 4, 4, Options> result{Matrix<T, 4, 4, Options>::Zero()};
-
-	result(0, 0) = static_cast<T>(1) / (aspect * tanHalfFovy);
-	result(1, 1) = static_cast<T>(1) / (tanHalfFovy);
-	result(3, 2) = static_cast<T>(1);
-#if KRR_CLIPSPACE_Z_FROM_ZERO
-	result(2, 2) = zFar / (zFar - zNear);
-	result(2, 3) = -(zFar * zNear) / (zFar - zNear);
-#else
-	result(2, 2) = (zFar + zNear) / (zFar - zNear);
-	result(2, 3) = -(static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
-#endif
-	return result;
-}
-
-template <typename T, int Options = math::ColMajor>
-KRR_CALLABLE Matrix<T, 4, 4, Options> orthogonal(T left, T right, T bottom, T top, T zNear,
-												 T zFar) {
-	Matrix<T, 4, 4, Options> result{Matrix<T, 4, 4, Options>::Identity()};
-
-	result(0, 0) = static_cast<T>(2) / (right - left);
-	result(1, 1) = static_cast<T>(2) / (top - bottom);
-	result(0, 3) = -(right + left) / (right - left);
-	result(1, 3) = -(top + bottom) / (top - bottom);
-#if KRR_CLIPSPACE_Z_FROM_ZERO
-	result(2, 2) = static_cast<T>(1) / (zFar - zNear);
-	result(2, 3) = -zNear / (zFar - zNear);
-#else
-	result(2, 2) = static_cast<T>(2) / (zFar - zNear);
-	result(2, 3) = -(zFar + zNear) / (zFar - zNear);
-#endif
-	return result;
-}
-
-template <typename T, int Options = math::ColMajor>
-Matrix<T, 4, 4, Options> look_at(Vector3<T> const &eye, Vector3<T> const &center,
-								 Vector3<T> const &up) {
-	Vector3<T> const f(normalize(center - eye));
-	Vector3<T> const s(normalize(cross(up, f)));
-	Vector3<T> const u(cross(f, s));
-
-	Matrix<T, 4, 4, Options> result{Matrix<T, 4, 4, Options>::Identity()};
-	result(0, 0) = s[0];
-	result(0, 1) = s[1];
-	result(0, 2) = s[2];
-	result(1, 0) = u[0];
-	result(1, 1) = u[1];
-	result(1, 2) = u[2];
-	result(2, 0) = f[0];
-	result(2, 1) = f[1];
-	result(2, 2) = f[2];
-	result(0, 3) = -dot(s, eye);
-	result(1, 3) = -dot(u, eye);
-	result(2, 3) = -dot(f, eye);
-	return result;
-}
-
-#endif
+using Affine2f = Affinef<2, Eigen::RowMajor>;
+using Affine3f = Affinef<3, Eigen::RowMajor>;
 
 KRR_NAMESPACE_END

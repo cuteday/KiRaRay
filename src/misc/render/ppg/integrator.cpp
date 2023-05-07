@@ -5,11 +5,13 @@
 #include "util/check.h"
 #include "util/film.h"
 
+#include "ppg.h"
 #include "tree.h"
 #include "integrator.h"
 #include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
+extern "C" char PPG_PTX[];
 
 namespace {
 static size_t guiding_trained_frames		  = 0;
@@ -29,6 +31,16 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 	mpScene = scene;
 	lightSampler = scene->mpSceneRT->getSceneData().lightSampler;
 	initialize();
+	if (!backend) {
+		backend		= new OptiXBackendImpl();
+		auto params = OptiXInitializeParameters()
+						  .setPTX(PPG_PTX)
+						  .addRaygenEntry("Closest")
+						  .addRaygenEntry("Shadow")
+						  .addRayType("Closest", true, true, false)
+						  .addRayType("Shadow", false, true, false);
+		backend->initialize(params);
+	}
 	backend->setScene(*scene);
 	AABB aabb = scene->getAABB();
 	Allocator& alloc = *gpContext->alloc;
@@ -45,7 +57,7 @@ void PPGPathTracer::initialize(){
 	else guidedPathState = alloc.new_object<GuidedPathStateBuffer>(maxQueueSize, alloc);
 	if (guidedRayQueue) guidedRayQueue->resize(maxQueueSize, alloc);
 	else guidedRayQueue = alloc.new_object<GuidedRayQueue>(maxQueueSize, alloc);
-	if (!backend) backend = new OptiXPPGBackend();
+	//if (!backend) backend = new OptiXPPGBackend();
 	/* @addition VAPG */
 	if (m_image)  m_image->resize(mFrameSize);
 	else m_image = alloc.new_object<Film>(mFrameSize);
@@ -55,6 +67,31 @@ void PPGPathTracer::initialize(){
 	m_pixelEstimate->reset();
 	m_task.reset();
 	CUDA_SYNC_CHECK();
+}
+
+void PPGPathTracer::traceClosest(int depth) {
+	PROFILE("Trace intersect rays");
+	static LaunchParamsPPG params = {};
+	params.traversable			  = backend->getRootTraversable();
+	params.sceneData			  = backend->getSceneData();
+	params.currentRayQueue		  = currentRayQueue(depth);
+	params.missRayQueue			  = missRayQueue;
+	params.hitLightRayQueue		  = hitLightRayQueue;
+	params.scatterRayQueue		  = scatterRayQueue;
+	params.nextRayQueue			  = nextRayQueue(depth);
+	backend->launch(params, "Closest", maxQueueSize, 1, 1);
+}
+
+void PPGPathTracer::traceShadow() {
+	PROFILE("Trace shadow rays");
+	static LaunchParamsPPG params = {};
+	params.traversable			  = backend->getRootTraversable();
+	params.sceneData			  = backend->getSceneData();
+	params.shadowRayQueue		  = shadowRayQueue;
+	params.pixelState			  = pixelState;
+	params.guidedState			  = guidedPathState;
+	params.enableTraining		  = enableLearning;
+	backend->launch(params, "Shadow", maxQueueSize, 1, 1);
 }
 
 void PPGPathTracer::handleHit() {
@@ -203,13 +240,7 @@ void PPGPathTracer::render(RenderFrame::SharedPtr frame) {
 				guidedRayQueue->reset();
 			});
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
-			backend->traceClosest(
-				maxQueueSize,	// cuda::atomic can not be accessed directly in host code
-				currentRayQueue(depth),
-				missRayQueue,
-				hitLightRayQueue,
-				scatterRayQueue,
-				nextRayQueue(depth));
+			traceClosest(depth);
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
 			if (!depth || !enableNEE || enableMIS) {
 				handleHit();
@@ -219,17 +250,11 @@ void PPGPathTracer::render(RenderFrame::SharedPtr frame) {
 			if (depth == maxDepth) break;
 			// [STEP#2.3] handle intersections and shadow rays
 			handleIntersections();
-			if (enableNEE)
-				backend->traceShadow(maxQueueSize, 
-						shadowRayQueue, 
-						pixelState, 
-						guidedPathState,
-						enableLearning);
+			if (enableNEE) traceShadow();
 			// [STEP#2.4] towards next bounce
 			generateScatterRays();
 		}
 	}
-	//CUDA_SYNC_CHECK();
 	// write results of the current frame...
 	CudaRenderTarget frameBuffer = frame->getCudaRenderTarget();
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
@@ -253,7 +278,6 @@ void PPGPathTracer::beginFrame() {
 	// but the last iteration (the render iteration) do not need training anymore.
 	enableLearning = (enableLearning || m_autoBuild) && !m_isFinalIter;	
 	train_frames_this_iteration = (1 << m_iter) * m_sppPerPass;
-	//CUDA_SYNC_CHECK();
 }
 
 void PPGPathTracer::endFrame() {

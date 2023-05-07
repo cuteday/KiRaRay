@@ -18,7 +18,7 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 		0.f, tMax, 0.f,						/* ray time val min max */
 		OptixVisibilityMask(255),			/* all visible */
 		flags,
-		rayType, 1,							/* ray type and number of types */
+		rayType, 2,							/* ray type and number of types */
 		rayType,							/* miss SBT index */
 		std::forward<Args>(payload)...);	/* (unpacked pointers to) payloads */
 }
@@ -104,7 +104,7 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
 	ShadowRayWorkItem r = getShadowRayWorkItem();
 	uint32_t miss{0};
-	traceRay(launchParams.traversable, r.ray, r.tMax, 0,
+	traceRay(launchParams.traversable, r.ray, r.tMax, 1,
 			 OptixRayFlags( OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
 		miss);
 	if (miss) {
