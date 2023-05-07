@@ -19,7 +19,6 @@ public:
 	KRR_REGISTER_PASS_DEC(WavefrontPathTracer);
 
 	WavefrontPathTracer() = default;
-	WavefrontPathTracer(Scene& scene);
 	~WavefrontPathTracer() = default;
 
 	void resize(const Vector2i& size) override;
@@ -42,6 +41,8 @@ public:
 	void handleMiss();
 	void generateScatterRays();
 	void generateCameraRays(int sampleId);
+	void traceClosest(int depth);
+	void traceShadow();
 
 	KRR_CALLABLE RayQueue* currentRayQueue(int depth) { return rayQueue[depth & 1]; }
 	KRR_CALLABLE RayQueue* nextRayQueue(int depth) { return rayQueue[(depth & 1) ^ 1]; }
@@ -49,7 +50,8 @@ public:
 	template <typename... Args>
 	KRR_DEVICE_FUNCTION void debugPrint(uint pixelId, const char *fmt, Args &&...args);
 
-	OptiXWavefrontBackend* backend;
+	//OptiXWavefrontBackend* backend;
+	OptiXBackendImpl *backend{ };
 	Camera* camera{ };
 	LightSampler lightSampler;
 

@@ -7,11 +7,7 @@
 #include "workqueue.h"
 
 KRR_NAMESPACE_BEGIN
-
-WavefrontPathTracer::WavefrontPathTracer(Scene &scene) {
-	initialize();
-	setScene(std::shared_ptr<Scene>(&scene));
-}
+extern "C" char WAVEFRONT_PTX[];
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void WavefrontPathTracer::debugPrint(uint pixelId, const char *fmt,
@@ -39,8 +35,30 @@ void WavefrontPathTracer::initialize() {
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
 	cudaDeviceSynchronize();
 	if (!camera) camera = alloc.new_object<Camera>();
-	if (!backend) backend = new OptiXWavefrontBackend();
 	CUDA_SYNC_CHECK();
+}
+
+void WavefrontPathTracer::traceClosest(int depth) {
+	PROFILE("Trace intersect rays");
+	static LaunchParams params = {};
+	params.traversable		   = backend->getRootTraversable();
+	params.sceneData		   = backend->getSceneData();
+	params.currentRayQueue	   = currentRayQueue(depth);
+	params.missRayQueue		   = missRayQueue;
+	params.hitLightRayQueue	   = hitLightRayQueue;
+	params.scatterRayQueue	   = scatterRayQueue;
+	params.nextRayQueue		   = nextRayQueue(depth);
+	backend->launch(params, "Closest", maxQueueSize, 1, 1);
+}
+
+void WavefrontPathTracer::traceShadow() {
+	PROFILE("Trace shadow rays");
+	static LaunchParams params = {};
+	params.traversable		   = backend->getRootTraversable();
+	params.sceneData		   = backend->getSceneData();
+	params.shadowRayQueue	   = shadowRayQueue;
+	params.pixelState		   = pixelState;
+	backend->launch(params, "Shadow", maxQueueSize, 1, 1);
 }
 
 void WavefrontPathTracer::handleHit() {
@@ -160,10 +178,20 @@ void WavefrontPathTracer::resize(const Vector2i &size) {
 }
 
 void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
-	scene->initializeSceneRT();
-	mpScene		 = scene;
-	lightSampler = scene->mpSceneRT->getSceneData().lightSampler;
 	initialize();
+	mpScene = scene;
+	mpScene->initializeSceneRT();
+	lightSampler = scene->mpSceneRT->getSceneData().lightSampler;
+	if (!backend) {
+		backend		= new OptiXBackendImpl();
+		auto params = OptiXInitializeParameters()
+						  .setPTX(WAVEFRONT_PTX)
+						  .addRaygenEntry("Closest")
+						  .addRaygenEntry("Shadow")
+						  .addRayType("Closest", true, true, false)
+						  .addRayType("Shadow", false, true, false);
+		backend->initialize(params);
+	}
 	backend->setScene(*scene);
 }
 
@@ -200,10 +228,7 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 				scatterRayQueue->reset();
 			});
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
-			backend->traceClosest(maxQueueSize, // cuda::automic can not be accessed directly in
-												// host code
-								  currentRayQueue(depth), missRayQueue, hitLightRayQueue,
-								  scatterRayQueue, nextRayQueue(depth));
+			traceClosest(depth);
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
 			if (!depth || !enableNEE || enableMIS) {
 				handleHit();
@@ -214,8 +239,7 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 			// [STEP#2.3] evaluate materials & bsdfs, and generate shadow rays
 			generateScatterRays();
 			// [STEP#2.4] trace shadow rays (next event estimation)
-			if (enableNEE)
-				backend->traceShadow(maxQueueSize, shadowRayQueue, pixelState);
+			if (enableNEE) traceShadow();
 		}
 	}
 	ParallelFor(

@@ -1,6 +1,7 @@
 #include "logger.h"
 #include "context.h"
 #include "optix.h"
+#include "util/check.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -8,7 +9,7 @@ OptixPipelineCompileOptions OptiXBackend::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
 	// currently we do not implement scene graph and instancing, as such this optimizes performance.
 	pipelineCompileOptions.traversableGraphFlags	   = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
-	pipelineCompileOptions.usesMotionBlur		= false;
+	pipelineCompileOptions.usesMotionBlur			   = false;
 	pipelineCompileOptions.numPayloadValues			   = 3; /* This restricts maximum number of payload to 3. */
 	pipelineCompileOptions.numAttributeValues		   = 0;
 	pipelineCompileOptions.exceptionFlags = //OPTIX_EXCEPTION_FLAG_NONE;
@@ -207,6 +208,125 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 		&asHandle));
 	CUDA_SYNC_CHECK();
 	return asHandle;
+}
+
+OptixProgramGroup
+OptiXBackendImpl::createRaygenPG(const char *entrypoint) const {
+	return OptiXBackend::createRaygenPG(optixContext, optixModule, entrypoint);
+}
+
+OptixProgramGroup OptiXBackendImpl::createMissPG(const char *entrypoint) const {
+	return OptiXBackend::createMissPG(optixContext, optixModule, entrypoint);
+}
+
+OptixProgramGroup OptiXBackendImpl::createIntersectionPG(
+	const char *closest, const char *any, const char *intersect) const {
+	return OptiXBackend::createIntersectionPG(optixContext, optixModule,
+											  closest, any, intersect);
+}
+
+void OptiXBackendImpl::initialize(const OptiXInitializeParameters &params) {
+	char log[OPTIX_LOG_SIZE];
+	size_t logSize = sizeof(log);
+	// temporary workaround for setup context
+	optixParameters = params;
+	optixContext	= gpContext->optixContext;
+	cudaStream		= gpContext->cudaStream;
+	
+	// creating optix module from ptx
+	optixModule = createOptiXModule(optixContext, params.ptx);
+	// creating program groups
+	std::vector<OptixProgramGroup> allPGs;
+	// creating RAYGEN PG
+	for (string raygenEntryName : params.raygenEntries) {
+		raygenPGs.push_back(createRaygenPG(
+			("__raygen__" + raygenEntryName).c_str()));
+		entryPoints.insert({raygenEntryName, entryPoints.size()});
+	}
+	for (int rayType = 0; rayType < params.rayTypes.size(); rayType++) {
+		string rayTypeName				 = params.rayTypes[rayType];
+		const auto [hasCH, hasAH, hasIS] = params.rayClosestShaders[rayType];
+		// creating MISS PG
+		missPGs.push_back(createMissPG(("__miss__" + rayTypeName).c_str()));
+		// creating CLOSEST PG
+		hitgroupPGs.push_back(createIntersectionPG(
+			hasCH ? ("__closesthit__" + rayTypeName).c_str() : nullptr,
+			hasAH ? ("__anyhit__" + rayTypeName).c_str() : nullptr,
+			hasIS ? ("__intersection__" + rayTypeName).c_str() : nullptr));		
+	}
+	allPGs.insert(allPGs.end(), raygenPGs.begin(), raygenPGs.end());
+	allPGs.insert(allPGs.end(), missPGs.begin(), missPGs.end());
+	allPGs.insert(allPGs.end(), hitgroupPGs.begin(), hitgroupPGs.end());
+	// creating optix pipeline from all program groups
+	OptixPipelineCompileOptions pipelineCompileOptions = getPipelineCompileOptions();
+	OptixPipelineLinkOptions pipelineLinkOptions = {};
+	pipelineLinkOptions.maxTraceDepth			 = 3;
+#ifdef KRR_DEBUG_BUILD
+	pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
+#endif
+	OPTIX_CHECK_WITH_LOG(
+		optixPipelineCreate(optixContext, &pipelineCompileOptions,
+							&pipelineLinkOptions, allPGs.data(), allPGs.size(),
+							log, &logSize, &optixPipeline), log);
+	Log(Debug, log);
+
+	OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the
+											 stack size for */
+										  optixPipeline,
+										  2 * 1024, 2 * 1024, 2 * 1024, 1));
+	Log(Debug, log);
+}
+
+void OptiXBackendImpl::setScene(Scene &_scene) {
+	scene = _scene.mpSceneRT;
+	buildAccelStructure(_scene);
+	buildShaderBindingTable(_scene);
+}
+
+void OptiXBackendImpl::buildAccelStructure(Scene &scene) {
+	optixTraversable = OptiXBackend::buildAccelStructure(
+		optixContext, cudaStream, scene);
+}
+
+void OptiXBackendImpl::buildShaderBindingTable(Scene &scene) {
+	size_t nRayTypes = optixParameters.rayTypes.size();
+
+	for (const auto [raygenEntry, index] : entryPoints) {
+		RaygenRecord raygenRecord = {};
+		OPTIX_CHECK(optixSbtRecordPackHeader(raygenPGs[index], &raygenRecord));
+		raygenRecords.push_back(raygenRecord);
+	}
+	for (int type = 0; type < nRayTypes; type++) {
+		MissRecord missRecord = {};
+		OPTIX_CHECK(optixSbtRecordPackHeader(missPGs[type], &missRecord));
+		missRecords.push_back(missRecord);
+	}
+	uint nMeshes			 = scene.meshes.size();
+	rt::SceneData &sceneData = scene.mpSceneRT->getSceneData();
+
+	for (uint meshId = 0; meshId < nMeshes; meshId++) {
+		for (uint rayType = 0; rayType < nRayTypes; rayType++) {
+			HitgroupRecord hitgroupRecord = {};
+			rt::MeshData *mesh = &(*sceneData.meshes)[meshId];
+			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayType], &hitgroupRecord));
+			hitgroupRecord.data = {mesh};
+			hitgroupRecords.push_back(hitgroupRecord);
+		}
+	}
+
+	for (const auto [raygenEntry, index] : entryPoints) {
+		OptixShaderBindingTable sbt		= {};
+		sbt.raygenRecord				= (CUdeviceptr) &raygenRecords[index];
+		sbt.missRecordBase				= (CUdeviceptr) missRecords.data();
+		sbt.missRecordCount				= missRecords.size();
+		sbt.missRecordStrideInBytes		= sizeof(MissRecord);
+		sbt.hitgroupRecordBase			= (CUdeviceptr) hitgroupRecords.data();
+		sbt.hitgroupRecordCount			= hitgroupRecords.size();
+		sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
+		SBT.push_back(sbt);
+	}
+	CUDA_SYNC_CHECK();
+	Log(Debug, "SBT has size of %zd", SBT.size());
 }
 
 KRR_NAMESPACE_END

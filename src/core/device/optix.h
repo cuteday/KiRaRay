@@ -40,6 +40,82 @@ public:
 		const char* closest, const char* any, const char* intersect);
 
 	static OptixTraversableHandle buildAccelStructure(OptixDeviceContext optixContext, CUstream cudaStream, Scene& scene);
+
 };
+
+struct OptiXInitializeParameters {
+	char* ptx;
+	std::vector<string> raygenEntries;
+	std::vector<string> rayTypes;
+	std::vector<std::tuple<bool, bool, bool>> rayClosestShaders;
+
+	OptiXInitializeParameters& setPTX(char* ptx) {
+		this->ptx = ptx;
+		return *this;
+	}
+	OptiXInitializeParameters &addRaygenEntry(string entryName) {
+		raygenEntries.push_back(entryName);
+		return *this;
+	}
+	OptiXInitializeParameters &addRayType(string typeName, bool closestHit,
+										  bool anyHit, bool intersect) {
+		rayTypes.push_back(typeName);
+		rayClosestShaders.push_back({closestHit, anyHit, intersect});
+		return *this;
+	}
+};
+
+class OptiXBackendImpl: public OptiXBackend {
+public:
+	OptiXBackendImpl() = default;
+	
+	void initialize(const OptiXInitializeParameters& params);
+	void setScene(Scene &scene);
+	template <typename T>
+	void launch(const T& parameters, string entryPoint, int width,
+		int height, int depth = 1) {
+		if (height * width * depth == 0) return;
+		static T *launchParams{nullptr};
+		if (!launchParams) cudaMalloc(&launchParams, sizeof(T));
+		if (!entryPoints.count(entryPoint))
+			Log(Fatal, "The entrypoint %s is not initialized!", entryPoint.c_str());
+		cudaMemcpy(launchParams, &parameters, sizeof(T),
+				   cudaMemcpyHostToDevice);
+		OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream, CUdeviceptr(launchParams), 
+			sizeof(T), &SBT[entryPoints[entryPoint]], width, height, depth));
+	}
+
+	OptixTraversableHandle getRootTraversable() const { return optixTraversable; }
+	rt::SceneData getSceneData() const { return scene->getSceneData(); }
+
+protected:
+	void buildAccelStructure(Scene &scene);
+	void buildShaderBindingTable(Scene &scene);
+
+	OptixProgramGroup createRaygenPG(const char *entrypoint) const;
+	OptixProgramGroup createMissPG(const char *entrypoint) const;
+	OptixProgramGroup createIntersectionPG(const char *closest, const char *any,
+										   const char *intersect) const;
+
+	OptixModule optixModule;
+	OptixPipeline optixPipeline;
+	OptixDeviceContext optixContext;
+	CUstream cudaStream;
+
+	std::vector<OptixProgramGroup> raygenPGs;
+	std::vector<OptixProgramGroup> missPGs;
+	std::vector<OptixProgramGroup> hitgroupPGs; 
+	inter::vector<RaygenRecord> raygenRecords;
+	inter::vector<HitgroupRecord> hitgroupRecords;
+	inter::vector<MissRecord> missRecords;
+
+	std::map<string, int> entryPoints;
+	std::vector<OptixShaderBindingTable> SBT;
+	
+	OptixTraversableHandle optixTraversable{};
+	RTScene::SharedPtr scene;
+	OptiXInitializeParameters optixParameters;
+};
+
 
 KRR_NAMESPACE_END

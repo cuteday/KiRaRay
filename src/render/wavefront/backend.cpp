@@ -5,7 +5,7 @@
 #include "render/shared.h"
 
 KRR_NAMESPACE_BEGIN
-extern "C" char WAVEFRONT_PTX[];
+//extern "C" char WAVEFRONT_PTX[];
 LaunchParams *launchParams{};
 
 OptiXWavefrontBackend::OptiXWavefrontBackend(Scene &scene) { setScene(scene); }
@@ -19,7 +19,7 @@ void OptiXWavefrontBackend::setScene(Scene &scene) {
 	cudaStream	 = gpContext->cudaStream;
 
 	// creating optix module from ptx
-	optixModule = createOptiXModule(optixContext, WAVEFRONT_PTX);
+	optixModule = createOptiXModule(optixContext, nullptr);
 	// creating program groups
 	OptixProgramGroup raygenClosestPG = createRaygenPG("__raygen__Closest");
 	OptixProgramGroup raygenShadowPG  = createRaygenPG("__raygen__Shadow");

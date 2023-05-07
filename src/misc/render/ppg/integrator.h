@@ -34,6 +34,8 @@ public:
 	void handleMiss();
 	void handleIntersections();
 	void generateScatterRays();
+	void traceClosest(int depth);
+	void traceShadow();
 
 	/* params:
 	 *	wi: scatter direction in local shading frame
@@ -53,7 +55,7 @@ public:
 	void filterFrame(Film *image);
 
 	GuidedRayQueue *guidedRayQueue;
-	OptiXPPGBackend* backend;
+	//OptiXPPGBackend* backend;
 
 	STree* m_sdTree{ 0 };
 	EDistribution m_distribution{ EDistribution::ERadiance };	/* The target distribution (radiance or radiance * bsdf). */

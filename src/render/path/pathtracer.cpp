@@ -11,121 +11,24 @@ KRR_NAMESPACE_BEGIN
 extern "C" char PATHTRACER_PTX[];
 
 void MegakernelPathTracer::initialize() {
-	logDebug("Setting up module ...");
-	module = OptiXBackend::createOptiXModule(gpContext->optixContext, PATHTRACER_PTX);
-	logDebug("Creating program groups ...");
-	createProgramGroups();
-	logDebug("Setting up optix pipeline ...");
-	createPipeline();
-
-	if (launchParamsDevice == nullptr)
-		launchParamsDevice = gpContext->alloc->new_object<LaunchParamsPT>();
-	logSuccess("Megakernel PathTracer::Optix context set!");
-}
-
-MegakernelPathTracer::~MegakernelPathTracer() {
-	gpContext->alloc->deallocate_object(launchParamsDevice);
-}
-
-void MegakernelPathTracer::createProgramGroups() {
-	// setup raygen program groups
-	raygenPGs.resize(1);
-	raygenPGs[0] =
-		OptiXBackend::createRaygenPG(gpContext->optixContext, module, "__raygen__Pathtracer");
-	// setup hit program groups
-	missPGs.resize(RAY_TYPE_COUNT);
-	for (int i = 0; i < RAY_TYPE_COUNT; i++) {
-		string msFuncName = "__miss__" + shaderProgramNames[i];
-		missPGs[i] =
-			OptiXBackend::createMissPG(gpContext->optixContext, module, msFuncName.c_str());
-	}
-	// setup miss program groups
-	hitgroupPGs.resize(RAY_TYPE_COUNT);
-	for (int i = 0; i < RAY_TYPE_COUNT; i++) {
-		string chFuncName = "__closesthit__" + shaderProgramNames[i];
-		string ahFuncName = "__anyhit__" + shaderProgramNames[i];
-		hitgroupPGs[i]	  = OptiXBackend::createIntersectionPG(
-			   gpContext->optixContext, module, chFuncName.c_str(), ahFuncName.c_str(), nullptr);
+	if (!optixBackend) {
+		optixBackend = new OptiXBackendImpl();
+		auto params	 = OptiXInitializeParameters()
+						  .setPTX(PATHTRACER_PTX)
+						  .addRayType("Radiance", true, true, false)
+						  .addRayType("ShadowRay", true, true, false)
+						  .addRaygenEntry("Pathtracer");
+		optixBackend->initialize(params);
 	}
 }
 
-void MegakernelPathTracer::createPipeline() {
-	std::vector<OptixProgramGroup> programGroups;
-	for (auto pg : raygenPGs)
-		programGroups.push_back(pg);
-	for (auto pg : missPGs)
-		programGroups.push_back(pg);
-	for (auto pg : hitgroupPGs)
-		programGroups.push_back(pg);
-
-	OptixPipelineCompileOptions pipelineCompileOptions = OptiXBackend::getPipelineCompileOptions();
-	OptixPipelineLinkOptions pipelineLinkOptions	   = {};
-	pipelineLinkOptions.maxTraceDepth				   = 3;
-
-	char log[2048];
-	size_t sizeof_log = sizeof(log);
-	OPTIX_CHECK(optixPipelineCreate(gpContext->optixContext, &pipelineCompileOptions,
-									&pipelineLinkOptions, programGroups.data(),
-									(int) programGroups.size(), log, &sizeof_log, &pipeline));
-	logDebug(log);
-
-	// OPTIX_CHECK(optixPipelineSetStackSize (/* [in] The pipeline to configure the stack size for
-	// */ 	pipeline, 2 * 1024, 2 * 1024, 2 * 1024, 1)); logDebug(log);
-}
+MegakernelPathTracer::~MegakernelPathTracer() { delete optixBackend; }
 
 void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
 	mpScene = scene;
 	mpScene->initializeSceneRT();
-	buildAS();
-	buildSBT();
-}
-
-void MegakernelPathTracer::buildSBT() {
-	// build raygen records
-	raygenRecords.clear();
-	missRecords.clear();
-	hitgroupRecords.clear();
-
-	for (int i = 0; i < raygenPGs.size(); i++) {
-		RaygenRecord rec;
-		OPTIX_CHECK(optixSbtRecordPackHeader(raygenPGs[i], &rec));
-		raygenRecords.push_back(rec);
-	}
-	sbt.raygenRecord = (CUdeviceptr) raygenRecords.data();
-
-	// build miss records
-	for (int i = 0; i < missPGs.size(); i++) {
-		MissRecord rec;
-		OPTIX_CHECK(optixSbtRecordPackHeader(missPGs[i], &rec));
-		missRecords.push_back(rec);
-	}
-	sbt.missRecordBase			= (CUdeviceptr) missRecords.data();
-	sbt.missRecordStrideInBytes = sizeof(MissRecord);
-	sbt.missRecordCount			= (int) missRecords.size();
-
-	// build hitgroup records
-	uint numMeshes = mpScene->meshes.size();
-	rt::SceneData &sceneData = mpScene->mpSceneRT->getSceneData();
-	
-	for (uint meshId = 0; meshId < numMeshes; meshId++) {
-		for (uint rayId = 0; rayId < RAY_TYPE_COUNT; rayId++) {
-			HitgroupRecord rec;
-			rt::MeshData *mesh = &(*sceneData.meshes)[meshId];
-			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayId], &rec));
-			rec.data = { mesh };
-			hitgroupRecords.push_back(rec);
-		}
-	}
-	sbt.hitgroupRecordBase			= (CUdeviceptr) hitgroupRecords.data();
-	sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
-	sbt.hitgroupRecordCount			= hitgroupRecords.size();
-}
-
-void MegakernelPathTracer::buildAS() {
-	OptixTraversableHandle &asHandle = launchParams.traversable;
-	asHandle =
-		OptiXBackend::buildAccelStructure(gpContext->optixContext, gpContext->cudaStream, *mpScene);
+	optixBackend->setScene(*scene);
 }
 
 void MegakernelPathTracer::renderUI() {
@@ -153,15 +56,12 @@ void MegakernelPathTracer::render(RenderFrame::SharedPtr frame) {
 		launchParams.colorBuffer = frame->getCudaRenderTarget();
 		launchParams.camera		 = mpScene->getCamera();
 		launchParams.sceneData	 = mpScene->mpSceneRT->getSceneData();
+		launchParams.traversable = optixBackend->getRootTraversable();
 		launchParams.frameID++;
-		cudaMemcpy(launchParamsDevice, &launchParams, sizeof(LaunchParamsPT),
-				   cudaMemcpyHostToDevice);
 	}
 	{
 		PROFILE("Path tracing kernel");
-		OPTIX_CHECK(optixLaunch(pipeline, gpContext->cudaStream, (CUdeviceptr) launchParamsDevice,
-								sizeof(LaunchParamsPT), &sbt, launchParams.fbSize[0],
-								launchParams.fbSize[1], 1));
+		optixBackend->launch(launchParams, "Pathtracer", mFrameSize[0], mFrameSize[1]);
 	}
 	CUDA_SYNC_CHECK();
 }

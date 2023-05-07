@@ -20,11 +20,6 @@ public:
 	MegakernelPathTracer() = default;
 	~MegakernelPathTracer();
 
-	void createProgramGroups();
-	void createPipeline();
-	void buildSBT();
-	void buildAS();
-
 	bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 	bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
 	void renderUI() override;
@@ -40,18 +35,9 @@ public:
 	string getName() const override { return "MegakernelPathTracer"; }
 
 private:
-	OptixPipeline               pipeline;
-	OptixModule                 module;
 
-	std::vector<OptixProgramGroup> raygenPGs;
-	std::vector<OptixProgramGroup> missPGs;
-	std::vector<OptixProgramGroup> hitgroupPGs;
-	inter::vector<MissRecord> missRecords;
-	inter::vector<RaygenRecord> raygenRecords;
-	inter::vector<HitgroupRecord> hitgroupRecords;
-	OptixShaderBindingTable sbt = {};
+	OptiXBackendImpl *optixBackend{nullptr};
 	LaunchParamsPT launchParams;
-	LaunchParamsPT* launchParamsDevice;
 
 	friend void to_json(json &j, const MegakernelPathTracer &p) {
 		j = json{
