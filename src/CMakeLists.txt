@@ -48,7 +48,6 @@ SET (KRR_SOURCE
 	render/path/pathtracer.cpp
 	render/bdpt/integrator.cpp
 	render/wavefront/integrator.cpp
-	render/wavefront/backend.cpp
 	render/rasterize/bindless.cpp
 	render/profiler/profiler.cpp
 	render/profiler/ui.cpp
@@ -71,7 +70,6 @@ SET (KRR_SOURCE_VULKAN
 
 SET_SOURCE_FILES_PROPERTIES (
 	render/wavefront/integrator.cpp
-	render/wavefront/backend.cpp
 	render/passes/denoise/denoise.cpp
 	util/tables.cpp
 	PROPERTIES LANGUAGE CUDA

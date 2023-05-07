@@ -4,7 +4,6 @@
 #include "device/cuda.h"
 #include "pathtracer.h"
 #include "render/profiler/profiler.h"
-#include "render/wavefront/backend.h"
 
 KRR_NAMESPACE_BEGIN
 

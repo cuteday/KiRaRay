@@ -37,7 +37,7 @@ void Context::initialize() {
 	// set up context
 	const int deviceID = 0;
 	CUDA_CHECK(cudaSetDevice(deviceID));
-	//CUDA_CHECK(cudaStreamCreate(&cudaStream));
+	CUDA_CHECK(cudaStreamCreate(&cudaStream));
 
 	cudaGetDeviceProperties(&deviceProps, deviceID);
 	logInfo("#krr: running on device: " + string(deviceProps.name));

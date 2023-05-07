@@ -5,6 +5,7 @@
 #include "util/check.h"
 #include "util/film.h"
 
+#include "ppg.h"
 #include "tree.h"
 #include "integrator.h"
 #include "render/profiler/profiler.h"

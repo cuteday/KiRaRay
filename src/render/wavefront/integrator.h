@@ -7,8 +7,8 @@
 
 #include "device/buffer.h"
 #include "device/context.h"
+#include "device/optix.h"
 #include "device/cuda.h"
-#include "backend.h"
 #include "workqueue.h"
 
 KRR_NAMESPACE_BEGIN
@@ -49,8 +49,7 @@ public:
 
 	template <typename... Args>
 	KRR_DEVICE_FUNCTION void debugPrint(uint pixelId, const char *fmt, Args &&...args);
-
-	//OptiXWavefrontBackend* backend;
+	
 	OptiXBackendImpl *backend{ };
 	Camera* camera{ };
 	LightSampler lightSampler;

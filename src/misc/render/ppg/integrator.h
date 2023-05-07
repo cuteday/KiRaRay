@@ -2,8 +2,8 @@
 
 #include "common.h"
 #include "tree.h"
+#include "guideditem.h"
 #include "render/wavefront/integrator.h"
-#include "backend.h"
 #include "util/task.h"
 
 KRR_NAMESPACE_BEGIN
@@ -55,7 +55,6 @@ public:
 	void filterFrame(Film *image);
 
 	GuidedRayQueue *guidedRayQueue;
-	//OptiXPPGBackend* backend;
 
 	STree* m_sdTree{ 0 };
 	EDistribution m_distribution{ EDistribution::ERadiance };	/* The target distribution (radiance or radiance * bsdf). */
