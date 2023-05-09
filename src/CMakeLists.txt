@@ -23,19 +23,18 @@ SET ( KRR_INCLUDE_ALL
 
 SET ( KRR_CORE_SOURCE
 	core/scene.cpp
+	core/scenegraph.cpp
 	core/camera.cpp
 	core/light.cpp
 	core/mesh.cpp
-	# host-device side
 	core/interop.cpp
-	core/device/context.cpp
-	core/device/optix.cpp
-	# components
 	core/window.cpp
 	core/logger.cpp
 	core/file.cpp
 	core/renderpass.cpp
 	core/texture.cpp
+	core/device/context.cpp
+	core/device/optix.cpp
 )
 
 FILE (GLOB_RECURSE KRR_RENDER_PASSES

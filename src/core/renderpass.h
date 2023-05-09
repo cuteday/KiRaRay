@@ -214,26 +214,13 @@ public:
 	}
 
 private:
-	struct exec_register {
-		exec_register() = default;
-		exec_register(const string &s) { 
-			getMap()->insert(std::make_pair(s, &RenderPassFactory::create<T>));
-			getConfiguredMap()->insert(std::make_pair(s, &RenderPassFactory::deserialize<T>));
-		}
-	};
-	// will force instantiation of definition of static member
-	static exec_register register_object;
-	template <typename T, T> struct value {};
-	typedef value<exec_register &, register_object> value_user;
-	static_assert(&register_object);
+	RenderPassRegister()  = default; 
 };
 
 #define KRR_REGISTER_PASS_DEC(name)                                                                     \
 	static RenderPassRegister<name> reg;
 
 #define KRR_REGISTER_PASS_DEF(name)																		\
-	RenderPassRegister<name> name::reg(#name);															\
-	typename RenderPassRegister<name>::exec_register RenderPassRegister<name>::register_object(#name)                                                   
-
+	RenderPassRegister<name> name::reg(#name);
 
 KRR_NAMESPACE_END
