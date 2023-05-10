@@ -137,6 +137,9 @@ void RenderApp::renderUI() {
 			if (ui::MenuItem("Screen shot")) sRequestScreenshot = true;
 			ui::EndMenu();
 		}
+		if (showFps) 
+			ui::BeginMenu(formatString("FPS: %.0lf", 
+				1.0 / GetAverageFrameTimeSeconds()).c_str(), false);
 		ui::EndMainMenuBar();
 	}
 
@@ -162,18 +165,6 @@ void RenderApp::renderUI() {
 		for (auto p : mRenderPasses)
 			if (p && ui::CollapsingHeader(p->getName().c_str()))
 				p->renderUI();
-		ui::End();
-	}
-
-	if (showFps) {
-		ImGuiWindowFlags fpsCounterFlags =
-			ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-			ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-			ImGuiWindowFlags_NoNav;
-		mFrameRate.newFrame();
-		ui::SetNextWindowBgAlpha(0.8);
-		ui::Begin("FPS Counter", &showFps, fpsCounterFlags);
-		ui::Text("FPS: %.1lf", 1000 / mFrameRate.getAverageFrameTime());
 		ui::End();
 	}
 
