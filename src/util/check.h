@@ -12,9 +12,8 @@ KRR_NAMESPACE_BEGIN
 	do {                                                                                           \
 		OptixResult res = call;                                                                    \
 		if (res != OPTIX_SUCCESS) {                                                                \
-			fprintf(stderr, "Optix call (%s) failed with code %d (line %d)\n", #call, res,         \
+			Log(Fatal, "Optix call (%s) failed with code %d (line %d)\n", #call, res,              \
 					__LINE__);                                                                     \
-			throw std::runtime_error("OptiX check failed");                                        \
 		}                                                                                          \
 	} while (false)
 
@@ -22,9 +21,8 @@ KRR_NAMESPACE_BEGIN
 	do {                                                                                           \
 		OptixResult res = EXPR;                                                                    \
 		if (res != OPTIX_SUCCESS) {                                                                \
-			fprintf(stderr, "OptiX call " #EXPR " failed with code %d: \"%s\"\nLogs: %s",          \
+			Log(Fatal, "OptiX call " #EXPR " failed with code %d: \"%s\"\nLogs: %s",               \
 					int(res), optixGetErrorString(res), LOG);                                      \
-			throw std::runtime_error("OptiX check failed");                                        \
 		}                                                                                          \
 	} while (false) /* eat semicolon */
 
@@ -33,8 +31,8 @@ KRR_NAMESPACE_BEGIN
 		cudaError_t rc = call;                                                                     \
 		if (rc != cudaSuccess) {                                                                   \
 			cudaError_t err = rc; /*cudaGetLastError();*/                                          \
-			Log(Error, "CUDA Error (%s: line %d): %s (%s)\n", __FILE__, __LINE__,                  \
-				cudaGetErrorName(err), cudaGetErrorString(err));                                 \
+			Log(Fatal, "CUDA Error (%s: line %d): %s (%s)\n", __FILE__, __LINE__,                  \
+				cudaGetErrorName(err), cudaGetErrorString(err));                                   \
 		}                                                                                          \
 	} while (0)
 
@@ -50,7 +48,7 @@ KRR_NAMESPACE_BEGIN
 		cudaDeviceSynchronize();                                                                   \
 		cudaError_t error = cudaGetLastError();                                                    \
 		if (error != cudaSuccess) {                                                                \
-			Log(Error, "Error (%s: line %d): %s\n", __FILE__, __LINE__,                            \
+			Log(Fatal, "Error (%s: line %d): %s\n", __FILE__, __LINE__,                            \
 				cudaGetErrorString(error));                                                        \
 		}                                                                                          \
 	} while (0)
