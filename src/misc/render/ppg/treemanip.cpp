@@ -296,7 +296,6 @@ KRR_HOST void STree::subdivide(int nodeIdx, std::vector<STreeNode>& nodes) {
 KRR_HOST void STree::forEachDTreeWrapper(std::function<void(DTreeWrapper*)> func) {
 	int n_nodes = static_cast<int>(m_nodes.size());
 	Log(Info, "[ForEachDTreeWrapper] There are %d S-Tree nodes to process...", n_nodes);
-	// TODO: parallelize this on cpu
 	std::vector<STreeNode> nodes(n_nodes);
 	m_nodes.copy_to_host(nodes.data(), n_nodes);
 
@@ -306,7 +305,6 @@ KRR_HOST void STree::forEachDTreeWrapper(std::function<void(DTreeWrapper*)> func
 				func(&node.dTree);
 			}
 	});
-
 	m_nodes.copy_from_host(nodes.data(), nodes.size());
 }
 
@@ -380,10 +378,11 @@ void PPGPathTracer::resetSDTree() {
 	float sTreeSplitThres = sqrt(pow(2, m_iter) * m_sppPerPass / 4) * m_sTreeThreshold;
 	Log(Info, "Adaptively subdividing the S-Tree. Current split threshould: %.2f", sTreeSplitThres);
 	m_sdTree->refine((size_t) sTreeSplitThres, m_sdTreeMaxMemory);
-	cudaDeviceSynchronize();
+	CUDA_SYNC_CHECK();
 	Log(Info, "Adaptively subdividing the D-Tree...");
-	m_sdTree->forEachDTreeWrapper([this](DTreeWrapper* dTree) {
-		dTree->reset(20 /* max d-tree depth */, m_dTreeThreshold);
+	float dTreeThres = this->m_dTreeThreshold;
+	m_sdTree->forEachDTreeWrapper([dTreeThres](DTreeWrapper *dTree) {
+		dTree->reset(20 /* max d-tree depth */, dTreeThres);
 		});
 	CUDA_SYNC_CHECK();
 }
@@ -391,11 +390,12 @@ void PPGPathTracer::resetSDTree() {
 /* [At the end of each iteration] Build the sampling distribution with statistics, in the current iteration of the building tree, */
 /* Then use it, on the sampling tree, in the next iteration. */
 void PPGPathTracer::buildSDTree() {
-	cudaDeviceSynchronize();
+	CUDA_SYNC_CHECK();
 	// Build distributions
 	Log(Info, "Building distributions for each D-Tree node...");
-	m_sdTree->forEachDTreeWrapper([this](DTreeWrapper* dTree) {
-		dTree->build(m_distribution);
+	EDistribution dist = m_distribution;
+	m_sdTree->forEachDTreeWrapper([dist](DTreeWrapper *dTree) {
+		dTree->build(dist);
 		});
 	m_isBuilt = true;
 	CUDA_SYNC_CHECK();
