@@ -4,7 +4,9 @@
 #include "light.h"
 #include "camera.h"
 #include "texture.h"
+#include "scenegraph.h"
 #include "interop.h"
+
 #include "device/buffer.h"
 #include "device/memory.h"
 #include "render/lightsampler.h"
@@ -61,6 +63,8 @@ public:
 	std::vector<Mesh::SharedPtr> meshes;
 	std::vector<Material::SharedPtr> materials;
 	std::vector<Texture::SharedPtr> environments;
+
+	SceneGraph::SharedPtr mGraph;
 
 	Camera::SharedPtr mpCamera;
 	OrbitCameraController::SharedPtr mpCameraController;

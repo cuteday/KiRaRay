@@ -223,11 +223,28 @@ SceneGraphNode::SharedPtr SceneGraph::detach(const SceneGraphNode::SharedPtr &no
 }
 
 void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
-	
+	if (!leaf) {
+		Log(Warning, "Attempting to register an empty leaf...");
+		return;
+	}
+
+	if (auto meshInstance = std::dynamic_pointer_cast<MeshInstance>(leaf)) {
+		mMeshInstances.push_back(meshInstance);
+	}
 }
 
 void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
-
+	if (!leaf) {
+		Log(Warning, "Attempting to unregister an empty leaf...");
+		return;
+	}
+	// This assumes that a mesh instance should only be attached to one leaf.
+	if (auto meshInstance = std::dynamic_pointer_cast<MeshInstance>(leaf)) {
+		auto it = std::find(mMeshInstances.begin(), mMeshInstances.end(), leaf);
+		if (it != mMeshInstances.end()) mMeshInstances.erase(it);
+		else Log(Warning, "Unregistering am instance that do not exist in graph...");
+		return;
+	}
 }
 
 KRR_NAMESPACE_END

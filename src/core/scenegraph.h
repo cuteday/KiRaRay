@@ -1,7 +1,8 @@
 #pragma once
 #include "common.h"
 #include "logger.h"
-#include "scene.h"
+#include "mesh.h"
+#include "texture.h"
 #include "krrmath/math.h"
 
 KRR_NAMESPACE_BEGIN
@@ -36,6 +37,19 @@ protected:
 private:
 	friend class SceneGraphNode;
 	std::weak_ptr<SceneGraphNode> mNode;
+};
+
+class MeshInstance : public SceneGraphLeaf {
+public:
+	explicit MeshInstance(Mesh::SharedPtr mesh) : mMesh(std::move(mesh)){};
+
+	const Mesh::SharedPtr &getMesh() const { return mMesh; }
+	int getInstanceIndex() const { return mInstanceIndex; }
+
+private:
+	friend class SceneGraph;
+	Mesh::SharedPtr mMesh;
+	int mInstanceIndex{-1};
 };
 
 class SceneGraphNode final : public std::enable_shared_from_this<SceneGraphNode> {
@@ -127,6 +141,12 @@ public:
 
 	const SceneGraphNode::SharedPtr &getRoot() const { return mRoot; }
 	
+	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mMeshInstances; }
+	std::vector<Mesh::SharedPtr> &getMeshes() { return mMeshes; }
+	std::vector<Material::SharedPtr> &getMaterials() { return mMaterials; }
+	void addMesh(Mesh::SharedPtr mesh) { mMeshes.push_back(std::move(mesh)); }
+	void addMaterial(Material::SharedPtr material) { mMaterials.push_back(std::move(material)); }
+
 	SceneGraphNode::SharedPtr setRoot(const SceneGraphNode::SharedPtr &root);
 	SceneGraphNode::SharedPtr attach(const SceneGraphNode::SharedPtr &parent,
 									 const SceneGraphNode::SharedPtr &child);
@@ -145,6 +165,9 @@ private:
 
 	SceneGraphNode::SharedPtr mRoot;
 	
+	std::vector<Mesh::SharedPtr> mMeshes;
+	std::vector<Material::SharedPtr> mMaterials;
+	std::vector<MeshInstance::SharedPtr> mMeshInstances;
 };
 
 KRR_NAMESPACE_END
