@@ -32,7 +32,7 @@ void VKScene::writeMeshBuffers(vkrhi::ICommandList *commandList) {
 		/* Create and write index buffer. */
 		vkrhi::BufferDesc bufferDesc;
 		bufferDesc.isIndexBuffer	 = true;
-		bufferDesc.byteSize			 = mesh.indices.size() * sizeof(Vector3i);
+		bufferDesc.byteSize			 = mesh->indices.size() * sizeof(Vector3i);
 		bufferDesc.debugName		 = "IndexBuffer";
 		bufferDesc.canHaveTypedViews = true;
 		bufferDesc.canHaveRawViews	 = true;
@@ -41,7 +41,7 @@ void VKScene::writeMeshBuffers(vkrhi::ICommandList *commandList) {
 	
 		commandList->beginTrackingBufferState(buffers.indexBuffer,
 											  nvrhi::ResourceStates::Common);
-		commandList->writeBuffer(buffers.indexBuffer, mesh.indices.data(),
+		commandList->writeBuffer(buffers.indexBuffer, mesh->indices.data(),
 								 bufferDesc.byteSize);
 		commandList->setPermanentBufferState(buffers.indexBuffer,
 			vkrhi::ResourceStates::IndexBuffer | vkrhi::ResourceStates::ShaderResource);
@@ -55,46 +55,46 @@ void VKScene::writeMeshBuffers(vkrhi::ICommandList *commandList) {
 		bufferDesc.canHaveTypedViews = true;
 		bufferDesc.canHaveRawViews	 = true;
 		
-		if (!mesh.positions.empty()) {
+		if (!mesh->positions.empty()) {
 			appendBufferRange(buffers.getVertexBufferRange(VertexAttribute::Position), 
-				mesh.positions.size() * sizeof(Vector3f), bufferDesc.byteSize);
+				mesh->positions.size() * sizeof(Vector3f), bufferDesc.byteSize);
 		}
-		if (!mesh.normals.empty()) {
+		if (!mesh->normals.empty()) {
 			appendBufferRange(buffers.getVertexBufferRange(VertexAttribute::Normal),
-				mesh.normals.size() * sizeof(Vector3f), bufferDesc.byteSize);
+				mesh->normals.size() * sizeof(Vector3f), bufferDesc.byteSize);
 		}
-		if (!mesh.texcoords.empty()) {
+		if (!mesh->texcoords.empty()) {
 			appendBufferRange(buffers.getVertexBufferRange(VertexAttribute::Texcoord),
-				mesh.texcoords.size() * sizeof(Vector2f), bufferDesc.byteSize);
+				mesh->texcoords.size() * sizeof(Vector2f), bufferDesc.byteSize);
 		}
-		if (!mesh.tangents.empty()) {
+		if (!mesh->tangents.empty()) {
 			appendBufferRange(buffers.getVertexBufferRange(VertexAttribute::Tangent),
-				mesh.tangents.size() * sizeof(Vector3f), bufferDesc.byteSize);
+				mesh->tangents.size() * sizeof(Vector3f), bufferDesc.byteSize);
 		}
 		
 		buffers.vertexBuffer = mDevice->createBuffer(bufferDesc);
 		
 		commandList->beginTrackingBufferState(buffers.vertexBuffer,
 											  vkrhi::ResourceStates::Common);
-		if (!mesh.positions.empty()) {
+		if (!mesh->positions.empty()) {
 			const auto &range = buffers.getVertexBufferRange(VertexAttribute::Position);
 			commandList->writeBuffer(buffers.vertexBuffer,
-									 mesh.positions.data(), range.byteSize, range.byteOffset);
+									 mesh->positions.data(), range.byteSize, range.byteOffset);
 		}
-		if (!mesh.normals.empty()) {
+		if (!mesh->normals.empty()) {
 			const auto &range = buffers.getVertexBufferRange(VertexAttribute::Normal);
 			commandList->writeBuffer(buffers.vertexBuffer,
-									 mesh.normals.data(), range.byteSize, range.byteOffset);
+									 mesh->normals.data(), range.byteSize, range.byteOffset);
 		}
-		if (!mesh.texcoords.empty()) {
+		if (!mesh->texcoords.empty()) {
 			const auto &range = buffers.getVertexBufferRange(VertexAttribute::Texcoord);
 			commandList->writeBuffer(buffers.vertexBuffer,
-									 mesh.texcoords.data(), range.byteSize, range.byteOffset);
+									 mesh->texcoords.data(), range.byteSize, range.byteOffset);
 		}
-		if (!mesh.tangents.empty()) {
+		if (!mesh->tangents.empty()) {
 			const auto &range = buffers.getVertexBufferRange(VertexAttribute::Tangent);
 			commandList->writeBuffer(buffers.vertexBuffer,
-									 mesh.tangents.data(), range.byteSize, range.byteOffset);
+									 mesh->tangents.data(), range.byteSize, range.byteOffset);
 		}
 
 		commandList->setPermanentBufferState(buffers.vertexBuffer, 
@@ -119,10 +119,11 @@ void VKScene::writeMaterialTextures(vkrhi::ICommandList* commandList) {
 		mMaterialTextures.push_back(rs::MaterialTextures());
 		auto &textures = mMaterialTextures.back();
 		for (int type = 0; type < (int) Material::TextureType::Count; type++) {
-			if (material.mTextures[type].getImage().isValid()) {
-				Log(Debug, "Loading texture slot %d for material %s", type, material.getName());
+			if (material->hasTexture((Material::TextureType) type) &&
+				material->mTextures[type]->getImage()) {
+				Log(Debug, "Loading texture slot %d for material %s", type, material->getName());
 				// Upload texture to vulkan device...
-				const Image &image = material.mTextures[type].getImage();
+				Image::SharedPtr image = material->mTextures[type]->getImage();
 				auto loadedTexture = mTextureLoader->LoadTextureFromImage(image, commandList);
 				textures.textures[type] = loadedTexture;
 			}
@@ -135,11 +136,11 @@ void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 	for (int i = 0; i < mpScene->materials.size(); i++) {
 		const auto &material = mpScene->materials[i];
 		rs::MaterialConstants materialConstants;
-		materialConstants.baseColor = material.mMaterialParams.diffuse;
-		materialConstants.specularColor = material.mMaterialParams.specular;
-		materialConstants.IoR			= material.mMaterialParams.IoR;
-		materialConstants.opacity = material.mMaterialParams.specularTransmission;
-		materialConstants.metalRough = material.mShadingModel == Material::ShadingModel::MetallicRoughness;
+		materialConstants.baseColor = material->mMaterialParams.diffuse;
+		materialConstants.specularColor = material->mMaterialParams.specular;
+		materialConstants.IoR			= material->mMaterialParams.IoR;
+		materialConstants.opacity		= material->mMaterialParams.specularTransmission;
+		materialConstants.metalRough = material->mShadingModel == Material::ShadingModel::MetallicRoughness;
 		
 		const auto &textures = mMaterialTextures[i];
 		materialConstants.baseTextureIndex =
@@ -177,9 +178,9 @@ void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 	for (int i = 0; i < mpScene->meshes.size(); i++) {
 		const auto &mesh = mpScene->meshes[i];
 		rs::MeshData meshData;
-		meshData.materialIndex = mesh.materialId;
-		meshData.numIndices	   = mesh.indices.size();
-		meshData.numVertices   = mesh.positions.size();
+		meshData.materialIndex = mesh->materialId;
+		meshData.numIndices	   = mesh->indices.size();
+		meshData.numVertices   = mesh->positions.size();
 		// the descriptorHandle.Get will return -1 if invalid.
 		meshData.indexBufferIndex = mMeshBuffers[i].indexBufferDescriptor.Get();
 		meshData.vertexBufferIndex = mMeshBuffers[i].vertexBufferDescriptor.Get();

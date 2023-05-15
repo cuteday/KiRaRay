@@ -84,7 +84,7 @@ protected:
 	bool FindTextureInCache(const std::filesystem::path &path,
 							std::shared_ptr<TextureData> &texture);
 	std::shared_ptr<Blob> ReadTextureFile(const std::filesystem::path &path) const;
-	bool FillTextureData(const Image &image,
+	bool FillTextureData(const Image::SharedPtr image,
 						 const std::shared_ptr<TextureData> &texture) const;
 	void FinalizeTexture(std::shared_ptr<TextureData> texture, CommonRenderPasses *passes,
 						 nvrhi::ICommandList *commandList);
@@ -105,7 +105,7 @@ public:
 													   nvrhi::ICommandList *commandList,
 													   CommonRenderPasses *passes = nullptr);
 
-	std::shared_ptr<LoadedTexture> LoadTextureFromImage(const Image &image,
+	std::shared_ptr<LoadedTexture> LoadTextureFromImage(const Image::SharedPtr image,
 													   nvrhi::ICommandList *commandList,
 													   CommonRenderPasses *passes = nullptr);
 

@@ -30,8 +30,8 @@ void Scene::renderUI() {
 	}
 }
 
-void Scene::addEnvironmentMap(const Texture &infiniteLight) {
-	environments.push_back(infiniteLight);
+void Scene::addEnvironmentMap(Texture::SharedPtr infiniteLight) {
+	environments.emplace_back(infiniteLight);
 }
 
 bool Scene::onMouseEvent(const MouseEvent& mouseEvent){
@@ -85,14 +85,14 @@ void RTScene::updateSceneData() {
 	auto meshes = mpScene->meshes;
 	mDeviceData.meshes->resize(meshes.size());
 	for (size_t idx = 0; idx < meshes.size(); idx++) {
-		auto& mesh = mpScene->meshes[idx];
+		auto &mesh	   = mpScene->meshes[idx];
 		auto &meshData = (*mDeviceData.meshes)[idx];
-		meshData.positions.alloc_and_copy_from_host(mesh.positions);
-		meshData.normals.alloc_and_copy_from_host(mesh.normals);
-		meshData.texcoords.alloc_and_copy_from_host(mesh.texcoords);
-		meshData.tangents.alloc_and_copy_from_host(mesh.tangents);
-		meshData.indices.alloc_and_copy_from_host(mesh.indices);
-		meshData.materialId = mesh.materialId;
+		meshData.positions.alloc_and_copy_from_host(mesh->positions);
+		meshData.normals.alloc_and_copy_from_host(mesh->normals);
+		meshData.texcoords.alloc_and_copy_from_host(mesh->texcoords);
+		meshData.tangents.alloc_and_copy_from_host(mesh->tangents);
+		meshData.indices.alloc_and_copy_from_host(mesh->indices);
+		meshData.materialId = mesh->materialId;
 	}
 
 	/* Upload texture and material data to device... */
@@ -120,18 +120,18 @@ void RTScene::processLights() {
 
 	uint nMeshes = mpScene->meshes.size();
 	for (uint meshId = 0; meshId < nMeshes; meshId++) {
-		Mesh &mesh		   = mpScene->meshes[meshId];
-		Material &material = mpScene->materials[mesh.materialId];
-		rt::MaterialData &materialData = (*mDeviceData.materials)[mesh.materialId];
+		auto mesh		   = mpScene->meshes[meshId];
+		auto material = mpScene->materials[mesh->materialId];
+		rt::MaterialData &materialData = (*mDeviceData.materials)[mesh->materialId];
 		rt::MeshData &meshData = (*mDeviceData.meshes)[meshId];
-		if (material.hasEmission() || mesh.Le.any()) {
+		if (material->hasEmission() || mesh->Le.any()) {
 			rt::TextureData &textureData =
 				materialData.getTexture(Material::TextureType::Emissive);
-			Color3f Le = material.hasEmission()
-							 ? Color3f(textureData.getConstant()) : mesh.Le;
+			Color3f Le = material->hasEmission()
+							 ? Color3f(textureData.getConstant()) : mesh->Le;
 			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld", 
-					 " constant emission(?): %f", mesh.indices.size(), luminance(Le));
-			std::vector<Triangle> primitives = mesh.createTriangles(&meshData);
+					 " constant emission(?): %f", mesh->indices.size(), luminance(Le));
+			std::vector<Triangle> primitives = mesh->createTriangles(&meshData);
 			size_t n_primitives				 = primitives.size();
 			meshData.primitives.alloc_and_copy_from_host(primitives);
 			meshData.lights.resize(primitives.size());

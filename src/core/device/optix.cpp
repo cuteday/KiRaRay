@@ -119,8 +119,8 @@ OptixProgramGroup OptiXBackend::createIntersectionPG(OptixDeviceContext optixCon
 
 OptixTraversableHandle OptiXBackend::buildAccelStructure(
 	OptixDeviceContext optixContext, CUstream cudaStream, Scene& scene){
-	auto &sceneData			  = scene.mpSceneRT->getSceneData();
-	std::vector<Mesh>& meshes = scene.meshes;
+	auto &sceneData = scene.mpSceneRT->getSceneData();
+	auto &meshes	= scene.meshes;
 	std::vector<OptixBuildInput> triangleInputs(meshes.size());
 	std::vector<uint> triangleInputFlags(meshes.size());
 	std::vector<CUdeviceptr> vertexBufferPtr(meshes.size());

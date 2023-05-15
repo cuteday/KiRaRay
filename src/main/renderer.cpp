@@ -277,7 +277,7 @@ void RenderApp::loadConfig(const json config) {
 		if (!scene)
 			Log(Fatal, "Import a model before doing scene configurations!");
 		string env = config["environment"].get<string>();
-		scene->addEnvironmentMap(*Texture::createFromFile(env));
+		scene->addEnvironmentMap(Texture::createFromFile(env));
 	}
 	if (config.contains("scene")) {
 		if (!scene)

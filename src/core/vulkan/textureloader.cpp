@@ -65,24 +65,24 @@ std::shared_ptr<TextureData> TextureCache::CreateTextureData() {
 	return std::make_shared<TextureData>();
 }
 
-bool TextureCache::FillTextureData(const Image &image,
+bool TextureCache::FillTextureData(const Image::SharedPtr image,
 								   const std::shared_ptr<TextureData> &texture) const {
 	int width = 0, height = 0, originalChannels = 0, channels = 0;
 
-	bool is_hdr = image.getFormat() == Image::Format::RGBAfloat;
-	originalChannels = image.getChannels();
+	bool is_hdr = image->getFormat() == Image::Format::RGBAfloat;
+	originalChannels = image->getChannels();
 
 	if (originalChannels == 3) {
 		channels = 4;
 	} else {
 		channels = originalChannels;
 	}
-	width = image.getSize()[0], height = image.getSize()[1];
+	width = image->getSize()[0], height = image->getSize()[1];
 	
 	int bytesPerPixel = channels * (is_hdr ? 4 : 1);
 	size_t sizeInBytes	  = width * height * bytesPerPixel;
 	unsigned char *bitmap = new unsigned char[sizeInBytes];
-	memcpy(bitmap, image.data(), sizeInBytes);
+	memcpy(bitmap, image->data(), sizeInBytes);
 
 	if (!bitmap) {
 		logMessage(m_ErrorLogSeverity, "Couldn't load generic texture '%s'", texture->path.c_str());
@@ -291,7 +291,7 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFile(const std::file
 	auto image = Image::createFromFile(absolutePath, false, sRGB);
 
 	if (image->isValid()) {
-		if (FillTextureData(*image, texture)) {
+		if (FillTextureData(image, texture)) {
 			TextureLoaded(texture);
 			FinalizeTexture(texture, passes, commandList);
 		}
@@ -303,13 +303,14 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFile(const std::file
 	return texture;
 }
 
-std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromImage(const Image& image,
+std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromImage(
+								   const Image::SharedPtr image,
 								   nvrhi::ICommandList *commandList,
 								   CommonRenderPasses *passes) {
 	std::shared_ptr<TextureData> texture = std::make_shared<TextureData>();
-	texture->forceSRGB = image.isSrgb();
+	texture->forceSRGB = image->isSrgb();
 	
-	if (image.isValid()) {
+	if (image->isValid()) {
 		if (FillTextureData(image, texture)) {
 			TextureLoaded(texture);
 			FinalizeTexture(texture, passes, commandList);
@@ -334,7 +335,7 @@ TextureCache::LoadTextureFromFileDeferred(const std::filesystem::path &path, boo
 
 	auto image = Image::createFromFile(path, false, sRGB);
 	if (image->isValid()) {
-		if (FillTextureData(*image, texture)) {
+		if (FillTextureData(image, texture)) {
 			TextureLoaded(texture);
 
 			std::lock_guard<std::mutex> guard(m_TexturesToFinalizeMutex);

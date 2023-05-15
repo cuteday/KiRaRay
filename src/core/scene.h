@@ -40,7 +40,7 @@ public:
 	void setCameraController(const OrbitCameraController &cameraController) {
 		*mpCameraController = cameraController;
 	}
-	void addEnvironmentMap(const Texture& infiniteLight);
+	void addEnvironmentMap(Texture::SharedPtr infiniteLight);
 	
 	void loadConfig(const json &config) { 
 		mpCamera = std::make_shared<Camera>(config.at("camera")); 
@@ -58,9 +58,9 @@ public:
 		};
 	}
 
-	std::vector<Mesh> meshes;
-	std::vector<Material> materials;
-	std::vector<Texture> environments;
+	std::vector<Mesh::SharedPtr> meshes;
+	std::vector<Material::SharedPtr> materials;
+	std::vector<Texture::SharedPtr> environments;
 
 	Camera::SharedPtr mpCamera;
 	OrbitCameraController::SharedPtr mpCameraController;

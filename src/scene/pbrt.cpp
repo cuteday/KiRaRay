@@ -249,13 +249,13 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 	if (matParams.IoR == 1) // 1-ETA is not plausible for transmission
 		matParams.IoR = 1.001;
 	size_t materialId = scene->materials.size();
-	scene->materials.push_back(*material);
+	scene->materials.push_back(material);
 	materials[mat] = materialId;
 	return materialId;
 }
 
-Mesh createMesh(pbrt::Shape::SP shape, const Matrix4f transform) {
-	Mesh mesh;
+Mesh::SharedPtr createMesh(pbrt::Shape::SP shape, const Matrix4f transform) {
+	Mesh::SharedPtr mesh = std::make_shared<Mesh>();
 	pbrt::TriangleMesh::SP m =
 		std::dynamic_pointer_cast<pbrt::TriangleMesh>(shape);
 	int n_vertices = m->vertex.size();
@@ -267,32 +267,32 @@ Mesh createMesh(pbrt::Shape::SP shape, const Matrix4f transform) {
 			"The current mesh has %zd normals but %d vertices, thus the "
 			"normal(s) are ignored.", m->normal.size(), n_vertices);
 	Matrixf<3, 3> rot = transform.topLeftCorner(3, 3).inverse().transpose();
-	mesh.indices.reserve(n_vertices);
+	mesh->indices.reserve(n_vertices);
 	for (int i = 0; i < n_vertices; i++) {
 		Vector4f local_vertex(cast(m->vertex[i]), 1);
 		Vector4f transformed_vertex = transform * local_vertex;
 		Vector3f transformed_normal{};
 		if (m->normal.size()) {
 			transformed_normal = rot * cast(m->normal[i]);
-			mesh.normals.push_back(transformed_normal);
+			mesh->normals.push_back(transformed_normal);
 		}
 		if (m->texcoord.size()) 
-			mesh.texcoords.push_back(cast(m->texcoord[i]));		
-		mesh.positions.push_back(transformed_vertex);
+			mesh->texcoords.push_back(cast(m->texcoord[i]));		
+		mesh->positions.push_back(transformed_vertex);
 	}
 	for (int i = 0; i < n_faces; i++) 
-		mesh.indices.push_back(cast(m->index[i]));
+		mesh->indices.push_back(cast(m->index[i]));
 	return mesh;
 }
 
-void createAreaLight(Mesh &mesh, pbrt::AreaLight::SP areaLight) {
+void createAreaLight(Mesh::SharedPtr mesh, pbrt::AreaLight::SP areaLight) {
 	if (auto l =
 			std::dynamic_pointer_cast<pbrt::DiffuseAreaLightRGB>(areaLight)) {
-		mesh.Le = cast(l->L);
+		mesh->Le = cast(l->L);
 	} else if (auto l = std::dynamic_pointer_cast<pbrt::DiffuseAreaLightBB>(
 				   areaLight)) {
 		// convert blackbody strength & temporature to linear RGB...
-		mesh.Le = cast(l->LinRGB());
+		mesh->Le = cast(l->LinRGB());
 	} else {
 		Log(Warning, "Encountered unsupported area light: %s",
 			areaLight->toString().c_str());
@@ -310,11 +310,9 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 		return false;
 	}
 
-	scene->makeSingleLevel(); // since currently kiraray supports only single
-							  // gas...
-	pScene->materials.push_back(
-		Material(0, "default material")); // the default material for shapes
-										  // without material
+	scene->makeSingleLevel(); // since currently kiraray supports only single gas.
+	pScene->materials.push_back(std::make_shared<Material>(0, "default material")); 
+	// the default material for shapes without material
 
 	std::map<pbrt::Material::SP, size_t> pbrtMaterials; // loaded materials and
 														// its parametric id
@@ -329,16 +327,16 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 		for (const pbrt::Shape::SP geom : inst->object->shapes) {
 			if (pbrt::TriangleMesh::SP m =
 					std::dynamic_pointer_cast<pbrt::TriangleMesh>(geom)) {
-				Mesh mesh = createMesh(m, transform);
+				Mesh::SharedPtr mesh = createMesh(m, transform);
 				if (m->material) {
-					mesh.materialId = loadMaterial(pScene, m->material,
+					mesh->materialId = loadMaterial(pScene, m->material,
 												   pbrtMaterials, basepath);
 				}
 				if (m->areaLight) {
 					createAreaLight(mesh, m->areaLight);
 				}
 				pScene->meshes.push_back(mesh);
-				pScene->mAABB.extend(mesh.getAABB());
+				pScene->mAABB.extend(mesh->getAABB());
 			} else {
 				Log(Debug, "Encountered unsupported pbrt shape type: %s",
 					geom->toString().c_str());

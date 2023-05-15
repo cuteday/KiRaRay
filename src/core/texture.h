@@ -23,9 +23,9 @@ public:
 		RGBAfloat,
 	};
 	
-	Image() {}
+	Image() = default;
 	Image(Vector2i size, Format format = Format::RGBAuchar, bool srgb = false);
-	~Image() {}
+	~Image();
 
 	bool loadImage(const fs::path& filepath, bool flip = false, bool srgb = false);
 	bool saveImage(const fs::path &filepath, bool flip = false);
@@ -96,24 +96,23 @@ public:
 	Texture(const string& filepath, bool flip = false, bool srgb = false, uint id = 0);
 
 	void setConstant(const Color4f value){ 
-		mValid = true;
 		mValue = value;
 	};
 
 	void loadImage(const fs::path &filepath, bool flip = false, bool srgb = false) {
-		mValid = mImage.loadImage(filepath, flip, srgb);
+		mImage = std::make_shared<Image>();
+		if(!mImage->loadImage(filepath, flip, srgb) || !mImage->isValid())
+			mImage.reset();
 	}
-	bool isValid() const { return mValid; }
-	Image &getImage() { return mImage; }
-	KRR_CALLABLE Color4f getConstant() const { return mValue; }
+	Image::SharedPtr getImage() { return mImage; }
+	Color4f getConstant() const { return mValue; }
 	string getFilemame() { return mFilename; }
 
 	static Texture::SharedPtr createFromFile(const fs::path &filepath, bool flip = false,
 											 bool srgb = false);
 
-	bool mValid{ false };
 	Color4f mValue{};	 /* If this is a constant texture, the value should be set. */
-	Image mImage;
+	Image::SharedPtr mImage;
 	string mFilename;
 	uint mTextureId;
 };
@@ -147,19 +146,18 @@ public:
 	Material() {};
 	Material(uint id, const string& name);
 
-	void setTexture(TextureType type, Texture& texture);
+	void setTexture(TextureType type, Texture::SharedPtr texture);
 	void setConstantTexture(TextureType type, const Color4f color);
 	bool determineSrgb(string filename, TextureType type);
 
-	bool hasEmission() { 
-		return mTextures[(int)TextureType::Emissive].mValid; 
-	}
-
-	Texture getTexture(TextureType type) { return mTextures[(uint)type]; }
+	bool hasEmission();
+	bool hasTexture(TextureType type);
+	Texture::SharedPtr getTexture(TextureType type) { return mTextures[(uint)type]; }
+	
 	string getName() { return mMaterialName; }
 
 	MaterialParams mMaterialParams;
-	Texture mTextures[(uint32_t)TextureType::Count];
+	Texture::SharedPtr mTextures[(uint32_t)TextureType::Count];
 	MaterialType mBsdfType{ MaterialType::Disney };
 	ShadingModel mShadingModel{ ShadingModel::MetallicRoughness };
 	string mMaterialName;
@@ -173,7 +171,7 @@ public:
 	cudaTextureObject_t mCudaTexture{};
 	bool mValid{};
 
-	void initializeFromHost(Texture &texture);
+	void initializeFromHost(Texture::SharedPtr texture);
 
 	KRR_CALLABLE bool isValid() const { return mValid; }
 	KRR_CALLABLE cudaTextureObject_t getCudaTexture() const {
@@ -196,7 +194,7 @@ public:
 	Material::ShadingModel mShadingModel{Material::ShadingModel::MetallicRoughness};
 	Material *mpMaterialHost;
 
-	void initializeFromHost(Material& material);
+	void initializeFromHost(Material::SharedPtr material);
 	Material *getHostMaterialPtr() const { return mpMaterialHost; }
 
 	KRR_CALLABLE TextureData getTexture(Material::TextureType type) const {

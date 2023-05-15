@@ -227,7 +227,7 @@ void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial,
 	TextureKey textureKey{filename, srgb};
 	if (!mTextureCache.count(textureKey)) {
 		mTextureCache[textureKey] =
-			Texture(filename, flip, srgb, ++textureIdAllocator);
+			std::make_shared<Texture>(filename, flip, srgb, ++textureIdAllocator);
 	}
 	pMaterial->setTexture(type, mTextureCache[textureKey]);
 }
@@ -299,8 +299,8 @@ bool AssimpImporter::import(const string &filepath,
 }
 
 void AssimpImporter::processMesh(aiMesh *pAiMesh, aiMatrix4x4 transform) {
-	Mesh mesh;
-	mesh.indices.reserve(pAiMesh->mNumFaces);
+	auto mesh = std::make_shared<Mesh>();
+	mesh->indices.reserve(pAiMesh->mNumFaces);
 
 	assert(pAiMesh->HasNormals());
 	for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
@@ -314,14 +314,14 @@ void AssimpImporter::processMesh(aiMesh *pAiMesh, aiMatrix4x4 transform) {
 			//  orthogonal! however we need them to be orthonormal since we use
 			//  tbn as world-local transformations
 			T = normalize(T - normal * dot(normal, T));
-			mesh.tangents.push_back(T);
+			mesh->tangents.push_back(T);
 		}
-		mesh.positions.push_back(aiCast(pAiMesh->mVertices[i]));
+		mesh->positions.push_back(aiCast(pAiMesh->mVertices[i]));
 		if (pAiMesh->HasTextureCoords(0)) {
 			Vector3f texcoord = Vector3f(aiCast(pAiMesh->mTextureCoords[0][i]));
-			mesh.texcoords.push_back(texcoord);
+			mesh->texcoords.push_back(texcoord);
 		} else Log(Debug, "Lost UV coords when importing with Assimp");
-		mesh.normals.push_back(normal);					
+		mesh->normals.push_back(normal);					
 	}
 
 	for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
@@ -329,12 +329,12 @@ void AssimpImporter::processMesh(aiMesh *pAiMesh, aiMatrix4x4 transform) {
 		assert(face.mNumIndices == 3);
 		Vector3i indices = {(int) face.mIndices[0], (int) face.mIndices[1],
 							(int) face.mIndices[2]};
-		mesh.indices.push_back(indices);
+		mesh->indices.push_back(indices);
 	}
 
 	if (pAiMesh->mMaterialIndex >= 0 &&
 		pAiMesh->mMaterialIndex < mpScene->materials.size()) {
-		mesh.materialId = pAiMesh->mMaterialIndex + 1;
+		mesh->materialId = pAiMesh->mMaterialIndex + 1;
 	}
 
 	// finalizing creating a mesh
@@ -358,7 +358,7 @@ void AssimpImporter::traverseNode(aiNode *node, aiMatrix4x4 transform) {
 
 void AssimpImporter::loadMaterials(const string &modelFolder) {
 	mpScene->materials.reserve(mpAiScene->mNumMaterials + 1LL);
-	mpScene->materials.push_back(Material(0, "default material"));
+	mpScene->materials.push_back(std::make_shared<Material>(0, "default material"));
 	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
 		const aiMaterial *aiMaterial = mpAiScene->mMaterials[i];
 		Material::SharedPtr pMaterial =
@@ -367,7 +367,7 @@ void AssimpImporter::loadMaterials(const string &modelFolder) {
 			logError("Failed to create material...");
 			return;
 		}
-		mpScene->materials.push_back(*pMaterial);
+		mpScene->materials.push_back(pMaterial);
 	}
 }
 

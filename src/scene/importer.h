@@ -25,7 +25,7 @@ public:
 private:
 	bool mUseSrgb{};
 	using TextureKey = std::pair<std::string, bool>; // filename, srgb
-	std::map<TextureKey, Texture> mTextureCache;
+	std::map<TextureKey, Texture::SharedPtr> mTextureCache;
 };
 
 class AssimpImporter {

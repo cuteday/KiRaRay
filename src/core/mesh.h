@@ -33,6 +33,7 @@ struct MeshData {
 
 class Mesh {
 public:
+	using SharedPtr = std::shared_ptr<Mesh>;
 	std::vector<Triangle> createTriangles(rt::MeshData* mesh) const;
 	
 	std::vector<Vector3f> positions;
@@ -46,6 +47,5 @@ public:
 	uint materialId{};
 	Color Le{};		/* A mesh-specific area light, used when importing pbrt formats. */
 };
-
 
 KRR_NAMESPACE_END

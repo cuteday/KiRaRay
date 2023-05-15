@@ -207,7 +207,7 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 		
 		vkrhi::DrawArguments args;
 		args.instanceCount = 1;
-		args.vertexCount   = mpScene->meshes[meshId].indices.size() * 3;
+		args.vertexCount   = mpScene->meshes[meshId]->indices.size() * 3;
 		mCommandList->draw(args);
 	}
 	
