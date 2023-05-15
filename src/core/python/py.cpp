@@ -15,10 +15,11 @@ KRR_NAMESPACE_BEGIN
 
 void run(const json& config) {
 	if (!gpContext) gpContext.reset(new Context());
-	RenderApp app;
-	app.loadConfig(config);
-	app.run();
-	CUDA_SYNC_CHECK();
+	{
+		RenderApp app;
+		app.loadConfig(config);
+		app.run();
+	}
 }
 
 py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::forcecast> rgb,

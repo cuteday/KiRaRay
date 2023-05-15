@@ -4,6 +4,10 @@ import json
 import argparse
 
 from krr import *
+try:
+	import numpy as np
+except:
+	print("Warning: NumPy not found. Install NumPy to python environment if any runtime error occur.")
 import pykrr
 
 if __name__ == "__main__":

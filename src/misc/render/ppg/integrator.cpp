@@ -52,6 +52,9 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 void PPGPathTracer::initialize(){
 	Allocator& alloc = *gpContext->alloc;
 	WavefrontPathTracer::initialize();
+	// We need this since CUDA 12 seems to have reduced the default stack size,
+	// However, SD-Tree has some recursive routines that may exceed that size;
+	CUDA_CHECK(cudaDeviceSetLimit(cudaLimitStackSize, 4 * 1024));
 	cudaDeviceSynchronize();
 	if (guidedPathState) guidedPathState->resize(maxQueueSize, alloc);
 	else guidedPathState = alloc.new_object<GuidedPathStateBuffer>(maxQueueSize, alloc);
@@ -395,6 +398,8 @@ void PPGPathTracer::nextIteration() {
 			// Final iteration must use at least half of the SPP budget.
 			m_isFinalIter = true;
 	}
+	Log(Success, "Starting iteration #%d", m_iter);
+
 }
 
 void PPGPathTracer::finalize() { 

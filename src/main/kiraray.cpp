@@ -1,6 +1,3 @@
-#include <filesystem>
-
-#include "file.h"
 #include "renderer.h"
 
 KRR_NAMESPACE_BEGIN

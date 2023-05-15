@@ -79,7 +79,11 @@ void DenoiseBackend::denoise(CUstream stream, float *rgb, float *normal, float *
 											  memorySizes.withoutOverlapScratchSizeInBytes));
 
 	OptixDenoiserParams params = {};
-	params.denoiseAlpha		   = 1;
+#if (OPTIX_VERSION >= 70500)
+	params.denoiseAlpha = OPTIX_DENOISER_ALPHA_MODE_COPY;
+#else
+	params.denoiseAlpha = 0;
+#endif
 	params.hdrIntensity		   = CUdeviceptr(intensity.data());
 	params.blendFactor		   = 0; 
 

@@ -44,7 +44,6 @@ public:
 private:
 	int mFrameCount{ 0 };
 	int mSpp{ 0 };			// Samples needed tobe rendered, 0 means unlimited.
-	FrameRate mFrameRate;
 	Scene::SharedPtr mpScene;
 	UIRenderer::SharedPtr mpUIRenderer;
 	ProfilerUI::UniquePtr mpProfilerUI;
