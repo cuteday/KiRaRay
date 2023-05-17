@@ -42,7 +42,6 @@ public:
 	void loadConfig(const json config);
 
 private:
-	int mFrameCount{ 0 };
 	int mSpp{ 0 };			// Samples needed tobe rendered, 0 means unlimited.
 	Scene::SharedPtr mpScene;
 	UIRenderer::SharedPtr mpUIRenderer;

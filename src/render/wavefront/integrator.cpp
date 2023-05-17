@@ -205,7 +205,7 @@ void WavefrontPathTracer::beginFrame() {
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
 			Vector2i pixelCoord	   = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
 			pixelState->L[pixelId] = 0;
-			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameId * samplesPerPixel);
+			pixelState->sampler[pixelId].setPixelSample(pixelCoord, getFrameIndex() * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
 		});
 }
@@ -250,7 +250,6 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 				L = clamp(L, 0.f, clampMax);
 			frameBuffer.write(Color4f(L, 1), pixelId);
 		});
-	frameId++;
 }
 
 void WavefrontPathTracer::renderUI() {

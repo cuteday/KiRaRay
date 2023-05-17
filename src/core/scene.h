@@ -31,7 +31,7 @@ public:
 	bool onMouseEvent(const MouseEvent& mouseEvent);
 	bool onKeyEvent(const KeyboardEvent& keyEvent);
 
-	bool update();
+	bool update(size_t frameIndex);
 	bool getChanges() const { return mHasChanges; }
 	void renderUI();
 

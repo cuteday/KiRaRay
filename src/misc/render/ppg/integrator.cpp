@@ -284,7 +284,6 @@ void PPGPathTracer::beginFrame() {
 }
 
 void PPGPathTracer::endFrame() {
-	frameId++;
 	if (enableLearning) {
 		PROFILE("Training SD-Tree");
 		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){

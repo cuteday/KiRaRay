@@ -456,6 +456,7 @@ void DeviceManager::UpdateAverageFrameTime(double elapsedTime) {
 
 void DeviceManager::RunMessageLoop() {
 	mPreviousFrameTimestamp = glfwGetTime();
+	++mFrameIndex;	// so we denote the first frame as #1.
 
 	while (!glfwWindowShouldClose(mWindow) && !gpContext->shouldQuit()) {
 
@@ -485,8 +486,6 @@ void DeviceManager::RunMessageLoop() {
 
 		UpdateAverageFrameTime(elapsedTime);
 		mPreviousFrameTimestamp = curTime;
-
-		++mFrameIndex;
 	}
 
 	GetDevice()->waitForIdle();

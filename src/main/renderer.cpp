@@ -70,11 +70,10 @@ void RenderApp::Tick(double elapsedTime) {
 }
 
 void RenderApp::Render() {
-	mFrameCount++;	// so we denote the first frame as #1.
-	if (sSaveFrames && mFrameCount % sSaveFrameInterval == 0)
+	if (sSaveFrames && GetFrameIndex() % sSaveFrameInterval == 0)
 		sRequestScreenshot = true;
 
-	if (mpScene) mpScene->update();
+	if (mpScene) mpScene->update(GetFrameIndex());
 	BeginFrame();
 	auto framebuffer = mRenderFramebuffers[GetCurrentBackBufferIndex()];
 	mpUIRenderer->beginFrame();
@@ -208,7 +207,7 @@ void RenderApp::captureFrame(bool hdr, fs::path filename) {
 	fs::path filepath(filename);
 	if (filename.empty()) // use default path for screen shots
 		filepath = File::outputDir() /
-				   ("frame_" + std::to_string(mFrameCount) + extension);
+				   ("frame_" + std::to_string(GetFrameIndex()) + extension);
 	if (!fs::exists(filepath.parent_path()))
 		fs::create_directories(filepath.parent_path());
 	screenshot.saveImage(filepath);

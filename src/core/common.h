@@ -98,6 +98,21 @@ extern const dim3 blockDim, gridDim;
 #define KRR_CLASS_DEFINE NLOHMANN_DEFINE_TYPE_INTRUSIVE
 #define KRR_ENUM_DEFINE NLOHMANN_JSON_SERIALIZE_ENUM
 
+#define KRR_ENUM_OPERATORS(name)                                                \
+    inline name operator | (name a, name b)                                     \
+    { return name(uint32_t(a) | uint32_t(b)); }                                 \
+    inline name operator & (name a, name b)                                     \
+    { return name(uint32_t(a) & uint32_t(b)); }                                 \
+    inline name operator ~ (name a)                                             \
+    { return name(~uint32_t(a)); }                                              \
+    inline name operator |= (name& a, name b)                                   \
+    { a = name(uint32_t(a) | uint32_t(b)); return a; }                          \
+    inline name operator &= (name& a, name b)                                   \
+    { a = name(uint32_t(a) & uint32_t(b)); return a; }                          \
+    inline bool operator !(name a) { return uint32_t(a) == 0; }                 \
+    inline bool operator ==(name a, uint32_t b) { return uint32_t(a) == b; }    \
+    inline bool operator !=(name a, uint32_t b) { return uint32_t(a) != b; }    
+
 #include "krrmath/math.h"
 
 KRR_NAMESPACE_BEGIN
@@ -108,6 +123,5 @@ namespace inter {
 }
 // this allocator uses gpu memory by default.
 using Allocator = inter::polymorphic_allocator<std::byte>;
-
 
 KRR_NAMESPACE_END

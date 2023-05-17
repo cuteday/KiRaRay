@@ -63,7 +63,6 @@ public:
 	PixelStateBuffer* pixelState;
 
 	// path tracing parameters
-	int frameId{ 0 };
 	int maxQueueSize;
 	int samplesPerPixel{ 1 };
 	int maxDepth{ 10 };

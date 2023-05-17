@@ -11,7 +11,7 @@ Scene::Scene() {
 	mpCameraController = OrbitCameraController::SharedPtr(new OrbitCameraController(mpCamera));
 }
 
-bool Scene::update(){
+bool Scene::update(size_t frameIndex){
 	bool hasChanges = false;
 	if (mpCameraController) hasChanges |= mpCameraController->update();
 	if (mpCamera) hasChanges |= mpCamera->update();

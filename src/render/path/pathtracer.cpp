@@ -56,7 +56,7 @@ void MegakernelPathTracer::render(RenderFrame::SharedPtr frame) {
 		launchParams.camera		 = mpScene->getCamera();
 		launchParams.sceneData	 = mpScene->mpSceneRT->getSceneData();
 		launchParams.traversable = optixBackend->getRootTraversable();
-		launchParams.frameID++;
+		launchParams.frameID	 = (uint)getFrameIndex();
 	}
 	{
 		PROFILE("Path tracing kernel");
