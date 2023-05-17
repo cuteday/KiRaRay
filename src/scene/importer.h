@@ -42,9 +42,9 @@ private:
 	AssimpImporter(const AssimpImporter &) = delete;
 	void operator=(const AssimpImporter &) = delete;
 
-	void processMesh(aiMesh *mesh, aiMatrix4x4 transform);
-	void traverseNode(aiNode *node, aiMatrix4x4 transform);
+	void traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr graphNode);
 	void loadMaterials(const string &modelFolder);
+	void loadMeshes();
 
 	ImportMode mImportMode = ImportMode::Default;
 	string mFilepath;

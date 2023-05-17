@@ -24,9 +24,7 @@ Matrixf<4, 4> cast(pbrt::affine3f xfm) {
 Vector3i cast(const pbrt::vec3i &vec) { return {vec.x, vec.y, vec.z}; }
 Vector3f cast(const pbrt::vec3f &vec) { return {vec.x, vec.y, vec.z}; }
 Vector2f cast(const pbrt::vec2f &vec) { return {vec.x, vec.y}; }
-AABB cast(const pbrt::box3f &aabb) {
-	return {cast(aabb.lower), cast(aabb.upper)};
-}
+AABB cast(const pbrt::box3f &aabb) { return {cast(aabb.lower), cast(aabb.upper)}; }
 
 inline Vector3f eta_to_reflectivity(const Vector3f &eta,
 									const Vector3f &eta_k) {
@@ -213,13 +211,11 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 		matParams.diffuse		= Vector4f(Vector3f(0), 1);
 		matParams.specular		= Vector4f(cast(m->kr), 1);
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MetalMaterial>(mat)) {
-		Log(Debug, "Encountered not well-supported metal material: %s",
-			mat->name.c_str());
+		Log(Debug, "Encountered not well-supported metal material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		Vector3f eta			= cast(m->eta);
 		Vector3f eta_k			= cast(m->k);
-		// matParams.diffuse		= Vector4f(eta_to_reflectivity(eta, eta_k),
-		// 0);
+		// matParams.diffuse		= Vector4f(eta_to_reflectivity(eta, eta_k), 0);
 		matParams.diffuse = Vector4f(bsdf::FrComplex(1, eta, eta_k), 0);
 		float roughness	  = m->roughness;
 		roughness		  = (m->uRoughness + m->vRoughness) / 2;
@@ -248,40 +244,29 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 	}
 	if (matParams.IoR == 1) // 1-ETA is not plausible for transmission
 		matParams.IoR = 1.001;
-	size_t materialId = scene->materials.size();
-	scene->materials.push_back(material);
+	size_t materialId = scene->getMaterials().size();
+	scene->addMaterial(material);
 	materials[mat] = materialId;
 	return materialId;
 }
 
-Mesh::SharedPtr createMesh(pbrt::Shape::SP shape, const Matrix4f transform) {
-	Mesh::SharedPtr mesh = std::make_shared<Mesh>();
-	pbrt::TriangleMesh::SP m =
-		std::dynamic_pointer_cast<pbrt::TriangleMesh>(shape);
-	int n_vertices = m->vertex.size();
-	int n_faces	   = m->getNumPrims();
-	Log(Debug, "The current mesh %s has %d vertices and %d faces",
-		m->toString().c_str(), n_vertices, n_faces);
+Mesh::SharedPtr loadMesh(pbrt::Shape::SP shape) {
+	Mesh::SharedPtr mesh	 = std::make_shared<Mesh>();
+	pbrt::TriangleMesh::SP m = std::dynamic_pointer_cast<pbrt::TriangleMesh>(shape);
+	int n_vertices			 = m->vertex.size();
+	int n_faces				 = m->getNumPrims();
+	Log(Debug, "The current mesh %s has %d vertices and %d faces", m->toString().c_str(),
+		n_vertices, n_faces);
 	if (m->normal.size() < n_vertices)
-		Log(Debug,
-			"The current mesh has %zd normals but %d vertices, thus the "
+		Log(Debug, "The current mesh has %zd normals but %d vertices, thus the "
 			"normal(s) are ignored.", m->normal.size(), n_vertices);
-	Matrixf<3, 3> rot = transform.topLeftCorner(3, 3).inverse().transpose();
 	mesh->indices.reserve(n_vertices);
 	for (int i = 0; i < n_vertices; i++) {
-		Vector4f local_vertex(cast(m->vertex[i]), 1);
-		Vector4f transformed_vertex = transform * local_vertex;
-		Vector3f transformed_normal{};
-		if (m->normal.size()) {
-			transformed_normal = rot * cast(m->normal[i]);
-			mesh->normals.push_back(transformed_normal);
-		}
-		if (m->texcoord.size()) 
-			mesh->texcoords.push_back(cast(m->texcoord[i]));		
-		mesh->positions.push_back(transformed_vertex);
+		if (m->normal.size()) mesh->normals.push_back(cast(m->normal[i]));
+		if (m->texcoord.size()) mesh->texcoords.push_back(cast(m->texcoord[i]));
+		mesh->positions.push_back(cast(m->vertex[i]));
 	}
-	for (int i = 0; i < n_faces; i++) 
-		mesh->indices.push_back(cast(m->index[i]));
+	for (int i = 0; i < n_faces; i++) mesh->indices.push_back(cast(m->index[i]));
 	return mesh;
 }
 
@@ -311,32 +296,38 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 	}
 
 	scene->makeSingleLevel(); // since currently kiraray supports only single gas.
-	pScene->materials.push_back(std::make_shared<Material>(0, "default material")); 
+	pScene->addMaterial(std::make_shared<Material>(0, "default material")); 
 	// the default material for shapes without material
 
 	std::map<pbrt::Material::SP, size_t> pbrtMaterials; // loaded materials and
 														// its parametric id
-
+	std::map<pbrt::TriangleMesh::SP, size_t> pbrtMeshes;// mesh pointer to its index
+	
 	for (const pbrt::Shape::SP shape : scene->world->shapes) {
 		// this makes you iterate through all shapes of the scene...
+		if (auto m = std::dynamic_pointer_cast<pbrt::TriangleMesh>(shape)) {
+			Mesh::SharedPtr mesh = loadMesh(m);
+			pbrtMeshes.insert({m, mpScene->getMeshes().size()});
+			if (m->material) mesh->materialId = loadMaterial(pScene, m->material, pbrtMaterials, basepath);
+			if (m->areaLight) createAreaLight(mesh, m->areaLight);
+			mpScene->getSceneGraph()->addMesh(mesh);
+		}
 	}
 
+	// build scenegraph
+	auto root = std::make_shared<SceneGraphNode>();
+	mpScene->getSceneGraph()->setRoot(root);
 	for (const pbrt::Instance::SP inst : scene->world->instances) {
-		Matrixf<4, 4> transform =
-			cast(inst->xfm); // the instance's local transform
+		Affine3f transform = cast(inst->xfm); // the instance's local transform
+		auto node		   = std::make_shared<SceneGraphNode>();
+		node->setRotation(Quaternionf(transform.rotation()));
+		node->setTranslation(transform.translation());
+		node->setScaling(transform.scaling());
 		for (const pbrt::Shape::SP geom : inst->object->shapes) {
-			if (pbrt::TriangleMesh::SP m =
-					std::dynamic_pointer_cast<pbrt::TriangleMesh>(geom)) {
-				Mesh::SharedPtr mesh = createMesh(m, transform);
-				if (m->material) {
-					mesh->materialId = loadMaterial(pScene, m->material,
-												   pbrtMaterials, basepath);
-				}
-				if (m->areaLight) {
-					createAreaLight(mesh, m->areaLight);
-				}
-				pScene->meshes.push_back(mesh);
-				pScene->mAABB.extend(mesh->getAABB());
+			if (auto m = std::dynamic_pointer_cast<pbrt::TriangleMesh>(geom)) {
+				Mesh::SharedPtr mesh = mpScene->getMeshes()[pbrtMeshes[m]];
+				auto meshInstance	 = std::make_shared<MeshInstance>(mesh);
+				mpScene->getSceneGraph()->attachLeaf(node, meshInstance);
 			} else {
 				Log(Debug, "Encountered unsupported pbrt shape type: %s",
 					geom->toString().c_str());
@@ -345,14 +336,8 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 	}
 
 	for (const pbrt::LightSource::SP light : scene->world->lightSources) {
-		if (auto l =
-				std::dynamic_pointer_cast<pbrt::InfiniteLightSource>(light)) {
-			Log(Debug, "Encountered infinite light source %s",
-				l->mapName.c_str());
-#ifdef USE_PBRT_ENVMAP
-			pScene->addInfiniteLight(InfiniteLight(resolve(l->mapName)));
-#endif
-		}
+		if (auto l = std::dynamic_pointer_cast<pbrt::InfiniteLightSource>(light)) 
+			Log(Debug, "Encountered infinite light %s", l->mapName.c_str());
 	}
 	return true;
 }

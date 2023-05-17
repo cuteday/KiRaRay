@@ -37,6 +37,13 @@ public:
 
 	Camera& getCamera() { return *mpCamera; }
 	CameraController& getCameraController() { return *mpCameraController; }
+	SceneGraph::SharedPtr getSceneGraph() { return mGraph; }
+
+	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mGraph->getMeshInstances(); }
+	std::vector<Mesh::SharedPtr> &getMeshes() { return mGraph->getMeshes(); }
+	std::vector<Material::SharedPtr> &getMaterials() { return mGraph->getMaterials(); }
+	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(std::move(mesh)); }
+	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(std::move(material)); }
 
 	void setCamera(const Camera &camera) { *mpCamera = camera; }
 	void setCameraController(const OrbitCameraController &cameraController) {
@@ -60,14 +67,10 @@ public:
 		};
 	}
 
-	std::vector<Mesh::SharedPtr> meshes;
-	std::vector<Material::SharedPtr> materials;
-	std::vector<Texture::SharedPtr> environments;
-
 	SceneGraph::SharedPtr mGraph;
-
 	Camera::SharedPtr mpCamera;
 	OrbitCameraController::SharedPtr mpCameraController;
+	std::vector<Texture::SharedPtr> environments;
 	AABB mAABB;
 	bool mHasChanges = false;
 

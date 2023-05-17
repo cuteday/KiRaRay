@@ -25,7 +25,7 @@ void VKScene::writeMeshBuffers(vkrhi::ICommandList *commandList) {
 		currentBufferSize += size;
 	};
 	mMeshBuffers.clear();
-	for (const auto &mesh : mpScene->meshes) {
+	for (const auto &mesh : mpScene->getMeshes()) {
 		mMeshBuffers.push_back(rs::MeshBuffers());
 		rs::MeshBuffers &buffers = mMeshBuffers.back();
 		
@@ -115,7 +115,7 @@ void VKScene::writeMaterialTextures(vkrhi::ICommandList* commandList) {
 	mMaterialTextures.clear();
 	if (!mTextureLoader) mTextureLoader =
 			std::make_shared<TextureCache>(mDevice, mDescriptorTable);
-	for (auto material : mpScene->materials) {
+	for (auto material : mpScene->getMaterials()) {
 		mMaterialTextures.push_back(rs::MaterialTextures());
 		auto &textures = mMaterialTextures.back();
 		for (int type = 0; type < (int) Material::TextureType::Count; type++) {
@@ -133,8 +133,9 @@ void VKScene::writeMaterialTextures(vkrhi::ICommandList* commandList) {
 
 void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 	/* Fill material constants buffer on host. */
-	for (int i = 0; i < mpScene->materials.size(); i++) {
-		const auto &material = mpScene->materials[i];
+	auto &materials = mpScene->getMaterials();
+	for (int i = 0; i < materials.size(); i++) {
+		const auto &material = materials[i];
 		rs::MaterialConstants materialConstants;
 		materialConstants.baseColor = material->mMaterialParams.diffuse;
 		materialConstants.specularColor = material->mMaterialParams.specular;
@@ -157,7 +158,7 @@ void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 	/* Create and write material constants buffer. */
 	mMaterialConstantsBuffer = nullptr;
 	vkrhi::BufferDesc bufferDesc;
-	bufferDesc.byteSize = sizeof(rs::MaterialConstants) * mpScene->materials.size();
+	bufferDesc.byteSize = sizeof(rs::MaterialConstants) * materials.size();
 	bufferDesc.debugName		= "BindlessMaterials";
 	bufferDesc.structStride		= sizeof(rs::MaterialConstants);
 	bufferDesc.canHaveRawViews	= true;
@@ -175,8 +176,9 @@ void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 	/* Fill mesh data buffer on host. */
 	/* Normally, a instance is from a mesh, which may contain several geometries.
 		In kiraray, we simply ignore this (i.e. the concept of geometry and instances). */
-	for (int i = 0; i < mpScene->meshes.size(); i++) {
-		const auto &mesh = mpScene->meshes[i];
+	auto meshes = mpScene->getMeshes();
+	for (int i = 0; i < meshes.size(); i++) {
+		const auto &mesh = meshes[i];
 		rs::MeshData meshData;
 		meshData.materialIndex = mesh->materialId;
 		meshData.numIndices	   = mesh->indices.size();

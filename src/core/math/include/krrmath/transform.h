@@ -13,6 +13,7 @@ template <typename T, int Dim, int Mode, int Options = Eigen::RowMajor>
 class Transform : public Eigen::Transform<T, Dim, Mode, Options> {
 public:
 	using Eigen::Transform<T, Dim, Mode, Options>::Transform;
+	typedef Vector<T, Dim> ScalingType;
 	
 	KRR_CALLABLE Transform(void)
 		: Eigen::Transform<T, Dim, Mode, Options>(Eigen::Transform<T, Dim, Mode, Options>::Zero()) {}
@@ -29,6 +30,12 @@ public:
 	KRR_CALLABLE Transform &operator=(const Eigen::MatrixBase<OtherDerived> &other) {
 		this->Eigen::Transform<T, Dim, Mode, Options>::operator=(other);
 		return *this;
+	}
+
+	KRR_CALLABLE ScalingType scaling() const {
+		ScalingType result;
+		this->computeRotationScaling(nullptr, result);
+		return result;
 	}
 };
 

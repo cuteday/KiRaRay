@@ -70,8 +70,8 @@ public:
 	const SceneGraphLeaf::SharedPtr getLeaf() const { return mLeaf; }
 	
 	void setTransform(const Vector3f *translation, const Quaternionf *rotation,
-					  const Vector3f *scale);
-	void setScale(const Vector3f &scale);
+					  const Vector3f *scaling);
+	void setScaling(const Vector3f &scaling);
 	void setRotation(const Quaternionf& rotation);
 	void setTranslation(const Vector3f &translation);
 	void setName(const std::string &name) { mName = name; }
@@ -99,7 +99,7 @@ private:
 	Affine3f mGlobalTransform = Affine3f::Identity();
 	// S.R.T. transformation
 	Quaternionf mRotation = Quaternionf::Identity();
-	Vector3f mScale		  = Vector3f::Ones();
+	Vector3f mScaling	  = Vector3f::Ones();
 	Vector3f mTranslation = Vector3f::Zero();
 	AABB3f mGlobalBoundingBox;
 	bool mHasLocalTransform{false};
@@ -150,8 +150,10 @@ public:
 	SceneGraphNode::SharedPtr setRoot(const SceneGraphNode::SharedPtr &root);
 	SceneGraphNode::SharedPtr attach(const SceneGraphNode::SharedPtr &parent,
 									 const SceneGraphNode::SharedPtr &child);
+	// Attach a leaf to a new node, then attach that node to specified parent.
 	SceneGraphNode::SharedPtr attachLeaf(const SceneGraphNode::SharedPtr &parent,
 										const SceneGraphLeaf::SharedPtr &leaf);
+	// Detach a node and its subgraph from the graph, then unregister all its resources.
 	SceneGraphNode::SharedPtr detach(const SceneGraphNode::SharedPtr &node);
 
 protected:

@@ -82,10 +82,10 @@ void RTScene::renderUI() {
 
 void RTScene::updateSceneData() {
 	/* Upload mesh data to device... */
-	auto meshes = mpScene->meshes;
+	auto& meshes = mpScene->getMeshes();
 	mDeviceData.meshes->resize(meshes.size());
 	for (size_t idx = 0; idx < meshes.size(); idx++) {
-		auto &mesh	   = mpScene->meshes[idx];
+		auto &mesh	   = meshes[idx];
 		auto &meshData = (*mDeviceData.meshes)[idx];
 		meshData.positions.alloc_and_copy_from_host(mesh->positions);
 		meshData.normals.alloc_and_copy_from_host(mesh->normals);
@@ -96,10 +96,10 @@ void RTScene::updateSceneData() {
 	}
 
 	/* Upload texture and material data to device... */
-	auto materials = mpScene->materials;
+	auto& materials = mpScene->getMaterials();
 	mDeviceData.materials->resize(materials.size());
 	for (size_t idx = 0; idx < materials.size(); idx++) {
-		auto &material	   = mpScene->materials[idx];
+		auto &material	   = materials[idx];
 		auto &materialData = (*mDeviceData.materials)[idx];
 		materialData.initializeFromHost(material);
 	}

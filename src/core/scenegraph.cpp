@@ -16,15 +16,15 @@ void SceneGraphLeaf::setName(const std::string &name) const {
 }
 
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
-								  const Vector3f *scale) {
-	if (scale) mScale = *scale;
+								  const Vector3f *scaling) {
+	if (scale) mScaling = *scaling;
 	if (rotation) mRotation = *rotation;
 	if (translation) mTranslation = *translation;
 
 	mHasLocalTransform = true;
 }
 
-void SceneGraphNode::setScale(const Vector3f &scale) { setTransform(nullptr, nullptr, &scale); }
+void SceneGraphNode::setScaling(const Vector3f &scaling) { setTransform(nullptr, nullptr, &scale); }
 
 void SceneGraphNode::setRotation(const Quaternionf &rotation) {
 	setTransform(nullptr, &rotation, nullptr);
@@ -48,7 +48,7 @@ void SceneGraphNode::setLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
 }
 
 void SceneGraphNode::reverseChildren() {
-	// in-place linbked list inversion
+	// in-place linked list inversion...
 	std::shared_ptr<SceneGraphNode> current, prev, next;
 	current = mFirstChild;
 	while (current) {
@@ -242,7 +242,7 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
 	if (auto meshInstance = std::dynamic_pointer_cast<MeshInstance>(leaf)) {
 		auto it = std::find(mMeshInstances.begin(), mMeshInstances.end(), leaf);
 		if (it != mMeshInstances.end()) mMeshInstances.erase(it);
-		else Log(Warning, "Unregistering am instance that do not exist in graph...");
+		else Log(Warning, "Unregistering an instance that do not exist in graph...");
 		return;
 	}
 }
