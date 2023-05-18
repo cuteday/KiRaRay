@@ -27,9 +27,9 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 	HitgroupSBTData data;
 };
 
-class OptiXBackend {
+class OptiXBackendInterface {
 public:
-	OptiXBackend() = default;
+	OptiXBackendInterface() = default;
 
 	static OptixModule createOptiXModule(OptixDeviceContext optixContext, const char* ptx);
 	static OptixPipelineCompileOptions getPipelineCompileOptions();
@@ -65,9 +65,9 @@ struct OptiXInitializeParameters {
 	}
 };
 
-class OptiXBackendImpl: public OptiXBackend {
+class OptiXBackend : public OptiXBackendInterface {
 public:
-	OptiXBackendImpl() = default;
+	OptiXBackend() = default;
 	
 	void initialize(const OptiXInitializeParameters& params);
 	void setScene(Scene &scene);

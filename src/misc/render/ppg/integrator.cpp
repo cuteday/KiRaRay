@@ -32,7 +32,7 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 	lightSampler = scene->mpSceneRT->getSceneData().lightSampler;
 	initialize();
 	if (!backend) {
-		backend		= new OptiXBackendImpl();
+		backend		= new OptiXBackend();
 		auto params = OptiXInitializeParameters()
 						  .setPTX(PPG_PTX)
 						  .addRaygenEntry("Closest")

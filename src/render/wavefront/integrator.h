@@ -50,7 +50,7 @@ public:
 	template <typename... Args>
 	KRR_DEVICE_FUNCTION void debugPrint(uint pixelId, const char *fmt, Args &&...args);
 	
-	OptiXBackendImpl *backend{ };
+	OptiXBackend *backend{ };
 	Camera* camera{ };
 	LightSampler lightSampler;
 

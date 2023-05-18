@@ -36,7 +36,7 @@ public:
 
 private:
 
-	OptiXBackendImpl *optixBackend{nullptr};
+	OptiXBackend *optixBackend{nullptr};
 	LaunchParamsPT launchParams;
 
 	friend void to_json(json &j, const MegakernelPathTracer &p) {

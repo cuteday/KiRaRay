@@ -11,7 +11,7 @@ extern "C" char PATHTRACER_PTX[];
 
 void MegakernelPathTracer::initialize() {
 	if (!optixBackend) {
-		optixBackend = new OptiXBackendImpl();
+		optixBackend = new OptiXBackend();
 		auto params	 = OptiXInitializeParameters()
 						  .setPTX(PATHTRACER_PTX)
 						  .addRayType("Radiance", true, true, false)

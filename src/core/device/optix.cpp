@@ -5,7 +5,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-OptixPipelineCompileOptions OptiXBackend::getPipelineCompileOptions() {
+OptixPipelineCompileOptions OptiXBackendInterface::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
 	// currently we do not implement scene graph and instancing, as such this optimizes performance.
 	pipelineCompileOptions.traversableGraphFlags	   = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
@@ -19,7 +19,8 @@ OptixPipelineCompileOptions OptiXBackend::getPipelineCompileOptions() {
 	return pipelineCompileOptions;
 }
 
-OptixModule OptiXBackend::createOptiXModule(OptixDeviceContext optixContext, const char* ptx) {
+OptixModule OptiXBackendInterface::createOptiXModule(OptixDeviceContext optixContext,
+													 const char *ptx) {
 	OptixModuleCompileOptions moduleCompileOptions = {};
 	moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 #ifdef KRR_DEBUG_BUILD
@@ -52,7 +53,9 @@ OptixModule OptiXBackend::createOptiXModule(OptixDeviceContext optixContext, con
 	return optixModule;
 }
 
-OptixProgramGroup OptiXBackend::createRaygenPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint) {
+OptixProgramGroup OptiXBackendInterface::createRaygenPG(OptixDeviceContext optixContext,
+														OptixModule optixModule,
+														const char *entrypoint) {
 	OptixProgramGroupOptions pgOptions = {};
 	OptixProgramGroupDesc desc = {};
 	desc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
@@ -70,7 +73,9 @@ OptixProgramGroup OptiXBackend::createRaygenPG(OptixDeviceContext optixContext, 
 	return pg;
 }
 
-OptixProgramGroup OptiXBackend::createMissPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint) {
+OptixProgramGroup OptiXBackendInterface::createMissPG(OptixDeviceContext optixContext,
+													  OptixModule optixModule,
+													  const char *entrypoint) {
 	OptixProgramGroupOptions pgOptions = {};
 	OptixProgramGroupDesc desc = {};
 	desc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
@@ -88,7 +93,10 @@ OptixProgramGroup OptiXBackend::createMissPG(OptixDeviceContext optixContext, Op
 	return pg;
 }
 
-OptixProgramGroup OptiXBackend::createIntersectionPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* closest, const char* any, const char* intersect) {
+OptixProgramGroup OptiXBackendInterface::createIntersectionPG(OptixDeviceContext optixContext,
+															  OptixModule optixModule,
+															  const char *closest, const char *any,
+															  const char *intersect) {
 	OptixProgramGroupOptions pgOptions = {};
 	OptixProgramGroupDesc desc = {};
 	desc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
@@ -117,7 +125,7 @@ OptixProgramGroup OptiXBackend::createIntersectionPG(OptixDeviceContext optixCon
 	return pg;
 }
 
-OptixTraversableHandle OptiXBackend::buildAccelStructure(
+OptixTraversableHandle OptiXBackendInterface::buildAccelStructure(
 	OptixDeviceContext optixContext, CUstream cudaStream, Scene& scene){
 	auto &sceneData = scene.mpSceneRT->getSceneData();
 	auto &meshes	= scene.meshes;
@@ -211,21 +219,21 @@ OptixTraversableHandle OptiXBackend::buildAccelStructure(
 }
 
 OptixProgramGroup
-OptiXBackendImpl::createRaygenPG(const char *entrypoint) const {
-	return OptiXBackend::createRaygenPG(optixContext, optixModule, entrypoint);
+OptiXBackend::createRaygenPG(const char *entrypoint) const {
+	return OptiXBackendInterface::createRaygenPG(optixContext, optixModule, entrypoint);
 }
 
-OptixProgramGroup OptiXBackendImpl::createMissPG(const char *entrypoint) const {
-	return OptiXBackend::createMissPG(optixContext, optixModule, entrypoint);
+OptixProgramGroup OptiXBackend::createMissPG(const char *entrypoint) const {
+	return OptiXBackendInterface::createMissPG(optixContext, optixModule, entrypoint);
 }
 
-OptixProgramGroup OptiXBackendImpl::createIntersectionPG(
+OptixProgramGroup OptiXBackend::createIntersectionPG(
 	const char *closest, const char *any, const char *intersect) const {
-	return OptiXBackend::createIntersectionPG(optixContext, optixModule,
+	return OptiXBackendInterface::createIntersectionPG(optixContext, optixModule,
 											  closest, any, intersect);
 }
 
-void OptiXBackendImpl::initialize(const OptiXInitializeParameters &params) {
+void OptiXBackend::initialize(const OptiXInitializeParameters &params) {
 	char log[OPTIX_LOG_SIZE];
 	size_t logSize = sizeof(log);
 	// temporary workaround for setup context
@@ -277,18 +285,18 @@ void OptiXBackendImpl::initialize(const OptiXInitializeParameters &params) {
 	Log(Debug, log);
 }
 
-void OptiXBackendImpl::setScene(Scene &_scene) {
+void OptiXBackend::setScene(Scene &_scene) {
 	scene = _scene.mpSceneRT;
 	buildAccelStructure(_scene);
 	buildShaderBindingTable(_scene);
 }
 
-void OptiXBackendImpl::buildAccelStructure(Scene &scene) {
-	optixTraversable = OptiXBackend::buildAccelStructure(
+void OptiXBackend::buildAccelStructure(Scene &scene) {
+	optixTraversable = OptiXBackendInterface::buildAccelStructure(
 		optixContext, cudaStream, scene);
 }
 
-void OptiXBackendImpl::buildShaderBindingTable(Scene &scene) {
+void OptiXBackend::buildShaderBindingTable(Scene &scene) {
 	size_t nRayTypes = optixParameters.rayTypes.size();
 
 	for (const auto [raygenEntry, index] : entryPoints) {

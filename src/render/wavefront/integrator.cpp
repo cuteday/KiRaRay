@@ -184,7 +184,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	mpScene->initializeSceneRT();
 	lightSampler = scene->mpSceneRT->getSceneData().lightSampler;
 	if (!backend) {
-		backend		= new OptiXBackendImpl();
+		backend		= new OptiXBackend();
 		auto params = OptiXInitializeParameters()
 						  .setPTX(WAVEFRONT_PTX)
 						  .addRaygenEntry("Closest")
