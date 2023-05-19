@@ -87,6 +87,7 @@ class SceneData {
 public:
 	inter::vector<MaterialData> *materials{};
 	inter::vector<MeshData> *meshes{};
+	inter::vector<InstanceData> *instances{};
 	inter::vector<Light> *lights{};
 	inter::vector<InfiniteLight> *infiniteLights{};
 	LightSampler lightSampler;

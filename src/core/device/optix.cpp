@@ -126,9 +126,9 @@ OptixProgramGroup OptiXBackendInterface::createIntersectionPG(OptixDeviceContext
 }
 
 OptixTraversableHandle OptiXBackendInterface::buildAccelStructure(
-	OptixDeviceContext optixContext, CUstream cudaStream, Scene& scene){
-	auto &sceneData = scene.mpSceneRT->getSceneData();
-	auto &meshes	= scene.meshes;
+	OptixDeviceContext optixContext, CUstream cudaStream, Scene::SharedPtr scene){
+	auto &sceneData = scene->mpSceneRT->getSceneData();
+	auto &meshes	= scene->getMeshes();
 	std::vector<OptixBuildInput> triangleInputs(meshes.size());
 	std::vector<uint> triangleInputFlags(meshes.size());
 	std::vector<CUdeviceptr> vertexBufferPtr(meshes.size());
@@ -218,6 +218,82 @@ OptixTraversableHandle OptiXBackendInterface::buildAccelStructure(
 	return asHandle;
 }
 
+OptixTraversableHandle OptiXBackendInterface::buildTriangleMeshGAS(OptixDeviceContext optixContext,
+																   CUstream cudaStream,
+																   const rt::MeshData &mesh,
+																   CUDABuffer &accelBuffer) {
+	OptixBuildInput triangleInputs;
+	uint triangleInputFlags;
+	CUdeviceptr vertexBufferPtr;
+	CUdeviceptr indexBufferPtr;
+
+	indexBufferPtr  = (CUdeviceptr) mesh.indices.data();
+	vertexBufferPtr = (CUdeviceptr) mesh.positions.data();
+
+	triangleInputs	   = {};
+	triangleInputs.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+	// vertex data desc
+	triangleInputs.triangleArray.vertexFormat		= OPTIX_VERTEX_FORMAT_FLOAT3;
+	triangleInputs.triangleArray.vertexStrideInBytes = sizeof(Vector3f);
+	triangleInputs.triangleArray.numVertices			= mesh.positions.size();
+	triangleInputs.triangleArray.vertexBuffers		= &vertexBufferPtr;
+	// index data desc
+	triangleInputs.triangleArray.indexFormat		   = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+	triangleInputs.triangleArray.indexStrideInBytes = sizeof(Vector3i);
+	triangleInputs.triangleArray.numIndexTriplets   = mesh.indices.size();
+	triangleInputs.triangleArray.indexBuffer		   = indexBufferPtr;
+
+	triangleInputFlags = OPTIX_GEOMETRY_FLAG_NONE;
+
+	triangleInputs.triangleArray.flags						= &triangleInputFlags;
+	triangleInputs.triangleArray.numSbtRecords				= 1;
+	triangleInputs.triangleArray.sbtIndexOffsetBuffer		= 0;
+	triangleInputs.triangleArray.sbtIndexOffsetSizeInBytes	= 0;
+	triangleInputs.triangleArray.sbtIndexOffsetStrideInBytes = 0;
+
+	OptixAccelBuildOptions accelOptions = {};
+	accelOptions.buildFlags				= OPTIX_BUILD_FLAG_NONE | OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+	accelOptions.motionOptions.numKeys	= 1;
+	accelOptions.operation				= OPTIX_BUILD_OPERATION_BUILD;
+
+	OptixAccelBufferSizes accelBufferSizes;
+	OPTIX_CHECK(optixAccelComputeMemoryUsage(optixContext, &accelOptions, &triangleInputs, 1, &accelBufferSizes));
+
+	// prepare for compaction
+	CUDABuffer compactedSizeBuffer;
+	compactedSizeBuffer.resize(sizeof(uint64_t));
+
+	OptixAccelEmitDesc emitDesc;
+	emitDesc.type	= OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
+	emitDesc.result = compactedSizeBuffer.data();
+
+	// building process
+	CUDABuffer tempBuffer;
+	tempBuffer.resize(accelBufferSizes.tempSizeInBytes);
+	CUDABuffer outputBuffer;
+	outputBuffer.resize(accelBufferSizes.outputSizeInBytes);
+
+	OptixTraversableHandle asHandle = {};
+
+	OPTIX_CHECK(optixAccelBuild(optixContext, cudaStream, &accelOptions, &triangleInputs,
+								1, tempBuffer.data(), tempBuffer.size(),
+								outputBuffer.data(), outputBuffer.size(), &asHandle, &emitDesc, 1));
+	CUDA_SYNC_CHECK();
+
+	// perform compaction
+	uint64_t compactedSize;
+	compactedSizeBuffer.copy_to_host(&compactedSize, 1);
+
+	accelBuffer.resize(compactedSize);
+	OPTIX_CHECK(optixAccelCompact(optixContext, cudaStream, asHandle, accelBuffer.data(),
+								  accelBuffer.size(), &asHandle));
+	// free temporal memories
+	tempBuffer.free();
+	compactedSizeBuffer.free();
+	CUDA_SYNC_CHECK();
+	return asHandle;
+}
+
 OptixProgramGroup
 OptiXBackend::createRaygenPG(const char *entrypoint) const {
 	return OptiXBackendInterface::createRaygenPG(optixContext, optixModule, entrypoint);
@@ -285,18 +361,23 @@ void OptiXBackend::initialize(const OptiXInitializeParameters &params) {
 	Log(Debug, log);
 }
 
-void OptiXBackend::setScene(Scene &_scene) {
-	scene = _scene.mpSceneRT;
+void OptiXBackend::setScene(Scene::SharedPtr _scene) {
+	scene = _scene->mpSceneRT;
 	buildAccelStructure(_scene);
 	buildShaderBindingTable(_scene);
 }
 
-void OptiXBackend::buildAccelStructure(Scene &scene) {
+void OptiXBackend::buildAccelStructure(Scene::SharedPtr scene) {
 	optixTraversable = OptiXBackendInterface::buildAccelStructure(
 		optixContext, cudaStream, scene);
 }
 
-void OptiXBackend::buildShaderBindingTable(Scene &scene) {
+void OptiXBackend::buildAccelStructure(SceneGraph::SharedPtr sceneGraph) { 
+	// this is the first time we met...
+	sceneGraph->update(0); 
+}
+
+void OptiXBackend::buildShaderBindingTable(Scene::SharedPtr scene) {
 	size_t nRayTypes = optixParameters.rayTypes.size();
 
 	for (const auto [raygenEntry, index] : entryPoints) {
@@ -309,8 +390,8 @@ void OptiXBackend::buildShaderBindingTable(Scene &scene) {
 		OPTIX_CHECK(optixSbtRecordPackHeader(missPGs[type], &missRecord));
 		missRecords.push_back(missRecord);
 	}
-	uint nMeshes			 = scene.meshes.size();
-	rt::SceneData &sceneData = scene.mpSceneRT->getSceneData();
+	uint nMeshes			 = scene->getMeshes().size();
+	rt::SceneData &sceneData = scene->mpSceneRT->getSceneData();
 
 	for (uint meshId = 0; meshId < nMeshes; meshId++) {
 		for (uint rayType = 0; rayType < nRayTypes; rayType++) {

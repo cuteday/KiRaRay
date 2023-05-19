@@ -127,14 +127,12 @@ Texture::SharedPtr Texture::createFromFile(const fs::path &filepath, bool flip, 
 	return pTexture;
 }
 
-Texture::Texture(const string &filepath, bool flip, bool srgb, uint id) : 
-	mTextureId{ id }, mFilename(filepath) {
+Texture::Texture(const string &filepath, bool flip, bool srgb) : mFilename(filepath) {
 	logDebug("Attempting to load texture from " + filepath);
 	loadImage(filepath, flip, srgb);
 }
 
-Material::Material(uint id, const string &name) : 
-	mMaterialId(id), mMaterialName(name) {}
+Material::Material(const string &name) : mMaterialName(name) {}
 
 void Material::setTexture(TextureType type, Texture::SharedPtr texture) { 
 	mTextures[(uint) type] = std::move(texture); 

@@ -180,7 +180,7 @@ void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 	for (int i = 0; i < meshes.size(); i++) {
 		const auto &mesh = meshes[i];
 		rs::MeshData meshData;
-		meshData.materialIndex = mesh->materialId;
+		meshData.materialIndex = mesh->getMaterial()->getMaterialId();
 		meshData.numIndices	   = mesh->indices.size();
 		meshData.numVertices   = mesh->positions.size();
 		// the descriptorHandle.Get will return -1 if invalid.

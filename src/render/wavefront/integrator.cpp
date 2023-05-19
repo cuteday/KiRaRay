@@ -193,7 +193,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 						  .addRayType("Shadow", false, true, false);
 		backend->initialize(params);
 	}
-	backend->setScene(*scene);
+	backend->setScene(scene);
 }
 
 void WavefrontPathTracer::beginFrame() {
@@ -201,11 +201,12 @@ void WavefrontPathTracer::beginFrame() {
 		return;
 	PROFILE("Begin frame");
 	cudaMemcpy(camera, &mpScene->getCamera(), sizeof(Camera), cudaMemcpyHostToDevice);
+	size_t frameIndex = getFrameIndex();
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
 			Vector2i pixelCoord	   = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
 			pixelState->L[pixelId] = 0;
-			pixelState->sampler[pixelId].setPixelSample(pixelCoord, getFrameIndex() * samplesPerPixel);
+			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
 		});
 }

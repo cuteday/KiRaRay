@@ -27,6 +27,17 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 	HitgroupSBTData data;
 };
 
+class InstanceAccelerationStructure {
+public:
+	using SharedPtr = std::shared_ptr<InstanceAccelerationStructure>;
+	InstanceAccelerationStructure() = default;
+
+	OptixTraversableHandle getHandle() const { return mHandle; }
+	operator OptixTraversableHandle() const { return mHandle; }
+
+	OptixTraversableHandle mHandle;
+};
+
 class OptiXBackendInterface {
 public:
 	OptiXBackendInterface() = default;
@@ -39,8 +50,12 @@ public:
 	static OptixProgramGroup createIntersectionPG(OptixDeviceContext optixContext, OptixModule optixModule,
 		const char* closest, const char* any, const char* intersect);
 
-	static OptixTraversableHandle buildAccelStructure(OptixDeviceContext optixContext, CUstream cudaStream, Scene& scene);
-
+	static OptixTraversableHandle buildAccelStructure(OptixDeviceContext optixContext,
+													  CUstream cudaStream, Scene::SharedPtr scene);
+	static OptixTraversableHandle buildTriangleMeshGAS(OptixDeviceContext optixContext,
+													   CUstream cudaStream,
+													   const rt::MeshData &mesh,
+													   CUDABuffer &accelBuffer);
 };
 
 struct OptiXInitializeParameters {
@@ -70,7 +85,7 @@ public:
 	OptiXBackend() = default;
 	
 	void initialize(const OptiXInitializeParameters& params);
-	void setScene(Scene &scene);
+	void setScene(Scene::SharedPtr scene);
 	template <typename T>
 	void launch(const T& parameters, string entryPoint, int width,
 		int height, int depth = 1) {
@@ -89,8 +104,9 @@ public:
 	rt::SceneData getSceneData() const { return scene->getSceneData(); }
 
 protected:
-	void buildAccelStructure(Scene &scene);
-	void buildShaderBindingTable(Scene &scene);
+	void buildAccelStructure(Scene::SharedPtr scene);
+	void buildAccelStructure(SceneGraph::SharedPtr sceneGraph);
+	void buildShaderBindingTable(Scene::SharedPtr scene);
 
 	OptixProgramGroup createRaygenPG(const char *entrypoint) const;
 	OptixProgramGroup createMissPG(const char *entrypoint) const;

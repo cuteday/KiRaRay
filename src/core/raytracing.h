@@ -96,4 +96,20 @@ struct Interaction{
 	Vector2f uv {0};
 };
 
+class SurfaceInteraction : public Interaction {
+public:
+	SurfaceInteraction() = default;
+
+	KRR_CALLABLE Vector3f toWorld(const Vector3f &v) const {
+		return tangent * v[0] + bitangent * v[1] + n * v[2];
+	}
+
+	KRR_CALLABLE Vector3f toLocal(const Vector3f &v) const {
+		return {dot(tangent, v), dot(bitangent, v), dot(n, v)};
+	}
+
+	Vector3f tangent{0};
+	Vector3f bitangent{0};
+};
+
 KRR_NAMESPACE_END

@@ -62,9 +62,9 @@ KRR_DEVICE_FUNCTION bool alphaKilled(inter::vector<rt::MaterialData> *materials)
 	if (!opaticyTexture.isValid())
 		return false;
 
-	Vector3f b				  = hitInfo.barycentric;
-	const rt::MeshData &mesh	  = *hitInfo.mesh;
-	Vector3i v				  = mesh.indices[hitInfo.primitiveId];
+	Vector3f b				 = hitInfo.barycentric;
+	const rt::MeshData &mesh = *hitInfo.mesh;
+	Vector3i v				 = mesh.indices[hitInfo.primitiveId];
 	Vector2f uv{};
 	if (mesh.texcoords.size())
 		uv = b[0] * mesh.texcoords[v[0]] + b[1] * mesh.texcoords[v[1]] +
@@ -72,10 +72,8 @@ KRR_DEVICE_FUNCTION bool alphaKilled(inter::vector<rt::MaterialData> *materials)
 
 	Vector3f opacity = sampleTexture(opaticyTexture, uv, Color3f(1));
 	float alpha		 = 1 - luminance(opacity);
-	if (alpha >= 1)
-		return false;
-	if (alpha <= 0)
-		return true;
+	if (alpha >= 1) return false;
+	if (alpha <= 0) return true;
 	float3 o = optixGetWorldRayOrigin();
 	float3 d = optixGetWorldRayDirection();
 	float u	 = HashFloat(o, d);
@@ -169,9 +167,14 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 		sd.specular	 = (Vector3f) spec; // specular reflectance
 		sd.roughness = 1.f - spec[3];	//
 		sd.metallic	 = getMetallic(sd.diffuse, sd.specular);
-	} else {
-		assert(false);
-	}
+	} else assert(false);
+	
+	// transform local interaction to world space 
+	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
+	sd.pos = hitInfo.instance->getTransform() * sd.pos;
+	sd.frame.N = hitInfo.instance->getRotation() * sd.frame.N;
+	sd.frame.T = hitInfo.instance->getRotation() * sd.frame.T;
+	sd.frame.B = hitInfo.instance->getRotation() * sd.frame.B;
 }
 
 KRR_NAMESPACE_END

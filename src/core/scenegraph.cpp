@@ -15,16 +15,24 @@ void SceneGraphLeaf::setName(const std::string &name) const {
 	else Log(Fatal, "Set name for a leaf without a node");
 }
 
+SceneGraphLeaf::SharedPtr MeshInstance::clone() {
+	return std::make_shared<MeshInstance>(mMesh);
+}
+
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
 								  const Vector3f *scaling) {
-	if (scale) mScaling = *scaling;
+	if (scaling) mScaling = *scaling;
 	if (rotation) mRotation = *rotation;
 	if (translation) mTranslation = *translation;
 
 	mHasLocalTransform = true;
+	mUpdateFlags |= UpdateFlags::LocalTransform;
+	propagateUpdateFlags(UpdateFlags::SubgraphTransform);
 }
 
-void SceneGraphNode::setScaling(const Vector3f &scaling) { setTransform(nullptr, nullptr, &scale); }
+void SceneGraphNode::setScaling(const Vector3f &scaling) {
+	setTransform(nullptr, nullptr, &scaling);
+}
 
 void SceneGraphNode::setRotation(const Quaternionf &rotation) {
 	setTransform(nullptr, &rotation, nullptr);
@@ -45,6 +53,22 @@ void SceneGraphNode::setLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
 	mLeaf		 = leaf;
 	leaf->mNode = weak_from_this();
 	if (graph) graph->registerLeaf(leaf);
+
+	mUpdateFlags |= UpdateFlags::Leaf;
+	// A leaf update leads to a subgraph structure change.
+	propagateUpdateFlags(UpdateFlags::SubgraphStructure);
+}
+
+void SceneGraphNode::updateLocalTransform() {
+	mLocalTransform = Affine3f().translate(mTranslation).rotate(mRotation).scale(mScaling);
+}
+
+void SceneGraphNode::propagateUpdateFlags(UpdateFlags flags) { 
+	SceneGraphWalker walker(this);
+	while (walker) {
+		walker->mUpdateFlags |= flags;	
+		walker.up();
+	}
 }
 
 void SceneGraphNode::reverseChildren() {
@@ -61,6 +85,7 @@ void SceneGraphNode::reverseChildren() {
 }
 
 int SceneGraphWalker::next(bool allowChildren) {
+	// if allowChildren == true, then next() follows DFS traversal order.
 	if (!mCurrent) return 0;
 	if (allowChildren) {
 		auto firstChild = mCurrent->getFirstChild();
@@ -95,8 +120,8 @@ int SceneGraphWalker::up() {
 
 SceneGraphNode::SharedPtr SceneGraph::setRoot(const SceneGraphNode::SharedPtr &root) {
 	auto oldRoot = mRoot;
-	if (oldRoot) detach(oldRoot);
-	attach(nullptr, root);
+	if (oldRoot) detach(oldRoot);	// and unregister the resources...
+	attach(nullptr, root);			// and register the resources of the new graph...
 	return oldRoot;
 }
 
@@ -132,7 +157,7 @@ SceneGraphNode::SharedPtr SceneGraph::attach(const SceneGraphNode::SharedPtr &pa
 			copy->mGraph				   = weak_from_this();
 			if (walker->mHasLocalTransform) {
 				copy->setTransform(&walker->getTranslation(), &walker->getRotation(),
-								   &walker->getScale());
+								   &walker->getScaling());
 			}
 			if (walker->mLeaf) {
 				copy->setLeaf(walker->mLeaf->clone());
@@ -140,8 +165,7 @@ SceneGraphNode::SharedPtr SceneGraph::attach(const SceneGraphNode::SharedPtr &pa
 			if (currentParent) {
 				copy->mNextSibling		   = parent->mFirstChild;
 				currentParent->mFirstChild = copy;
-			} else {
-				// parent do not exist at the beginning...
+			} else { // parent do not exist at the beginning...
 				mRoot = copy;
 			}
 
@@ -189,7 +213,7 @@ SceneGraphNode::SharedPtr SceneGraph::attachLeaf(const SceneGraphNode::SharedPtr
 	return attach(parent, node);
 }
 
-SceneGraphNode::SharedPtr SceneGraph::detach(const SceneGraphNode::SharedPtr &node) {
+SceneGraphNode::SharedPtr SceneGraph::detach(const SceneGraphNode::SharedPtr& node) {
 	SceneGraph::SharedPtr graph = node->mGraph.lock();
 	if (graph) {
 		DCHECK(graph.get() == this);
@@ -202,10 +226,11 @@ SceneGraphNode::SharedPtr SceneGraph::detach(const SceneGraphNode::SharedPtr &no
 			walker.next(true);
 		}
 		if (node->mParent) {
-			SceneGraphNode::SharedPtr *sibling = &node->mParent->mFirstChild;
+			node->mParent->propagateUpdateFlags(SceneGraphNode::UpdateFlags::SubgraphStructure);
+			SceneGraphNode::SharedPtr* sibling = &node->mParent->mFirstChild;
 			// delete this node from the linked list.
 			while (*sibling && *sibling != node)
-				sibling = & (*sibling)->mNextSibling;
+				sibling = &(*sibling)->mNextSibling;
 			if (*sibling) *sibling = node->mNextSibling;
 		}
 
@@ -222,18 +247,35 @@ SceneGraphNode::SharedPtr SceneGraph::detach(const SceneGraphNode::SharedPtr &no
 	return node;
 }
 
-void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
+void SceneGraph::addMaterial(Material::SharedPtr material) {
+	material->mMaterialId = mMaterials.size();
+	mMaterials.push_back(std::move(material));
+	mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
+}
+
+void SceneGraph::addMesh(Mesh::SharedPtr mesh) {
+	mesh->meshId = mMeshes.size();
+	mMeshes.push_back(std::move(mesh));
+	mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
+}
+
+void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 	if (!leaf) {
 		Log(Warning, "Attempting to register an empty leaf...");
 		return;
 	}
 
 	if (auto meshInstance = std::dynamic_pointer_cast<MeshInstance>(leaf)) {
+		const auto &mesh			 = meshInstance->getMesh();
+		auto it						 = std::find(mMeshes.begin(), mMeshes.end(), mesh);
+		if (it == mMeshes.end())
+			Log(Error, "The leaf node points to a mesh that does not added to the scene");
+		meshInstance->mInstanceId = mMeshInstances.size();
 		mMeshInstances.push_back(meshInstance);
 	}
 }
 
-void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
+void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 	if (!leaf) {
 		Log(Warning, "Attempting to unregister an empty leaf...");
 		return;
@@ -244,6 +286,103 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
 		if (it != mMeshInstances.end()) mMeshInstances.erase(it);
 		else Log(Warning, "Unregistering an instance that do not exist in graph...");
 		return;
+	}
+}
+
+void SceneGraph::update(size_t frameIndex) {
+
+	struct AncestorContext {
+		// Used to determine whether the subgraph transform should be updated,
+		// due to the updated transform of an ancestor node.
+		bool superGraphTransformUpdated = false;
+	};
+	std::vector<AncestorContext> stack;	// stack of ancestor nodes.
+	AncestorContext context{};			// current context.
+	SceneGraphWalker walker(mRoot.get());
+
+	while (walker) {
+		auto current = walker.get();
+		auto parent = current->getParent();
+
+		// update the transform of the node.
+		bool currentTransformUpdated =
+			(current->getUpdateFlags() & SceneGraphNode::UpdateFlags::LocalTransform) != 0;
+
+		if (currentTransformUpdated) {
+			// update the local transform matrix using SRT.
+			current->updateLocalTransform();
+		}
+
+		if (parent) {
+			// update the global transform using parent's global transform.
+			current->mGlobalTransform = current->mHasLocalTransform
+				? parent->getGlobalTransform() * current->getLocalTransform()
+				: parent->getGlobalTransform();
+		} else {
+			current->mGlobalTransform = current->getLocalTransform();
+		}
+
+		// initialize the global bbox of the current node, start with the leaf (or an empty box if
+		// there is no leaf)
+		if ((current->getUpdateFlags() & (SceneGraphNode::UpdateFlags::SubgraphStructure |
+			SceneGraphNode::UpdateFlags::SubgraphTransform)) != 0 || context.superGraphTransformUpdated){
+			current->mGlobalBoundingBox = AABB{};
+			if (current->getLeaf()) {
+				AABB localBoundingBox = current->getLeaf()->getLocalBoundingBox();	
+				current->mGlobalBoundingBox = localBoundingBox.transformed(current->getGlobalTransform());
+			}
+		}
+
+		// whether we need to go deeper into the subgraph?
+		bool subgraphNeedsUpdate = (current->getUpdateFlags() | SceneGraphNode::UpdateFlags::SubgraphUpdates) != 0;
+		subgraphNeedsUpdate |= context.superGraphTransformUpdated;
+		// negative delta means going upper in the hierarchy.
+		int deltaDepth = walker.next(subgraphNeedsUpdate);
+
+		if (deltaDepth > 0) { // goes to a child node
+			stack.push_back(context);
+			context.superGraphTransformUpdated |= currentTransformUpdated;
+		} else {	
+			// either goes to a sibling, or a child.
+			if (parent) {	// in either case, the parent's bbox needs to be updated.
+				parent->mGlobalBoundingBox.extend(current->getGlobalBoundingBox());
+				parent->mUpdateFlags = current->getUpdateFlags() & SceneGraphNode::UpdateFlags::SubgraphUpdates;
+			}
+
+			while (deltaDepth++ < 0) {
+				DCHECK(parent);
+				current = parent;
+				parent	= current->getParent();
+
+				if (parent) {
+					// merge bounding box changes and propagate update flags
+					parent->mGlobalBoundingBox.extend(current->getGlobalBoundingBox());
+					parent->mUpdateFlags |=
+						current->getUpdateFlags() & SceneGraphNode::UpdateFlags::SubgraphUpdates;
+				}
+
+				context = stack.back();
+				stack.pop_back();
+			}
+		}
+	}
+
+	// Any changes to leave contents leads to a full update to the following...
+	if (mRoot && (mRoot->getUpdateFlags() & (SceneGraphNode::UpdateFlags::SubgraphStructure |
+		SceneGraphNode::UpdateFlags::SubgraphContent)) != 0) {
+		// reindex the instances, meshes and materials (e.g. when new things are added)
+		int instanceIndex = 0;
+		for (MeshInstance::SharedPtr instance : mMeshInstances) {
+			instance->mInstanceId = instanceIndex++;
+		}
+		int meshIndex = 0;
+		for (Mesh::SharedPtr mesh : mMeshes) {
+			mesh->meshId = meshIndex++;
+		}
+		int materialIndex = 0;
+		for (Material::SharedPtr material : mMaterials) {
+			material->mMaterialId = materialIndex++;
+		}
 	}
 }
 

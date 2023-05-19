@@ -35,7 +35,7 @@ public:
 		twoSided(twoSided),
 		scale(scale) {}
 
-	__device__ inline LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
+	KRR_DEVICE inline LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
 		LightSample ls = {};
 		
 		ShapeSampleContext shapeCtx = { ctx.p, ctx.n };
@@ -51,7 +51,7 @@ public:
 		return ls;
 	}
 
-	__device__ inline Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
+	KRR_DEVICE inline Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
 		if (!twoSided && dot(n, w) < 0.f) return Color::Zero(); // hit backface
 
 		if (texture.isValid()) return scale * texture.tex(uv).head<3>();
@@ -82,7 +82,7 @@ public:
 	InfiniteLight(const rt::TextureData &image, Vector3f tint = Vector3f::Ones(), float scale = 1, float rotation = 0)
 		:image(image), tint(tint), scale(scale), rotation(rotation) {}
 
-	__device__ inline LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
+	KRR_DEVICE inline LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
 		LightSample ls = {};
 		Vector3f wi	   = uniformSampleSphere(u);
 		ls.intr		   = Interaction(ctx.p + wi * 1e7f);
@@ -99,7 +99,7 @@ public:
 		return Color::Zero();
 	}
 
-	__device__ inline Color Li(Vector3f wi) const {
+	KRR_DEVICE inline Color Li(Vector3f wi) const {
 		Color L = tint * scale;
 
 		if (!image.isValid()) return L;

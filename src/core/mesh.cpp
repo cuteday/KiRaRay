@@ -4,17 +4,8 @@
 
 KRR_NAMESPACE_BEGIN
 
-std::vector<Triangle> Mesh::createTriangles(rt::MeshData* mesh) const {
-	uint nTriangles = indices.size();
-	std::vector<Triangle> triangles;
-	for (uint i = 0; i < nTriangles; i++) {
-		triangles.push_back(Triangle(i, mesh));
-	}
-	return triangles;
-}
-
-AABB Mesh::getAABB() const {
-	AABB aabb;
+AABB Mesh::computeAABB() {
+	aabb = {};
 	for (const auto &v : positions) 
 		aabb.extend(v);
 	return aabb;

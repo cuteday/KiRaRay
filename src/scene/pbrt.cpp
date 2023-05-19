@@ -10,8 +10,6 @@ KRR_NAMESPACE_BEGIN
 using namespace importer;
 
 namespace {
-static uint textureIdAllocator	= 0;
-static uint materialIdAllocator = 0;
 static MaterialLoader sMaterialLoader;
 
 // helper functions
@@ -49,15 +47,12 @@ void loadTexture(Material::SharedPtr material, pbrt::Texture::SP texture,
 	}
 }
 
-size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
-					std::map<pbrt::Material::SP, size_t> &materials,
-					const string &basedir) {
+Material::SharedPtr loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat, const string &basedir) {
 
-	if (materials.count(mat)) // already loaded...
-		return materials[mat];
+	static std::map<pbrt::Material::SP, Material::SharedPtr> materialMap;
+	if (materialMap.count(mat)) return materialMap[mat];
 
-	Material::SharedPtr material =
-		Material::SharedPtr(new Material(++materialIdAllocator, mat->name));
+	Material::SharedPtr material = Material::SharedPtr(new Material(mat->name));
 	material->mBsdfType		= MaterialType::Disney;
 	material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 	Material::MaterialParams &matParams = material->mMaterialParams;
@@ -244,10 +239,10 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 	}
 	if (matParams.IoR == 1) // 1-ETA is not plausible for transmission
 		matParams.IoR = 1.001;
-	size_t materialId = scene->getMaterials().size();
+
 	scene->addMaterial(material);
-	materials[mat] = materialId;
-	return materialId;
+	materialMap[mat] = material;
+	return material;
 }
 
 Mesh::SharedPtr loadMesh(pbrt::Shape::SP shape) {
@@ -267,6 +262,7 @@ Mesh::SharedPtr loadMesh(pbrt::Shape::SP shape) {
 		mesh->positions.push_back(cast(m->vertex[i]));
 	}
 	for (int i = 0; i < n_faces; i++) mesh->indices.push_back(cast(m->index[i]));
+	mesh->computeAABB();
 	return mesh;
 }
 
@@ -296,11 +292,9 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 	}
 
 	scene->makeSingleLevel(); // since currently kiraray supports only single gas.
-	pScene->addMaterial(std::make_shared<Material>(0, "default material")); 
+	pScene->addMaterial(std::make_shared<Material>("default material")); 
 	// the default material for shapes without material
 
-	std::map<pbrt::Material::SP, size_t> pbrtMaterials; // loaded materials and
-														// its parametric id
 	std::map<pbrt::TriangleMesh::SP, size_t> pbrtMeshes;// mesh pointer to its index
 	
 	for (const pbrt::Shape::SP shape : scene->world->shapes) {
@@ -308,7 +302,7 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 		if (auto m = std::dynamic_pointer_cast<pbrt::TriangleMesh>(shape)) {
 			Mesh::SharedPtr mesh = loadMesh(m);
 			pbrtMeshes.insert({m, mpScene->getMeshes().size()});
-			if (m->material) mesh->materialId = loadMaterial(pScene, m->material, pbrtMaterials, basepath);
+			if (m->material) mesh->material = loadMaterial(pScene, m->material, basepath);
 			if (m->areaLight) createAreaLight(mesh, m->areaLight);
 			mpScene->getSceneGraph()->addMesh(mesh);
 		}

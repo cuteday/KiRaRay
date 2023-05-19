@@ -18,11 +18,6 @@ KRR_NAMESPACE_BEGIN
 namespace fs = std::filesystem;
 using namespace importer;
 
-namespace {
-static uint textureIdAllocator	= 0;
-static uint materialIdAllocator = 0;
-} // namespace
-
 namespace assimp {
 
 using ImportMode = AssimpImporter::ImportMode;
@@ -92,8 +87,7 @@ void loadTextures(const aiMaterial *pAiMaterial, const std::string &folder,
 	}
 }
 
-Material::SharedPtr
-createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
+Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
 			   ImportMode importMode = ImportMode::Default) {
 	aiString name;
 	pAiMaterial->Get(AI_MATKEY_NAME, name);
@@ -105,7 +99,7 @@ createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
 		nameStr = "unnamed";
 	}
 	Material::SharedPtr pMaterial =
-		Material::SharedPtr(new Material(++materialIdAllocator, nameStr));
+		Material::SharedPtr(new Material(nameStr));
 
 	logDebug("Importing material: " + nameStr);
 	// Load textures. Note that loading is affected by the current shading
@@ -232,7 +226,7 @@ void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial,
 	TextureKey textureKey{filename, srgb};
 	if (!mTextureCache.count(textureKey)) {
 		mTextureCache[textureKey] =
-			std::make_shared<Texture>(filename, flip, srgb, ++textureIdAllocator);
+			std::make_shared<Texture>(filename, flip, srgb);
 	}
 	pMaterial->setTexture(type, mTextureCache[textureKey]);
 }
@@ -247,6 +241,7 @@ bool AssimpImporter::import(const string &filepath,
 
 	unsigned int postProcessSteps = 0 
 									| aiProcess_CalcTangentSpace
+									| aiProcess_FindDegenerates
 									//| aiProcess_OptimizeMeshes
 									| aiProcess_JoinIdenticalVertices 
 									| aiProcess_FindInvalidData
@@ -309,7 +304,6 @@ void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr 
 	graphNode->setScaling(transform.scaling());
 	graphNode->setTranslation(transform.translation());
 	for (int i = 0; i < assimpNode->mNumMeshes; i++) {
-		aiMesh *mesh = mpAiScene->mMeshes[assimpNode->mMeshes[i]];
 		// add this mesh into scenegraph
 		Mesh::SharedPtr mesh = mpScene->getMeshes()[assimpNode->mMeshes[i]];
 		auto meshInstance = std::make_shared<MeshInstance>(mesh);
@@ -323,7 +317,7 @@ void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr 
 }
 
 void AssimpImporter::loadMaterials(const string &modelFolder) {
-	mpScene->addMaterial(std::make_shared<Material>(0, "default material"));
+	mpScene->addMaterial(std::make_shared<Material>("default material"));
 	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
 		const aiMaterial *aiMaterial = mpAiScene->mMaterials[i];
 		Material::SharedPtr pMaterial =
@@ -372,11 +366,8 @@ void AssimpImporter::loadMeshes() {
 			mesh->indices.push_back(indices);
 		}
 
-		if (pAiMesh->mMaterialIndex >= 0 &&
-			pAiMesh->mMaterialIndex < mpScene->getMaterials().size()) {
-			mesh->materialId = pAiMesh->mMaterialIndex + 1;
-		}
-
+		mesh->material = mpScene->getMaterials()[pAiMesh->mMaterialIndex + 1];
+		mesh->computeAABB();
 		mpScene->getSceneGraph()->addMesh(mesh);
 	}
 }

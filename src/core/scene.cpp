@@ -15,6 +15,7 @@ bool Scene::update(size_t frameIndex){
 	bool hasChanges = false;
 	if (mpCameraController) hasChanges |= mpCameraController->update();
 	if (mpCamera) hasChanges |= mpCamera->update();
+	mGraph->update(frameIndex);
 	return mHasChanges = hasChanges;
 }
 
@@ -53,10 +54,14 @@ void Scene::initializeSceneRT() {
 
 void RTScene::toDevice() {
 	cudaDeviceSynchronize();
-	mDeviceData.materials = gpContext->alloc->new_object<inter::vector<rt::MaterialData>>();
-	mDeviceData.meshes	= gpContext->alloc->new_object<inter::vector<rt::MeshData>>();
-	mDeviceData.lights	= gpContext->alloc->new_object<inter::vector<Light>>();
-	mDeviceData.infiniteLights = gpContext->alloc->new_object<inter::vector<InfiniteLight>>();
+	if (!mDeviceData.materials)
+		mDeviceData.materials = gpContext->alloc->new_object<inter::vector<rt::MaterialData>>();
+	if (!mDeviceData.meshes)
+		mDeviceData.meshes	= gpContext->alloc->new_object<inter::vector<rt::MeshData>>();
+	if (!mDeviceData.lights)
+		mDeviceData.lights	= gpContext->alloc->new_object<inter::vector<Light>>();
+	if (!mDeviceData.infiniteLights)
+		mDeviceData.infiniteLights = gpContext->alloc->new_object<inter::vector<InfiniteLight>>();
 	updateSceneData();
 	CUDA_SYNC_CHECK();
 }
@@ -81,27 +86,42 @@ void RTScene::renderUI() {
 }
 
 void RTScene::updateSceneData() {
-	/* Upload mesh data to device... */
-	auto& meshes = mpScene->getMeshes();
-	mDeviceData.meshes->resize(meshes.size());
-	for (size_t idx = 0; idx < meshes.size(); idx++) {
-		auto &mesh	   = meshes[idx];
-		auto &meshData = (*mDeviceData.meshes)[idx];
-		meshData.positions.alloc_and_copy_from_host(mesh->positions);
-		meshData.normals.alloc_and_copy_from_host(mesh->normals);
-		meshData.texcoords.alloc_and_copy_from_host(mesh->texcoords);
-		meshData.tangents.alloc_and_copy_from_host(mesh->tangents);
-		meshData.indices.alloc_and_copy_from_host(mesh->indices);
-		meshData.materialId = mesh->materialId;
-	}
-
 	/* Upload texture and material data to device... */
 	auto& materials = mpScene->getMaterials();
 	mDeviceData.materials->resize(materials.size());
 	for (size_t idx = 0; idx < materials.size(); idx++) {
-		auto &material	   = materials[idx];
-		auto &materialData = (*mDeviceData.materials)[idx];
+		const auto &material = materials[idx];
+		auto &materialData	 = (*mDeviceData.materials)[idx];
 		materialData.initializeFromHost(material);
+	}
+
+	/* Upload mesh data to device... */
+	auto &meshes = mpScene->getMeshes();
+	mDeviceData.meshes->resize(meshes.size());
+	for (size_t idx = 0; idx < meshes.size(); idx++) {
+		const auto &mesh = meshes[idx];
+		auto &meshData	 = (*mDeviceData.meshes)[idx];
+		meshData.positions.alloc_and_copy_from_host(mesh->positions);
+		meshData.normals.alloc_and_copy_from_host(mesh->normals);
+		meshData.texcoords.alloc_and_copy_from_host(mesh->texcoords);
+		meshData.tangents.alloc_and_copy_from_host(mesh->tangents);
+		meshData.indices.alloc_and_copy_from_host(mesh->indices);	
+		meshData.materialId = mesh->getMaterial()->getMaterialId();
+		meshData.material = &(*mDeviceData.materials)[mesh->getMaterial()->getMaterialId()];
+	}
+
+	/* Upload instance data to device... */
+	auto &instances = mpScene->getMeshInstances();
+	mDeviceData.instances->resize(instances.size());
+	for (size_t idx = 0; idx < instances.size(); idx++) {
+		const auto &instance	 = instances[idx];
+		auto &instanceData		 = (*mDeviceData.instances)[idx];
+		instanceData.transform	 = instance->getNode()->getGlobalTransform();
+		instanceData.scaling	 = instance->getNode()->getScaling();
+		instanceData.rotation	 = instance->getNode()->getRotation();
+		instanceData.translation = instance->getNode()->getTranslation();
+		instanceData.meshId		 = instance->getMesh()->getMeshId();
+		instanceData.mesh		 = &(*mDeviceData.meshes)[instance->getMesh()->getMeshId()];
 	}
 	processLights();
 }
@@ -109,6 +129,15 @@ void RTScene::updateSceneData() {
 void RTScene::processLights() {
 	mDeviceData.lights->clear();
 	cudaDeviceSynchronize();
+
+	auto createTrianglePrimitives = [](Mesh::SharedPtr mesh, rt::InstanceData* instance) 
+		-> std::vector<Triangle> {
+		uint nTriangles = mesh->indices.size();
+		std::vector<Triangle> triangles;
+		for (uint i = 0; i < nTriangles; i++) 
+			triangles.push_back(Triangle(i, instance));
+		return triangles;
+	};
 
 	auto infiniteLights = mpScene->environments;
 	mDeviceData.infiniteLights->reserve(infiniteLights.size());
@@ -118,20 +147,20 @@ void RTScene::processLights() {
 		mDeviceData.infiniteLights->push_back(InfiniteLight(textureData));
 	}
 
-	uint nMeshes = mpScene->meshes.size();
-	for (uint meshId = 0; meshId < nMeshes; meshId++) {
-		auto mesh		   = mpScene->meshes[meshId];
-		auto material = mpScene->materials[mesh->materialId];
-		rt::MaterialData &materialData = (*mDeviceData.materials)[mesh->materialId];
-		rt::MeshData &meshData = (*mDeviceData.meshes)[meshId];
+	uint nMeshes = mpScene->getMeshes().size();
+	for (const auto &instance: mpScene->getMeshInstances()) {
+		const auto &mesh			   = instance->getMesh();
+		const auto &material		   = mesh->getMaterial();
+		rt::MaterialData &materialData = (*mDeviceData.materials)[material->getMaterialId()];
+		rt::MeshData &meshData		   = (*mDeviceData.meshes)[mesh->getMeshId()];
 		if (material->hasEmission() || mesh->Le.any()) {
-			rt::TextureData &textureData =
-				materialData.getTexture(Material::TextureType::Emissive);
+			rt::TextureData &textureData = materialData.getTexture(Material::TextureType::Emissive);
+			rt::InstanceData &instanceData = (*mDeviceData.instances)[instance->getInstanceId()];
 			Color3f Le = material->hasEmission()
 							 ? Color3f(textureData.getConstant()) : mesh->Le;
 			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld", 
 					 " constant emission(?): %f", mesh->indices.size(), luminance(Le));
-			std::vector<Triangle> primitives = mesh->createTriangles(&meshData);
+			std::vector<Triangle> primitives = createTrianglePrimitives(mesh, &instanceData);
 			size_t n_primitives				 = primitives.size();
 			meshData.primitives.alloc_and_copy_from_host(primitives);
 			meshData.lights.resize(primitives.size());

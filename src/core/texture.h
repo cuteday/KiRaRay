@@ -12,6 +12,8 @@
 #include "render/materials/bxdf.h"
 
 KRR_NAMESPACE_BEGIN
+
+class SceneGraph;
  
 class Image {
 public:
@@ -93,7 +95,7 @@ public:
 
 	Texture() = default; 
 	Texture(Color4f value) { setConstant(value); }
-	Texture(const string& filepath, bool flip = false, bool srgb = false, uint id = 0);
+	Texture(const string& filepath, bool flip = false, bool srgb = false);
 
 	void setConstant(const Color4f value){ 
 		mValue = value;
@@ -114,10 +116,12 @@ public:
 	Color4f mValue{};	 /* If this is a constant texture, the value should be set. */
 	Image::SharedPtr mImage;
 	string mFilename;
-	uint mTextureId;
 };
 
 class Material {
+private:
+	friend class SceneGraph;
+
 public:
 	using SharedPtr = std::shared_ptr<Material>;
 
@@ -144,7 +148,7 @@ public:
 	};
 
 	Material() {};
-	Material(uint id, const string& name);
+	Material(const string& name);
 
 	void setTexture(TextureType type, Texture::SharedPtr texture);
 	void setConstantTexture(TextureType type, const Color4f color);
@@ -154,14 +158,15 @@ public:
 	bool hasTexture(TextureType type);
 	Texture::SharedPtr getTexture(TextureType type) { return mTextures[(uint)type]; }
 	
-	string getName() { return mMaterialName; }
+	const string& getName() const { return mMaterialName; }
+	int getMaterialId() const { return mMaterialId; }
 
 	MaterialParams mMaterialParams;
 	Texture::SharedPtr mTextures[(uint32_t)TextureType::Count];
 	MaterialType mBsdfType{ MaterialType::Disney };
 	ShadingModel mShadingModel{ ShadingModel::MetallicRoughness };
 	string mMaterialName;
-	uint mMaterialId;
+	int mMaterialId{-1};
 };
 
 namespace rt {

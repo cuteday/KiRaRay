@@ -27,7 +27,7 @@ void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
 	mpScene = scene;
 	mpScene->initializeSceneRT();
-	optixBackend->setScene(*scene);
+	optixBackend->setScene(scene);
 }
 
 void MegakernelPathTracer::renderUI() {
@@ -50,16 +50,13 @@ void MegakernelPathTracer::render(RenderFrame::SharedPtr frame) {
 		return;
 	PROFILE("Megakernel Path Tracer");
 	{
-		PROFILE("Updating parameters");
 		launchParams.fbSize		 = mFrameSize;
 		launchParams.colorBuffer = frame->getCudaRenderTarget();
 		launchParams.camera		 = mpScene->getCamera();
 		launchParams.sceneData	 = mpScene->mpSceneRT->getSceneData();
 		launchParams.traversable = optixBackend->getRootTraversable();
 		launchParams.frameID	 = (uint)getFrameIndex();
-	}
-	{
-		PROFILE("Path tracing kernel");
+
 		optixBackend->launch(launchParams, "Pathtracer", mFrameSize[0], mFrameSize[1]);
 	}
 	CUDA_SYNC_CHECK();

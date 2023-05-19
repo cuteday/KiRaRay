@@ -29,6 +29,7 @@ struct HitInfo {
 	Vector3f barycentric;
 
 	rt::MeshData *mesh;
+	rt::InstanceData *instance;
 	Vector3f wo;
 	uint hitKind;
 };

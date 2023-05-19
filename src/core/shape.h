@@ -24,10 +24,10 @@ class Triangle{
 public:
 	Triangle() = default;
 
-	Triangle(uint triId, rt::MeshData* mesh) :
-		primId(triId), mesh(mesh) {}
+	Triangle(uint triId, rt::InstanceData *mesh) : primId(triId), instance(instance) {}
 
 	KRR_CALLABLE float area()const {
+		rt::MeshData *mesh = instance->mesh;
 		Vector3i v = mesh->indices[primId];
 		Vector3f p0 = mesh->positions[v[0]], p1 = mesh->positions[v[1]],
 				 p2 = mesh->positions[v[2]];
@@ -37,6 +37,7 @@ public:
 	}
 
 	KRR_CALLABLE float solidAngle(Vector3f p) const {
+		rt::MeshData *mesh = instance->mesh;
 		Vector3i v = mesh->indices[primId];
 		Vector3f p0 = mesh->positions[v[0]], p1 = mesh->positions[v[1]],
 				 p2 = mesh->positions[v[2]];
@@ -49,7 +50,7 @@ public:
 	KRR_CALLABLE ShapeSample sample(Vector2f u) const {
 		// uniform sample on triangle
 		ShapeSample ss = {};
-		
+		rt::MeshData *mesh = instance->mesh;
 		Vector3i v = mesh->indices[primId];
 		Vector3f p0 = mesh->positions[v[0]], p1 = mesh->positions[v[1]],
 				 p2 = mesh->positions[v[2]];
@@ -71,6 +72,10 @@ public:
 								 mesh->texcoords[v[2]]};
 			uvSample = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
 		}
+
+		// transform to world space [TODO: refactor]
+		p		= instance->getTransform() * p;
+		n		= instance->getRotation() * n;
 		ss.intr = Interaction(p, n, uvSample);
 		ss.pdf = 1 / area();
 		return ss;
@@ -80,7 +85,7 @@ public:
 	KRR_CALLABLE ShapeSample sample(Vector2f u, const ShapeSampleContext &ctx) const {
 		// sample w.r.t. the reference point,
 		// also the pdf counted is in solid angle.
-		
+		rt::MeshData *mesh = instance->mesh;
 		Vector3i v = mesh->indices[primId];
 		Vector3f p0 = mesh->positions[v[0]], p1 = mesh->positions[v[1]],
 				 p2 = mesh->positions[v[2]];
@@ -113,14 +118,13 @@ public:
 		return pdf;
 	}
 
-	rt::MeshData* getMesh() {
-		return mesh;
-	}
+	rt::InstanceData* getInstance() const { return instance; }
+	rt::MeshData *getMesh() const { return instance->mesh; }
 
 private:
 	friend class Mesh;
 	uint primId;
-	rt::MeshData* mesh{nullptr};
+	rt::InstanceData *instance{nullptr};
 };
 
 
