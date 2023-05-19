@@ -40,72 +40,70 @@ public:
 		sizeInBytes = 0;
 	}
 
-	template<typename T>
-	void alloc_and_copy_from_host(const std::vector<T>& vt)
-	{
+	template <typename T> void alloc_and_copy_from_host(const std::vector<T> &vt) {
 		if (vt.size() == 0) return;
 		resize(vt.size() * sizeof(T));
-		copy_from_host((const T*)vt.data(), vt.size());
+		copy_from_host((const T *) vt.data(), vt.size());
 	}
 
-	template<typename T>
-	void alloc_and_copy_from_device(const std::vector<T>& vt)
-	{
+	template <typename T> void alloc_and_copy_from_device(const std::vector<T> &vt) {
 		if (vt.size() == 0) return;
 		resize(vt.size() * sizeof(T));
-		copy_from_device((const T*)vt.data(), vt.size());
+		copy_from_device((const T *) vt.data(), vt.size());
 	}
 
-	template<typename T>
-	void alloc_and_copy_from_host(const T* t, size_t count)
-	{
+	template <typename T> void alloc_and_copy_from_host(const T *t, size_t count) {
 		if (count == 0) return;
 		resize(count * sizeof(T));
-		copy_from_host((const T*)t, count);
+		copy_from_host((const T *) t, count);
 	}
 
-	template<typename T>
-	void alloc_and_copy_from_device(const T* t, size_t count)
-	{
+	template <typename T> void alloc_and_copy_from_device(const T *t, size_t count) {
 		if (count == 0) return;
 		resize(count * sizeof(T));
-		copy_from_device((const T*)t, count);
+		copy_from_device((const T *) t, count);
 	}
 
-	template<typename T>
-	void copy_from_host(const T* t, size_t count)
-	{
+	template <typename T> void copy_from_host(const T *t, size_t count) {
 		assert(d_ptr != nullptr);
 		assert(sizeInBytes >= count * sizeof(T));
-		CUDA_CHECK(cudaMemcpy(d_ptr, (void*)t,
-			count * sizeof(T), cudaMemcpyHostToDevice));
+		CUDA_CHECK(cudaMemcpy(d_ptr, (void *) t, count * sizeof(T), cudaMemcpyHostToDevice));
 	}
 
-	template<typename T>
-	void copy_to_host(T* t, size_t count)
-	{
+	template <typename T> void copy_to_host(T *t, size_t count) {
 		assert(d_ptr != nullptr);
 		assert(sizeInBytes >= count * sizeof(T));
-		CUDA_CHECK(cudaMemcpy((void*)t, d_ptr,
-			count * sizeof(T), cudaMemcpyDeviceToHost));
+		CUDA_CHECK(cudaMemcpy((void *) t, d_ptr, count * sizeof(T), cudaMemcpyDeviceToHost));
 	}
 
-	template<typename T>
-	void copy_from_device(const T* t, size_t count)
-	{
+	template <typename T> void copy_from_device(const T *t, size_t count) {
 		assert(d_ptr != nullptr);
 		assert(sizeInBytes >= count * sizeof(T));
-		CUDA_CHECK(cudaMemcpy(d_ptr, (void*)t,
-			count * sizeof(T), cudaMemcpyDeviceToDevice));
+		CUDA_CHECK(cudaMemcpy(d_ptr, (void *) t, count * sizeof(T), cudaMemcpyDeviceToDevice));
 	}
 
-	template<typename T>
-	void copy_to_device(T* t, size_t count)
-	{
+	template <typename T> void copy_to_device(T *t, size_t count) {
 		assert(d_ptr != nullptr);
 		assert(sizeInBytes >= count * sizeof(T));
-		CUDA_CHECK(cudaMemcpy((void*)t, d_ptr,
-			count * sizeof(T), cudaMemcpyDeviceToDevice));
+		CUDA_CHECK(cudaMemcpy((void *) t, d_ptr, count * sizeof(T), cudaMemcpyDeviceToDevice));
+	}
+
+	void copy_from_device(const CUDABuffer& other) {
+		if (!other.size() || !other.data()) {
+			this->free();
+			return;
+		}
+		this->resize(other.size());
+		CUDA_CHECK(cudaMemcpy(d_ptr, other.d_ptr, other.size(), cudaMemcpyDeviceToDevice));
+	}
+
+	void copy_to_device(CUDABuffer& other) {
+		if (!this->size() || !this->data()) {
+			other.free();
+			return;
+		}
+		other.resize(this->size());
+		CUDA_CHECK(cudaMemcpy(other.d_ptr, d_ptr, this->size(), cudaMemcpyDeviceToDevice));
 	}
 
 private:

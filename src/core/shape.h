@@ -38,9 +38,11 @@ public:
 
 	KRR_CALLABLE float solidAngle(Vector3f p) const {
 		rt::MeshData *mesh = instance->mesh;
+		const Affine3f& transform = instance->transform;
 		Vector3i v = mesh->indices[primId];
-		Vector3f p0 = mesh->positions[v[0]], p1 = mesh->positions[v[1]],
-				 p2 = mesh->positions[v[2]];
+		Vector3f p0 = transform * mesh->positions[v[0]], 
+				 p1 = transform * mesh->positions[v[1]],
+				 p2 = transform * mesh->positions[v[2]];
 
 		return utils::sphericalTriangleArea(normalize(p0 - p), 
 			normalize(p1 - p),

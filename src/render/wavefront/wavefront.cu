@@ -46,7 +46,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	HitInfo hitInfo = getHitInfo();
 	ShadingData& sd = *getPRD<ShadingData>();
 	RayWorkItem r = getRayWorkItem();
-	rt::MaterialData& material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
+	const rt::MaterialData& material = hitInfo.instance->getMaterial();
 	prepareShadingData(sd, hitInfo, material);
 	if (sd.light) {		// push to hit ray queue if mesh has light
 		HitLightWorkItem w = {};
@@ -75,7 +75,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(Closest)() { 
-	if (alphaKilled(launchParams.sceneData.materials))
+	if (alphaKilled())
 		optixIgnoreIntersection();
 }
 
@@ -93,7 +93,7 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(Shadow)() { 
-	if (alphaKilled(launchParams.sceneData.materials))
+	if (alphaKilled())
 		optixIgnoreIntersection();
 }
 

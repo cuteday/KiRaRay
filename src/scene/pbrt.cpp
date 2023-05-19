@@ -262,7 +262,7 @@ Mesh::SharedPtr loadMesh(pbrt::Shape::SP shape) {
 		mesh->positions.push_back(cast(m->vertex[i]));
 	}
 	for (int i = 0; i < n_faces; i++) mesh->indices.push_back(cast(m->index[i]));
-	mesh->computeAABB();
+	mesh->computeBoundingBox();
 	return mesh;
 }
 

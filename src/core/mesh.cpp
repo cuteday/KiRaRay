@@ -4,7 +4,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-AABB Mesh::computeAABB() {
+AABB Mesh::computeBoundingBox() {
 	aabb = {};
 	for (const auto &v : positions) 
 		aabb.extend(v);

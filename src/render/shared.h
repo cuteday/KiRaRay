@@ -19,16 +19,19 @@
 
 KRR_NAMESPACE_BEGIN
 
-
 using namespace utils;
 
 namespace shader {
 	
 struct HitInfo {
+	KRR_CALLABLE const rt::InstanceData &getInstance() const { return *instance; }
+	KRR_CALLABLE const rt::MeshData &getMesh() const { return instance->getMesh(); }
+	KRR_CALLABLE const rt::MaterialData &getMaterial() const {
+		return instance->getMesh().getMaterial();
+	}
+
 	uint primitiveId;
 	Vector3f barycentric;
-
-	rt::MeshData *mesh;
 	rt::InstanceData *instance;
 	Vector3f wo;
 	uint hitKind;

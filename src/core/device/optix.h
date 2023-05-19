@@ -27,17 +27,6 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 	HitgroupSBTData data;
 };
 
-class InstanceAccelerationStructure {
-public:
-	using SharedPtr = std::shared_ptr<InstanceAccelerationStructure>;
-	InstanceAccelerationStructure() = default;
-
-	OptixTraversableHandle getHandle() const { return mHandle; }
-	operator OptixTraversableHandle() const { return mHandle; }
-
-	OptixTraversableHandle mHandle;
-};
-
 class OptiXBackendInterface {
 public:
 	OptiXBackendInterface() = default;
@@ -50,8 +39,8 @@ public:
 	static OptixProgramGroup createIntersectionPG(OptixDeviceContext optixContext, OptixModule optixModule,
 		const char* closest, const char* any, const char* intersect);
 
-	static OptixTraversableHandle buildAccelStructure(OptixDeviceContext optixContext,
-													  CUstream cudaStream, Scene::SharedPtr scene);
+	static OptixTraversableHandle buildASFromInputs(OptixDeviceContext optixContext, 
+		CUstream cudaStream, const std::vector<OptixBuildInput> &buildInputs, CUDABuffer& accelBuffer); 
 	static OptixTraversableHandle buildTriangleMeshGAS(OptixDeviceContext optixContext,
 													   CUstream cudaStream,
 													   const rt::MeshData &mesh,
@@ -100,12 +89,11 @@ public:
 			sizeof(T), &SBT[entryPoints[entryPoint]], width, height, depth));
 	}
 
-	OptixTraversableHandle getRootTraversable() const { return optixTraversable; }
-	rt::SceneData getSceneData() const { return scene->getSceneData(); }
+	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
+	rt::SceneData getSceneData() const { return scene->mpSceneRT->getSceneData(); }
 
 protected:
 	void buildAccelStructure(Scene::SharedPtr scene);
-	void buildAccelStructure(SceneGraph::SharedPtr sceneGraph);
 	void buildShaderBindingTable(Scene::SharedPtr scene);
 
 	OptixProgramGroup createRaygenPG(const char *entrypoint) const;
@@ -125,11 +113,16 @@ protected:
 	inter::vector<HitgroupRecord> hitgroupRecords;
 	inter::vector<MissRecord> missRecords;
 
+	inter::vector<OptixInstance> instancesIAS;
+	std::vector<OptixTraversableHandle> traversablesGAS;
+	std::vector<CUDABuffer> accelBuffersGAS;
+	CUDABuffer accelBufferIAS;
+	OptixTraversableHandle traversableIAS{};
+
 	std::map<string, int> entryPoints;
 	std::vector<OptixShaderBindingTable> SBT;
 	
-	OptixTraversableHandle optixTraversable{};
-	RTScene::SharedPtr scene;
+	Scene::SharedPtr scene;
 	OptiXInitializeParameters optixParameters;
 };
 

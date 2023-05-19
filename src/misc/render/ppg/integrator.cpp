@@ -42,7 +42,7 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 		backend->initialize(params);
 	}
 	backend->setScene(*scene);
-	AABB aabb = scene->getAABB();
+	AABB aabb = scene->getBoundingBox();
 	Allocator& alloc = *gpContext->alloc;
 	if (m_sdTree) alloc.deallocate_object(m_sdTree);
 	m_sdTree = alloc.new_object<STree>(aabb, alloc);

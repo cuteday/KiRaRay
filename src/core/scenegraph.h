@@ -47,7 +47,7 @@ public:
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	const Mesh::SharedPtr &getMesh() const { return mMesh; }
 	int getInstanceId() const { return mInstanceId; }
-	virtual AABB getLocalBoundingBox() override { return mMesh->getAABB(); }
+	virtual AABB getLocalBoundingBox() override { return mMesh->getBoundingBox(); }
 
 private:
 	friend class SceneGraph;

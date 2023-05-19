@@ -12,7 +12,7 @@ const string& SceneGraphLeaf::getName() const {
 void SceneGraphLeaf::setName(const std::string &name) const {
 	auto node = getNode();
 	if (node) node->setName(name);
-	else Log(Fatal, "Set name for a leaf without a node");
+	else Log(Error, "Set name %s for a leaf without a node", name.c_str());
 }
 
 SceneGraphLeaf::SharedPtr MeshInstance::clone() {
@@ -50,7 +50,7 @@ void SceneGraphNode::setLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
 		if (graph) graph->unregisterLeaf(mLeaf);
 	}
 
-	mLeaf		 = leaf;
+	mLeaf		= leaf;
 	leaf->mNode = weak_from_this();
 	if (graph) graph->registerLeaf(leaf);
 
@@ -76,10 +76,10 @@ void SceneGraphNode::reverseChildren() {
 	std::shared_ptr<SceneGraphNode> current, prev, next;
 	current = mFirstChild;
 	while (current) {
-		next = current->mNextSibling;
+		next				  = current->mNextSibling;
 		current->mNextSibling = prev;
-		prev = current;
-		current = next;
+		prev				  = current;
+		current				  = next;
 	}
 	mFirstChild = prev;
 }

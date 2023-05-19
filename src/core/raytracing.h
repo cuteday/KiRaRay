@@ -11,12 +11,12 @@ KRR_NAMESPACE_BEGIN
 
 namespace rt {
 class MeshData;
+class MaterialData;
+class InstanceData;
 }
-class Material;
-class Light;
 
 typedef struct {
-	rt::MeshData *mesh;
+	rt::InstanceData *instance;
 } HitgroupSBTData;
 
 enum class MaterialType {

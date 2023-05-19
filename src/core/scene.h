@@ -57,7 +57,7 @@ public:
 		mpCameraController->setCamera(mpCamera);
 	}
 	
-	AABB getAABB() const { return mAABB; }
+	AABB getBoundingBox() const { return mGraph->getRoot()->getGlobalBoundingBox(); }
 
 	friend void to_json(json& j, const Scene& scene) { 
 		j = json{ 
@@ -71,7 +71,6 @@ public:
 	Camera::SharedPtr mpCamera;
 	OrbitCameraController::SharedPtr mpCameraController;
 	std::vector<Texture::SharedPtr> environments;
-	AABB mAABB;
 	bool mHasChanges = false;
 
 	std::shared_ptr<RTScene> mpSceneRT;

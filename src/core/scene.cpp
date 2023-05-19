@@ -106,7 +106,6 @@ void RTScene::updateSceneData() {
 		meshData.texcoords.alloc_and_copy_from_host(mesh->texcoords);
 		meshData.tangents.alloc_and_copy_from_host(mesh->tangents);
 		meshData.indices.alloc_and_copy_from_host(mesh->indices);	
-		meshData.materialId = mesh->getMaterial()->getMaterialId();
 		meshData.material = &(*mDeviceData.materials)[mesh->getMaterial()->getMaterialId()];
 	}
 
@@ -117,10 +116,7 @@ void RTScene::updateSceneData() {
 		const auto &instance	 = instances[idx];
 		auto &instanceData		 = (*mDeviceData.instances)[idx];
 		instanceData.transform	 = instance->getNode()->getGlobalTransform();
-		instanceData.scaling	 = instance->getNode()->getScaling();
-		instanceData.rotation	 = instance->getNode()->getRotation();
-		instanceData.translation = instance->getNode()->getTranslation();
-		instanceData.meshId		 = instance->getMesh()->getMeshId();
+		instanceData.rotation	 = Quaternionf(instance->getNode()->getGlobalTransform().rotation());
 		instanceData.mesh		 = &(*mDeviceData.meshes)[instance->getMesh()->getMeshId()];
 	}
 	processLights();

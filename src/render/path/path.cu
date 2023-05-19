@@ -138,12 +138,12 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo	   = getHitInfo();
 	ShadingData &sd	   = *getPRD<ShadingData>();
-	const rt::MaterialData &material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
+	const rt::MaterialData &material = hitInfo.instance->getMaterial();
 	prepareShadingData(sd, hitInfo, material);
 }
 
 extern "C" __global__ void KRR_RT_AH(Radiance)() {
-	if (alphaKilled(launchParams.sceneData.materials)) 
+	if (alphaKilled()) 
 		optixIgnoreIntersection();
 }
 
@@ -152,7 +152,7 @@ extern "C" __global__ void KRR_RT_MS(Radiance)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(ShadowRay)() {
-	if (alphaKilled(launchParams.sceneData.materials))
+	if (alphaKilled())
 		optixIgnoreIntersection();
 }
 

@@ -47,23 +47,22 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	HitgroupSBTData *hitData = (HitgroupSBTData *) optixGetSbtDataPointer();
 	Vector2f barycentric	 = optixGetTriangleBarycentrics();
 	hitInfo.primitiveId		 = optixGetPrimitiveIndex();
-	hitInfo.mesh			 = hitData->mesh;
+	hitInfo.instance		 = hitData->instance;
 	hitInfo.wo				 = -normalize((Vector3f) optixGetWorldRayDirection());
 	hitInfo.hitKind			 = optixGetHitKind();
 	hitInfo.barycentric = { 1 - barycentric[0] - barycentric[1], barycentric[0], barycentric[1] };
 	return hitInfo;
 }
 
-KRR_DEVICE_FUNCTION bool alphaKilled(inter::vector<rt::MaterialData> *materials) {
-	HitInfo hitInfo			= getHitInfo();
-	rt::MaterialData &material		= (*materials)[hitInfo.mesh->materialId];
+KRR_DEVICE_FUNCTION bool alphaKilled() {
+	HitInfo hitInfo			   = getHitInfo();
+	rt::MaterialData &material = *hitInfo.instance->mesh->material;
 	rt::TextureData &opaticyTexture =
 		material.mTextures[(uint) Material::TextureType::Transmission];
-	if (!opaticyTexture.isValid())
-		return false;
+	if (!opaticyTexture.isValid()) return false;
 
 	Vector3f b				 = hitInfo.barycentric;
-	const rt::MeshData &mesh = *hitInfo.mesh;
+	const rt::MeshData &mesh = hitInfo.getMesh();
 	Vector3i v				 = mesh.indices[hitInfo.primitiveId];
 	Vector2f uv{};
 	if (mesh.texcoords.size())
@@ -87,9 +86,9 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	// the object, we can use this convention to determine whether an incident ray is coming from
 	// outside of the object.
 
-	Vector3f b		   = hitInfo.barycentric;
-	rt::MeshData &mesh = *hitInfo.mesh;
-	Vector3i v		   = mesh.indices[hitInfo.primitiveId];
+	Vector3f b				 = hitInfo.barycentric;
+	const rt::MeshData &mesh = hitInfo.getMesh();
+	Vector3i v				 = mesh.indices[hitInfo.primitiveId];
 	
 	sd.wo  = normalize(hitInfo.wo);
 

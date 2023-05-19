@@ -367,7 +367,7 @@ void AssimpImporter::loadMeshes() {
 		}
 
 		mesh->material = mpScene->getMaterials()[pAiMesh->mMaterialIndex + 1];
-		mesh->computeAABB();
+		mesh->computeBoundingBox();
 		mpScene->getSceneGraph()->addMesh(mesh);
 	}
 }
