@@ -1,4 +1,5 @@
 #include "scenegraph.h"
+#include "window.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -249,13 +250,13 @@ SceneGraphNode::SharedPtr SceneGraph::detach(const SceneGraphNode::SharedPtr& no
 
 void SceneGraph::addMaterial(Material::SharedPtr material) {
 	material->mMaterialId = mMaterials.size();
-	mMaterials.push_back(std::move(material));
+	mMaterials.push_back(material);
 	mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
 }
 
 void SceneGraph::addMesh(Mesh::SharedPtr mesh) {
 	mesh->meshId = mMeshes.size();
-	mMeshes.push_back(std::move(mesh));
+	mMeshes.push_back(mesh);
 	mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
 }
 
@@ -270,6 +271,8 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 		auto it						 = std::find(mMeshes.begin(), mMeshes.end(), mesh);
 		if (it == mMeshes.end())
 			Log(Error, "The leaf node points to a mesh that does not added to the scene");
+		else
+			Log(Info, "Adding mesh instance referencing the mesh #%d", mesh->getMeshId());
 		meshInstance->mInstanceId = mMeshInstances.size();
 		mMeshInstances.push_back(meshInstance);
 	}
@@ -290,12 +293,16 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 }
 
 void SceneGraph::update(size_t frameIndex) {
-
 	struct AncestorContext {
 		// Used to determine whether the subgraph transform should be updated,
 		// due to the updated transform of an ancestor node.
 		bool superGraphTransformUpdated = false;
 	};
+
+	bool hasPendingStructureChanges =
+		mRoot && (mRoot->getUpdateFlags() & (SceneGraphNode::UpdateFlags::SubgraphStructure |
+											 SceneGraphNode::UpdateFlags::SubgraphContent)) != 0;
+
 	std::vector<AncestorContext> stack;	// stack of ancestor nodes.
 	AncestorContext context{};			// current context.
 	SceneGraphWalker walker(mRoot.get());
@@ -339,6 +346,9 @@ void SceneGraph::update(size_t frameIndex) {
 		// negative delta means going upper in the hierarchy.
 		int deltaDepth = walker.next(subgraphNeedsUpdate);
 
+		// refresh the update flags [TODO: add prevTransform state for motion data...]
+		current->mUpdateFlags = SceneGraphNode::UpdateFlags::None;
+
 		if (deltaDepth > 0) { // goes to a child node
 			stack.push_back(context);
 			context.superGraphTransformUpdated |= currentTransformUpdated;
@@ -368,8 +378,7 @@ void SceneGraph::update(size_t frameIndex) {
 	}
 
 	// Any changes to leave contents leads to a full update to the following...
-	if (mRoot && (mRoot->getUpdateFlags() & (SceneGraphNode::UpdateFlags::SubgraphStructure |
-		SceneGraphNode::UpdateFlags::SubgraphContent)) != 0) {
+	if (hasPendingStructureChanges) {
 		// reindex the instances, meshes and materials (e.g. when new things are added)
 		int instanceIndex = 0;
 		for (MeshInstance::SharedPtr instance : mMeshInstances) {
@@ -384,6 +393,56 @@ void SceneGraph::update(size_t frameIndex) {
 			material->mMaterialId = materialIndex++;
 		}
 	}
+}
+
+void SceneGraph::printSceneGraph() const {
+	SceneGraphWalker walker(mRoot.get());
+	int depth = 0;
+	while (walker) {
+		std::stringstream ss;
+
+		for (int i = 0; i < depth; i++) ss << "  ";
+
+		ss << (walker->getName().empty() ? "<Unnamed Node>" : walker->getName());
+
+		bool hasTranslation = walker->getTranslation() != Vector3f::Zero();
+		bool hasRotation	= walker->getRotation() != Quaternionf::Identity();
+		bool hasScaling		= walker->getScaling() != Vector3f::Ones();
+
+		if (hasTranslation || hasRotation || hasScaling) {
+			ss << " (";
+			if (hasTranslation) ss << "T: " << walker->getTranslation();
+			if (hasRotation) ss << " R: " << walker->getRotation();
+			if (hasScaling) ss << " S: " << walker->getScaling();
+			ss << ")";
+		}
+
+		auto bbox = walker->getGlobalBoundingBox();
+		if (!bbox.isEmpty()) {
+			ss << " [" << bbox.min()[0] << ", " << bbox.min()[1] << ", " << bbox.min()[2] << " .. "
+			   << bbox.max()[0] << ", " << bbox.max()[1] << ", " << bbox.max()[2] << "]";
+		}
+
+		if (walker->getLeaf()) {
+			ss << ": ";
+
+			if (auto meshInstance = dynamic_cast<MeshInstance *>(walker->getLeaf().get())) {
+				ss << (meshInstance->getMesh()->getName().empty() ? 
+					"Unnamed Mesh" : meshInstance->getMesh()->getName());
+				ss << " (" << meshInstance->getMesh()->indices.size() << " faces)";
+			} else {
+				ss << "Unkwown Leaf Type";
+			}
+		}
+
+		if (!ss.str().empty()) Log(Info, "%s", ss.str().c_str());
+
+		depth += walker.next(true);
+	}
+}
+
+void SceneGraph::renderUI() {
+	if (ui::Button("Print graph")) printSceneGraph();
 }
 
 KRR_NAMESPACE_END

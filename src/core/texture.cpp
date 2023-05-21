@@ -132,10 +132,10 @@ Texture::Texture(const string &filepath, bool flip, bool srgb) : mFilename(filep
 	loadImage(filepath, flip, srgb);
 }
 
-Material::Material(const string &name) : mMaterialName(name) {}
+Material::Material(const string &name) : mName(name) {}
 
 void Material::setTexture(TextureType type, Texture::SharedPtr texture) { 
-	mTextures[(uint) type] = std::move(texture); 
+	mTextures[(uint) type] = texture; 
 }
 
 void Material::setConstantTexture(TextureType type, const Color4f color) {

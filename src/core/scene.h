@@ -42,8 +42,8 @@ public:
 	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mGraph->getMeshInstances(); }
 	std::vector<Mesh::SharedPtr> &getMeshes() { return mGraph->getMeshes(); }
 	std::vector<Material::SharedPtr> &getMaterials() { return mGraph->getMaterials(); }
-	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(std::move(mesh)); }
-	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(std::move(material)); }
+	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(mesh); }
+	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(material); }
 
 	void setCamera(const Camera &camera) { *mpCamera = camera; }
 	void setCameraController(const OrbitCameraController &cameraController) {

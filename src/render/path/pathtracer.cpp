@@ -26,7 +26,6 @@ MegakernelPathTracer::~MegakernelPathTracer() { delete optixBackend; }
 void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
 	mpScene = scene;
-	mpScene->initializeSceneRT();
 	optixBackend->setScene(scene);
 }
 

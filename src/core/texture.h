@@ -150,6 +150,7 @@ public:
 	Material() {};
 	Material(const string& name);
 
+	void setName(const std::string& name) { mName = name; }
 	void setTexture(TextureType type, Texture::SharedPtr texture);
 	void setConstantTexture(TextureType type, const Color4f color);
 	bool determineSrgb(string filename, TextureType type);
@@ -158,14 +159,14 @@ public:
 	bool hasTexture(TextureType type);
 	Texture::SharedPtr getTexture(TextureType type) { return mTextures[(uint)type]; }
 	
-	const string& getName() const { return mMaterialName; }
+	const string& getName() const { return mName; }
 	int getMaterialId() const { return mMaterialId; }
 
 	MaterialParams mMaterialParams;
 	Texture::SharedPtr mTextures[(uint32_t)TextureType::Count];
 	MaterialType mBsdfType{ MaterialType::Disney };
 	ShadingModel mShadingModel{ ShadingModel::MetallicRoughness };
-	string mMaterialName;
+	string mName;
 	int mMaterialId{-1};
 };
 

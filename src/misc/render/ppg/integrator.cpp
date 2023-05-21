@@ -27,9 +27,7 @@ void PPGPathTracer::resize(const Vector2i& size) {
 }
 
 void PPGPathTracer::setScene(Scene::SharedPtr scene) {
-	scene->initializeSceneRT();
 	mpScene = scene;
-	lightSampler = scene->mpSceneRT->getSceneData().lightSampler;
 	initialize();
 	if (!backend) {
 		backend		= new OptiXBackend();
@@ -42,6 +40,7 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 		backend->initialize(params);
 	}
 	backend->setScene(*scene);
+	lightSampler	 = backend->getSceneData().lightSampler;
 	AABB aabb = scene->getBoundingBox();
 	Allocator& alloc = *gpContext->alloc;
 	if (m_sdTree) alloc.deallocate_object(m_sdTree);

@@ -56,8 +56,8 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 
 KRR_DEVICE_FUNCTION bool alphaKilled() {
 	HitInfo hitInfo			   = getHitInfo();
-	rt::MaterialData &material = *hitInfo.instance->mesh->material;
-	rt::TextureData &opaticyTexture =
+	const rt::MaterialData &material = hitInfo.getMaterial();
+	const rt::TextureData &opaticyTexture =
 		material.mTextures[(uint) Material::TextureType::Transmission];
 	if (!opaticyTexture.isValid()) return false;
 
@@ -170,10 +170,10 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	
 	// transform local interaction to world space 
 	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
-	sd.pos = hitInfo.instance->getTransform() * sd.pos;
-	sd.frame.N = hitInfo.instance->getRotation() * sd.frame.N;
-	sd.frame.T = hitInfo.instance->getRotation() * sd.frame.T;
-	sd.frame.B = hitInfo.instance->getRotation() * sd.frame.B;
+	sd.pos	   = hitInfo.instance->getTransform() * sd.pos;
+	sd.frame.N = hitInfo.instance->getTransposedInverseTransform() * sd.frame.N;
+	sd.frame.T = hitInfo.instance->getTransposedInverseTransform() * sd.frame.T;
+	sd.frame.B = hitInfo.instance->getTransposedInverseTransform() * sd.frame.B;
 }
 
 KRR_NAMESPACE_END

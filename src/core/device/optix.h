@@ -89,12 +89,15 @@ public:
 			sizeof(T), &SBT[entryPoints[entryPoint]], width, height, depth));
 	}
 
+	Scene::SharedPtr getScene() const { return scene; }
 	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
 	rt::SceneData getSceneData() const { return scene->mpSceneRT->getSceneData(); }
+	std::vector<string> getRayTypes() const { return optixParameters.rayTypes; }
+	std::vector<string> getRaygenEntries() const { return optixParameters.raygenEntries; }
 
 protected:
-	void buildAccelStructure(Scene::SharedPtr scene);
-	void buildShaderBindingTable(Scene::SharedPtr scene);
+	void buildAccelStructure();
+	void buildShaderBindingTable();
 
 	OptixProgramGroup createRaygenPG(const char *entrypoint) const;
 	OptixProgramGroup createMissPG(const char *entrypoint) const;
@@ -116,8 +119,8 @@ protected:
 	inter::vector<OptixInstance> instancesIAS;
 	std::vector<OptixTraversableHandle> traversablesGAS;
 	std::vector<CUDABuffer> accelBuffersGAS;
-	CUDABuffer accelBufferIAS;
-	OptixTraversableHandle traversableIAS{};
+	CUDABuffer accelBufferIAS{};
+	OptixTraversableHandle traversableIAS;
 
 	std::map<string, int> entryPoints;
 	std::vector<OptixShaderBindingTable> SBT;
@@ -125,6 +128,5 @@ protected:
 	Scene::SharedPtr scene;
 	OptiXInitializeParameters optixParameters;
 };
-
 
 KRR_NAMESPACE_END

@@ -37,10 +37,10 @@ struct InstanceData {
 	KRR_CALLABLE const MeshData &getMesh() const { return *mesh; }
 	KRR_CALLABLE const MaterialData &getMaterial() const { return mesh->getMaterial(); }
 	KRR_CALLABLE const Affine3f &getTransform() const { return transform; }
-	KRR_CALLABLE const Quaternionf &getRotation() const { return rotation; }
+	KRR_CALLABLE const Matrix3f &getTransposedInverseTransform() const { return transposedInverseTransform; }
 
-	Affine3f transform;		// global affine transform
-	Quaternionf rotation;		// rotation matrix (used for rotating)
+	Affine3f transform;						// global affine transform
+	Matrix3f transposedInverseTransform;	// used to transform directions
 	MeshData *mesh;
 };
 }
@@ -53,6 +53,9 @@ public:
 	int getMeshId() const { return meshId; }
 	std::shared_ptr<Material> getMaterial() const { return material; }
 	AABB getBoundingBox() const { return aabb; }
+	std::string getName() const { return name; }
+
+	void setName(const std::string& name) { this->name = name; }
 
 	std::vector<Vector3f> positions;
 	std::vector<Vector3f> normals;
@@ -61,7 +64,9 @@ public:
 	std::vector<Vector3i> indices;
 
 	std::shared_ptr<Material> material;
+
 	int meshId{-1};
+	std::string name;
 	AABB aabb{};
 	Color Le{};		/* A mesh-specific area light, used when importing pbrt formats. */
 };

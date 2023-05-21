@@ -7,8 +7,9 @@
 KRR_NAMESPACE_BEGIN
 
 Scene::Scene() {
-	mpCamera = Camera::SharedPtr(new Camera());
-	mpCameraController = OrbitCameraController::SharedPtr(new OrbitCameraController(mpCamera));
+	mGraph			   = std::make_shared<SceneGraph>();
+	mpCamera		   = std::make_shared<Camera>();
+	mpCameraController = std::make_shared<OrbitCameraController>(mpCamera);
 }
 
 bool Scene::update(size_t frameIndex){
@@ -20,11 +21,20 @@ bool Scene::update(size_t frameIndex){
 }
 
 void Scene::renderUI() {
+	if (ui::CollapsingHeader("Statistics")) {
+		ui::Text("Meshes: %d", getMeshes().size());
+		ui::Text("Materials: %d", getMaterials().size());
+		ui::Text("Instances: %d", getMeshInstances().size());
+		ui::Text("Environment lights: %d", environments.size());
+	}
 	if (mpCamera && ui::CollapsingHeader("Camera")) {
 		ui::Text("Camera parameters");
 		mpCamera->renderUI();
 		ui::Text("Orbit controller");
 		mpCameraController->renderUI();
+	}
+	if (mGraph && ui::CollapsingHeader("Scene Graph")) {
+		mGraph->renderUI();
 	}
 	if (mpSceneRT && ui::CollapsingHeader("Ray-tracing Data")) {
 		mpSceneRT->renderUI();
@@ -48,6 +58,7 @@ bool Scene::onKeyEvent(const KeyboardEvent& keyEvent){
 }
 
 void Scene::initializeSceneRT() { 
+	update(0);				// must be done before preparing device data.
 	mpSceneRT = std::make_shared<RTScene>(this); 
 	mpSceneRT->toDevice();
 }
@@ -58,6 +69,8 @@ void RTScene::toDevice() {
 		mDeviceData.materials = gpContext->alloc->new_object<inter::vector<rt::MaterialData>>();
 	if (!mDeviceData.meshes)
 		mDeviceData.meshes	= gpContext->alloc->new_object<inter::vector<rt::MeshData>>();
+	if (!mDeviceData.instances)
+		mDeviceData.instances = gpContext->alloc->new_object<inter::vector<rt::InstanceData>>();
 	if (!mDeviceData.lights)
 		mDeviceData.lights	= gpContext->alloc->new_object<inter::vector<Light>>();
 	if (!mDeviceData.infiniteLights)
@@ -68,6 +81,7 @@ void RTScene::toDevice() {
 
 void RTScene::renderUI() {
 	cudaDeviceSynchronize();
+
 	if (ui::CollapsingHeader("Environment lights")) {
 		for (int i = 0; i < mDeviceData.infiniteLights->size(); i++) {
 			if (ui::CollapsingHeader(to_string(i).c_str())) {
@@ -115,8 +129,10 @@ void RTScene::updateSceneData() {
 	for (size_t idx = 0; idx < instances.size(); idx++) {
 		const auto &instance	 = instances[idx];
 		auto &instanceData		 = (*mDeviceData.instances)[idx];
-		instanceData.transform	 = instance->getNode()->getGlobalTransform();
-		instanceData.rotation	 = Quaternionf(instance->getNode()->getGlobalTransform().rotation());
+		Affine3f transform		 = instance->getNode()->getGlobalTransform();
+		instanceData.transform	 = transform;
+		instanceData.transposedInverseTransform =
+			transform.matrix().inverse().transpose().block<3, 3>(0, 0);
 		instanceData.mesh		 = &(*mDeviceData.meshes)[instance->getMesh()->getMeshId()];
 	}
 	processLights();

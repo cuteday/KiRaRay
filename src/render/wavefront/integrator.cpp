@@ -181,8 +181,6 @@ void WavefrontPathTracer::resize(const Vector2i &size) {
 void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
 	mpScene = scene;
-	mpScene->initializeSceneRT();
-	lightSampler = scene->mpSceneRT->getSceneData().lightSampler;
 	if (!backend) {
 		backend		= new OptiXBackend();
 		auto params = OptiXInitializeParameters()
@@ -194,6 +192,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 		backend->initialize(params);
 	}
 	backend->setScene(scene);
+	lightSampler = backend->getSceneData().lightSampler;
 }
 
 void WavefrontPathTracer::beginFrame() {
@@ -254,6 +253,7 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 }
 
 void WavefrontPathTracer::renderUI() {
+	ui::Text("Frame index (seed): %zd", getFrameIndex());
 	ui::Text("Render parameters");
 	ui::InputInt("Samples per pixel", &samplesPerPixel);
 	ui::InputInt("Max bounces", &maxDepth, 1);

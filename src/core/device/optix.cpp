@@ -8,13 +8,12 @@ KRR_NAMESPACE_BEGIN
 OptixPipelineCompileOptions OptiXBackendInterface::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
 	// [TODO] check this: currently we want single-level instancing only.
-	pipelineCompileOptions.traversableGraphFlags	   = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_LEVEL_INSTANCING;
+	pipelineCompileOptions.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
 	pipelineCompileOptions.usesMotionBlur			   = false;
 	pipelineCompileOptions.numPayloadValues			   = 3; /* This restricts maximum number of payload to 3. */
 	pipelineCompileOptions.numAttributeValues		   = 0;
-	pipelineCompileOptions.exceptionFlags = //OPTIX_EXCEPTION_FLAG_NONE;
-		(OPTIX_EXCEPTION_FLAG_STACK_OVERFLOW | OPTIX_EXCEPTION_FLAG_TRACE_DEPTH |
-			OPTIX_EXCEPTION_FLAG_DEBUG);
+	pipelineCompileOptions.exceptionFlags =
+		OPTIX_EXCEPTION_FLAG_STACK_OVERFLOW | OPTIX_EXCEPTION_FLAG_TRACE_DEPTH;
 	pipelineCompileOptions.pipelineLaunchParamsVariableName = "launchParams";
 	return pipelineCompileOptions;
 }
@@ -69,7 +68,6 @@ OptixProgramGroup OptiXBackendInterface::createRaygenPG(OptixDeviceContext optix
 		optixProgramGroupCreate(optixContext, &desc, 1, &pgOptions, log, &logSize, &pg),
 		log);
 	logDebug(log);
-
 	return pg;
 }
 
@@ -133,8 +131,8 @@ OptiXBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstre
 
 	// Figure out memory requirements.
 	OptixAccelBuildOptions accelOptions = {};
-	accelOptions.buildFlags =
-		(OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE);
+	accelOptions.buildFlags				= 
+		OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 	accelOptions.motionOptions.numKeys = 1;
 	accelOptions.operation			   = OPTIX_BUILD_OPERATION_BUILD;
 
@@ -162,6 +160,7 @@ OptiXBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstre
 
 	CUDA_CHECK(cudaFree(tempBuffer));
 	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
+#ifndef KRR_COMPACT_AS
 	uint64_t compactedSize;
 	CUDA_CHECK(cudaMemcpyAsync(&compactedSize, compactedSizePtr, sizeof(uint64_t),
 							   cudaMemcpyDeviceToHost, cudaStream));
@@ -175,9 +174,8 @@ OptiXBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstre
 									  CUdeviceptr(compactedBuffer.data()), compactedSize,
 									  &traversableHandle));
 		CUDA_CHECK(cudaStreamSynchronize(cudaStream));
-		accelBuffer.copy_from_device(compactedBuffer);
-		compactedBuffer.free();
 	}
+#endif
 	return traversableHandle;
 }
 
@@ -185,11 +183,14 @@ OptixTraversableHandle OptiXBackendInterface::buildTriangleMeshGAS(OptixDeviceCo
 																   CUstream cudaStream,
 																   const rt::MeshData &mesh,
 																   CUDABuffer &accelBuffer) {
+	// [TODO] Change scene structure to Mesh->Multi-Geometries, each geometry could have its own material
+	// This could be done by specifying different SBT offset (HG records) for each geometry (?)
+	// i.e. each geometry -> one build input -> one SBT record.
 	OptixBuildInput triangleInputs;
 	uint triangleInputFlags;
 	CUdeviceptr vertexBufferPtr;
 	CUdeviceptr indexBufferPtr;
-
+	
 	indexBufferPtr  = (CUdeviceptr) mesh.indices.data();
 	vertexBufferPtr = (CUdeviceptr) mesh.positions.data();
 
@@ -275,32 +276,31 @@ void OptiXBackend::initialize(const OptiXInitializeParameters &params) {
 		optixPipelineCreate(optixContext, &pipelineCompileOptions,
 							&pipelineLinkOptions, allPGs.data(), allPGs.size(),
 							log, &logSize, &optixPipeline), log);
-	Log(Debug, log);
-
 	OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the
 											 stack size for */
-										  optixPipeline,
-										  2 * 1024, 2 * 1024, 2 * 1024, 1));
+										  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024, 
+		2 /* max traversable graph depth */));
 	Log(Debug, log);
 }
 
 void OptiXBackend::setScene(Scene::SharedPtr _scene) {
 	scene = _scene;
-	buildAccelStructure(scene);
-	buildShaderBindingTable(scene);
+	scene->initializeSceneRT();		// upload bindless scene data to device buffers.
+	buildAccelStructure();			// build single-level IAS.
+	buildShaderBindingTable();		// SBT[Instances [RayTypes ...] ...]
 }
 
 // [TODO] This routine currently do not support rebuild or dynamic update,
 // check back later.
-void OptiXBackend::buildAccelStructure(Scene::SharedPtr scene) {
+void OptiXBackend::buildAccelStructure() {
 	// this is the first time we met...
-	const auto &graph = scene->getSceneGraph();
-	graph->update(0);
-	const auto &sceneDataDevice = scene->mpSceneRT->getSceneData();
-	const auto &instances = scene->getMeshInstances();
-	const auto &meshes	  = scene->getMeshes();
+	const auto &graph			= scene->getSceneGraph();
+	const auto &instances		= scene->getMeshInstances();
+	const auto &meshes			= scene->getMeshes();
+	const auto &sceneDataDevice = getSceneData();
 
 	// build GAS for each mesh
+	traversablesGAS.resize(meshes.size());
 	accelBuffersGAS.resize(meshes.size());
 	for (int idx = 0; idx < meshes.size(); idx++) {
 		const auto &mesh = meshes[idx];
@@ -316,28 +316,29 @@ void OptiXBackend::buildAccelStructure(Scene::SharedPtr scene) {
 		const auto &instance		   = instances[idx];
 		OptixInstance &instanceData	   = instancesIAS[idx];
 		Affine3f transform			   = instance->getNode()->getGlobalTransform();
-		instanceData.sbtOffset		   = 0;
+		instanceData.instanceId		   = idx;
+		instanceData.sbtOffset		   = idx * getRayTypes().size();
 		instanceData.visibilityMask	   = 255;
 		instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 		instanceData.traversableHandle = traversablesGAS[instance->getMesh()->getMeshId()];
-		// filling instance transform
-		for (int row = 0; row < 3; row++)
-			for (int col = 0; col < 4; col++) 
-				instanceData.transform[row * 4 + col] = transform(row, col);
+		// [TODO] Check WHY we should use cudaMemcpy here (instead of memcpy on CPU)? 
+		// [TODO] invoke 1 cudaMemcpy here.
+		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+				   cudaMemcpyHostToDevice);
 	}
 	CUDA_SYNC_CHECK();
 
 	// build IAS
-	OptixBuildInput buildInput			  = {};
-	buildInput.type						  = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
-	buildInput.instanceArray.numInstances = instances.size();
-	buildInput.instanceArray.instances	  = (CUdeviceptr)instancesIAS.data();
+	OptixBuildInput iasBuildInput			 = {};
+	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+	iasBuildInput.instanceArray.numInstances = instances.size();
+	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
 
-	traversableIAS = buildASFromInputs(optixContext, cudaStream, {buildInput}, accelBufferIAS);
+	traversableIAS = buildASFromInputs(optixContext, cudaStream, {iasBuildInput}, accelBufferIAS);
 	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
 }
 
-void OptiXBackend::buildShaderBindingTable(Scene::SharedPtr scene) {
+void OptiXBackend::buildShaderBindingTable() {
 	size_t nRayTypes = optixParameters.rayTypes.size();
 
 	for (const auto [raygenEntry, index] : entryPoints) {

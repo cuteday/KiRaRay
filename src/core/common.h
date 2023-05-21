@@ -33,6 +33,12 @@ typedef unsigned char uchar;
 #define KRR_NAMESPACE_BEGIN namespace krr {
 #define KRR_NAMESPACE_END }
 
+#ifdef KRR_DEBUG_BUILD
+#   define KRR_DEBUG_SELECT(A, B) A
+#else
+#   define KRR_DEBUG_SELECT(A, B) B
+#endif
+
 #if defined(_MSC_VER)
 #  define KRR_DLL_EXPORT __declspec(dllexport)
 #  define KRR_DLL_IMPORT __declspec(dllimport)

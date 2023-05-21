@@ -75,8 +75,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(Closest)() { 
-	if (alphaKilled())
-		optixIgnoreIntersection();
+	if (alphaKilled()) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_MS(Closest)() {
@@ -93,8 +92,7 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(Shadow)() { 
-	if (alphaKilled())
-		optixIgnoreIntersection();
+	if (alphaKilled()) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_MS(Shadow)() { optixSetPayload_0(1); }
@@ -108,7 +106,6 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 			 OptixRayFlags( OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
 		miss);
 	if (miss) launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
-	
 }
 
 KRR_NAMESPACE_END

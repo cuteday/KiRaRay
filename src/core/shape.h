@@ -77,9 +77,9 @@ public:
 
 		// transform to world space [TODO: refactor]
 		p		= instance->getTransform() * p;
-		n		= instance->getRotation() * n;
+		n		= instance->getTransposedInverseTransform() * n;
 		ss.intr = Interaction(p, n, uvSample);
-		ss.pdf = 1 / area();
+		ss.pdf	= 1 / area();
 		return ss;
 	}
 

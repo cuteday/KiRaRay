@@ -98,8 +98,7 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 		logWarning("Material with no name found -> renaming to 'unnamed'");
 		nameStr = "unnamed";
 	}
-	Material::SharedPtr pMaterial =
-		Material::SharedPtr(new Material(nameStr));
+	Material::SharedPtr pMaterial = std::make_shared<Material>(nameStr);
 
 	logDebug("Importing material: " + nameStr);
 	// Load textures. Note that loading is affected by the current shading
@@ -232,7 +231,7 @@ void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial,
 }
 
 using namespace krr::assimp;
-bool AssimpImporter::import(const string &filepath,
+bool AssimpImporter::import(const fs::path filepath,
 							const Scene::SharedPtr pScene) {
 	Assimp::DefaultLogger::create("", Assimp::Logger::NORMAL,
 								  aiDefaultLogStream_STDOUT);
@@ -242,7 +241,8 @@ bool AssimpImporter::import(const string &filepath,
 	unsigned int postProcessSteps = 0 
 									| aiProcess_CalcTangentSpace
 									| aiProcess_FindDegenerates
-									//| aiProcess_OptimizeMeshes
+									| aiProcess_OptimizeMeshes
+									| aiProcess_OptimizeGraph
 									| aiProcess_JoinIdenticalVertices 
 									| aiProcess_FindInvalidData
 									//| aiProcess_MakeLeftHanded
@@ -256,15 +256,14 @@ bool AssimpImporter::import(const string &filepath,
 									| aiProcess_GenUVCoords
 									//| aiProcess_TransformUVCoords
 									| aiProcess_FlipUVs
-									//| aiProcess_FlipWindingOrder
-									//| aiProcess_PreTransformVertices 
+									//| aiProcess_FlipWindingOrder 
 									| aiProcess_GenBoundingBoxes;
 	int removeFlags = aiComponent_COLORS;
 	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS;
 		 uvLayer++)
 		removeFlags |= aiComponent_TEXCOORDSn(uvLayer);
 
-	mFilepath = filepath;
+	mFilepath = filepath.string();
 	mpScene	  = pScene;
 
 	Assimp::Importer importer;
@@ -272,13 +271,13 @@ bool AssimpImporter::import(const string &filepath,
 	importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, 60);
 
 	logDebug("Start loading scene with assimp importer");
-	mpAiScene = (aiScene *) importer.ReadFile(filepath, postProcessSteps);
+	mpAiScene = (aiScene *) importer.ReadFile(filepath.string(), postProcessSteps);
 	if (!mpAiScene) logFatal("Assimp::load model failed");
 
 	logDebug("Start loading materials");
 
-	string modelFolder = getFileDir(filepath);
-	string modelSuffix = getFileExt(filepath);
+	string modelFolder = filepath.parent_path().string();
+	string modelSuffix = filepath.extension().string();
 	if (modelSuffix == ".obj") {
 		mImportMode = ImportMode::OBJ;
 		logInfo(
@@ -288,20 +287,21 @@ bool AssimpImporter::import(const string &filepath,
 		logInfo("Importing GLTF2 model.");
 	}
 
+	auto root = std::make_shared<SceneGraphNode>();
+	mpScene->getSceneGraph()->setRoot(root);
 	loadMaterials(modelFolder);
 	loadMeshes();
-	// load scenegraph via traversal
-	SceneGraphNode::SharedPtr root = std::make_shared<SceneGraphNode>();
-	mpScene->getSceneGraph()->setRoot(root);
 	traverseNode(mpAiScene->mRootNode, root);
+	root->setName(filepath.filename().string());
 	Assimp::DefaultLogger::kill();
 	return true;
 }
 
 void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr graphNode) {
 	Affine3f transform = aiCast(assimpNode->mTransformation);
-	graphNode->setRotation(Quaternionf(transform.rotation()));
-	graphNode->setScaling(transform.scaling());
+	graphNode->setName(std::string(assimpNode->mName.C_Str()));
+	//graphNode->setRotation(Quaternionf(transform.rotation()));
+	//graphNode->setScaling(transform.scaling());
 	graphNode->setTranslation(transform.translation());
 	for (int i = 0; i < assimpNode->mNumMeshes; i++) {
 		// add this mesh into scenegraph
@@ -317,11 +317,11 @@ void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr 
 }
 
 void AssimpImporter::loadMaterials(const string &modelFolder) {
-	mpScene->addMaterial(std::make_shared<Material>("default material"));
+	auto defaultMaterial = std::make_shared<Material>("default material");
+	mpScene->addMaterial(defaultMaterial);
 	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
 		const aiMaterial *aiMaterial = mpAiScene->mMaterials[i];
-		Material::SharedPtr pMaterial =
-			createMaterial(aiMaterial, modelFolder, mImportMode);
+		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);
 		if (pMaterial == nullptr) {
 			logError("Failed to create material...");
 			return;
@@ -367,7 +367,8 @@ void AssimpImporter::loadMeshes() {
 		}
 
 		mesh->material = mpScene->getMaterials()[pAiMesh->mMaterialIndex + 1];
-		mesh->computeBoundingBox();
+		mesh->aabb	   = aiCast(pAiMesh->mAABB);
+		mesh->setName(std::string(pAiMesh->mName.C_Str()));
 		mpScene->getSceneGraph()->addMesh(mesh);
 	}
 }

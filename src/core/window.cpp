@@ -456,12 +456,11 @@ void DeviceManager::UpdateAverageFrameTime(double elapsedTime) {
 
 void DeviceManager::RunMessageLoop() {
 	mPreviousFrameTimestamp = glfwGetTime();
-	++mFrameIndex;	// so we denote the first frame as #1.
 
 	while (!glfwWindowShouldClose(mWindow) && !gpContext->shouldQuit()) {
 
 		if (mcallbacks.beforeFrame) mcallbacks.beforeFrame(*this);
-
+		++mFrameIndex;		// so we denote the first frame as #1.
 		glfwPollEvents();
 		UpdateWindowSize();
 

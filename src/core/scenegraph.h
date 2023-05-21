@@ -42,7 +42,7 @@ private:
 class MeshInstance : public SceneGraphLeaf {
 public:
 	using SharedPtr = std::shared_ptr<MeshInstance>;
-	explicit MeshInstance(Mesh::SharedPtr mesh) : mMesh(std::move(mesh)){};
+	explicit MeshInstance(Mesh::SharedPtr mesh) : mMesh(mesh){};
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	const Mesh::SharedPtr &getMesh() const { return mMesh; }
@@ -182,6 +182,9 @@ public:
 										const SceneGraphLeaf::SharedPtr &leaf);
 	// Detach a node and its subgraph from the graph, then unregister all its resources.
 	SceneGraphNode::SharedPtr detach(const SceneGraphNode::SharedPtr &node);
+
+	void printSceneGraph() const;
+	void renderUI();
 
 protected:
 	virtual void registerLeaf(const SceneGraphLeaf::SharedPtr &leaf);

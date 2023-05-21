@@ -4,6 +4,8 @@
 #include "assimp/scene.h"
 #include "assimp/Importer.hpp"
 
+#include <pbrtParser/Scene.h>
+
 #include "common.h"
 #include "scene.h"
 #include "texture.h"
@@ -36,7 +38,7 @@ public:
 		GLTF2,
 	};
 	AssimpImporter() = default;
-	bool import(const string &filepath, Scene::SharedPtr pScene);
+	bool import(const fs::path filepath, Scene::SharedPtr pScene);
 
 private:
 	AssimpImporter(const AssimpImporter &) = delete;
@@ -55,11 +57,14 @@ private:
 class PbrtImporter {
 public:
 	PbrtImporter() = default;
-	bool import(const string &filepath, Scene::SharedPtr pScene);
+	bool import(const fs::path filepath, Scene::SharedPtr pScene);
 
 private:
 	PbrtImporter(const PbrtImporter &) = delete;
 	void operator=(const PbrtImporter &) = delete;
+
+	Mesh::SharedPtr loadMesh(pbrt::TriangleMesh::SP pbrtMesh);
+	Material::SharedPtr loadMaterial(pbrt::Material::SP pbrtMaterial);
 
 	string resolve(string path);
 
@@ -72,9 +77,9 @@ inline bool loadScene(const fs::path filepath, Scene::SharedPtr pScene) {
 	bool success{};
 	string format = filepath.extension().string();
 	if (format == ".obj" || format == ".gltf" || format == ".glb" || format == ".fbx") {
-		success = AssimpImporter().import(filepath.string(), pScene);
+		success = AssimpImporter().import(filepath, pScene);
 	} else if (format == ".pbrt") {
-		success = PbrtImporter().import(filepath.string(), pScene);
+		success = PbrtImporter().import(filepath, pScene);
 	} else {
 		Log(Fatal, "Unsupported file format: %s...", format.c_str());
 		return false;
