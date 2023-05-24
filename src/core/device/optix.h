@@ -83,8 +83,7 @@ public:
 		if (!launchParams) cudaMalloc(&launchParams, sizeof(T));
 		if (!entryPoints.count(entryPoint))
 			Log(Fatal, "The entrypoint %s is not initialized!", entryPoint.c_str());
-		cudaMemcpy(launchParams, &parameters, sizeof(T),
-				   cudaMemcpyHostToDevice);
+		cudaMemcpy(launchParams, &parameters, sizeof(T), cudaMemcpyHostToDevice);
 		OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream, CUdeviceptr(launchParams), 
 			sizeof(T), &SBT[entryPoints[entryPoint]], width, height, depth));
 	}

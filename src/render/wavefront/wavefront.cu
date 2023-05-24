@@ -101,11 +101,11 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	uint rayIndex(optixGetLaunchIndex().x);
 	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
 	ShadowRayWorkItem r = getShadowRayWorkItem();
-	uint32_t miss{0};
+	uint32_t visible{0};
 	traceRay(launchParams.traversable, r.ray, r.tMax, 1,
 			 OptixRayFlags( OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
-		miss);
-	if (miss) launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
+		visible);
+	if (visible) launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
 }
 
 KRR_NAMESPACE_END

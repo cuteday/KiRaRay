@@ -28,8 +28,6 @@ struct MeshData {
 	TypedBuffer<Vector2f> texcoords;
 	TypedBuffer<Vector3f> tangents;
 	TypedBuffer<Vector3i> indices;
-	TypedBuffer<Triangle> primitives;
-	TypedBuffer<DiffuseAreaLight> lights;
 	MaterialData *material;
 };
 
@@ -39,9 +37,12 @@ struct InstanceData {
 	KRR_CALLABLE const Affine3f &getTransform() const { return transform; }
 	KRR_CALLABLE const Matrix3f &getTransposedInverseTransform() const { return transposedInverseTransform; }
 
-	Affine3f transform;						// global affine transform
-	Matrix3f transposedInverseTransform;	// used to transform directions
-	MeshData *mesh;
+	TypedBuffer<Triangle> primitives;		// Only emissive instances have these
+	TypedBuffer<DiffuseAreaLight> lights;
+
+	Affine3f transform					= Affine3f::Identity();		// global affine transform
+	Matrix3f transposedInverseTransform = Matrix3f::Identity();		// used to transform directions
+	MeshData *mesh						= nullptr;
 };
 }
 

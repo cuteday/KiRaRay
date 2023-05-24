@@ -20,10 +20,9 @@ void WavefrontPathTracer::initialize() {
 	Allocator &alloc = *gpContext->alloc;
 	maxQueueSize	 = mFrameSize[0] * mFrameSize[1];
 	CUDA_SYNC_CHECK(); // necessary, preventing kernel accessing memories tobe free'ed...
-	for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < 2; i++) 
 		if (rayQueue[i]) rayQueue[i]->resize(maxQueueSize, alloc);
 		else rayQueue[i] = alloc.new_object<RayQueue>(maxQueueSize, alloc);
-	}
 	if (missRayQueue) missRayQueue->resize(maxQueueSize, alloc);
 	else missRayQueue = alloc.new_object<MissRayQueue>(maxQueueSize, alloc);
 	if (hitLightRayQueue) hitLightRayQueue->resize(maxQueueSize, alloc);
@@ -111,7 +110,6 @@ void WavefrontPathTracer::generateScatterRays() {
 			if (sampler.get1D() >= probRR)
 				return;
 			w.thp /= probRR;
-
 			const ShadingData &sd = w.sd;
 			Vector3f woLocal	  = sd.frame.toLocal(sd.wo);
 			BSDFType bsdfType	  = sd.getBsdfType();
@@ -119,7 +117,10 @@ void WavefrontPathTracer::generateScatterRays() {
 			if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
+				//printf("Light at ADDR %x\n", light.ptr());
 				LightSample ls			  = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
+				printf("Sampled light at [%f, %f, %f], LUM %f\n", ls.intr.p[0], ls.intr.p[1],
+					   ls.intr.p[2], ls.L.mean());
 				Ray shadowRay			  = sd.getInteraction().spawnRay(ls.intr);
 				Vector3f wiWorld		  = normalize(shadowRay.dir);
 				Vector3f wiLocal		  = sd.frame.toLocal(wiWorld);
@@ -135,9 +136,9 @@ void WavefrontPathTracer::generateScatterRays() {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
 					sw.Li				 = ls.L;
-					sw.a	   = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
-					sw.pixelId = w.pixelId;
-					sw.tMax	   = 1;
+					sw.pixelId			 = w.pixelId;
+					sw.tMax				 = 1;
+					sw.a = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
 					if (sw.a.any()) shadowRayQueue->push(sw);
 				}
 			}
@@ -155,8 +156,7 @@ void WavefrontPathTracer::generateScatterRays() {
 				r.pixelId		 = w.pixelId;
 				r.depth			 = w.depth + 1;
 				r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf;
-				if (any(r.thp))
-					nextRayQueue(w.depth)->push(r);
+				if (any(r.thp)) nextRayQueue(w.depth)->push(r);
 			}
 		});
 }
@@ -240,7 +240,7 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 			// [STEP#2.3] evaluate materials & bsdfs, and generate shadow rays
 			generateScatterRays();
 			// [STEP#2.4] trace shadow rays (next event estimation)
-			if (enableNEE) traceShadow();
+			//if (enableNEE) traceShadow();
 		}
 	}
 	ParallelFor(

@@ -37,11 +37,10 @@ public:
 
 	KRR_DEVICE inline LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
 		LightSample ls = {};
-		
+		//printf("Start Sampling\n");
 		ShapeSampleContext shapeCtx = { ctx.p, ctx.n };
 		ShapeSample ss = shape.sample(u, shapeCtx);
-		assert(!isnan(ss.pdf));
-
+		DCHECK(!isnan(ss.pdf));
 		Interaction& intr = ss.intr;
 		intr.wo = normalize(ctx.p - intr.p);
 

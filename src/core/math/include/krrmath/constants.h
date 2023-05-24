@@ -4,6 +4,12 @@
 #ifdef __CUDACC__
 #include <math_constants.h>
 #endif
+
+#ifdef _MSC_VER // eliminate macro redefinition warning
+#include "corecrt_math_defines.h"
+#undef M_PI
+#endif
+
 #include "common.h"
 
 #ifndef M_PI

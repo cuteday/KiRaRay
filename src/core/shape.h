@@ -52,6 +52,7 @@ public:
 	KRR_CALLABLE ShapeSample sample(Vector2f u) const {
 		// uniform sample on triangle
 		ShapeSample ss = {};
+		printf("Start shape sampling routine\n");
 		rt::MeshData *mesh = instance->mesh;
 		Vector3i v = mesh->indices[primId];
 		Vector3f p0 = mesh->positions[v[0]], p1 = mesh->positions[v[1]],

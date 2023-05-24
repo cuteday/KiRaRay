@@ -174,16 +174,15 @@ void RTScene::processLights() {
 					 " constant emission(?): %f", mesh->indices.size(), luminance(Le));
 			std::vector<Triangle> primitives = createTrianglePrimitives(mesh, &instanceData);
 			size_t n_primitives				 = primitives.size();
-			meshData.primitives.alloc_and_copy_from_host(primitives);
-			meshData.lights.resize(primitives.size());
+			instanceData.primitives.alloc_and_copy_from_host(primitives);
 			std::vector<DiffuseAreaLight> lights(n_primitives);
 			for (size_t triId = 0; triId < n_primitives; triId++) {
-				lights[triId] = DiffuseAreaLight(Shape(&meshData.primitives[triId]),
-									 textureData, Le, true, 1.f);
+				lights[triId] =
+					DiffuseAreaLight(Shape(&instanceData.primitives[triId]), textureData, Le, true);
 			}
-			meshData.lights.alloc_and_copy_from_host(lights);
+			instanceData.lights.alloc_and_copy_from_host(lights);
 			for (size_t triId = 0; triId < n_primitives; triId++) 
-				mDeviceData.lights->push_back(Light(&meshData.lights[triId]));
+				mDeviceData.lights->push_back(Light(&instanceData.lights[triId]));
 		}
 	}
 	for (InfiniteLight &light : *mDeviceData.infiniteLights)

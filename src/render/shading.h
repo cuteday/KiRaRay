@@ -86,9 +86,10 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	// the object, we can use this convention to determine whether an incident ray is coming from
 	// outside of the object.
 
-	Vector3f b				 = hitInfo.barycentric;
-	const rt::MeshData &mesh = hitInfo.getMesh();
-	Vector3i v				 = mesh.indices[hitInfo.primitiveId];
+	const rt::InstanceData &instance = hitInfo.getInstance();
+	const rt::MeshData &mesh		 = hitInfo.getMesh();
+	Vector3f b						 = hitInfo.barycentric;
+	Vector3i v						 = mesh.indices[hitInfo.primitiveId];
 	
 	sd.wo  = normalize(hitInfo.wo);
 
@@ -123,8 +124,8 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 		sd.uv		   = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
 	}
 
-	if (mesh.lights.size())
-		sd.light = &mesh.lights[hitInfo.primitiveId];
+	if (instance.lights.size())
+		sd.light = &instance.lights[hitInfo.primitiveId];
 	else sd.light = nullptr;
 
 	const Material::MaterialParams &materialParams = material.mMaterialParams;
@@ -140,9 +141,9 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	const rt::TextureData &normalTexture =
 		material.mTextures[(uint) Material::TextureType::Normal];
 
-	Vector4f diff	   = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
-	Vector4f spec	   = sampleTexture(specularTexture, sd.uv, materialParams.specular);
-	Vector3f baseColor = (Vector3f) diff;
+	Color4f diff	   = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
+	Color4f spec	   = sampleTexture(specularTexture, sd.uv, materialParams.specular);
+	Color3f baseColor  = (Color3f) diff;
 
 	if (normalTexture.isValid()) { // be cautious if we have the tangent space TBN
 		Vector3f normal = sampleTexture(normalTexture, sd.uv, Color3f{ 0, 0, 1 });
@@ -156,14 +157,14 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// [SPECULAR] G - Roughness; B - Metallic
-		sd.diffuse	 = lerp(baseColor, Vector3f::Zero(), spec[2]);
-		sd.specular	 = lerp(Vector3f::Zero(), baseColor, spec[2]);
+		sd.diffuse	 = lerp(baseColor, Color3f::Zero(), spec[2]);
+		sd.specular	 = lerp(Color3f::Zero(), baseColor, spec[2]);
 		sd.metallic	 = spec[2];
 		sd.roughness = spec[1];
 	} else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		// [SPECULAR] RGB - Specular Color; A - Glossiness
 		sd.diffuse	 = baseColor;
-		sd.specular	 = (Vector3f) spec; // specular reflectance
+		sd.specular	 = (Color3f) spec; // specular reflectance
 		sd.roughness = 1.f - spec[3];	//
 		sd.metallic	 = getMetallic(sd.diffuse, sd.specular);
 	} else assert(false);

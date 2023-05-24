@@ -137,11 +137,12 @@ void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 	for (int i = 0; i < materials.size(); i++) {
 		const auto &material = materials[i];
 		rs::MaterialConstants materialConstants;
-		materialConstants.baseColor = material->mMaterialParams.diffuse;
+		materialConstants.baseColor		= material->mMaterialParams.diffuse;
 		materialConstants.specularColor = material->mMaterialParams.specular;
 		materialConstants.IoR			= material->mMaterialParams.IoR;
 		materialConstants.opacity		= material->mMaterialParams.specularTransmission;
-		materialConstants.metalRough = material->mShadingModel == Material::ShadingModel::MetallicRoughness;
+		materialConstants.metalRough =
+			material->mShadingModel == Material::ShadingModel::MetallicRoughness;
 		
 		const auto &textures = mMaterialTextures[i];
 		materialConstants.baseTextureIndex =
