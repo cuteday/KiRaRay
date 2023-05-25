@@ -202,7 +202,7 @@ private:
 	uint32_t mCurrentLevel = 0;                         ///< Current nesting level.
 	uint32_t mFrameIndex = 0;                           ///< Current frame index.
 
-	Capture::SharedPtr mpCapture;                       ///< Currently active capture.
+	Capture::SharedPtr mCapture;                       ///< Currently active capture.
 };
 
 /** Helper class for starting and ending profiling events using RAII.

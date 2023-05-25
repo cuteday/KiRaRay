@@ -90,7 +90,7 @@ public:
 	VKScene() = default;
 	VKScene(Scene *scene, vkrhi::vulkan::IDevice* device, 
 		std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr) : 
-		mpScene(scene), mDevice(device), mDescriptorTable(descriptorTable) {}
+		mScene(scene), mDevice(device), mDescriptorTable(descriptorTable) {}
 	~VKScene() = default;
 
 	[[nodiscard]] vkrhi::IBuffer* getMaterialBuffer() const { return mMaterialConstantsBuffer; }
@@ -104,7 +104,7 @@ protected:
 	void writeMaterialBuffer(vkrhi::ICommandList *commandList);
 	void writeGeometryBuffer(vkrhi::ICommandList *commandList);
 
-	Scene *mpScene{};
+	Scene *mScene{};
 	vkrhi::vulkan::DeviceHandle mDevice{};
 	std::shared_ptr<DescriptorTableManager> mDescriptorTable{};
 	std::shared_ptr<TextureCache> mTextureLoader;

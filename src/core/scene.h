@@ -35,8 +35,8 @@ public:
 	bool getChanges() const { return mHasChanges; }
 	void renderUI();
 
-	Camera& getCamera() { return *mpCamera; }
-	CameraController& getCameraController() { return *mpCameraController; }
+	Camera& getCamera() { return *mCamera; }
+	CameraController& getCameraController() { return *mCameraController; }
 	SceneGraph::SharedPtr getSceneGraph() { return mGraph; }
 
 	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mGraph->getMeshInstances(); }
@@ -45,36 +45,36 @@ public:
 	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(mesh); }
 	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(material); }
 
-	void setCamera(const Camera &camera) { *mpCamera = camera; }
+	void setCamera(const Camera &camera) { *mCamera = camera; }
 	void setCameraController(const OrbitCameraController &cameraController) {
-		*mpCameraController = cameraController;
+		*mCameraController = cameraController;
 	}
 	void addEnvironmentMap(Texture::SharedPtr infiniteLight);
 	
 	void loadConfig(const json &config) { 
-		mpCamera = std::make_shared<Camera>(config.at("camera")); 
-		mpCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
-		mpCameraController->setCamera(mpCamera);
+		mCamera = std::make_shared<Camera>(config.at("camera")); 
+		mCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
+		mCameraController->setCamera(mCamera);
 	}
 	
 	AABB getBoundingBox() const { return mGraph->getRoot()->getGlobalBoundingBox(); }
 
 	friend void to_json(json& j, const Scene& scene) { 
 		j = json{ 
-			{ "camera", *scene.mpCamera }, 
+			{ "camera", *scene.mCamera }, 
 			{ "cameraController", *std::dynamic_pointer_cast
-				<OrbitCameraController>(scene.mpCameraController) },
+				<OrbitCameraController>(scene.mCameraController) },
 		};
 	}
 
 	SceneGraph::SharedPtr mGraph;
-	Camera::SharedPtr mpCamera;
-	OrbitCameraController::SharedPtr mpCameraController;
+	Camera::SharedPtr mCamera;
+	OrbitCameraController::SharedPtr mCameraController;
 	std::vector<Texture::SharedPtr> environments;
 	bool mHasChanges = false;
 
-	std::shared_ptr<RTScene> mpSceneRT;
-	std::shared_ptr<VKScene> mpSceneVK;
+	std::shared_ptr<RTScene> mSceneRT;
+	std::shared_ptr<VKScene> mSceneVK;
 	void initializeSceneRT();
 	void initializeSceneVK(nvrhi::vulkan::IDevice* device,
 		std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr);
@@ -98,7 +98,7 @@ public:
 	using SharedPtr = std::shared_ptr<RTScene>;
 
 	RTScene() = default;
-	RTScene(Scene* scene) : mpScene(scene){}
+	RTScene(Scene* scene) : mScene(scene){}
 	~RTScene() = default;
 
 	void toDevice();
@@ -109,7 +109,7 @@ public:
 private:
 	void processLights();
 
-	Scene* mpScene;
+	Scene* mScene;
 	rt::SceneData mDeviceData;
 };
 

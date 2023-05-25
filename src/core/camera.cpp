@@ -42,8 +42,8 @@ bool OrbitCameraController::update(){
 	Vector3f forward = rotate * Vector3f(0, 0, -1);
 	Vector3f pos = mData.target - forward * mData.radius;
 
-	mpCamera->setPosition(pos);
-	mpCamera->setTarget(mData.target);
+	mCamera->setPosition(pos);
+	mCamera->setTarget(mData.target);
 
 	bool hasChanges = (bool)memcmp(&mData, &mDataPrev, sizeof(CameraControllerData));
 	mDataPrev = mData;
@@ -73,8 +73,8 @@ bool OrbitCameraController::onMouseEvent(const MouseEvent& mouseEvent){
 		Vector2f deltaPos = curMousePos - mLastMousePos;
 		mLastMousePos = curMousePos;
 		if (mPanning && mOrbiting) {
-			mData.target -= mpCamera->getRight() * mData.radius * mPanSpeed * deltaPos[0];
-			mData.target += mpCamera->getUp() * mData.radius * mPanSpeed * deltaPos[1];
+			mData.target -= mCamera->getRight() * mData.radius * mPanSpeed * deltaPos[0];
+			mData.target += mCamera->getUp() * mData.radius * mPanSpeed * deltaPos[1];
 		}
 		else if(mOrbiting){	
 			mData.yaw -= deltaPos[0] * mOrbitSpeed;

@@ -110,8 +110,8 @@ void BindlessRender::initialize() {
 		getVulkanDevice(), mBindlessLayout);
 	/* Initialize scene data on vulkan device. */
 	// TODO: It seems possible to share the device buffer between vulkan and cuda/optix.
-	mpScene->initializeSceneVK(getVulkanDevice(), mDescriptorTableManager);
-	std::shared_ptr<VKScene> scene = mpScene->mpSceneVK;
+	mScene->initializeSceneVK(getVulkanDevice(), mDescriptorTableManager);
+	std::shared_ptr<VKScene> scene = mScene->mSceneVK;
 
 	mCommandList = getVulkanDevice()->createCommandList();
 	
@@ -202,12 +202,12 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 		vkrhi::Viewport(0, fbInfo.width, 0, fbInfo.height, 0.f, 1.f));
 	mCommandList->setGraphicsState(state);
 
-	for (int meshId = 0; meshId < mpScene->getMeshes().size(); meshId++) {
+	for (int meshId = 0; meshId < mScene->getMeshes().size(); meshId++) {
 		mCommandList->setPushConstants(&meshId, sizeof(int));
 		
 		vkrhi::DrawArguments args;
 		args.instanceCount = 1;
-		args.vertexCount   = mpScene->getMeshes()[meshId]->indices.size() * 3;
+		args.vertexCount   = mScene->getMeshes()[meshId]->indices.size() * 3;
 		mCommandList->draw(args);
 	}
 	

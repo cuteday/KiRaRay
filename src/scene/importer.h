@@ -50,8 +50,8 @@ private:
 
 	ImportMode mImportMode = ImportMode::Default;
 	string mFilepath;
-	aiScene *mpAiScene = nullptr;
-	Scene::SharedPtr mpScene;
+	aiScene *mAiScene = nullptr;
+	Scene::SharedPtr mScene;
 };
 
 class PbrtImporter {
@@ -70,7 +70,7 @@ private:
 
 	string mFilepath;
 	string mBasepath;
-	Scene::SharedPtr mpScene;
+	Scene::SharedPtr mScene;
 };
 
 inline bool loadScene(const fs::path filepath, Scene::SharedPtr pScene) {

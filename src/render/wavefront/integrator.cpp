@@ -82,7 +82,7 @@ void WavefrontPathTracer::handleHit() {
 
 void WavefrontPathTracer::handleMiss() {
 	PROFILE("Process escaped rays");
-	const rt::SceneData &sceneData = mpScene->mpSceneRT->getSceneData();
+	const rt::SceneData &sceneData = mScene->mSceneRT->getSceneData();
 	ForAllQueued(
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
 			Color L = {};
@@ -177,7 +177,7 @@ void WavefrontPathTracer::resize(const Vector2i &size) {
 
 void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
-	mpScene = scene;
+	mScene = scene;
 	if (!backend) {
 		backend		= new OptiXBackend();
 		auto params = OptiXInitializeParameters()
@@ -193,10 +193,10 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 }
 
 void WavefrontPathTracer::beginFrame() {
-	if (!mpScene || !maxQueueSize)
+	if (!mScene || !maxQueueSize)
 		return;
 	PROFILE("Begin frame");
-	cudaMemcpy(camera, &mpScene->getCamera(), sizeof(Camera), cudaMemcpyHostToDevice);
+	cudaMemcpy(camera, &mScene->getCamera(), sizeof(Camera), cudaMemcpyHostToDevice);
 	size_t frameIndex = getFrameIndex();
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
@@ -208,7 +208,7 @@ void WavefrontPathTracer::beginFrame() {
 }
 
 void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
-	if (!mpScene || !maxQueueSize)
+	if (!mScene || !maxQueueSize)
 		return;
 	PROFILE("Wavefront Path Tracer");
 	CudaRenderTarget frameBuffer = frame->getCudaRenderTarget();

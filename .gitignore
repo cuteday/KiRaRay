@@ -53,5 +53,6 @@ CMakeSettings.json
 temp
 /common/outputs
 /common/assets/scenes/local
+/common/assets/scenes/pbrt
 /common/images
 imgui.ini

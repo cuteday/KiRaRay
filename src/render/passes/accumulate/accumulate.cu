@@ -15,7 +15,7 @@ void AccumulatePass::reset() {
 void AccumulatePass::render(RenderFrame::SharedPtr frame) {
 	if (!mEnable) return;
 	PROFILE("Accumulate pass");
-	if (mpScene->getChanges()) reset();
+	if (mScene->getChanges()) reset();
 	Color4f *accumBuffer = (Color4f *) mAccumBuffer->data();
 	CudaRenderTarget currentBuffer = frame->getCudaRenderTarget();
 	GPUParallelFor(mFrameSize[0] * mFrameSize[1], KRR_DEVICE_LAMBDA(int i) {

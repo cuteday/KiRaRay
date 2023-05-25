@@ -29,7 +29,7 @@ public:
 	}
 
 	void setScene(Scene::SharedPtr scene) override {
-		mpScene = scene;
+		mScene = scene;
 	}
 
 	string getName() const override { return "BDPTIntegrator"; }

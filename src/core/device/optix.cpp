@@ -354,7 +354,7 @@ void OptiXBackend::buildShaderBindingTable() {
 	}
 
 	const auto &instances	 = scene->getMeshInstances();
-	rt::SceneData &sceneData = scene->mpSceneRT->getSceneData();
+	rt::SceneData &sceneData = scene->mSceneRT->getSceneData();
 	for (uint instanceId = 0; instanceId < instances.size(); instanceId++) {
 		for (uint rayType = 0; rayType < nRayTypes; rayType++) {
 			HitgroupRecord hitgroupRecord = {};

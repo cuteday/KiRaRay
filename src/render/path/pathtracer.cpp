@@ -25,7 +25,7 @@ MegakernelPathTracer::~MegakernelPathTracer() { delete optixBackend; }
 
 void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
-	mpScene = scene;
+	mScene = scene;
 	optixBackend->setScene(scene);
 }
 
@@ -51,8 +51,8 @@ void MegakernelPathTracer::render(RenderFrame::SharedPtr frame) {
 	{
 		launchParams.fbSize		 = mFrameSize;
 		launchParams.colorBuffer = frame->getCudaRenderTarget();
-		launchParams.camera		 = mpScene->getCamera();
-		launchParams.sceneData	 = mpScene->mpSceneRT->getSceneData();
+		launchParams.camera		 = mScene->getCamera();
+		launchParams.sceneData	 = mScene->mSceneRT->getSceneData();
 		launchParams.traversable = optixBackend->getRootTraversable();
 		launchParams.frameID	 = (uint)getFrameIndex();
 

@@ -22,8 +22,8 @@ void RenderApp::BackBufferResizing() {
 
 void RenderApp::BackBufferResized() {
 	DeviceManager::BackBufferResized();
-	if (mpScene)
-		mpScene->getCamera().setAspectRatio((float) 
+	if (mScene)
+		mScene->getCamera().setAspectRatio((float) 
 			mDeviceParams.backBufferWidth /
 			mDeviceParams.backBufferHeight);
 	CUDA_SYNC_CHECK();
@@ -32,7 +32,7 @@ void RenderApp::BackBufferResized() {
 bool RenderApp::onMouseEvent(io::MouseEvent &mouseEvent) {
 	if (mpUIRenderer->onMouseEvent(mouseEvent)) return true;
 	if (DeviceManager::onMouseEvent(mouseEvent)) return true;
-	if (mpScene && mpScene->onMouseEvent(mouseEvent)) return true;
+	if (mScene && mScene->onMouseEvent(mouseEvent)) return true;
 	return false;
 }
 
@@ -49,12 +49,12 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 	}
 	if (mpUIRenderer->onKeyEvent(keyEvent)) return true;
 	if (DeviceManager::onKeyEvent(keyEvent)) return true;
-	if (mpScene && mpScene->onKeyEvent(keyEvent)) return true;
+	if (mScene && mScene->onKeyEvent(keyEvent)) return true;
 	return false;
 }
 
 void RenderApp::setScene(Scene::SharedPtr scene) {
-	mpScene = scene;
+	mScene = scene;
 	for (auto p : mRenderPasses) if (p) p->setScene(scene);
 }
 
@@ -73,7 +73,7 @@ void RenderApp::Render() {
 	if (sSaveFrames && GetFrameIndex() % sSaveFrameInterval == 0)
 		sRequestScreenshot = true;
 
-	if (mpScene) mpScene->update(GetFrameIndex());
+	if (mScene) mScene->update(GetFrameIndex());
 	BeginFrame();
 	auto framebuffer = mRenderFramebuffers[GetCurrentBackBufferIndex()];
 	mpUIRenderer->beginFrame();
@@ -159,8 +159,8 @@ void RenderApp::renderUI() {
 			if (ui::Button("Save config"))
 				saveConfig(saveConfigBuf);
 		}
-		if (mpScene && ui::CollapsingHeader("Scene"))
-			mpScene->renderUI();
+		if (mScene && ui::CollapsingHeader("Scene"))
+			mScene->renderUI();
 		for (auto p : mRenderPasses)
 			if (p && ui::CollapsingHeader(p->getName().c_str()))
 				p->renderUI();
@@ -168,10 +168,10 @@ void RenderApp::renderUI() {
 	}
 
 	if (Profiler::instance().isEnabled()) {
-		if (!mpProfilerUI)
-			mpProfilerUI = ProfilerUI::create(Profiler::instancePtr());
+		if (!mProfilerUI)
+			mProfilerUI = ProfilerUI::create(Profiler::instancePtr());
 		ui::Begin("Profiler", &showProfiler);
-		mpProfilerUI->render();
+		mProfilerUI->render();
 		ui::End();
 	}
 	ui::PopStyleVar();
@@ -225,7 +225,7 @@ void RenderApp::saveConfig(string path) {
 	GetWindowDimensions(resolution[0], resolution[1]);
 	json config			 = mConfig;
 	config["resolution"] = resolution;
-	config["scene"]		 = *mpScene;
+	config["scene"]		 = *mScene;
 	json passes			 = {};
 	for (RenderPass::SharedPtr p : mRenderPasses) {
 		json p_cfg{ { "name", p->getName() }, { "enable", p->enabled() } };
@@ -266,7 +266,7 @@ void RenderApp::loadConfig(const json config) {
 		}
 	} else
 		logWarning("No specified render pass in configuration!");
-	Scene::SharedPtr scene{ mpScene };
+	Scene::SharedPtr scene { mScene };
 	if (config.contains("model")) {
 		scene		 = std::make_shared<Scene>();
 		string model = config["model"].get<string>();
@@ -313,7 +313,7 @@ void RenderApp::finalize() {
 		pass->finalize();
 	mpUIRenderer.reset();
 	mRenderPasses.clear();
-	mpScene.reset();
+	mScene.reset();
 	// Destroy created vulkan resources before destroy vulkan device
 	Shutdown();
 }

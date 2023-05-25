@@ -234,7 +234,7 @@ Material::SharedPtr PbrtImporter::loadMaterial(pbrt::Material::SP mat) {
 	if (matParams.IoR == 1) // 1-ETA is not plausible for transmission
 		matParams.IoR = 1.001;
 
-	mpScene->addMaterial(material);
+	mScene->addMaterial(material);
 	loadedMaterials[mat] = material;
 	return material;
 }
@@ -280,14 +280,14 @@ Mesh::SharedPtr PbrtImporter::loadMesh(pbrt::TriangleMesh::SP pbrtMesh) {
 	if (pbrtMesh->areaLight) createAreaLight(mesh, pbrtMesh->areaLight);
 	mesh->setName(pbrtMesh->toString());
 	loadedMeshes[pbrtMesh] = mesh;
-	mpScene->addMesh(mesh);
+	mScene->addMesh(mesh);
 	return mesh;
 }
 
 bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {
 	string basepath = fs::path(filepath).parent_path().string();
 	mBasepath		= basepath;
-	mpScene			= pScene;
+	mScene			= pScene;
 
 	Log(Info, "Attempting to load pbrt scene from %s...", filepath.c_str());
 	pbrt::Scene::SP scene = pbrt::importPBRT(filepath.string());
@@ -298,7 +298,7 @@ bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {
 	scene->makeSingleLevel(); // since currently kiraray supports only single gas.
 
 	auto root = std::make_shared<SceneGraphNode>();
-	mpScene->getSceneGraph()->setRoot(root);
+	mScene->getSceneGraph()->setRoot(root);
 
 	pScene->addMaterial(std::make_shared<Material>("default material")); 
 	// the default material for shapes without material
@@ -307,7 +307,7 @@ bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {
 	for (const pbrt::Instance::SP inst : scene->world->instances) {
 		Affine3f transform = cast(inst->xfm); // the instance's local transform
 		auto node		   = std::make_shared<SceneGraphNode>();
-		mpScene->getSceneGraph()->attach(root, node);
+		mScene->getSceneGraph()->attach(root, node);
 		node->setScaling(transform.scaling());
 		node->setRotation(Quaternionf(transform.rotation()));
 		node->setTranslation(transform.translation());
@@ -315,7 +315,7 @@ bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {
 			if (auto m = std::dynamic_pointer_cast<pbrt::TriangleMesh>(geom)) {
 				Mesh::SharedPtr mesh = loadMesh(m);
 				auto meshInstance	 = std::make_shared<MeshInstance>(mesh);
-				mpScene->getSceneGraph()->attachLeaf(node, meshInstance);
+				mScene->getSceneGraph()->attachLeaf(node, meshInstance);
 			} else {
 				Log(Debug, "Encountered unsupported pbrt shape type: %s",
 					geom->toString().c_str());
@@ -328,7 +328,7 @@ bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {
 			Log(Debug, "Encountered infinite light %s", l->mapName.c_str());
 	}
 
-	Log(Info, "PBRT scene loaded %zd meshes", mpScene->getMeshes().size());
+	Log(Info, "PBRT scene loaded %zd meshes", mScene->getMeshes().size());
 	return true;
 }
 

@@ -8,14 +8,14 @@ KRR_NAMESPACE_BEGIN
 
 Scene::Scene() {
 	mGraph			   = std::make_shared<SceneGraph>();
-	mpCamera		   = std::make_shared<Camera>();
-	mpCameraController = std::make_shared<OrbitCameraController>(mpCamera);
+	mCamera		   = std::make_shared<Camera>();
+	mCameraController = std::make_shared<OrbitCameraController>(mCamera);
 }
 
 bool Scene::update(size_t frameIndex){
 	bool hasChanges = false;
-	if (mpCameraController) hasChanges |= mpCameraController->update();
-	if (mpCamera) hasChanges |= mpCamera->update();
+	if (mCameraController) hasChanges |= mCameraController->update();
+	if (mCamera) hasChanges |= mCamera->update();
 	mGraph->update(frameIndex);
 	return mHasChanges = hasChanges;
 }
@@ -27,17 +27,17 @@ void Scene::renderUI() {
 		ui::Text("Instances: %d", getMeshInstances().size());
 		ui::Text("Environment lights: %d", environments.size());
 	}
-	if (mpCamera && ui::CollapsingHeader("Camera")) {
+	if (mCamera && ui::CollapsingHeader("Camera")) {
 		ui::Text("Camera parameters");
-		mpCamera->renderUI();
+		mCamera->renderUI();
 		ui::Text("Orbit controller");
-		mpCameraController->renderUI();
+		mCameraController->renderUI();
 	}
 	if (mGraph && ui::CollapsingHeader("Scene Graph")) {
 		mGraph->renderUI();
 	}
-	if (mpSceneRT && ui::CollapsingHeader("Ray-tracing Data")) {
-		mpSceneRT->renderUI();
+	if (mSceneRT && ui::CollapsingHeader("Ray-tracing Data")) {
+		mSceneRT->renderUI();
 	}
 }
 
@@ -46,21 +46,21 @@ void Scene::addEnvironmentMap(Texture::SharedPtr infiniteLight) {
 }
 
 bool Scene::onMouseEvent(const MouseEvent& mouseEvent){
-	if(mpCameraController && mpCameraController->onMouseEvent(mouseEvent))
+	if(mCameraController && mCameraController->onMouseEvent(mouseEvent))
 		return true;
 	return false;
 }
 
 bool Scene::onKeyEvent(const KeyboardEvent& keyEvent){
-	if(mpCameraController && mpCameraController->onKeyEvent(keyEvent))
+	if(mCameraController && mCameraController->onKeyEvent(keyEvent))
 		return true;
 	return false;
 }
 
 void Scene::initializeSceneRT() { 
 	update(0);				// must be done before preparing device data.
-	mpSceneRT = std::make_shared<RTScene>(this); 
-	mpSceneRT->toDevice();
+	mSceneRT = std::make_shared<RTScene>(this); 
+	mSceneRT->toDevice();
 }
 
 void RTScene::toDevice() {
@@ -101,7 +101,7 @@ void RTScene::renderUI() {
 
 void RTScene::updateSceneData() {
 	/* Upload texture and material data to device... */
-	auto& materials = mpScene->getMaterials();
+	auto& materials = mScene->getMaterials();
 	mDeviceData.materials->resize(materials.size());
 	for (size_t idx = 0; idx < materials.size(); idx++) {
 		const auto &material = materials[idx];
@@ -110,7 +110,7 @@ void RTScene::updateSceneData() {
 	}
 
 	/* Upload mesh data to device... */
-	auto &meshes = mpScene->getMeshes();
+	auto &meshes = mScene->getMeshes();
 	mDeviceData.meshes->resize(meshes.size());
 	for (size_t idx = 0; idx < meshes.size(); idx++) {
 		const auto &mesh = meshes[idx];
@@ -124,7 +124,7 @@ void RTScene::updateSceneData() {
 	}
 
 	/* Upload instance data to device... */
-	auto &instances = mpScene->getMeshInstances();
+	auto &instances = mScene->getMeshInstances();
 	mDeviceData.instances->resize(instances.size());
 	for (size_t idx = 0; idx < instances.size(); idx++) {
 		const auto &instance	 = instances[idx];
@@ -151,7 +151,7 @@ void RTScene::processLights() {
 		return triangles;
 	};
 
-	auto infiniteLights = mpScene->environments;
+	auto infiniteLights = mScene->environments;
 	mDeviceData.infiniteLights->reserve(infiniteLights.size());
 	for (auto& infiniteLight : infiniteLights) {
 		rt::TextureData textureData;
@@ -159,8 +159,8 @@ void RTScene::processLights() {
 		mDeviceData.infiniteLights->push_back(InfiniteLight(textureData));
 	}
 
-	uint nMeshes = mpScene->getMeshes().size();
-	for (const auto &instance: mpScene->getMeshInstances()) {
+	uint nMeshes = mScene->getMeshes().size();
+	for (const auto &instance: mScene->getMeshInstances()) {
 		const auto &mesh			   = instance->getMesh();
 		const auto &material		   = mesh->getMaterial();
 		rt::MaterialData &materialData = (*mDeviceData.materials)[material->getMaterialId()];

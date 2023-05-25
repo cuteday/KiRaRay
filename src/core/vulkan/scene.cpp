@@ -5,13 +5,13 @@ KRR_NAMESPACE_BEGIN
 
 void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device, 
 	std::shared_ptr<DescriptorTableManager> descriptorTable) { 
-	mpSceneVK = std::make_shared<VKScene>(this, device, descriptorTable); 
+	mSceneVK = std::make_shared<VKScene>(this, device, descriptorTable); 
 	vkrhi::CommandListHandle commandList = device->createCommandList();
 	commandList->open();
-	mpSceneVK->writeMeshBuffers(commandList);		// bindless buffers
-	mpSceneVK->writeMaterialTextures(commandList);	// bindless textures
-	mpSceneVK->writeMaterialBuffer(commandList);
-	mpSceneVK->writeGeometryBuffer(commandList);
+	mSceneVK->writeMeshBuffers(commandList);		// bindless buffers
+	mSceneVK->writeMaterialTextures(commandList);	// bindless textures
+	mSceneVK->writeMaterialBuffer(commandList);
+	mSceneVK->writeGeometryBuffer(commandList);
 	commandList->close();
 	device->executeCommandList(commandList);
 	device->waitForIdle();
@@ -25,7 +25,7 @@ void VKScene::writeMeshBuffers(vkrhi::ICommandList *commandList) {
 		currentBufferSize += size;
 	};
 	mMeshBuffers.clear();
-	for (const auto &mesh : mpScene->getMeshes()) {
+	for (const auto &mesh : mScene->getMeshes()) {
 		mMeshBuffers.push_back(rs::MeshBuffers());
 		rs::MeshBuffers &buffers = mMeshBuffers.back();
 		
@@ -115,7 +115,7 @@ void VKScene::writeMaterialTextures(vkrhi::ICommandList* commandList) {
 	mMaterialTextures.clear();
 	if (!mTextureLoader) mTextureLoader =
 			std::make_shared<TextureCache>(mDevice, mDescriptorTable);
-	for (auto material : mpScene->getMaterials()) {
+	for (auto material : mScene->getMaterials()) {
 		mMaterialTextures.push_back(rs::MaterialTextures());
 		auto &textures = mMaterialTextures.back();
 		for (int type = 0; type < (int) Material::TextureType::Count; type++) {
@@ -133,7 +133,7 @@ void VKScene::writeMaterialTextures(vkrhi::ICommandList* commandList) {
 
 void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 	/* Fill material constants buffer on host. */
-	auto &materials = mpScene->getMaterials();
+	auto &materials = mScene->getMaterials();
 	for (int i = 0; i < materials.size(); i++) {
 		const auto &material = materials[i];
 		rs::MaterialConstants materialConstants;
@@ -177,7 +177,7 @@ void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 	/* Fill mesh data buffer on host. */
 	/* Normally, a instance is from a mesh, which may contain several geometries.
 		In kiraray, we simply ignore this (i.e. the concept of geometry and instances). */
-	auto meshes = mpScene->getMeshes();
+	auto meshes = mScene->getMeshes();
 	for (int i = 0; i < meshes.size(); i++) {
 		const auto &mesh = meshes[i];
 		rs::MeshData meshData;

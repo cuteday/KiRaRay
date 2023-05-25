@@ -27,7 +27,7 @@ public:
 	void render();
 
 private:
-	ProfilerUI(const Profiler::SharedPtr& pProfiler) : mpProfiler(pProfiler) {}
+	ProfilerUI(const Profiler::SharedPtr& pProfiler) : mProfiler(pProfiler) {}
 
 	/** Render the profiler options.
 	*/
@@ -54,7 +54,7 @@ private:
 	*/
 	void clearGraphData();
 
-	Profiler::SharedPtr mpProfiler;         ///< Profiler instance.
+	Profiler::SharedPtr mProfiler;         ///< Profiler instance.
 
 	GraphMode mGraphMode = GraphMode::GpuTime;  ///< Graph mode.
 	bool mEnableAverage = true;             ///< Use averaged time values (EMA).

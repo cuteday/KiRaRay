@@ -90,7 +90,7 @@ public:
 	virtual bool onMouseEvent(const MouseEvent& mouseEvent) = 0;
 	virtual bool onKeyEvent(const KeyboardEvent& keyEvent) = 0;
 	virtual void renderUI() {};
-	virtual void setCamera(const Camera::SharedPtr &pCamera) { mpCamera = pCamera; }
+	virtual void setCamera(const Camera::SharedPtr &pCamera) { mCamera = pCamera; }
 		
 protected:
 	CameraController() = default;
@@ -98,7 +98,7 @@ protected:
 		setCamera(pCamera);
 	}
 
-	Camera::SharedPtr mpCamera{};
+	Camera::SharedPtr mCamera{};
 	float mSpeed = 1.f;
 };
 

@@ -90,7 +90,7 @@ public:
 
 	Scene::SharedPtr getScene() const { return scene; }
 	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
-	rt::SceneData getSceneData() const { return scene->mpSceneRT->getSceneData(); }
+	rt::SceneData getSceneData() const { return scene->mSceneRT->getSceneData(); }
 	std::vector<string> getRayTypes() const { return optixParameters.rayTypes; }
 	std::vector<string> getRaygenEntries() const { return optixParameters.raygenEntries; }
 
