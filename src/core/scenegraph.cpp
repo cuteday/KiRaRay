@@ -271,8 +271,6 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 		auto it						 = std::find(mMeshes.begin(), mMeshes.end(), mesh);
 		if (it == mMeshes.end())
 			Log(Error, "The leaf node points to a mesh that does not added to the scene");
-		else
-			Log(Info, "Adding mesh instance referencing the mesh #%d", mesh->getMeshId());
 		meshInstance->mInstanceId = mMeshInstances.size();
 		mMeshInstances.push_back(meshInstance);
 	}

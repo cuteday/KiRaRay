@@ -308,8 +308,8 @@ bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {
 		Affine3f transform = cast(inst->xfm); // the instance's local transform
 		auto node		   = std::make_shared<SceneGraphNode>();
 		mpScene->getSceneGraph()->attach(root, node);
-		//node->setScaling(transform.scaling());
-		//node->setRotation(Quaternionf(transform.rotation()));
+		node->setScaling(transform.scaling());
+		node->setRotation(Quaternionf(transform.rotation()));
 		node->setTranslation(transform.translation());
 		for (const pbrt::Shape::SP geom : inst->object->shapes) {
 			if (auto m = std::dynamic_pointer_cast<pbrt::TriangleMesh>(geom)) {

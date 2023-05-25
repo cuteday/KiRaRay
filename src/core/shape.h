@@ -24,7 +24,7 @@ class Triangle{
 public:
 	Triangle() = default;
 
-	Triangle(uint triId, rt::InstanceData *mesh) : primId(triId), instance(instance) {}
+	Triangle(uint triId, rt::InstanceData *instance) : primId(triId), instance(instance) {}
 
 	KRR_CALLABLE float area()const {
 		rt::MeshData *mesh = instance->mesh;
@@ -52,7 +52,6 @@ public:
 	KRR_CALLABLE ShapeSample sample(Vector2f u) const {
 		// uniform sample on triangle
 		ShapeSample ss = {};
-		printf("Start shape sampling routine\n");
 		rt::MeshData *mesh = instance->mesh;
 		Vector3i v = mesh->indices[primId];
 		Vector3f p0 = mesh->positions[v[0]], p1 = mesh->positions[v[1]],

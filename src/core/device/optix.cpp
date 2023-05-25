@@ -8,7 +8,8 @@ KRR_NAMESPACE_BEGIN
 OptixPipelineCompileOptions OptiXBackendInterface::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
 	// [TODO] check this: currently we want single-level instancing only.
-	pipelineCompileOptions.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
+	pipelineCompileOptions.traversableGraphFlags =
+		OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_LEVEL_INSTANCING;
 	pipelineCompileOptions.usesMotionBlur			   = false;
 	pipelineCompileOptions.numPayloadValues			   = 3; /* This restricts maximum number of payload to 3. */
 	pipelineCompileOptions.numAttributeValues		   = 0;
@@ -376,7 +377,6 @@ void OptiXBackend::buildShaderBindingTable() {
 		SBT.push_back(sbt);
 	}
 	CUDA_SYNC_CHECK();
-	Log(Debug, "SBT has size of %zd", SBT.size());
 }
 
 KRR_NAMESPACE_END

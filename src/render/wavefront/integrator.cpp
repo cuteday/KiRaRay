@@ -117,10 +117,7 @@ void WavefrontPathTracer::generateScatterRays() {
 			if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
-				//printf("Light at ADDR %x\n", light.ptr());
 				LightSample ls			  = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
-				printf("Sampled light at [%f, %f, %f], LUM %f\n", ls.intr.p[0], ls.intr.p[1],
-					   ls.intr.p[2], ls.L.mean());
 				Ray shadowRay			  = sd.getInteraction().spawnRay(ls.intr);
 				Vector3f wiWorld		  = normalize(shadowRay.dir);
 				Vector3f wiLocal		  = sd.frame.toLocal(wiWorld);
@@ -240,7 +237,7 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 			// [STEP#2.3] evaluate materials & bsdfs, and generate shadow rays
 			generateScatterRays();
 			// [STEP#2.4] trace shadow rays (next event estimation)
-			//if (enableNEE) traceShadow();
+			if (enableNEE) traceShadow();
 		}
 	}
 	ParallelFor(

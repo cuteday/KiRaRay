@@ -32,10 +32,10 @@ Quaternionf aiCast(const aiQuaternion &q) {
 AABB aiCast(const aiAABB &aabb) {
 	return AABB(aiCast(aabb.mMin), aiCast(aabb.mMax));
 }
-Affine3f aiCast(const aiMatrix4x4 &m) { return Affine3f(Matrix4f{{m.a1, m.a2, m.a3, m.a4}, 
-					{m.a1, m.a2, m.a3, m.a4},
-					{m.a1, m.a2, m.a3, m.a4},
-					{m.a1, m.a2, m.a3, m.a4}});
+Matrix4f aiCast(const aiMatrix4x4 &m) { return Matrix4f{{m.a1, m.a2, m.a3, m.a4}, 
+					{m.b1, m.b2, m.b3, m.b4},
+					{m.c1, m.c2, m.c3, m.c4},
+					{m.d1, m.d2, m.d3, m.d4}};
 }
 
 struct TextureMapping {
@@ -255,6 +255,7 @@ bool AssimpImporter::import(const fs::path filepath,
 									| aiProcess_SortByPType 
 									| aiProcess_GenUVCoords
 									//| aiProcess_TransformUVCoords
+									//| aiProcess_PreTransformVertices
 									| aiProcess_FlipUVs
 									//| aiProcess_FlipWindingOrder 
 									| aiProcess_GenBoundingBoxes;
@@ -300,8 +301,8 @@ bool AssimpImporter::import(const fs::path filepath,
 void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr graphNode) {
 	Affine3f transform = aiCast(assimpNode->mTransformation);
 	graphNode->setName(std::string(assimpNode->mName.C_Str()));
-	//graphNode->setRotation(Quaternionf(transform.rotation()));
-	//graphNode->setScaling(transform.scaling());
+	graphNode->setRotation(Quaternionf(transform.rotation()));
+	graphNode->setScaling(transform.scaling());
 	graphNode->setTranslation(transform.translation());
 	for (int i = 0; i < assimpNode->mNumMeshes; i++) {
 		// add this mesh into scenegraph
