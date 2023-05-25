@@ -5,10 +5,12 @@ KRR_NAMESPACE_BEGIN
 
 void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device, 
 	std::shared_ptr<DescriptorTableManager> descriptorTable) { 
+	update(0);
 	mSceneVK = std::make_shared<VKScene>(this, device, descriptorTable); 
 	vkrhi::CommandListHandle commandList = device->createCommandList();
 	commandList->open();
 	mSceneVK->writeMeshBuffers(commandList);		// bindless buffers
+	mSceneVK->writeInstanceBuffer(commandList);
 	mSceneVK->writeMaterialTextures(commandList);	// bindless textures
 	mSceneVK->writeMaterialBuffer(commandList);
 	mSceneVK->writeGeometryBuffer(commandList);
@@ -211,6 +213,29 @@ void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 	mMeshDataBuffer				= mDevice->createBuffer(bufferDesc);
 	
 	commandList->writeBuffer(mMeshDataBuffer, mMeshData.data(), bufferDesc.byteSize, 0);
+}
+
+void VKScene::writeInstanceBuffer(vkrhi::ICommandList *commandList) {
+	auto instances = mScene->getMeshInstances();
+	for (int i = 0; i < instances.size(); i++) {
+		const auto &instance = instances[i];
+		rs::InstanceData instanceData;
+		instanceData.transform = instance->getNode()->getGlobalTransform().matrix();
+		instanceData.meshIndex = instance->getMesh()->getMeshId();
+		mInstanceData.push_back(instanceData);
+	}
+	/* Create and write instance data buffer. */
+	vkrhi::BufferDesc bufferDesc;
+	bufferDesc.byteSize			= sizeof(rs::InstanceData) * mInstanceData.size();
+	bufferDesc.debugName		= "BindlessInstance";
+	bufferDesc.structStride		= sizeof(rs::InstanceData);
+	bufferDesc.canHaveRawViews	= true;
+	bufferDesc.canHaveUAVs		= true;
+	bufferDesc.initialState		= vkrhi::ResourceStates::ShaderResource;
+	bufferDesc.keepInitialState = true;
+	mInstanceDataBuffer			= mDevice->createBuffer(bufferDesc);
+
+	commandList->writeBuffer(mInstanceDataBuffer, mInstanceData.data(), bufferDesc.byteSize, 0);
 }
 
 KRR_NAMESPACE_END

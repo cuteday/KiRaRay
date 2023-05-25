@@ -51,13 +51,15 @@ public:
 	}
 };
 
+// structured buffer elements fulfill a 16-byte alignment.
+
 struct MeshData {
 	uint numIndices;
 	uint numVertices;
 	int indexBufferIndex;		// these indices go to the bindless buffers
-	int vertexBufferIndex;
+	int vertexBufferIndex;		// vertex data are placed within one buffer
 
-	uint positionOffset;
+	uint positionOffset;		
 	uint normalOffset;
 	uint texCoordOffset;
 	uint tangentOffset;		
@@ -65,6 +67,13 @@ struct MeshData {
 	uint indexOffset;
 	uint materialIndex;			// this indexes the material constants buffer
 	Vector2i padding;
+};
+
+struct InstanceData {
+	uint meshIndex;
+	Vector3i padding;
+
+	Matrix4f transform;
 };
 
 struct MaterialConstants {
@@ -94,6 +103,7 @@ public:
 	~VKScene() = default;
 
 	[[nodiscard]] vkrhi::IBuffer* getMaterialBuffer() const { return mMaterialConstantsBuffer; }
+	[[nodiscard]] vkrhi::IBuffer *getInstanceBuffer() const { return mInstanceDataBuffer; }
 	[[nodiscard]] vkrhi::IBuffer* getGeometryBuffer() const { return mMeshDataBuffer; }
 
 protected:	
@@ -102,6 +112,7 @@ protected:
 	void writeMaterialTextures(vkrhi::ICommandList *commandList);
 	
 	void writeMaterialBuffer(vkrhi::ICommandList *commandList);
+	void writeInstanceBuffer(vkrhi::ICommandList *commandList);
 	void writeGeometryBuffer(vkrhi::ICommandList *commandList);
 
 	Scene *mScene{};
@@ -113,8 +124,10 @@ protected:
 	std::vector<rs::MeshBuffers> mMeshBuffers;
 	std::vector<rs::MaterialTextures> mMaterialTextures;
 	std::vector<rs::MeshData> mMeshData;
+	std::vector<rs::InstanceData> mInstanceData;
 	vkrhi::BufferHandle mMaterialConstantsBuffer;
 	vkrhi::BufferHandle mMeshDataBuffer;
+	vkrhi::BufferHandle mInstanceDataBuffer;
 };
 
 KRR_NAMESPACE_END

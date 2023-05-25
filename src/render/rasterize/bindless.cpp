@@ -132,8 +132,10 @@ void BindlessRender::initialize() {
 		vkrhi::BindingSetItem::PushConstants(1, sizeof(uint)),
 		/* Mesh data constants (for indexing bindless buffers) */
 		vkrhi::BindingSetItem::StructuredBuffer_SRV(0, scene->getGeometryBuffer()),
+		/* Instance data constants (for transforming&indexing mesh) */
+		vkrhi::BindingSetItem::StructuredBuffer_SRV(1, scene->getInstanceBuffer()),
 		/* Material data constants (for indexing bindless buffers) */
-		vkrhi::BindingSetItem::StructuredBuffer_SRV(1, scene->getMaterialBuffer()),
+		vkrhi::BindingSetItem::StructuredBuffer_SRV(2, scene->getMaterialBuffer()),
 		vkrhi::BindingSetItem::Sampler(0, mHelperPass->m_AnisotropicWrapSampler)
 	};
 	vkrhi::utils::CreateBindingSetAndLayout(
@@ -202,12 +204,14 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 		vkrhi::Viewport(0, fbInfo.width, 0, fbInfo.height, 0.f, 1.f));
 	mCommandList->setGraphicsState(state);
 
-	for (int meshId = 0; meshId < mScene->getMeshes().size(); meshId++) {
-		mCommandList->setPushConstants(&meshId, sizeof(int));
-		
+	for (int instanceId = 0; instanceId < mScene->getMeshInstances().size(); instanceId++) {
+		mCommandList->setPushConstants(&instanceId, sizeof(int));
+		auto instance = mScene->getMeshInstances()[instanceId];
+		auto mesh	  = instance->getMesh();
+
 		vkrhi::DrawArguments args;
 		args.instanceCount = 1;
-		args.vertexCount   = mScene->getMeshes()[meshId]->indices.size() * 3;
+		args.vertexCount   = mesh->indices.size() * 3;
 		mCommandList->draw(args);
 	}
 	

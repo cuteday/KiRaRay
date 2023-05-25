@@ -8,7 +8,7 @@ struct ViewConstants {
 
 struct RenderConstants {
 	/* push constants */
-	uint meshID;
+	uint instanceID;
 };
 
 struct MaterialConstants {
@@ -42,11 +42,19 @@ struct MeshData {
 	int2 padding;
 };
 
+struct InstanceData{
+    uint meshIndex;
+    int3 padding;
+	
+    float4x4 transform;
+};
+
 ConstantBuffer<ViewConstants> g_ViewConstants : register(b0);
 [[vk::push_constant]] ConstantBuffer<RenderConstants> g_RenderConstants : register(b1);
 
 StructuredBuffer<MeshData> t_MeshData : register(t0);
-StructuredBuffer<MaterialConstants> t_MaterialConstants : register(t1);
+StructuredBuffer<InstanceData> t_InstanceData : register(t1);
+StructuredBuffer<MaterialConstants> t_MaterialConstants : register(t2);
 SamplerState s_MaterialSampler : register(s0);
 // the above bindings are implicitly assigned to register space 0.
 // the bindless buffer arrays below actually bind to a register range.
@@ -61,7 +69,8 @@ void vs_main(
 	//out float3 o_tangent: TANGENT,
 	out uint o_material: MATERIAL) {
 	
-	MeshData mesh = t_MeshData[g_RenderConstants.meshID];
+    InstanceData instance = t_InstanceData[g_RenderConstants.instanceID];
+	MeshData mesh = t_MeshData[instance.meshIndex];
 
 	ByteAddressBuffer indexBuffer = t_BindlessBuffers[mesh.indexBufferIndex];
 	ByteAddressBuffer vertexBuffer = t_BindlessBuffers[mesh.vertexBufferIndex];
@@ -76,7 +85,8 @@ void vs_main(
 	float3 tangent = mesh.tangentOffset == ~0u ? 0 : 
 		asfloat(vertexBuffer.Load3(mesh.tangentOffset + index * 12 /*sizeof(float3)*/));
 
-	float4 clipSpacePosition = mul(g_ViewConstants.worldToClip, float4(position, 1.0));
+    float4 worldSpacePosition = mul(instance.transform, float4(position, 1.0));
+	float4 clipSpacePosition = mul(g_ViewConstants.worldToClip, worldSpacePosition);
 
 	o_uv = texcoord;
 	o_position = clipSpacePosition;

@@ -39,7 +39,7 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 						  .addRayType("Shadow", false, true, false);
 		backend->initialize(params);
 	}
-	backend->setScene(*scene);
+	backend->setScene(scene);
 	lightSampler	 = backend->getSceneData().lightSampler;
 	AABB aabb = scene->getBoundingBox();
 	Allocator& alloc = *gpContext->alloc;
