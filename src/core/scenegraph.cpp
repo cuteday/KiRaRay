@@ -119,6 +119,50 @@ int SceneGraphWalker::up() {
 	return -1;
 }
 
+bool SceneAnimationChannel::apply(float time) const { 
+	auto node = mTargetNode.lock();
+	if (!node) {
+		Log(Warning, "Animation channel has no target node");
+		return false;
+	}
+
+	auto valueOptional = mSampler->evaluate(time);
+	if (!valueOptional.has_value()) return false;
+	Array4f value = valueOptional.value();
+
+	switch (mAttribute) { 
+	case anime::AnimationAttribute::Scaling:
+		node->setScaling(Vector3f(value.head<3>()));
+		break;
+	case anime::AnimationAttribute::Rotation: {
+		Quaternionf quat = Quaternionf(value.w(), value.x(), value.y(), value.z());
+		if( quat.norm() != 0 ) node->setRotation(quat.normalized());
+		else Log(Warning, "Rotation quaternion is zero, skipping rotation update");
+		break;
+	}
+	case anime::AnimationAttribute::Translation:
+		node->setTranslation(Vector3f(value.head<3>()));
+		break;
+	case anime::AnimationAttribute::Undefined:
+	default:
+		Log(Warning, "Undefined animation attribute");
+		return false;
+	}
+	return true; 
+}
+
+bool SceneAnimation::apply(float time) const {
+	bool success = true;
+	for (const auto &channel : mChannels) 
+		success &= channel->apply(time);
+	return success;
+}
+
+void SceneAnimation::addChannel(const SceneAnimationChannel::SharedPtr& channel) {
+	mChannels.push_back(channel);
+	mDuration = max(mDuration, channel->getSampler()->getEndTime());
+}
+
 SceneGraphNode::SharedPtr SceneGraph::setRoot(const SceneGraphNode::SharedPtr &root) {
 	auto oldRoot = mRoot;
 	if (oldRoot) detach(oldRoot);	// and unregister the resources...

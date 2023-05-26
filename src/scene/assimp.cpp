@@ -374,4 +374,17 @@ void AssimpImporter::loadMeshes() {
 	}
 }
 
+void AssimpImporter::loadAnimations() {
+	for (int i = 0; i < mAiScene->mNumAnimations; i++) {
+		aiAnimation *pAiAnimation = mAiScene->mAnimations[i];
+		float duration			  = pAiAnimation->mDuration;
+		float ticksPerSecond	  = pAiAnimation->mTicksPerSecond;
+		float durationInSeconds	  = duration / ticksPerSecond;
+
+		for (int ch = 0; ch < pAiAnimation->mNumChannels; ch++) {
+			
+		}
+	}
+}
+
 KRR_NAMESPACE_END

@@ -2,6 +2,7 @@
 #include "common.h"
 #include "logger.h"
 #include "mesh.h"
+#include "animation.h"
 #include "texture.h"
 #include "krrmath/math.h"
 
@@ -159,6 +160,43 @@ private:
 	SceneGraphNode *mScope{nullptr};
 };
 
+class SceneAnimationChannel {
+public:
+	using SharedPtr = std::shared_ptr<SceneAnimationChannel>;
+	SceneAnimationChannel(anime::Sampler::SharedPtr sampler,
+						  const SceneGraphNode::SharedPtr targetNode,
+						  anime::AnimationAttribute attribute) :
+		mSampler(std::move(sampler)), mTargetNode(targetNode), mAttribute(attribute) {}
+	
+	bool isValid() const { return !mTargetNode.expired(); }
+	const anime::Sampler::SharedPtr &getSampler() const { return mSampler; }
+	anime::AnimationAttribute getAttribute() const { return mAttribute; }
+	SceneGraphNode::SharedPtr getTargetNode() const { return mTargetNode.lock(); }
+	void setTargetNode(const SceneGraphNode::SharedPtr &node) { mTargetNode = node; }
+	bool apply(float time) const;
+
+private:
+	anime::Sampler::SharedPtr mSampler;
+	anime::AnimationAttribute mAttribute;
+	std::weak_ptr<SceneGraphNode> mTargetNode;
+};
+
+class SceneAnimation : public SceneGraphLeaf {
+public:
+	using SharedPtr = std::shared_ptr<SceneAnimation>;
+	SceneAnimation() = default;
+
+	const std::vector<SceneAnimationChannel::SharedPtr> &getChannels() const { return mChannels; }
+	float getDuration() const { return mDuration; }
+	bool isValid() const;
+	bool apply(float time) const;
+	void addChannel(const SceneAnimationChannel::SharedPtr &channel);
+
+private:
+	std::vector<SceneAnimationChannel::SharedPtr> mChannels;
+	float mDuration = 0.f;
+};
+
 class SceneGraph : public std::enable_shared_from_this<SceneGraph> {
 public:
 	using SharedPtr = std::shared_ptr<SceneGraph>;
@@ -171,6 +209,7 @@ public:
 	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mMeshInstances; }
 	std::vector<Mesh::SharedPtr> &getMeshes() { return mMeshes; }
 	std::vector<Material::SharedPtr> &getMaterials() { return mMaterials; }
+	std::vector<SceneAnimation::SharedPtr> &getAnimations() { return mAnimations; }
 	void addMesh(Mesh::SharedPtr mesh);
 	void addMaterial(Material::SharedPtr material);
 
@@ -200,6 +239,7 @@ private:
 	std::vector<Mesh::SharedPtr> mMeshes;
 	std::vector<Material::SharedPtr> mMaterials;
 	std::vector<MeshInstance::SharedPtr> mMeshInstances;
+	std::vector<SceneAnimation::SharedPtr> mAnimations;
 };
 
 KRR_NAMESPACE_END

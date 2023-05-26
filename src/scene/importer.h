@@ -47,6 +47,7 @@ private:
 	void traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr graphNode);
 	void loadMaterials(const string &modelFolder);
 	void loadMeshes();
+	void loadAnimations();
 
 	ImportMode mImportMode = ImportMode::Default;
 	string mFilepath;
