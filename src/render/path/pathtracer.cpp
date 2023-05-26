@@ -51,7 +51,7 @@ void MegakernelPathTracer::render(RenderFrame::SharedPtr frame) {
 	{
 		launchParams.fbSize		 = mFrameSize;
 		launchParams.colorBuffer = frame->getCudaRenderTarget();
-		launchParams.camera		 = mScene->getCamera();
+		launchParams.camera		 = mScene->getCamera()->getCameraData();
 		launchParams.sceneData	 = mScene->mSceneRT->getSceneData();
 		launchParams.traversable = optixBackend->getRootTraversable();
 		launchParams.frameID	 = (uint)getFrameIndex();

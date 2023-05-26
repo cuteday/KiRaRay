@@ -51,7 +51,7 @@ public:
 	KRR_DEVICE_FUNCTION void debugPrint(uint pixelId, const char *fmt, Args &&...args);
 	
 	OptiXBackend *backend{ };
-	Camera* camera{ };
+	Camera::CameraData* camera{ };
 	LightSampler lightSampler;
 
 	// work queues

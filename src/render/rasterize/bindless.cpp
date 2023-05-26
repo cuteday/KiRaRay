@@ -186,10 +186,10 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 
 	/* Set view constants */
 	ViewConstants viewConstants;
-	const Camera &camera	  = getScene()->getCamera();
-	viewConstants.viewToClip  = camera.getProjectionMatrix();
-	viewConstants.worldToView = camera.getViewMatrix();
-	viewConstants.worldToClip = camera.getViewProjectionMatrix();
+	Camera::SharedPtr camera  = getScene()->getCamera();
+	viewConstants.viewToClip  = camera->getProjectionMatrix();
+	viewConstants.worldToView = camera->getViewMatrix();
+	viewConstants.worldToClip = camera->getViewProjectionMatrix();
 
 	mCommandList->writeBuffer(mViewConstants, &viewConstants,
 							  sizeof(viewConstants));

@@ -34,7 +34,7 @@ void WavefrontPathTracer::initialize() {
 	if (pixelState) pixelState->resize(maxQueueSize, alloc);
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
 	cudaDeviceSynchronize();
-	if (!camera) camera = alloc.new_object<Camera>();
+	if (!camera) camera = alloc.new_object<Camera::CameraData>();
 	CUDA_SYNC_CHECK();
 }
 
@@ -196,7 +196,8 @@ void WavefrontPathTracer::beginFrame() {
 	if (!mScene || !maxQueueSize)
 		return;
 	PROFILE("Begin frame");
-	cudaMemcpy(camera, &mScene->getCamera(), sizeof(Camera), cudaMemcpyHostToDevice);
+	cudaMemcpy(camera, &mScene->getCamera()->getCameraData(), sizeof(Camera::CameraData),
+			   cudaMemcpyHostToDevice);
 	size_t frameIndex = getFrameIndex();
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state

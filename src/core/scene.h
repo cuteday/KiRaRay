@@ -35,8 +35,8 @@ public:
 	bool getChanges() const { return mHasChanges; }
 	void renderUI();
 
-	Camera& getCamera() { return *mCamera; }
-	CameraController& getCameraController() { return *mCameraController; }
+	Camera::SharedPtr getCamera() { return mCamera; }
+	CameraController::SharedPtr getCameraController() { return mCameraController; }
 	SceneGraph::SharedPtr getSceneGraph() { return mGraph; }
 
 	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mGraph->getMeshInstances(); }
@@ -45,9 +45,9 @@ public:
 	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(mesh); }
 	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(material); }
 
-	void setCamera(const Camera &camera) { *mCamera = camera; }
-	void setCameraController(const OrbitCameraController &cameraController) {
-		*mCameraController = cameraController;
+	void setCamera(Camera::SharedPtr camera) { mCamera = camera; }
+	void setCameraController(OrbitCameraController::SharedPtr cameraController) {
+		mCameraController = cameraController;
 	}
 	void addEnvironmentMap(Texture::SharedPtr infiniteLight);
 	
@@ -104,7 +104,7 @@ public:
 	void toDevice();
 	void renderUI();
 	void updateSceneData();
-	rt::SceneData getSceneData() const { return mDeviceData; }
+	const rt::SceneData &getSceneData() const { return mDeviceData; }
 
 private:
 	void processLights();

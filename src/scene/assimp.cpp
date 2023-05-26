@@ -83,7 +83,7 @@ void loadTextures(const aiMaterial *pAiMaterial, const std::string &folder,
 		std::filesystem::path filepath(folder);
 		filepath /= path;
 		std::string filename = filepath.string();
-		sMaterialLoader.loadTexture(pMaterial, source.targetType, filename);
+		sMaterialLoader.loadTexture(pMaterial, source.targetType, filename, false);
 	}
 }
 

@@ -23,7 +23,7 @@ void RenderApp::BackBufferResizing() {
 void RenderApp::BackBufferResized() {
 	DeviceManager::BackBufferResized();
 	if (mScene)
-		mScene->getCamera().setAspectRatio((float) 
+		mScene->getCamera()->setAspectRatio((float) 
 			mDeviceParams.backBufferWidth /
 			mDeviceParams.backBufferHeight);
 	CUDA_SYNC_CHECK();

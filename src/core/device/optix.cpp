@@ -132,7 +132,7 @@ OptiXBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstre
 
 	// Figure out memory requirements.
 	OptixAccelBuildOptions accelOptions = {};
-	accelOptions.buildFlags				= 
+	accelOptions.buildFlags				= OPTIX_BUILD_FLAG_ALLOW_UPDATE |
 		OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 	accelOptions.motionOptions.numKeys = 1;
 	accelOptions.operation			   = OPTIX_BUILD_OPERATION_BUILD;
@@ -148,35 +148,33 @@ OptiXBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstre
 	emitDesc.result = (CUdeviceptr) compactedSizePtr;
 
 	// Allocate buffers.
-	void *tempBuffer;
+	void *tempBuffer, *uncompactedBuffer;
 	CUDA_CHECK(cudaMalloc(&tempBuffer, blasBufferSizes.tempSizeInBytes));
-	accelBuffer.resize(blasBufferSizes.outputSizeInBytes);
-
+	CUDA_CHECK(cudaMalloc(&uncompactedBuffer, blasBufferSizes.outputSizeInBytes));
 	// Build.
 	OptixTraversableHandle traversableHandle{0};
 	OPTIX_CHECK(optixAccelBuild(
 		optixContext, cudaStream, &accelOptions, buildInputs.data(), buildInputs.size(),
-		CUdeviceptr(tempBuffer), blasBufferSizes.tempSizeInBytes, CUdeviceptr(accelBuffer.data()),
+		CUdeviceptr(tempBuffer), blasBufferSizes.tempSizeInBytes, CUdeviceptr(uncompactedBuffer),
 		blasBufferSizes.outputSizeInBytes, &traversableHandle, &emitDesc, 1));
 
 	CUDA_CHECK(cudaFree(tempBuffer));
 	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
-#ifndef KRR_COMPACT_AS
+
 	uint64_t compactedSize;
 	CUDA_CHECK(cudaMemcpyAsync(&compactedSize, compactedSizePtr, sizeof(uint64_t),
 							   cudaMemcpyDeviceToHost, cudaStream));
 	CUDA_CHECK(cudaFree(compactedSizePtr));
 	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
 
-	if (compactedSize < blasBufferSizes.outputSizeInBytes) {
-		// Compact the acceleration structure
-		CUDABuffer compactedBuffer(compactedSize);	// temporal buffer to store compacted AS
-		OPTIX_CHECK(optixAccelCompact(optixContext, cudaStream, traversableHandle,
-									  CUdeviceptr(compactedBuffer.data()), compactedSize,
-									  &traversableHandle));
-		CUDA_CHECK(cudaStreamSynchronize(cudaStream));
-	}
-#endif
+	// Compact the acceleration structure
+	accelBuffer.resize(compactedSize);
+	CUDABuffer compactedBuffer(compactedSize);	// temporal buffer to store compacted AS
+	OPTIX_CHECK(optixAccelCompact(optixContext, cudaStream, traversableHandle,
+								  CUdeviceptr(accelBuffer.data()), compactedSize,
+									&traversableHandle));
+	CUDA_CHECK(cudaFree(uncompactedBuffer));
+	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
 	return traversableHandle;
 }
 
@@ -215,6 +213,9 @@ OptixTraversableHandle OptiXBackendInterface::buildTriangleMeshGAS(OptixDeviceCo
 	triangleInputs.triangleArray.sbtIndexOffsetBuffer		 = 0;
 	triangleInputs.triangleArray.sbtIndexOffsetSizeInBytes	 = 0;
 	triangleInputs.triangleArray.sbtIndexOffsetStrideInBytes = 0;
+
+	Log(Debug, "Building GAS for triangle mesh: %zd vertices and %zd faces", 
+		mesh.positions.size(), mesh.indices.size());
 
 	return buildASFromInputs(optixContext, cudaStream, {triangleInputs}, accelBuffer);
 }
@@ -334,6 +335,7 @@ void OptiXBackend::buildAccelStructure() {
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = instances.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
+	Log(Debug, "Building root IAS: %zd instances", instances.size());
 
 	traversableIAS = buildASFromInputs(optixContext, cudaStream, {iasBuildInput}, accelBufferIAS);
 	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
@@ -354,7 +356,7 @@ void OptiXBackend::buildShaderBindingTable() {
 	}
 
 	const auto &instances	 = scene->getMeshInstances();
-	rt::SceneData &sceneData = scene->mSceneRT->getSceneData();
+	const rt::SceneData &sceneData = scene->mSceneRT->getSceneData();
 	for (uint instanceId = 0; instanceId < instances.size(); instanceId++) {
 		for (uint rayType = 0; rayType < nRayTypes; rayType++) {
 			HitgroupRecord hitgroupRecord = {};

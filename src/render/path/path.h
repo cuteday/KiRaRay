@@ -30,7 +30,7 @@ struct LaunchParamsPT {
 	int spp				 = 1;
 	int lightSamples	 = 1;
 	// scene 
-	Camera camera;
+	Camera::CameraData camera;
 	LightSampler lightSampler;
 	rt::SceneData sceneData;
 
