@@ -11,12 +11,12 @@ KRR_NAMESPACE_BEGIN
 
 namespace rt {
 class MeshData;
+class MaterialData;
+class InstanceData;
 }
-class Material;
-class Light;
 
 typedef struct {
-	rt::MeshData *mesh;
+	rt::InstanceData *instance;
 } HitgroupSBTData;
 
 enum class MaterialType {
@@ -94,6 +94,22 @@ struct Interaction{
 	Vector3f wo {0};	// world-space out-scattering direction
 	Vector3f n {0};
 	Vector2f uv {0};
+};
+
+class SurfaceInteraction : public Interaction {
+public:
+	SurfaceInteraction() = default;
+
+	KRR_CALLABLE Vector3f toWorld(const Vector3f &v) const {
+		return tangent * v[0] + bitangent * v[1] + n * v[2];
+	}
+
+	KRR_CALLABLE Vector3f toLocal(const Vector3f &v) const {
+		return {dot(tangent, v), dot(bitangent, v), dot(n, v)};
+	}
+
+	Vector3f tangent{0};
+	Vector3f bitangent{0};
 };
 
 KRR_NAMESPACE_END

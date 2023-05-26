@@ -50,8 +50,8 @@ public:
 	template <typename... Args>
 	KRR_DEVICE_FUNCTION void debugPrint(uint pixelId, const char *fmt, Args &&...args);
 	
-	OptiXBackendImpl *backend{ };
-	Camera* camera{ };
+	OptiXBackend *backend{ };
+	Camera::CameraData* camera{ };
 	LightSampler lightSampler;
 
 	// work queues
@@ -63,7 +63,6 @@ public:
 	PixelStateBuffer* pixelState;
 
 	// path tracing parameters
-	int frameId{ 0 };
 	int maxQueueSize;
 	int samplesPerPixel{ 1 };
 	int maxDepth{ 10 };

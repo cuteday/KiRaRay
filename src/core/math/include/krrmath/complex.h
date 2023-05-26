@@ -44,48 +44,32 @@ struct Complex {
 		return Complex(value) / z;
 	}
 
-	KRR_CALLABLE T real() { return re; }
+	KRR_CALLABLE T real() const { return re; }
 
-	KRR_CALLABLE T imag() { return im; }
+	KRR_CALLABLE T imag() const { return im; }
 
-	KRR_CALLABLE T norm() { return re * re + im * im; }
-	
+	KRR_CALLABLE T norm() const  { return re * re + im * im; }
+
+	KRR_CALLABLE T abs() const { return std::sqrt(norm()); }
+
+	KRR_CALLABLE Complex<T> sqrt() const {
+		T n = this->abs(), t1 = std::sqrt(T(.5) * (n + std::abs(re))), t2 = T(.5) * im / t1;
+		if (n == 0) return 0;
+		if (re >= 0) return {t1, t2};
+		else return {std::abs(t2), std::copysign(t1, im)};
+	}
+
 	T re, im;
 };
 
-template <typename T>
-KRR_CALLABLE T real(const Complex<T>& z) {
-	return z.re;
-}
+template <typename T> KRR_CALLABLE T real(const Complex<T> &z) { return z.re; }
 
-template <typename T>
-KRR_CALLABLE T imag(const Complex<T>& z) {
-	return z.im;
-}
+template <typename T> KRR_CALLABLE T imag(const Complex<T> &z) { return z.im; }
 
-template <typename T>
-KRR_CALLABLE T norm(const Complex<T>& z) {
-	return z.re * z.re + z.im * z.im;
-}
+template <typename T> KRR_CALLABLE T norm(const Complex<T> &z) { return z.norm(); }
 
-template <typename T>
-KRR_CALLABLE T abs(const Complex<T>& z) {
-	return sqrt(norm(z));
-}
+template <typename T> KRR_CALLABLE T abs(const Complex<T> &z) { return z.abs(); }
 
-template <typename T>
-KRR_CALLABLE Complex<T> sqrt(const Complex<T>& z) {
-	T n = abs(z), t1 = sqrt(T(.5) * (n + abs(z.re))),
-		t2 = T(.5) * z.im / t1;
-
-	if (n == 0)
-		return 0;
-
-	if (z.re >= 0)
-		return { t1, t2 };
-	else
-		return { abs(t2), copysign(t1, z.im) };
-}
-
+template <typename T> KRR_CALLABLE Complex<T> sqrt(const Complex<T> &z) { return z.sqrt(); }
 
 KRR_NAMESPACE_END

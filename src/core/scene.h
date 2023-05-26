@@ -4,7 +4,9 @@
 #include "light.h"
 #include "camera.h"
 #include "texture.h"
+#include "scenegraph.h"
 #include "interop.h"
+
 #include "device/buffer.h"
 #include "device/memory.h"
 #include "render/lightsampler.h"
@@ -29,46 +31,50 @@ public:
 	bool onMouseEvent(const MouseEvent& mouseEvent);
 	bool onKeyEvent(const KeyboardEvent& keyEvent);
 
-	bool update();
+	bool update(size_t frameIndex);
 	bool getChanges() const { return mHasChanges; }
 	void renderUI();
 
-	Camera& getCamera() { return *mpCamera; }
-	CameraController& getCameraController() { return *mpCameraController; }
+	Camera::SharedPtr getCamera() { return mCamera; }
+	CameraController::SharedPtr getCameraController() { return mCameraController; }
+	SceneGraph::SharedPtr getSceneGraph() { return mGraph; }
 
-	void setCamera(const Camera &camera) { *mpCamera = camera; }
-	void setCameraController(const OrbitCameraController &cameraController) {
-		*mpCameraController = cameraController;
+	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mGraph->getMeshInstances(); }
+	std::vector<Mesh::SharedPtr> &getMeshes() { return mGraph->getMeshes(); }
+	std::vector<Material::SharedPtr> &getMaterials() { return mGraph->getMaterials(); }
+	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(mesh); }
+	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(material); }
+
+	void setCamera(Camera::SharedPtr camera) { mCamera = camera; }
+	void setCameraController(OrbitCameraController::SharedPtr cameraController) {
+		mCameraController = cameraController;
 	}
-	void addEnvironmentMap(const Texture& infiniteLight);
+	void addEnvironmentMap(Texture::SharedPtr infiniteLight);
 	
 	void loadConfig(const json &config) { 
-		mpCamera = std::make_shared<Camera>(config.at("camera")); 
-		mpCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
-		mpCameraController->setCamera(mpCamera);
+		mCamera = std::make_shared<Camera>(config.at("camera")); 
+		mCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
+		mCameraController->setCamera(mCamera);
 	}
 	
-	AABB getAABB() const { return mAABB; }
+	AABB getBoundingBox() const { return mGraph->getRoot()->getGlobalBoundingBox(); }
 
 	friend void to_json(json& j, const Scene& scene) { 
 		j = json{ 
-			{ "camera", *scene.mpCamera }, 
+			{ "camera", *scene.mCamera }, 
 			{ "cameraController", *std::dynamic_pointer_cast
-				<OrbitCameraController>(scene.mpCameraController) },
+				<OrbitCameraController>(scene.mCameraController) },
 		};
 	}
 
-	std::vector<Mesh> meshes;
-	std::vector<Material> materials;
-	std::vector<Texture> environments;
-
-	Camera::SharedPtr mpCamera;
-	OrbitCameraController::SharedPtr mpCameraController;
-	AABB mAABB;
+	SceneGraph::SharedPtr mGraph;
+	Camera::SharedPtr mCamera;
+	OrbitCameraController::SharedPtr mCameraController;
+	std::vector<Texture::SharedPtr> environments;
 	bool mHasChanges = false;
 
-	std::shared_ptr<RTScene> mpSceneRT;
-	std::shared_ptr<VKScene> mpSceneVK;
+	std::shared_ptr<RTScene> mSceneRT;
+	std::shared_ptr<VKScene> mSceneVK;
 	void initializeSceneRT();
 	void initializeSceneVK(nvrhi::vulkan::IDevice* device,
 		std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr);
@@ -80,6 +86,7 @@ class SceneData {
 public:
 	inter::vector<MaterialData> *materials{};
 	inter::vector<MeshData> *meshes{};
+	inter::vector<InstanceData> *instances{};
 	inter::vector<Light> *lights{};
 	inter::vector<InfiniteLight> *infiniteLights{};
 	LightSampler lightSampler;
@@ -91,18 +98,18 @@ public:
 	using SharedPtr = std::shared_ptr<RTScene>;
 
 	RTScene() = default;
-	RTScene(Scene* scene) : mpScene(scene){}
+	RTScene(Scene* scene) : mScene(scene){}
 	~RTScene() = default;
 
 	void toDevice();
 	void renderUI();
 	void updateSceneData();
-	rt::SceneData getSceneData() const { return mDeviceData; }
+	const rt::SceneData &getSceneData() const { return mDeviceData; }
 
 private:
 	void processLights();
 
-	Scene* mpScene;
+	Scene* mScene;
 	rt::SceneData mDeviceData;
 };
 

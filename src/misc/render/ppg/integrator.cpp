@@ -27,12 +27,10 @@ void PPGPathTracer::resize(const Vector2i& size) {
 }
 
 void PPGPathTracer::setScene(Scene::SharedPtr scene) {
-	scene->initializeSceneRT();
-	mpScene = scene;
-	lightSampler = scene->mpSceneRT->getSceneData().lightSampler;
+	mScene = scene;
 	initialize();
 	if (!backend) {
-		backend		= new OptiXBackendImpl();
+		backend		= new OptiXBackend();
 		auto params = OptiXInitializeParameters()
 						  .setPTX(PPG_PTX)
 						  .addRaygenEntry("Closest")
@@ -41,8 +39,9 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 						  .addRayType("Shadow", false, true, false);
 		backend->initialize(params);
 	}
-	backend->setScene(*scene);
-	AABB aabb = scene->getAABB();
+	backend->setScene(scene);
+	lightSampler	 = backend->getSceneData().lightSampler;
+	AABB aabb = scene->getBoundingBox();
 	Allocator& alloc = *gpContext->alloc;
 	if (m_sdTree) alloc.deallocate_object(m_sdTree);
 	m_sdTree = alloc.new_object<STree>(aabb, alloc);
@@ -118,7 +117,7 @@ void PPGPathTracer::handleHit() {
 
 void PPGPathTracer::handleMiss() {
 	PROFILE("Process escaped rays");
-	const rt::SceneData& sceneData = mpScene->mpSceneRT->getSceneData();
+	const rt::SceneData& sceneData = mScene->mSceneRT->getSceneData();
 	ForAllQueued(missRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const MissRayWorkItem & w) {
 		Color3f L = {};
@@ -226,7 +225,7 @@ void PPGPathTracer::generateScatterRays() {
 }
 
 void PPGPathTracer::render(RenderFrame::SharedPtr frame) {
-	if (!mpScene || !maxQueueSize) return;
+	if (!mScene || !maxQueueSize) return;
 	PROFILE("PPG Path Tracer");
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
@@ -272,7 +271,7 @@ void PPGPathTracer::render(RenderFrame::SharedPtr frame) {
 }
 
 void PPGPathTracer::beginFrame() {
-	if (!mpScene || !maxQueueSize) return;
+	if (!mScene || !maxQueueSize) return;
 	WavefrontPathTracer::beginFrame();
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		guidedPathState->n_vertices[pixelId] = 0;
@@ -284,7 +283,6 @@ void PPGPathTracer::beginFrame() {
 }
 
 void PPGPathTracer::endFrame() {
-	frameId++;
 	if (enableLearning) {
 		PROFILE("Training SD-Tree");
 		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){

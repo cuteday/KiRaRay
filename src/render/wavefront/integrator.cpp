@@ -20,10 +20,9 @@ void WavefrontPathTracer::initialize() {
 	Allocator &alloc = *gpContext->alloc;
 	maxQueueSize	 = mFrameSize[0] * mFrameSize[1];
 	CUDA_SYNC_CHECK(); // necessary, preventing kernel accessing memories tobe free'ed...
-	for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < 2; i++) 
 		if (rayQueue[i]) rayQueue[i]->resize(maxQueueSize, alloc);
 		else rayQueue[i] = alloc.new_object<RayQueue>(maxQueueSize, alloc);
-	}
 	if (missRayQueue) missRayQueue->resize(maxQueueSize, alloc);
 	else missRayQueue = alloc.new_object<MissRayQueue>(maxQueueSize, alloc);
 	if (hitLightRayQueue) hitLightRayQueue->resize(maxQueueSize, alloc);
@@ -35,7 +34,7 @@ void WavefrontPathTracer::initialize() {
 	if (pixelState) pixelState->resize(maxQueueSize, alloc);
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
 	cudaDeviceSynchronize();
-	if (!camera) camera = alloc.new_object<Camera>();
+	if (!camera) camera = alloc.new_object<Camera::CameraData>();
 	CUDA_SYNC_CHECK();
 }
 
@@ -83,7 +82,7 @@ void WavefrontPathTracer::handleHit() {
 
 void WavefrontPathTracer::handleMiss() {
 	PROFILE("Process escaped rays");
-	const rt::SceneData &sceneData = mpScene->mpSceneRT->getSceneData();
+	const rt::SceneData &sceneData = mScene->mSceneRT->getSceneData();
 	ForAllQueued(
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
 			Color L = {};
@@ -111,7 +110,6 @@ void WavefrontPathTracer::generateScatterRays() {
 			if (sampler.get1D() >= probRR)
 				return;
 			w.thp /= probRR;
-
 			const ShadingData &sd = w.sd;
 			Vector3f woLocal	  = sd.frame.toLocal(sd.wo);
 			BSDFType bsdfType	  = sd.getBsdfType();
@@ -135,9 +133,9 @@ void WavefrontPathTracer::generateScatterRays() {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
 					sw.Li				 = ls.L;
-					sw.a	   = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
-					sw.pixelId = w.pixelId;
-					sw.tMax	   = 1;
+					sw.pixelId			 = w.pixelId;
+					sw.tMax				 = 1;
+					sw.a = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
 					if (sw.a.any()) shadowRayQueue->push(sw);
 				}
 			}
@@ -155,8 +153,7 @@ void WavefrontPathTracer::generateScatterRays() {
 				r.pixelId		 = w.pixelId;
 				r.depth			 = w.depth + 1;
 				r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf;
-				if (any(r.thp))
-					nextRayQueue(w.depth)->push(r);
+				if (any(r.thp)) nextRayQueue(w.depth)->push(r);
 			}
 		});
 }
@@ -180,11 +177,9 @@ void WavefrontPathTracer::resize(const Vector2i &size) {
 
 void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
-	mpScene = scene;
-	mpScene->initializeSceneRT();
-	lightSampler = scene->mpSceneRT->getSceneData().lightSampler;
+	mScene = scene;
 	if (!backend) {
-		backend		= new OptiXBackendImpl();
+		backend		= new OptiXBackend();
 		auto params = OptiXInitializeParameters()
 						  .setPTX(WAVEFRONT_PTX)
 						  .addRaygenEntry("Closest")
@@ -193,25 +188,28 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 						  .addRayType("Shadow", false, true, false);
 		backend->initialize(params);
 	}
-	backend->setScene(*scene);
+	backend->setScene(scene);
+	lightSampler = backend->getSceneData().lightSampler;
 }
 
 void WavefrontPathTracer::beginFrame() {
-	if (!mpScene || !maxQueueSize)
+	if (!mScene || !maxQueueSize)
 		return;
 	PROFILE("Begin frame");
-	cudaMemcpy(camera, &mpScene->getCamera(), sizeof(Camera), cudaMemcpyHostToDevice);
+	cudaMemcpy(camera, &mScene->getCamera()->getCameraData(), sizeof(Camera::CameraData),
+			   cudaMemcpyHostToDevice);
+	size_t frameIndex = getFrameIndex();
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
 			Vector2i pixelCoord	   = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
 			pixelState->L[pixelId] = 0;
-			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameId * samplesPerPixel);
+			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
 		});
 }
 
 void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
-	if (!mpScene || !maxQueueSize)
+	if (!mScene || !maxQueueSize)
 		return;
 	PROFILE("Wavefront Path Tracer");
 	CudaRenderTarget frameBuffer = frame->getCudaRenderTarget();
@@ -250,10 +248,10 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 				L = clamp(L, 0.f, clampMax);
 			frameBuffer.write(Color4f(L, 1), pixelId);
 		});
-	frameId++;
 }
 
 void WavefrontPathTracer::renderUI() {
+	ui::Text("Frame index (seed): %zd", getFrameIndex());
 	ui::Text("Render parameters");
 	ui::InputInt("Samples per pixel", &samplesPerPixel);
 	ui::InputInt("Max bounces", &maxDepth, 1);

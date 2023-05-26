@@ -22,6 +22,8 @@ Image::Image(Vector2i size, Format format, bool srgb) :
 	mData = new uchar[size[0] * size[1] * 4 * getElementSize()];
 }
 
+Image::~Image() { if (mData) delete[] mData; }
+
 bool Image::loadImage(const fs::path &filepath, bool flip, bool srgb) {
 	Vector2i size;
 	int channels;
@@ -125,19 +127,28 @@ Texture::SharedPtr Texture::createFromFile(const fs::path &filepath, bool flip, 
 	return pTexture;
 }
 
-Texture::Texture(const string &filepath, bool flip, bool srgb, uint id) : 
-	mTextureId{ id }, mFilename(filepath) {
+Texture::Texture(const string &filepath, bool flip, bool srgb) : mFilename(filepath) {
 	logDebug("Attempting to load texture from " + filepath);
 	loadImage(filepath, flip, srgb);
 }
 
-Material::Material(uint id, const string &name) : 
-	mMaterialId(id), mMaterialName(name) {}
+Material::Material(const string &name) : mName(name) {}
 
-void Material::setTexture(TextureType type, Texture &texture) { mTextures[(uint) type] = texture; }
+void Material::setTexture(TextureType type, Texture::SharedPtr texture) { 
+	mTextures[(uint) type] = texture; 
+}
 
 void Material::setConstantTexture(TextureType type, const Color4f color) {
-	mTextures[(uint) type].setConstant(color);
+	if (!mTextures[(uint) type]) mTextures[(uint) type] = std::make_shared<Texture>();
+	mTextures[(uint) type]->setConstant(color);
+}
+
+bool Material::hasEmission() {
+	return hasTexture(TextureType::Emissive);
+}
+
+bool Material::hasTexture(TextureType type) {
+	return mTextures[(int) type].get() != nullptr; 
 }
 
 bool Material::determineSrgb(string filename, TextureType type) {
@@ -174,25 +185,25 @@ void MaterialData::renderUI() {
 	ui::DragFloat("Index of Refraction", &mMaterialParams.IoR, 1e-3, 0.1, 5);
 }
 
-void TextureData::initializeFromHost(Texture &texture) {
-	if (!texture.isValid()) return;
+void TextureData::initializeFromHost(Texture::SharedPtr texture) {
+	mValid = texture.get() != nullptr;
+	if (!texture) return;
 
-	mValid = texture.mValid;
-	mValue = texture.mValue;
+	mValue = texture->getConstant();
 
-	if (!texture.mImage.isValid()) return;
-	const Image &image = texture.getImage();
+	if (!texture->getImage() || !texture->getImage()->isValid()) return;
+	auto image = texture->getImage();
 
 	// we transfer our texture data to a cuda array, then make the array a cuda
 	// texture object.
-	Vector2i size	   = image.getSize();
-	uint numComponents = image.getChannels();
+	Vector2i size	   = image->getSize();
+	uint numComponents = image->getChannels();
 	if (numComponents != 4)
 		logError("Incorrect texture image channels (not 4)");
 	// we have no padding so pitch == width
 	uint pitch;
 	cudaChannelFormatDesc channelDesc = {};
-	Image::Format textureFormat		  = image.getFormat();
+	Image::Format textureFormat		  = image->getFormat();
 
 	if (textureFormat == Image::Format::RGBAfloat) {
 		pitch		= size[0] * numComponents * sizeof(float);
@@ -206,7 +217,7 @@ void TextureData::initializeFromHost(Texture &texture) {
 	// create internal cuda array for texture object
 	CUDA_CHECK(cudaMallocArray(&cudaArray, &channelDesc, size[0], size[1]));
 	// transfer data to cuda array
-	CUDA_CHECK(cudaMemcpy2DToArray(cudaArray, 0, 0, (void*)image.data(), pitch,
+	CUDA_CHECK(cudaMemcpy2DToArray(cudaArray, 0, 0, (void*)image->data(), pitch,
 								   pitch, size[1], cudaMemcpyHostToDevice));
 
 	cudaResourceDesc resDesc = {};
@@ -226,19 +237,19 @@ void TextureData::initializeFromHost(Texture &texture) {
 	texDesc.minMipmapLevelClamp		  = 0;
 	texDesc.mipmapFilterMode		  = cudaFilterModePoint;
 	*(Vector4f *) texDesc.borderColor = Vector4f(1.0f);
-	texDesc.sRGB					  = (int) image.isSrgb();
+	texDesc.sRGB					  = (int) image->isSrgb();
 
 	CUDA_CHECK(cudaCreateTextureObject(&mCudaTexture, &resDesc, &texDesc, nullptr));
 }
 
-void MaterialData::initializeFromHost(Material &material) {
-	mpMaterialHost	= &material;
-	mBsdfType		= material.mBsdfType;
-	mMaterialParams = material.mMaterialParams;
-	mShadingModel	= material.mShadingModel;
+void MaterialData::initializeFromHost(Material::SharedPtr material) {
+	mpMaterialHost	= material.get();
+	mBsdfType		= material->mBsdfType;
+	mMaterialParams = material->mMaterialParams;
+	mShadingModel	= material->mShadingModel;
 	for (size_t tex_idx = 0; tex_idx < (size_t)Material::TextureType::Count;
 		 tex_idx++) {
-		mTextures[tex_idx].initializeFromHost(material.mTextures[tex_idx]);
+		mTextures[tex_idx].initializeFromHost(material->mTextures[tex_idx]);
 	}
 }
 

@@ -46,7 +46,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	HitInfo hitInfo = getHitInfo();
 	ShadingData& sd = *getPRD<ShadingData>();
 	RayWorkItem r = getRayWorkItem();
-	rt::MaterialData& material = (*launchParams.sceneData.materials)[hitInfo.mesh->materialId];
+	const rt::MaterialData& material = hitInfo.instance->getMaterial();
 	prepareShadingData(sd, hitInfo, material);
 	if (sd.light) {		// push to hit ray queue if mesh has light
 		HitLightWorkItem w = {};
@@ -75,8 +75,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(Closest)() { 
-	if (alphaKilled(launchParams.sceneData.materials))
-		optixIgnoreIntersection();
+	if (alphaKilled()) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_MS(Closest)() {
@@ -93,8 +92,7 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(Shadow)() { 
-	if (alphaKilled(launchParams.sceneData.materials))
-		optixIgnoreIntersection();
+	if (alphaKilled()) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_MS(Shadow)() { optixSetPayload_0(1); }
@@ -103,12 +101,11 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	uint rayIndex(optixGetLaunchIndex().x);
 	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
 	ShadowRayWorkItem r = getShadowRayWorkItem();
-	uint32_t miss{0};
+	uint32_t visible{0};
 	traceRay(launchParams.traversable, r.ray, r.tMax, 1,
 			 OptixRayFlags( OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
-		miss);
-	if (miss) launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
-	
+		visible);
+	if (visible) launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
 }
 
 KRR_NAMESPACE_END

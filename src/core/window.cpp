@@ -460,7 +460,7 @@ void DeviceManager::RunMessageLoop() {
 	while (!glfwWindowShouldClose(mWindow) && !gpContext->shouldQuit()) {
 
 		if (mcallbacks.beforeFrame) mcallbacks.beforeFrame(*this);
-
+		++mFrameIndex;		// so we denote the first frame as #1.
 		glfwPollEvents();
 		UpdateWindowSize();
 
@@ -485,8 +485,6 @@ void DeviceManager::RunMessageLoop() {
 
 		UpdateAverageFrameTime(elapsedTime);
 		mPreviousFrameTimestamp = curTime;
-
-		++mFrameIndex;
 	}
 
 	GetDevice()->waitForIdle();

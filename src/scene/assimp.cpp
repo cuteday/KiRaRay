@@ -18,11 +18,6 @@ KRR_NAMESPACE_BEGIN
 namespace fs = std::filesystem;
 using namespace importer;
 
-namespace {
-static uint textureIdAllocator	= 0;
-static uint materialIdAllocator = 0;
-} // namespace
-
 namespace assimp {
 
 using ImportMode = AssimpImporter::ImportMode;
@@ -36,6 +31,11 @@ Quaternionf aiCast(const aiQuaternion &q) {
 }
 AABB aiCast(const aiAABB &aabb) {
 	return AABB(aiCast(aabb.mMin), aiCast(aabb.mMax));
+}
+Matrix4f aiCast(const aiMatrix4x4 &m) { return Matrix4f{{m.a1, m.a2, m.a3, m.a4}, 
+					{m.b1, m.b2, m.b3, m.b4},
+					{m.c1, m.c2, m.c3, m.c4},
+					{m.d1, m.d2, m.d3, m.d4}};
 }
 
 struct TextureMapping {
@@ -83,12 +83,11 @@ void loadTextures(const aiMaterial *pAiMaterial, const std::string &folder,
 		std::filesystem::path filepath(folder);
 		filepath /= path;
 		std::string filename = filepath.string();
-		sMaterialLoader.loadTexture(pMaterial, source.targetType, filename);
+		sMaterialLoader.loadTexture(pMaterial, source.targetType, filename, false);
 	}
 }
 
-Material::SharedPtr
-createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
+Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
 			   ImportMode importMode = ImportMode::Default) {
 	aiString name;
 	pAiMaterial->Get(AI_MATKEY_NAME, name);
@@ -99,8 +98,7 @@ createMaterial(const aiMaterial *pAiMaterial, const string &modelFolder,
 		logWarning("Material with no name found -> renaming to 'unnamed'");
 		nameStr = "unnamed";
 	}
-	Material::SharedPtr pMaterial =
-		Material::SharedPtr(new Material(++materialIdAllocator, nameStr));
+	Material::SharedPtr pMaterial = std::make_shared<Material>(nameStr);
 
 	logDebug("Importing material: " + nameStr);
 	// Load textures. Note that loading is affected by the current shading
@@ -227,24 +225,26 @@ void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial,
 	TextureKey textureKey{filename, srgb};
 	if (!mTextureCache.count(textureKey)) {
 		mTextureCache[textureKey] =
-			Texture(filename, flip, srgb, ++textureIdAllocator);
+			std::make_shared<Texture>(filename, flip, srgb);
 	}
 	pMaterial->setTexture(type, mTextureCache[textureKey]);
 }
 
 using namespace krr::assimp;
-bool AssimpImporter::import(const string &filepath,
+bool AssimpImporter::import(const fs::path filepath,
 							const Scene::SharedPtr pScene) {
 	Assimp::DefaultLogger::create("", Assimp::Logger::NORMAL,
 								  aiDefaultLogStream_STDOUT);
 	Assimp::DefaultLogger::get()->info(
 		"KRR::Assimp::DefaultLogger initialized!");
 
-	unsigned int postProcessSteps = 0 |
-									aiProcess_CalcTangentSpace
-									//| aiProcess_OptimizeMeshes
-									| aiProcess_JoinIdenticalVertices |
-									aiProcess_FindInvalidData
+	unsigned int postProcessSteps = 0 
+									| aiProcess_CalcTangentSpace
+									| aiProcess_FindDegenerates
+									| aiProcess_OptimizeMeshes
+									| aiProcess_OptimizeGraph
+									| aiProcess_JoinIdenticalVertices 
+									| aiProcess_FindInvalidData
 									//| aiProcess_MakeLeftHanded
 									| aiProcess_Triangulate
 									//| aiProcess_RemoveComponent
@@ -252,33 +252,33 @@ bool AssimpImporter::import(const string &filepath,
 									| aiProcess_GenSmoothNormals
 									//| aiProcess_RemoveRedundantMaterials
 									//| aiProcess_FixInfacingNormals
-									| aiProcess_SortByPType |
-									aiProcess_GenUVCoords
+									| aiProcess_SortByPType 
+									| aiProcess_GenUVCoords
 									//| aiProcess_TransformUVCoords
+									//| aiProcess_PreTransformVertices
 									| aiProcess_FlipUVs
-									//| aiProcess_FlipWindingOrder
-									| aiProcess_PreTransformVertices |
-									aiProcess_GenBoundingBoxes;
+									//| aiProcess_FlipWindingOrder 
+									| aiProcess_GenBoundingBoxes;
 	int removeFlags = aiComponent_COLORS;
 	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS;
 		 uvLayer++)
 		removeFlags |= aiComponent_TEXCOORDSn(uvLayer);
 
-	mFilepath = filepath;
-	mpScene	  = pScene;
+	mFilepath = filepath.string();
+	mScene	  = pScene;
 
 	Assimp::Importer importer;
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
 	importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, 60);
 
 	logDebug("Start loading scene with assimp importer");
-	mpAiScene = (aiScene *) importer.ReadFile(filepath, postProcessSteps);
-	if (!mpAiScene) logFatal("Assimp::load model failed");
+	mAiScene = (aiScene *) importer.ReadFile(filepath.string(), postProcessSteps);
+	if (!mAiScene) logFatal("Assimp::load model failed");
 
 	logDebug("Start loading materials");
 
-	string modelFolder = getFileDir(filepath);
-	string modelSuffix = getFileExt(filepath);
+	string modelFolder = filepath.parent_path().string();
+	string modelSuffix = filepath.extension().string();
 	if (modelSuffix == ".obj") {
 		mImportMode = ImportMode::OBJ;
 		logInfo(
@@ -287,87 +287,90 @@ bool AssimpImporter::import(const string &filepath,
 		mImportMode = ImportMode::GLTF2;
 		logInfo("Importing GLTF2 model.");
 	}
+
+	auto root = std::make_shared<SceneGraphNode>();
+	mScene->getSceneGraph()->setRoot(root);
 	loadMaterials(modelFolder);
-
-	logDebug("Start traversing scene nodes");
-	traverseNode(mpAiScene->mRootNode, aiMatrix4x4());
-	logDebug("Total imported meshes: " +
-			 std::to_string(mpScene->meshes.size()));
-
+	loadMeshes();
+	traverseNode(mAiScene->mRootNode, root);
+	root->setName(filepath.filename().string());
 	Assimp::DefaultLogger::kill();
 	return true;
 }
 
-void AssimpImporter::processMesh(aiMesh *pAiMesh, aiMatrix4x4 transform) {
-	Mesh mesh;
-	mesh.indices.reserve(pAiMesh->mNumFaces);
-
-	assert(pAiMesh->HasNormals());
-	for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
-		Vector3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
-		Vector3f T, B;
-
-		if (pAiMesh->HasTangentsAndBitangents() &&
-			(pAiMesh->mTangents != NULL)) {
-			T = aiCast(pAiMesh->mTangents[i]);
-			//  in assimp the tangents and bitangents are not necessarily
-			//  orthogonal! however we need them to be orthonormal since we use
-			//  tbn as world-local transformations
-			T = normalize(T - normal * dot(normal, T));
-			mesh.tangents.push_back(T);
-		}
-		mesh.positions.push_back(aiCast(pAiMesh->mVertices[i]));
-		if (pAiMesh->HasTextureCoords(0)) {
-			Vector3f texcoord = Vector3f(aiCast(pAiMesh->mTextureCoords[0][i]));
-			mesh.texcoords.push_back(texcoord);
-		} else Log(Debug, "Lost UV coords when importing with Assimp");
-		mesh.normals.push_back(normal);					
+void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr graphNode) {
+	Affine3f transform = aiCast(assimpNode->mTransformation);
+	graphNode->setName(std::string(assimpNode->mName.C_Str()));
+	graphNode->setRotation(Quaternionf(transform.rotation()));
+	graphNode->setScaling(transform.scaling());
+	graphNode->setTranslation(transform.translation());
+	for (int i = 0; i < assimpNode->mNumMeshes; i++) {
+		// add this mesh into scenegraph
+		Mesh::SharedPtr mesh = mScene->getMeshes()[assimpNode->mMeshes[i]];
+		auto meshInstance = std::make_shared<MeshInstance>(mesh);
+		mScene->getSceneGraph()->attachLeaf(graphNode, meshInstance);
 	}
-
-	for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
-		aiFace face = pAiMesh->mFaces[i];
-		assert(face.mNumIndices == 3);
-		Vector3i indices = {(int) face.mIndices[0], (int) face.mIndices[1],
-							(int) face.mIndices[2]};
-		mesh.indices.push_back(indices);
-	}
-
-	if (pAiMesh->mMaterialIndex >= 0 &&
-		pAiMesh->mMaterialIndex < mpScene->materials.size()) {
-		mesh.materialId = pAiMesh->mMaterialIndex + 1;
-	}
-
-	// finalizing creating a mesh
-	mpScene->meshes.push_back(mesh);
-	mpScene->mAABB.extend(aiCast(pAiMesh->mAABB));
-
-	CUDA_SYNC_CHECK();
-}
-
-void AssimpImporter::traverseNode(aiNode *node, aiMatrix4x4 transform) {
-	transform = transform * node->mTransformation;
-	for (int i = 0; i < node->mNumMeshes; i++) {
-		aiMesh *mesh = mpAiScene->mMeshes[node->mMeshes[i]];
-		processMesh(mesh, transform);
-	}
-
-	for (int i = 0; i < node->mNumChildren; i++) {
-		traverseNode(node->mChildren[i], transform);
+	for (int i = 0; i < assimpNode->mNumChildren; i++) {
+		SceneGraphNode::SharedPtr childNode = std::make_shared<SceneGraphNode>();
+		mScene->getSceneGraph()->attach(graphNode, childNode);
+		traverseNode(assimpNode->mChildren[i], childNode);
 	}
 }
 
 void AssimpImporter::loadMaterials(const string &modelFolder) {
-	mpScene->materials.reserve(mpAiScene->mNumMaterials + 1LL);
-	mpScene->materials.push_back(Material(0, "default material"));
-	for (uint i = 0; i < mpAiScene->mNumMaterials; i++) {
-		const aiMaterial *aiMaterial = mpAiScene->mMaterials[i];
-		Material::SharedPtr pMaterial =
-			createMaterial(aiMaterial, modelFolder, mImportMode);
+	auto defaultMaterial = std::make_shared<Material>("default material");
+	mScene->addMaterial(defaultMaterial);
+	for (uint i = 0; i < mAiScene->mNumMaterials; i++) {
+		const aiMaterial *aiMaterial = mAiScene->mMaterials[i];
+		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);
 		if (pMaterial == nullptr) {
 			logError("Failed to create material...");
 			return;
 		}
-		mpScene->materials.push_back(*pMaterial);
+		mScene->addMaterial(pMaterial);
+	}
+}
+
+void AssimpImporter::loadMeshes() {
+	for (uint i = 0; i < mAiScene->mNumMeshes; i++) {
+		aiMesh *pAiMesh = mAiScene->mMeshes[i];
+		auto mesh		= std::make_shared<Mesh>();
+		mesh->indices.reserve(pAiMesh->mNumFaces);
+
+		assert(pAiMesh->HasNormals());
+		for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
+			Vector3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
+			Vector3f T, B;
+
+			if (pAiMesh->HasTangentsAndBitangents() && (pAiMesh->mTangents != NULL)) {
+				T = aiCast(pAiMesh->mTangents[i]);
+				//  in assimp the tangents and bitangents are not necessarily
+				//  orthogonal! however we need them to be orthonormal since we use
+				//  tbn as world-local transformations
+				T = normalize(T - normal * dot(normal, T));
+				mesh->tangents.push_back(T);
+			}
+			mesh->positions.push_back(aiCast(pAiMesh->mVertices[i]));
+			if (pAiMesh->HasTextureCoords(0)) {
+				Vector3f texcoord = Vector3f(aiCast(pAiMesh->mTextureCoords[0][i]));
+				mesh->texcoords.push_back(texcoord);
+			} else
+				Log(Debug, "Lost UV coords when importing with Assimp");
+			mesh->normals.push_back(normal);
+		}
+
+		for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
+			aiFace face = pAiMesh->mFaces[i];
+			assert(face.mNumIndices == 3);
+			Vector3i indices = {(int) face.mIndices[0], (int) face.mIndices[1],
+								(int) face.mIndices[2]};
+			mesh->indices.push_back(indices);
+		}
+
+		mesh->material = mScene->getMaterials()[pAiMesh->mMaterialIndex + 1];
+		mesh->aabb	   = aiCast(pAiMesh->mAABB);
+		mesh->setName(std::string(pAiMesh->mName.C_Str()));
+		mScene->getSceneGraph()->addMesh(mesh);
 	}
 }
 

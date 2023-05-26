@@ -25,6 +25,10 @@ public:
 		return *this;
 	}
 
+	template <int Mode, int Options>
+	KRR_CALLABLE AxisAligned operator*(const Eigen::Transform<T, Size, Mode, Options> & t) 
+	{ return this->transformed(t); }
+
 	KRR_CALLABLE void inflate(T inflation) {
 		this->m_min -= VectorType::Constant(inflation);
 		this->m_max += VectorType::Constant(inflation);

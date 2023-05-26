@@ -23,6 +23,7 @@ SET ( KRR_INCLUDE_ALL
 
 SET ( KRR_CORE_SOURCE
 	core/scene.cpp
+	core/scenegraph.cpp
 	core/camera.cpp
 	core/light.cpp
 	core/mesh.cpp

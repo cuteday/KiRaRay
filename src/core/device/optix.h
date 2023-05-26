@@ -27,9 +27,9 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 	HitgroupSBTData data;
 };
 
-class OptiXBackend {
+class OptiXBackendInterface {
 public:
-	OptiXBackend() = default;
+	OptiXBackendInterface() = default;
 
 	static OptixModule createOptiXModule(OptixDeviceContext optixContext, const char* ptx);
 	static OptixPipelineCompileOptions getPipelineCompileOptions();
@@ -39,8 +39,12 @@ public:
 	static OptixProgramGroup createIntersectionPG(OptixDeviceContext optixContext, OptixModule optixModule,
 		const char* closest, const char* any, const char* intersect);
 
-	static OptixTraversableHandle buildAccelStructure(OptixDeviceContext optixContext, CUstream cudaStream, Scene& scene);
-
+	static OptixTraversableHandle buildASFromInputs(OptixDeviceContext optixContext, 
+		CUstream cudaStream, const std::vector<OptixBuildInput> &buildInputs, CUDABuffer& accelBuffer); 
+	static OptixTraversableHandle buildTriangleMeshGAS(OptixDeviceContext optixContext,
+													   CUstream cudaStream,
+													   const rt::MeshData &mesh,
+													   CUDABuffer &accelBuffer);
 };
 
 struct OptiXInitializeParameters {
@@ -65,12 +69,12 @@ struct OptiXInitializeParameters {
 	}
 };
 
-class OptiXBackendImpl: public OptiXBackend {
+class OptiXBackend : public OptiXBackendInterface {
 public:
-	OptiXBackendImpl() = default;
+	OptiXBackend() = default;
 	
 	void initialize(const OptiXInitializeParameters& params);
-	void setScene(Scene &scene);
+	void setScene(Scene::SharedPtr scene);
 	template <typename T>
 	void launch(const T& parameters, string entryPoint, int width,
 		int height, int depth = 1) {
@@ -79,18 +83,20 @@ public:
 		if (!launchParams) cudaMalloc(&launchParams, sizeof(T));
 		if (!entryPoints.count(entryPoint))
 			Log(Fatal, "The entrypoint %s is not initialized!", entryPoint.c_str());
-		cudaMemcpy(launchParams, &parameters, sizeof(T),
-				   cudaMemcpyHostToDevice);
+		cudaMemcpy(launchParams, &parameters, sizeof(T), cudaMemcpyHostToDevice);
 		OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream, CUdeviceptr(launchParams), 
 			sizeof(T), &SBT[entryPoints[entryPoint]], width, height, depth));
 	}
 
-	OptixTraversableHandle getRootTraversable() const { return optixTraversable; }
-	rt::SceneData getSceneData() const { return scene->getSceneData(); }
+	Scene::SharedPtr getScene() const { return scene; }
+	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
+	rt::SceneData getSceneData() const { return scene->mSceneRT->getSceneData(); }
+	std::vector<string> getRayTypes() const { return optixParameters.rayTypes; }
+	std::vector<string> getRaygenEntries() const { return optixParameters.raygenEntries; }
 
 protected:
-	void buildAccelStructure(Scene &scene);
-	void buildShaderBindingTable(Scene &scene);
+	void buildAccelStructure();
+	void buildShaderBindingTable();
 
 	OptixProgramGroup createRaygenPG(const char *entrypoint) const;
 	OptixProgramGroup createMissPG(const char *entrypoint) const;
@@ -109,13 +115,17 @@ protected:
 	inter::vector<HitgroupRecord> hitgroupRecords;
 	inter::vector<MissRecord> missRecords;
 
+	inter::vector<OptixInstance> instancesIAS;
+	std::vector<OptixTraversableHandle> traversablesGAS;
+	std::vector<CUDABuffer> accelBuffersGAS;
+	CUDABuffer accelBufferIAS{};
+	OptixTraversableHandle traversableIAS;
+
 	std::map<string, int> entryPoints;
 	std::vector<OptixShaderBindingTable> SBT;
 	
-	OptixTraversableHandle optixTraversable{};
-	RTScene::SharedPtr scene;
+	Scene::SharedPtr scene;
 	OptiXInitializeParameters optixParameters;
 };
-
 
 KRR_NAMESPACE_END

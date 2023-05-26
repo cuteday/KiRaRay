@@ -26,28 +26,28 @@ public:
 		Vector3f v{ 0, 1, 0 };					// camera up		[dependent to aspect ratio]
 		Vector3f w{ 0, 0, -1 };					// camera forward
 	
+		KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler& sampler) {
+			Ray ray;
+			/* 1. Statified sample on the film plane (within the fragment) */
+			Vector2f p = (Vector2f)pixel + Vector2f(0.5f) + sampler.get2D(); // uniform sample + box filter
+			Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
+			if (lensRadius > 0) {			/*Thin lens*/
+				/* 2. Sample the lens (uniform) */
+				Vector3f focalPoint = pos + ndc[0] * u + ndc[1] * v + w;
+				Vector2f apertureSample = lensRadius > M_EPSILON ? uniformSampleDisk(sampler.get2D()) : Vector2f::Zero();
+				ray.origin = pos + lensRadius * (apertureSample[0] * normalize(u) + apertureSample[1] * normalize(v));
+				ray.dir = normalize(focalPoint - ray.origin);
+			} else {							/*Pin hole*/
+				ray.origin = pos;
+				ray.dir = normalize(ndc[0] * u + ndc[1] * v + w);
+			}
+			return ray;
+		}
+
 		KRR_CLASS_DEFINE(CameraData, pos, target, up, focalLength, focalDistance, lensRadius, aspectRatio);
 	};
 
 	Camera() = default;
-
-	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler& sampler) {
-		Ray ray;
-		/* 1. Statified sample on the film plane (within the fragment) */
-		Vector2f p = (Vector2f)pixel + Vector2f(0.5f) + sampler.get2D(); // uniform sample + box filter
-		Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
-		if (mData.lensRadius > 0) {			/*Thin lens*/
-			/* 2. Sample the lens (uniform) */
-			Vector3f focalPoint = mData.pos + ndc[0] * mData.u + ndc[1] * mData.v + mData.w;
-			Vector2f apertureSample = mData.lensRadius > M_EPSILON ? uniformSampleDisk(sampler.get2D()) : Vector2f::Zero();
-			ray.origin = mData.pos + mData.lensRadius * (apertureSample[0] * normalize(mData.u) + apertureSample[1] * normalize(mData.v));
-			ray.dir = normalize(focalPoint - ray.origin);
-		} else {							/*Pin hole*/
-			ray.origin = mData.pos;
-			ray.dir = normalize(ndc[0] * mData.u + ndc[1] * mData.v + mData.w);
-		}
-		return ray;
-	}
 
 	bool update();
 	void renderUI();
@@ -61,7 +61,7 @@ public:
 	KRR_CALLABLE Vector2f getFilmSize() const { return mData.filmSize; }
 	KRR_CALLABLE float getfocalDistance() const { return mData.focalDistance; }
 	KRR_CALLABLE float getfocalLength() const { return mData.focalLength; }
-	KRR_CALLABLE CameraData getData() const { return mData; }
+	KRR_CALLABLE const CameraData& getCameraData() const { return mData; }
 
 	KRR_CALLABLE void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; }
 	KRR_CALLABLE void setFilmSize(Vector2f& size) { mData.filmSize = size; }
@@ -90,7 +90,7 @@ public:
 	virtual bool onMouseEvent(const MouseEvent& mouseEvent) = 0;
 	virtual bool onKeyEvent(const KeyboardEvent& keyEvent) = 0;
 	virtual void renderUI() {};
-	virtual void setCamera(const Camera::SharedPtr &pCamera) { mpCamera = pCamera; }
+	virtual void setCamera(const Camera::SharedPtr &pCamera) { mCamera = pCamera; }
 		
 protected:
 	CameraController() = default;
@@ -98,7 +98,7 @@ protected:
 		setCamera(pCamera);
 	}
 
-	Camera::SharedPtr mpCamera{};
+	Camera::SharedPtr mCamera{};
 	float mSpeed = 1.f;
 };
 
@@ -106,11 +106,11 @@ class OrbitCameraController: public CameraController{
 public:
 	using SharedPtr = std::shared_ptr<OrbitCameraController>;
 	struct CameraControllerData{
-		Vector3f target = { 0, 0, 0 };
-		Vector3f up = { 0, 1, 0 };
-		float radius = 5;
-		float pitch = 0;
-		float yaw = 0;
+		Vector3f target = {0, 0, 0};
+		Vector3f up		= {0, 1, 0};
+		float radius	= 5;
+		float pitch		= 0;
+		float yaw		= 0;
 		
 		KRR_CLASS_DEFINE(CameraControllerData, radius, pitch, yaw, target);
 	};
@@ -132,12 +132,12 @@ private:
 	KRR_CLASS_DEFINE(OrbitCameraController, mData);
 	CameraControllerData mData, mDataPrev;
 	Vector2f mLastMousePos;
-	float mDampling = 1;
-	bool mOrbiting = false;
-	bool mPanning = false;
+	float mDampling	  = 1;
+	bool mOrbiting	  = false;
+	bool mPanning	  = false;
 	float mOrbitSpeed = 1;
-	float mPanSpeed = 1;
-	float mZoomSpeed = 0.1;
+	float mPanSpeed	  = 1;
+	float mZoomSpeed  = 0.1;
 };
 
 KRR_NAMESPACE_END

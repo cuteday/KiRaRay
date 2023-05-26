@@ -10,8 +10,6 @@ KRR_NAMESPACE_BEGIN
 using namespace importer;
 
 namespace {
-static uint textureIdAllocator	= 0;
-static uint materialIdAllocator = 0;
 static MaterialLoader sMaterialLoader;
 
 // helper functions
@@ -24,9 +22,7 @@ Matrixf<4, 4> cast(pbrt::affine3f xfm) {
 Vector3i cast(const pbrt::vec3i &vec) { return {vec.x, vec.y, vec.z}; }
 Vector3f cast(const pbrt::vec3f &vec) { return {vec.x, vec.y, vec.z}; }
 Vector2f cast(const pbrt::vec2f &vec) { return {vec.x, vec.y}; }
-AABB cast(const pbrt::box3f &aabb) {
-	return {cast(aabb.lower), cast(aabb.upper)};
-}
+AABB cast(const pbrt::box3f &aabb) { return {cast(aabb.lower), cast(aabb.upper)}; }
 
 inline Vector3f eta_to_reflectivity(const Vector3f &eta,
 									const Vector3f &eta_k) {
@@ -41,25 +37,19 @@ void loadTexture(Material::SharedPtr material, pbrt::Texture::SP texture,
 				 Material::TextureType type, const fs::path &basedir) {
 	if (auto t = std::dynamic_pointer_cast<pbrt::ImageTexture>(texture)) {
 		fs::path filename = basedir / t->fileName;
-		stbi_set_flip_vertically_on_load(true); // pbrt textures do not need
-												// filp.
 		sMaterialLoader.loadTexture(material, type, filename.string(), true);
-		stbi_set_flip_vertically_on_load(false);
 	} else {
 		Log(Warning, "Encountered unsupported pbrt texture: %s",
 			texture->toString().c_str());
 	}
 }
 
-size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
-					std::map<pbrt::Material::SP, size_t> &materials,
-					const string &basedir) {
+Material::SharedPtr PbrtImporter::loadMaterial(pbrt::Material::SP mat) {
 
-	if (materials.count(mat)) // already loaded...
-		return materials[mat];
+	static std::map<pbrt::Material::SP, Material::SharedPtr> loadedMaterials;
+	if (loadedMaterials.count(mat)) return loadedMaterials[mat];
 
-	Material::SharedPtr material =
-		Material::SharedPtr(new Material(++materialIdAllocator, mat->name));
+	Material::SharedPtr material = Material::SharedPtr(new Material(mat->name));
 	material->mBsdfType		= MaterialType::Disney;
 	material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 	Material::MaterialParams &matParams = material->mMaterialParams;
@@ -89,7 +79,7 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 				matParams.diffuse = Vector4f(cast(const_tex->value), 1);
 			else
 				loadTexture(material, m->map_kd, Material::TextureType::Diffuse,
-							basedir);
+							mBasepath);
 		}
 		const Vector3f ks(cast(m->ks));
 		matParams.specular[3] = luminance(ks);
@@ -106,8 +96,7 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 					std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd))
 				matParams.diffuse = Vector4f(cast(const_tex->value), 1);
 			else
-				loadTexture(material, m->map_kd, Material::TextureType::Diffuse,
-							basedir);
+				loadTexture(material, m->map_kd, Material::TextureType::Diffuse, mBasepath);
 		}
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
 		matParams.specular[3]	= 0;
@@ -121,8 +110,7 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 					std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd))
 				matParams.diffuse = Vector4f(cast(const_tex->value), 1);
 			else
-				loadTexture(material, m->map_kd, Material::TextureType::Diffuse,
-							basedir);
+				loadTexture(material, m->map_kd, Material::TextureType::Diffuse, mBasepath);
 		}
 		Vector3f ks(cast(m->ks));
 		float roughness = (m->uRoughness + m->vRoughness) / 2;
@@ -142,8 +130,7 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 					std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_kd))
 				diffuse = cast(const_tex->value);
 			else
-				loadTexture(material, m->map_kd, Material::TextureType::Diffuse,
-							basedir);
+				loadTexture(material, m->map_kd, Material::TextureType::Diffuse, mBasepath);
 		}
 		if (m->map_ks) {
 			Log(Debug, "A specular texture is found for %s texture %s",
@@ -152,16 +139,15 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 					std::dynamic_pointer_cast<pbrt::ConstantTexture>(m->map_ks))
 				specular = cast(const_tex->value);
 			else
-				loadTexture(material, m->map_ks,
-							Material::TextureType::Specular, basedir);
+				loadTexture(material, m->map_ks, Material::TextureType::Specular, mBasepath);
 		}
 		if (m->map_opacity) {
 			Log(Info, "An opacity map is found for %s texture %s",
 				m->toString().c_str(), m->name.c_str());
 			if (auto tex = std::dynamic_pointer_cast<pbrt::ImageTexture>(
 					m->map_opacity))
-				loadTexture(material, m->map_opacity,
-							Material::TextureType::Transmission, basedir);
+				loadTexture(material, m->map_opacity, Material::TextureType::Transmission,
+							mBasepath);
 		} else if (cast(m->opacity) != Vector3f(1)) {
 			Color3f transmission = Vector3f(1) - cast(m->opacity);
 			material->setConstantTexture(Material::TextureType::Transmission,
@@ -182,8 +168,7 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 				m->toString().c_str(), m->name.c_str());
 			if (auto tex =
 					std::dynamic_pointer_cast<pbrt::ImageTexture>(m->map_bump))
-				loadTexture(material, m->map_bump,
-							Material::TextureType::Normal, basedir);
+				loadTexture(material, m->map_bump, Material::TextureType::Normal, mBasepath);
 			// TODO: theres no tangent space calculated for pbrt models, so
 			// bumpmap is meaningless.
 		}
@@ -203,8 +188,7 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 				matParams.diffuse =
 					Vector4f(cast(const_tex->value), matParams.diffuse[3]);
 			else
-				loadTexture(material, m->map_kd, Material::TextureType::Diffuse,
-							basedir);
+				loadTexture(material, m->map_kd, Material::TextureType::Diffuse, mBasepath);
 		}
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MirrorMaterial>(mat)) {
 		// TODO: needs to make disney mirror-reflect when 0-roughness.
@@ -213,13 +197,11 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 		matParams.diffuse		= Vector4f(Vector3f(0), 1);
 		matParams.specular		= Vector4f(cast(m->kr), 1);
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::MetalMaterial>(mat)) {
-		Log(Debug, "Encountered not well-supported metal material: %s",
-			mat->name.c_str());
+		Log(Debug, "Encountered not well-supported metal material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		Vector3f eta			= cast(m->eta);
 		Vector3f eta_k			= cast(m->k);
-		// matParams.diffuse		= Vector4f(eta_to_reflectivity(eta, eta_k),
-		// 0);
+		// matParams.diffuse		= Vector4f(eta_to_reflectivity(eta, eta_k), 0);
 		matParams.diffuse = Vector4f(bsdf::FrComplex(1, eta, eta_k), 0);
 		float roughness	  = m->roughness;
 		roughness		  = (m->uRoughness + m->vRoughness) / 2;
@@ -244,101 +226,94 @@ size_t loadMaterial(Scene::SharedPtr scene, pbrt::Material::SP mat,
 	} else {
 		Log(Warning, "Encountered unsupported %s material: %s",
 			mat->toString().c_str(), mat->name.c_str());
-		return 0; // falling back to the default material 0...
+		return nullptr; // falling back to the default material 0...
 	}
 	if (matParams.IoR == 1) // 1-ETA is not plausible for transmission
 		matParams.IoR = 1.001;
-	size_t materialId = scene->materials.size();
-	scene->materials.push_back(*material);
-	materials[mat] = materialId;
-	return materialId;
+
+	mScene->addMaterial(material);
+	loadedMaterials[mat] = material;
+	return material;
 }
 
-Mesh createMesh(pbrt::Shape::SP shape, const Matrix4f transform) {
-	Mesh mesh;
-	pbrt::TriangleMesh::SP m =
-		std::dynamic_pointer_cast<pbrt::TriangleMesh>(shape);
-	int n_vertices = m->vertex.size();
-	int n_faces	   = m->getNumPrims();
-	Log(Debug, "The current mesh %s has %d vertices and %d faces",
-		m->toString().c_str(), n_vertices, n_faces);
-	if (m->normal.size() < n_vertices)
-		Log(Debug,
-			"The current mesh has %zd normals but %d vertices, thus the "
-			"normal(s) are ignored.", m->normal.size(), n_vertices);
-	Matrixf<3, 3> rot = transform.topLeftCorner(3, 3).inverse().transpose();
-	mesh.indices.reserve(n_vertices);
-	for (int i = 0; i < n_vertices; i++) {
-		Vector4f local_vertex(cast(m->vertex[i]), 1);
-		Vector4f transformed_vertex = transform * local_vertex;
-		Vector3f transformed_normal{};
-		if (m->normal.size()) {
-			transformed_normal = rot * cast(m->normal[i]);
-			mesh.normals.push_back(transformed_normal);
-		}
-		if (m->texcoord.size()) 
-			mesh.texcoords.push_back(cast(m->texcoord[i]));		
-		mesh.positions.push_back(transformed_vertex);
-	}
-	for (int i = 0; i < n_faces; i++) 
-		mesh.indices.push_back(cast(m->index[i]));
-	return mesh;
-}
-
-void createAreaLight(Mesh &mesh, pbrt::AreaLight::SP areaLight) {
+void createAreaLight(Mesh::SharedPtr mesh, pbrt::AreaLight::SP areaLight) {
 	if (auto l =
 			std::dynamic_pointer_cast<pbrt::DiffuseAreaLightRGB>(areaLight)) {
-		mesh.Le = cast(l->L);
+		mesh->Le = cast(l->L);
 	} else if (auto l = std::dynamic_pointer_cast<pbrt::DiffuseAreaLightBB>(
 				   areaLight)) {
 		// convert blackbody strength & temporature to linear RGB...
-		mesh.Le = cast(l->LinRGB());
+		mesh->Le = cast(l->LinRGB());
 	} else {
 		Log(Warning, "Encountered unsupported area light: %s",
 			areaLight->toString().c_str());
 	}
 }
 
-bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
+Mesh::SharedPtr PbrtImporter::loadMesh(pbrt::TriangleMesh::SP pbrtMesh) {
+	static std::map<pbrt::TriangleMesh::SP, Mesh::SharedPtr> loadedMeshes;
+	if (loadedMeshes.count(pbrtMesh)) return loadedMeshes[pbrtMesh];
+
+	Mesh::SharedPtr mesh = std::make_shared<Mesh>();
+	int n_vertices		 = pbrtMesh->vertex.size();
+	int n_faces			 = pbrtMesh->getNumPrims();
+	Log(Debug, "The current mesh %s has %d vertices and %d faces", pbrtMesh->toString().c_str(),
+		n_vertices, n_faces);
+	if (pbrtMesh->normal.size() < n_vertices)
+		Log(Debug,
+			"The current mesh has %zd normals but %d vertices, thus the "
+			"normal(s) are ignored.",
+			pbrtMesh->normal.size(), n_vertices);
+	mesh->indices.reserve(n_vertices);
+	for (int i = 0; i < n_vertices; i++) {
+		if (pbrtMesh->normal.size()) mesh->normals.push_back(cast(pbrtMesh->normal[i]));
+		if (pbrtMesh->texcoord.size()) mesh->texcoords.push_back(cast(pbrtMesh->texcoord[i]));
+		mesh->positions.push_back(cast(pbrtMesh->vertex[i]));
+	}
+	for (int i = 0; i < n_faces; i++) mesh->indices.push_back(cast(pbrtMesh->index[i]));
+	//mesh->computeBoundingBox();
+	mesh->aabb = cast(pbrtMesh->getBounds());
+	if (pbrtMesh->material) mesh->material = loadMaterial(pbrtMesh->material);
+	else mesh->material = mScene->getMaterials()[0];
+	if (pbrtMesh->areaLight) createAreaLight(mesh, pbrtMesh->areaLight);
+	mesh->setName(pbrtMesh->toString());
+	loadedMeshes[pbrtMesh] = mesh;
+	mScene->addMesh(mesh);
+	return mesh;
+}
+
+bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {
 	string basepath = fs::path(filepath).parent_path().string();
 	mBasepath		= basepath;
+	mScene			= pScene;
 
 	Log(Info, "Attempting to load pbrt scene from %s...", filepath.c_str());
-	pbrt::Scene::SP scene = pbrt::importPBRT(filepath);
+	pbrt::Scene::SP scene = pbrt::importPBRT(filepath.string());
 	if (!scene) {
 		Log(Fatal, "Failed to load pbrt file from %s...", filepath.c_str());
 		return false;
 	}
+	scene->makeSingleLevel(); // since currently kiraray supports only single gas.
 
-	scene->makeSingleLevel(); // since currently kiraray supports only single
-							  // gas...
-	pScene->materials.push_back(
-		Material(0, "default material")); // the default material for shapes
-										  // without material
+	auto root = std::make_shared<SceneGraphNode>();
+	mScene->getSceneGraph()->setRoot(root);
 
-	std::map<pbrt::Material::SP, size_t> pbrtMaterials; // loaded materials and
-														// its parametric id
+	pScene->addMaterial(std::make_shared<Material>("default material")); 
+	// the default material for shapes without material
 
-	for (const pbrt::Shape::SP shape : scene->world->shapes) {
-		// this makes you iterate through all shapes of the scene...
-	}
-
+	// build scenegraph
 	for (const pbrt::Instance::SP inst : scene->world->instances) {
-		Matrixf<4, 4> transform =
-			cast(inst->xfm); // the instance's local transform
+		Affine3f transform = cast(inst->xfm); // the instance's local transform
+		auto node		   = std::make_shared<SceneGraphNode>();
+		mScene->getSceneGraph()->attach(root, node);
+		node->setScaling(transform.scaling());
+		node->setRotation(Quaternionf(transform.rotation()));
+		node->setTranslation(transform.translation());
 		for (const pbrt::Shape::SP geom : inst->object->shapes) {
-			if (pbrt::TriangleMesh::SP m =
-					std::dynamic_pointer_cast<pbrt::TriangleMesh>(geom)) {
-				Mesh mesh = createMesh(m, transform);
-				if (m->material) {
-					mesh.materialId = loadMaterial(pScene, m->material,
-												   pbrtMaterials, basepath);
-				}
-				if (m->areaLight) {
-					createAreaLight(mesh, m->areaLight);
-				}
-				pScene->meshes.push_back(mesh);
-				pScene->mAABB.extend(mesh.getAABB());
+			if (auto m = std::dynamic_pointer_cast<pbrt::TriangleMesh>(geom)) {
+				Mesh::SharedPtr mesh = loadMesh(m);
+				auto meshInstance	 = std::make_shared<MeshInstance>(mesh);
+				mScene->getSceneGraph()->attachLeaf(node, meshInstance);
 			} else {
 				Log(Debug, "Encountered unsupported pbrt shape type: %s",
 					geom->toString().c_str());
@@ -347,15 +322,11 @@ bool PbrtImporter::import(const string &filepath, Scene::SharedPtr pScene) {
 	}
 
 	for (const pbrt::LightSource::SP light : scene->world->lightSources) {
-		if (auto l =
-				std::dynamic_pointer_cast<pbrt::InfiniteLightSource>(light)) {
-			Log(Debug, "Encountered infinite light source %s",
-				l->mapName.c_str());
-#ifdef USE_PBRT_ENVMAP
-			pScene->addInfiniteLight(InfiniteLight(resolve(l->mapName)));
-#endif
-		}
+		if (auto l = std::dynamic_pointer_cast<pbrt::InfiniteLightSource>(light)) 
+			Log(Debug, "Encountered infinite light %s", l->mapName.c_str());
 	}
+
+	Log(Info, "PBRT scene loaded %zd meshes", mScene->getMeshes().size());
 	return true;
 }
 

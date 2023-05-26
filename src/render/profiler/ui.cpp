@@ -166,8 +166,8 @@ void ProfilerUI::render() {
 }
 
 void ProfilerUI::renderOptions() {
-	bool paused = mpProfiler->isPaused();
-	if (ui::Checkbox("Pause", &paused)) mpProfiler->setPaused(paused);
+	bool paused = mProfiler->isPaused();
+	if (ui::Checkbox("Pause", &paused)) mProfiler->setPaused(paused);
 
 	ui::SameLine();
 	ui::Checkbox("Average", &mEnableAverage);
@@ -176,16 +176,16 @@ void ProfilerUI::renderOptions() {
 	ui::SetNextItemWidth(100.f);
 	if (ui::Combo("Graph", reinterpret_cast<int*>(&mGraphMode), kGraphModes, (int)GraphMode::Count)) clearGraphData();
 
-	if (mpProfiler->isCapturing()) {
+	if (mProfiler->isCapturing()) {
 		ui::SameLine();
 		if (ui::Button("End Capture")) {
-			auto pCapture = mpProfiler->endCapture();
+			auto pCapture = mProfiler->endCapture();
 			assert(pCapture);
 		}
 	}
 	else {
 		ui::SameLine();
-		if (ui::Button("Start Capture")) mpProfiler->startCapture();
+		if (ui::Button("Start Capture")) mProfiler->startCapture();
 	}
 
 	ui::Separator();
@@ -259,7 +259,7 @@ void ProfilerUI::renderGraph(const ImVec2& size, size_t highlightIndex, size_t& 
 }
 
 void ProfilerUI::updateEventData() {
-	const auto& events = mpProfiler->getEvents();
+	const auto& events = mProfiler->getEvents();
 
 	mEventData.resize(events.size());
 	mTotalCpuTime = 0.f;
@@ -323,7 +323,7 @@ void ProfilerUI::updateGraphData() {
 		event.maxGraphValue = maxGraphValue;
 	}
 
-	if (!mpProfiler->isPaused()) {
+	if (!mProfiler->isPaused()) {
 		mHistoryWrite = (mHistoryWrite + 1) % kHistoryCapacity;
 		mHistoryLength = std::min(mHistoryLength + 1, kHistoryCapacity);
 	}

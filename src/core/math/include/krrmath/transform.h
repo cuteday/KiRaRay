@@ -13,9 +13,12 @@ template <typename T, int Dim, int Mode, int Options = Eigen::RowMajor>
 class Transform : public Eigen::Transform<T, Dim, Mode, Options> {
 public:
 	using Eigen::Transform<T, Dim, Mode, Options>::Transform;
+	typedef Vector<T, Dim> ScalingVectorType;
+	typedef Matrix<T, Dim, Dim, Options> LinearMatrixType;
+	typedef Matrix<T, Dim, Dim, Options> RotationMatrixType;
 	
 	KRR_CALLABLE Transform(void)
-		: Eigen::Transform<T, Dim, Mode, Options>(Eigen::Transform<T, Dim, Mode, Options>::Zero()) {}
+		: Eigen::Transform<T, Dim, Mode, Options>(Eigen::Transform<T, Dim, Mode, Options>::Identity()) {}
 
 	template <typename U = T> /* Dummy parameter for enable_if */
 	KRR_CALLABLE Transform(typename std::enable_if_t<Dim == Mode, U> v) 
@@ -30,6 +33,12 @@ public:
 		this->Eigen::Transform<T, Dim, Mode, Options>::operator=(other);
 		return *this;
 	}
+
+	KRR_CALLABLE ScalingVectorType scaling() const {
+		LinearMatrixType result;
+		this->computeRotationScaling((LinearMatrixType *) nullptr, &result);
+		return ScalingVectorType(result.diagonal());
+	}
 };
 
 /* About storage order: 
@@ -43,7 +52,7 @@ template <int Dim, int Mode, int Options = Eigen::RowMajor>
 using Transformf = Transform<float, Dim, Mode, Options>;
 
 template <int Dim, int Options = Eigen::RowMajor>
-using Affinef = Transformf<Dim, Options>;
+using Affinef = Transformf<Dim, Eigen::Affine, Options>;
 
 using Affine2f = Affinef<2, Eigen::RowMajor>;
 using Affine3f = Affinef<3, Eigen::RowMajor>;

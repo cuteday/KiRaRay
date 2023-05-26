@@ -13,7 +13,6 @@ std::shared_ptr<RenderPassFactory::configured_map_type> RenderPassFactory::confi
 CUDATrackedMemory CUDATrackedMemory::singleton;
 
 namespace {
-
 	static void optixContextLogCallback(unsigned int level,
 		const char* tag,
 		const char* message,

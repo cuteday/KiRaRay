@@ -205,7 +205,7 @@ void Profiler::endFrame() {
 		pEvent->endFrame(mFrameIndex);
 	}
 
-	if (mpCapture) mpCapture->captureEvents(mCurrentFrameEvents);
+	if (mCapture) mCapture->captureEvents(mCurrentFrameEvents);
 
 	mLastFrameEvents = std::move(mCurrentFrameEvents);
 	++mFrameIndex;
@@ -213,18 +213,18 @@ void Profiler::endFrame() {
 
 void Profiler::startCapture(size_t reservedFrames) {
 	setEnabled(true);
-	mpCapture = Capture::create(mLastFrameEvents.size(), reservedFrames);
+	mCapture = Capture::create(mLastFrameEvents.size(), reservedFrames);
 }
 
 Profiler::Capture::SharedPtr Profiler::endCapture() {
 	Capture::SharedPtr pCapture;
-	std::swap(pCapture, mpCapture);
+	std::swap(pCapture, mCapture);
 	if (pCapture) pCapture->finalize();
 	return pCapture;
 }
 
 bool Profiler::isCapturing() const {
-	return mpCapture != nullptr;
+	return mCapture != nullptr;
 }
 
 const Profiler::SharedPtr& Profiler::instancePtr() {

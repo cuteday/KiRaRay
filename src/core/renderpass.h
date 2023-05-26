@@ -97,8 +97,8 @@ public:
 	virtual void resize(const Vector2i& size) { mFrameSize = size; }
 	
 	virtual void setEnable(bool enable) { mEnable = enable; }
-	virtual void setScene(Scene::SharedPtr scene) { mpScene = scene; }
-	virtual Scene::SharedPtr getScene() { return mpScene; }
+	virtual void setScene(Scene::SharedPtr scene) { mScene = scene; }
+	virtual Scene::SharedPtr getScene() { return mScene; }
 	virtual void setDeviceManager(DeviceManager *deviceManager) {
 		mDeviceManager = deviceManager;
 	}
@@ -144,7 +144,7 @@ protected:
 	
 	bool mEnable = true;
 	Vector2i mFrameSize{};
-	Scene::SharedPtr mpScene = nullptr;
+	Scene::SharedPtr mScene = nullptr;
 };
 
 class RenderPassFactory {

@@ -42,11 +42,10 @@ public:
 	void loadConfig(const json config);
 
 private:
-	int mFrameCount{ 0 };
 	int mSpp{ 0 };			// Samples needed tobe rendered, 0 means unlimited.
-	Scene::SharedPtr mpScene;
+	Scene::SharedPtr mScene;
 	UIRenderer::SharedPtr mpUIRenderer;
-	ProfilerUI::UniquePtr mpProfilerUI;
+	ProfilerUI::UniquePtr mProfilerUI;
 	json mConfig{};
 	string mConfigPath{};
 };
