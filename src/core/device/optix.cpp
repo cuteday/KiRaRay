@@ -271,9 +271,7 @@ void OptiXBackend::initialize(const OptiXInitializeParameters &params) {
 	OptixPipelineCompileOptions pipelineCompileOptions = getPipelineCompileOptions();
 	OptixPipelineLinkOptions pipelineLinkOptions = {};
 	pipelineLinkOptions.maxTraceDepth			 = 3;
-#ifdef KRR_DEBUG_BUILD
-	pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
-#endif
+
 	OPTIX_CHECK_WITH_LOG(
 		optixPipelineCreate(optixContext, &pipelineCompileOptions,
 							&pipelineLinkOptions, allPGs.data(), allPGs.size(),

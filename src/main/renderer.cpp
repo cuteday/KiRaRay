@@ -74,7 +74,7 @@ void RenderApp::Render() {
 		sRequestScreenshot = true;
 
 	if (mScene) mScene->update(GetFrameIndex());
-	BeginFrame();
+	DeviceManager::BeginFrame();
 	auto framebuffer = mRenderFramebuffers[GetCurrentBackBufferIndex()];
 	mpUIRenderer->beginFrame();
 	for (auto it : mRenderPasses) it->beginFrame();

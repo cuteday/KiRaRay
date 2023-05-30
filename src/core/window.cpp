@@ -362,6 +362,10 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 
 	UpdateWindowSize();
 	mNvrhiDevice->waitForIdle();
+
+	auto ctx = ImGui::CreateContext();
+	ImGui::SetCurrentContext(ctx);
+
 	return true;
 }
 
@@ -370,9 +374,9 @@ void DeviceManager::AddRenderPassToFront(RenderPass::SharedPtr pRenderPass) {
 	mRenderPasses.push_front(pRenderPass);
 
 	pRenderPass->setDeviceManager(this);
-	pRenderPass->resizing();
-	pRenderPass->resize({int(mDeviceParams.backBufferWidth),
-						 int(mDeviceParams.backBufferHeight)});
+	//pRenderPass->resizing();
+	//pRenderPass->resize({int(mDeviceParams.backBufferWidth),
+	//					 int(mDeviceParams.backBufferHeight)});
 }
 
 void DeviceManager::AddRenderPassToBack(RenderPass::SharedPtr pRenderPass) {
@@ -380,9 +384,9 @@ void DeviceManager::AddRenderPassToBack(RenderPass::SharedPtr pRenderPass) {
 	mRenderPasses.push_back(pRenderPass);
 
 	pRenderPass->setDeviceManager(this);
-	pRenderPass->resizing();
-	pRenderPass->resize({int(mDeviceParams.backBufferWidth),
-						 int(mDeviceParams.backBufferHeight)});
+	//pRenderPass->resizing();
+	//pRenderPass->resize({int(mDeviceParams.backBufferWidth),
+	//					 int(mDeviceParams.backBufferHeight)});
 }
 
 void DeviceManager::RemoveRenderPass(RenderPass::SharedPtr pRenderPass) {
@@ -501,8 +505,8 @@ void DeviceManager::GetWindowDimensions(int &width, int &height) const {
 }
 
 void DeviceManager::UpdateWindowSize() {
-	int width;
-	int height;
+	if (mWindow == nullptr) return;
+	int width, height;
 	glfwGetWindowSize(mWindow, &width, &height);
 
 	if (width == 0 || height == 0) {
