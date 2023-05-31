@@ -44,6 +44,7 @@ private:
 		p.mExposureCompensation = j.value("exposure", 1.f);
 	}
 	
+	bool mUseGamma{false};
 	float mExposureCompensation{ 1 };
 	Operator mOperator{ Operator::Linear };
 };

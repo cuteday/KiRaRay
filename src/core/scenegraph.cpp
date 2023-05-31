@@ -20,6 +20,15 @@ SceneGraphLeaf::SharedPtr MeshInstance::clone() {
 	return std::make_shared<MeshInstance>(mMesh);
 }
 
+SceneGraphLeaf::SharedPtr SceneAnimation::clone() {
+	auto copy = std::make_shared<SceneAnimation>();
+	for (const auto &channel : mChannels) {
+		copy->addChannel(std::make_shared<SceneAnimationChannel>(
+			channel->getSampler(), channel->getTargetNode(), channel->getAttribute()));
+	}
+	return std::static_pointer_cast<SceneGraphLeaf>(copy);
+}
+
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
 								  const Vector3f *scaling) {
 	if (scaling) mScaling = *scaling;
@@ -317,6 +326,8 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 			Log(Error, "The leaf node points to a mesh that does not added to the scene");
 		meshInstance->mInstanceId = mMeshInstances.size();
 		mMeshInstances.push_back(meshInstance);
+	} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(leaf)) {
+		mAnimations.push_back(animation);
 	}
 }
 

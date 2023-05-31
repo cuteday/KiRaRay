@@ -48,11 +48,11 @@ std::optional<Array4f> Sampler::evaluate(float time, bool extrapolateLastValues)
 
 	if (count == 0) return std::optional<Array4f>();
 
-	if (time <= mKeyframes[0].time) return std::optional(mKeyframes[0].value);
+	if (time <= mKeyframes.front().time) return std::optional(mKeyframes.front().value);
 
-	if (mKeyframes.size() == 1 || time >= mKeyframes[count - 1].time) {
+	if (mKeyframes.size() == 1 || time >= mKeyframes.back().time) {
 		if (extrapolateLastValues)
-			return std::optional(mKeyframes[count - 1].value);
+			return std::optional(mKeyframes.back().value);
 		else
 			return std::optional<Array4f>();
 	}

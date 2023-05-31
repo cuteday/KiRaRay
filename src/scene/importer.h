@@ -50,6 +50,7 @@ private:
 	void loadAnimations();
 
 	ImportMode mImportMode = ImportMode::Default;
+	std::map<string, SceneGraphNode::SharedPtr> mNodeMap; // unique node name
 	string mFilepath;
 	aiScene *mAiScene = nullptr;
 	Scene::SharedPtr mScene;

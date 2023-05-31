@@ -42,7 +42,7 @@ public:
 	std::optional<Array4f> evaluate(float time, bool extrapolateLastValues = false) const;
 	void addKeyframe(const Keyframe& keyframe);
 
-	InterpolationMode getMode() const { return mMode; }
+	InterpolationMode getInterpolationMode() const { return mMode; }
 	void setInterpolationMode(InterpolationMode mode) { mMode = mode; }
 
 	float getStartTime() const;

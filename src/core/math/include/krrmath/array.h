@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "quaternion.h"
 #include <Eigen/Dense>
 
 KRR_NAMESPACE_BEGIN
@@ -157,6 +158,13 @@ public:
 		this->operator[](1) = v.operator[](1);
 		this->operator[](2) = v.operator[](2);
 		this->operator[](3) = w;
+	}
+
+	KRR_CALLABLE Array4(const Quaternion<T> &q) { 
+		this->operator[](0) = q.w();
+		this->operator[](1) = q.x();
+		this->operator[](2) = q.y();
+		this->operator[](3) = q.z();
 	}
 
 	KRR_CALLABLE Array4(const T &x, const T &y, const T &z, const T &w) {

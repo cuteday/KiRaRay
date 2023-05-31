@@ -191,6 +191,7 @@ public:
 	bool isValid() const;
 	bool apply(float time) const;
 	void addChannel(const SceneAnimationChannel::SharedPtr &channel);
+	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 
 private:
 	std::vector<SceneAnimationChannel::SharedPtr> mChannels;

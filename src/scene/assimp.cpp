@@ -24,8 +24,11 @@ using ImportMode = AssimpImporter::ImportMode;
 
 MaterialLoader sMaterialLoader;
 
+std::string aiCast(const aiString &str) { return std::string(str.C_Str()); }
 Vector3f aiCast(const aiColor3D &ai) { return Vector3f(ai.r, ai.g, ai.b); }
 Vector3f aiCast(const aiVector3D &val) { return Vector3f(val.x, val.y, val.z); }
+Array4f aiKeyframeCast(const aiVector3D &val) { return Array4f(val.x, val.y, val.z, 0); }
+Array4f aiKeyframeCast(const aiQuaternion &val) { return Array4f(val.w, val.x, val.y, val.z); }
 Quaternionf aiCast(const aiQuaternion &q) {
 	return Quaternionf{q.w, q.x, q.y, q.z};
 }
@@ -293,6 +296,7 @@ bool AssimpImporter::import(const fs::path filepath,
 	loadMaterials(modelFolder);
 	loadMeshes();
 	traverseNode(mAiScene->mRootNode, root);
+	loadAnimations();
 	root->setName(filepath.filename().string());
 	Assimp::DefaultLogger::kill();
 	return true;
@@ -300,7 +304,9 @@ bool AssimpImporter::import(const fs::path filepath,
 
 void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr graphNode) {
 	Affine3f transform = aiCast(assimpNode->mTransformation);
-	graphNode->setName(std::string(assimpNode->mName.C_Str()));
+	graphNode->setName(aiCast(assimpNode->mName));
+	if (!graphNode->getName().empty())
+		mNodeMap[graphNode->getName()] = graphNode;
 	graphNode->setRotation(Quaternionf(transform.rotation()));
 	graphNode->setScaling(transform.scaling());
 	graphNode->setTranslation(transform.translation());
@@ -375,15 +381,68 @@ void AssimpImporter::loadMeshes() {
 }
 
 void AssimpImporter::loadAnimations() {
+	auto resetNegativeKeyframeTimes = [](aiNodeAnim *pAiNode) {
+		auto resetTime = [](auto keys, uint32_t count) {
+			if (count > 1) assert(keys[1].mTime >= 0);
+			if (keys[0].mTime < 0) keys[0].mTime = 0;
+		};
+		resetTime(pAiNode->mPositionKeys, pAiNode->mNumPositionKeys);
+		resetTime(pAiNode->mRotationKeys, pAiNode->mNumRotationKeys);
+		resetTime(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys);				
+	};
+
+	auto sceneGraph			= mScene->getSceneGraph();
+	auto animationContainer = std::make_shared<SceneGraphNode>();
+	sceneGraph->attach(sceneGraph->getRoot(), animationContainer);
+	
 	for (int i = 0; i < mAiScene->mNumAnimations; i++) {
 		aiAnimation *pAiAnimation = mAiScene->mAnimations[i];
+		auto animation			  = std::make_shared<SceneAnimation>();
 		float duration			  = pAiAnimation->mDuration;
 		float ticksPerSecond	  = pAiAnimation->mTicksPerSecond;
 		float durationInSeconds	  = duration / ticksPerSecond;
 
 		for (int ch = 0; ch < pAiAnimation->mNumChannels; ch++) {
-			
+			aiNodeAnim *aiNode = pAiAnimation->mChannels[ch];
+			auto graphNode = mNodeMap[aiCast(aiNode->mNodeName)];			
+			resetNegativeKeyframeTimes(aiNode);
+		
+			auto createAnimationChannel = [](auto keys, size_t count, 
+				SceneGraphNode::SharedPtr node, anime::AnimationAttribute attribute)
+				-> SceneAnimationChannel::SharedPtr {
+				auto sampler = std::make_shared<anime::Sampler>();
+				auto animationChannel =
+					std::make_shared<SceneAnimationChannel>(sampler, node, attribute);
+				for (size_t i = 0; i < count; i++) {
+					auto key = keys[i];
+					anime::Keyframe keyframe;
+					keyframe.time = key.mTime;
+					keyframe.value = aiKeyframeCast(key.mValue);
+					sampler->addKeyframe(keyframe);
+				}
+				sampler->setInterpolationMode(anime::InterpolationMode::Linear);
+				return animationChannel;
+			};
+
+			if (aiNode->mNumPositionKeys)
+				animation->addChannel(
+					createAnimationChannel(aiNode->mPositionKeys, aiNode->mNumPositionKeys, 
+					graphNode, anime::AnimationAttribute::Translation));
+			if (aiNode->mNumPositionKeys)
+				animation->addChannel(
+					createAnimationChannel(aiNode->mRotationKeys, aiNode->mNumPositionKeys, 
+					graphNode, anime::AnimationAttribute::Rotation));
+			if (aiNode->mNumPositionKeys)
+				animation->addChannel(
+					createAnimationChannel(aiNode->mScalingKeys, aiNode->mNumScalingKeys, 
+					graphNode, anime::AnimationAttribute::Scaling));
 		}
+
+		// attach the newly created animation to the container node
+		auto animationNode = std::make_shared<SceneGraphNode>();
+		animationNode->setLeaf(animation);
+		animationNode->setName(aiCast(pAiAnimation->mName));
+		sceneGraph->attach(animationContainer, animationNode);
 	}
 }
 
