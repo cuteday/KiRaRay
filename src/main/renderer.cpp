@@ -64,16 +64,16 @@ void RenderApp::run() {
 	finalize();
 }
 
+// Called before beginFrame()...
 void RenderApp::Tick(double elapsedTime) {
 	for (auto it : mRenderPasses) it->tick(float(elapsedTime));
 	mpUIRenderer->tick(float(elapsedTime));
+	if (mScene) mScene->update(GetFrameIndex(), elapsedTime);
 }
 
 void RenderApp::Render() {
 	if (sSaveFrames && GetFrameIndex() % sSaveFrameInterval == 0)
 		sRequestScreenshot = true;
-
-	if (mScene) mScene->update(GetFrameIndex());
 	DeviceManager::BeginFrame();
 	auto framebuffer = mRenderFramebuffers[GetCurrentBackBufferIndex()];
 	mpUIRenderer->beginFrame();

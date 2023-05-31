@@ -459,6 +459,7 @@ void DeviceManager::UpdateAverageFrameTime(double elapsedTime) {
 }
 
 void DeviceManager::RunMessageLoop() {
+	glfwSetTime(0);
 	mPreviousFrameTimestamp = glfwGetTime();
 
 	while (!glfwWindowShouldClose(mWindow) && !gpContext->shouldQuit()) {
@@ -473,7 +474,7 @@ void DeviceManager::RunMessageLoop() {
 
 		if (mwindowVisible) {
 			if (mcallbacks.beforeTick) mcallbacks.beforeTick(*this);
-			Tick(elapsedTime);
+			Tick(curTime);
 			if (mcallbacks.afterTick) mcallbacks.afterTick(*this);
 			if (mcallbacks.beforeRender) mcallbacks.beforeRender(*this);
 			Render();

@@ -200,17 +200,20 @@ private:
 
 class SceneGraph : public std::enable_shared_from_this<SceneGraph> {
 public:
+	using UpdateRecord = struct { size_t frameIndex; SceneGraphNode::UpdateFlags updateFlags; };
 	using SharedPtr = std::shared_ptr<SceneGraph>;
 	SceneGraph()		  = default;
 	virtual ~SceneGraph() = default;
 
 	void update(size_t frameIndex);
+	void animate(double currentTime);
 
 	const SceneGraphNode::SharedPtr &getRoot() const { return mRoot; }
 	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mMeshInstances; }
 	std::vector<Mesh::SharedPtr> &getMeshes() { return mMeshes; }
 	std::vector<Material::SharedPtr> &getMaterials() { return mMaterials; }
 	std::vector<SceneAnimation::SharedPtr> &getAnimations() { return mAnimations; }
+	UpdateRecord getLastUpdateRecord() const { return mLastUpdateRecord; };
 	void addMesh(Mesh::SharedPtr mesh);
 	void addMaterial(Material::SharedPtr material);
 
@@ -241,6 +244,7 @@ private:
 	std::vector<Material::SharedPtr> mMaterials;
 	std::vector<MeshInstance::SharedPtr> mMeshInstances;
 	std::vector<SceneAnimation::SharedPtr> mAnimations;
+	UpdateRecord mLastUpdateRecord;
 };
 
 KRR_NAMESPACE_END

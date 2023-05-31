@@ -5,8 +5,9 @@ KRR_NAMESPACE_BEGIN
 
 void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device, 
 	std::shared_ptr<DescriptorTableManager> descriptorTable) { 
-	update(0);
-	mSceneVK = std::make_shared<VKScene>(this, device, descriptorTable); 
+	if (!mGraph) Log(Fatal, "Scene graph must be initialized.");
+	mGraph->update(0); // must be done before preparing device data.
+	mSceneVK = std::make_shared<VKScene>(shared_from_this(), device, descriptorTable); 
 	vkrhi::CommandListHandle commandList = device->createCommandList();
 	commandList->open();
 	mSceneVK->writeMeshBuffers(commandList);		// bindless buffers

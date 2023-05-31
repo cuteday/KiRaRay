@@ -21,7 +21,7 @@ KRR_NAMESPACE_BEGIN
 	do {                                                                                           \
 		OptixResult res = EXPR;                                                                    \
 		if (res != OPTIX_SUCCESS) {                                                                \
-			Log(Fatal, "OptiX call " #EXPR " failed with code %d: \"%s\"\nLogs: %s",               \
+			Log(Fatal, "Optix call " #EXPR " failed with code %d: \"%s\"\nLogs: %s",               \
 					int(res), optixGetErrorString(res), LOG);                                      \
 		}                                                                                          \
 	} while (false) /* eat semicolon */

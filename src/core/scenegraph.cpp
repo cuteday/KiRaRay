@@ -352,6 +352,8 @@ void SceneGraph::update(size_t frameIndex) {
 		bool superGraphTransformUpdated = false;
 	};
 
+	if (mRoot->getUpdateFlags() != SceneGraphNode::UpdateFlags::None)
+		mLastUpdateRecord = {frameIndex, mRoot->getUpdateFlags()};
 	bool hasPendingStructureChanges =
 		mRoot && (mRoot->getUpdateFlags() & (SceneGraphNode::UpdateFlags::SubgraphStructure |
 											 SceneGraphNode::UpdateFlags::SubgraphContent)) != 0;
@@ -445,6 +447,14 @@ void SceneGraph::update(size_t frameIndex) {
 		for (Material::SharedPtr material : mMaterials) {
 			material->mMaterialId = materialIndex++;
 		}
+	}
+}
+
+void SceneGraph::animate(double currentTime) {
+	for (const auto &animation : mAnimations) {
+		float duration		= animation->getDuration();
+		float animationTime = std::fmod(currentTime, duration);
+		animation->apply(animationTime);
 	}
 }
 

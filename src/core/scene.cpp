@@ -7,16 +7,17 @@
 KRR_NAMESPACE_BEGIN
 
 Scene::Scene() {
-	mGraph			   = std::make_shared<SceneGraph>();
-	mCamera		   = std::make_shared<Camera>();
+	mGraph			  = std::make_shared<SceneGraph>();
+	mCamera			  = std::make_shared<Camera>();
 	mCameraController = std::make_shared<OrbitCameraController>(mCamera);
 }
 
-bool Scene::update(size_t frameIndex){
+bool Scene::update(size_t frameIndex, double currentTime) {
 	bool hasChanges = false;
 	if (mCameraController) hasChanges |= mCameraController->update();
 	if (mCamera) hasChanges |= mCamera->update();
 	mGraph->update(frameIndex);
+	if(mEnableAnimation) mGraph->animate(currentTime);
 	return mHasChanges = hasChanges;
 }
 
@@ -35,6 +36,9 @@ void Scene::renderUI() {
 	}
 	if (mGraph && ui::CollapsingHeader("Scene Graph")) {
 		mGraph->renderUI();
+	}
+	if (mGraph && ui::CollapsingHeader("Scene Animation")) {
+		ui::Checkbox("Enable animation", &mEnableAnimation);
 	}
 	if (mSceneRT && ui::CollapsingHeader("Ray-tracing Data")) {
 		mSceneRT->renderUI();
@@ -57,9 +61,10 @@ bool Scene::onKeyEvent(const KeyboardEvent& keyEvent){
 	return false;
 }
 
-void Scene::initializeSceneRT() { 
-	update(0);				// must be done before preparing device data.
-	mSceneRT = std::make_shared<RTScene>(this); 
+void Scene::initializeSceneRT() {
+	if (!mGraph) Log(Fatal, "Scene graph must be initialized.");
+	mGraph->update(0); // must be done before preparing device data.
+	mSceneRT = std::make_shared<RTScene>(shared_from_this()); 
 	mSceneRT->toDevice();
 }
 
@@ -75,7 +80,7 @@ void RTScene::toDevice() {
 		mDeviceData.lights	= gpContext->alloc->new_object<inter::vector<Light>>();
 	if (!mDeviceData.infiniteLights)
 		mDeviceData.infiniteLights = gpContext->alloc->new_object<inter::vector<InfiniteLight>>();
-	updateSceneData();
+	uploadSceneData();
 	CUDA_SYNC_CHECK();
 }
 
@@ -99,7 +104,7 @@ void RTScene::renderUI() {
 	}
 }
 
-void RTScene::updateSceneData() {
+void RTScene::uploadSceneData() {
 	/* Upload texture and material data to device... */
 	auto& materials = mScene->getMaterials();
 	mDeviceData.materials->resize(materials.size());
@@ -198,6 +203,24 @@ void RTScene::processLights() {
 		gpContext->alloc->new_object<UniformLightSampler>(
 			(inter::span<Light>) *mDeviceData.lights);
 	CUDA_SYNC_CHECK();
+}
+
+// This routine should only be called by OptixBackend...
+void RTScene::updateSceneData() {
+	// Currently we only support updating instance transformations...
+	auto lastUpdates = mScene->getSceneGraph()->getLastUpdateRecord();
+	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)
+		!= SceneGraphNode::UpdateFlags::None) {
+		auto &instances = mScene->getMeshInstances();
+		for (size_t idx = 0; idx < instances.size(); idx++) {
+			const auto &instance   = instances[idx];
+			auto &instanceData	   = (*mDeviceData.instances)[idx];
+			Affine3f transform	   = instance->getNode()->getGlobalTransform();
+			instanceData.transform = transform;
+			instanceData.transposedInverseTransform =
+				transform.matrix().inverse().transpose().block<3, 3>(0, 0);
+		}
+	}
 }
 
 KRR_NAMESPACE_END

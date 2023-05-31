@@ -27,11 +27,11 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 	HitgroupSBTData data;
 };
 
-class OptiXBackendInterface {
+class OptixBackendInterface {
 public:
-	OptiXBackendInterface() = default;
+	OptixBackendInterface() = default;
 
-	static OptixModule createOptiXModule(OptixDeviceContext optixContext, const char* ptx);
+	static OptixModule createOptixModule(OptixDeviceContext optixContext, const char* ptx);
 	static OptixPipelineCompileOptions getPipelineCompileOptions();
 
 	static OptixProgramGroup createRaygenPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint);
@@ -40,28 +40,29 @@ public:
 		const char* closest, const char* any, const char* intersect);
 
 	static OptixTraversableHandle buildASFromInputs(OptixDeviceContext optixContext, 
-		CUstream cudaStream, const std::vector<OptixBuildInput> &buildInputs, CUDABuffer& accelBuffer); 
+		CUstream cudaStream, const std::vector<OptixBuildInput> &buildInputs, 
+		CUDABuffer& accelBuffer, bool compact = false, bool update = false); 
 	static OptixTraversableHandle buildTriangleMeshGAS(OptixDeviceContext optixContext,
 													   CUstream cudaStream,
 													   const rt::MeshData &mesh,
 													   CUDABuffer &accelBuffer);
 };
 
-struct OptiXInitializeParameters {
+struct OptixInitializeParameters {
 	char* ptx;
 	std::vector<string> raygenEntries;
 	std::vector<string> rayTypes;
 	std::vector<std::tuple<bool, bool, bool>> rayClosestShaders;
 
-	OptiXInitializeParameters& setPTX(char* ptx) {
+	OptixInitializeParameters& setPTX(char* ptx) {
 		this->ptx = ptx;
 		return *this;
 	}
-	OptiXInitializeParameters &addRaygenEntry(string entryName) {
+	OptixInitializeParameters &addRaygenEntry(string entryName) {
 		raygenEntries.push_back(entryName);
 		return *this;
 	}
-	OptiXInitializeParameters &addRayType(string typeName, bool closestHit,
+	OptixInitializeParameters &addRayType(string typeName, bool closestHit,
 										  bool anyHit, bool intersect) {
 		rayTypes.push_back(typeName);
 		rayClosestShaders.push_back({closestHit, anyHit, intersect});
@@ -69,11 +70,11 @@ struct OptiXInitializeParameters {
 	}
 };
 
-class OptiXBackend : public OptiXBackendInterface {
+class OptixBackend : public OptixBackendInterface {
 public:
-	OptiXBackend() = default;
+	OptixBackend() = default;
 	
-	void initialize(const OptiXInitializeParameters& params);
+	void initialize(const OptixInitializeParameters& params);
 	void setScene(Scene::SharedPtr scene);
 	template <typename T>
 	void launch(const T& parameters, string entryPoint, int width,
@@ -88,6 +89,7 @@ public:
 			sizeof(T), &SBT[entryPoints[entryPoint]], width, height, depth));
 	}
 
+	void update();
 	Scene::SharedPtr getScene() const { return scene; }
 	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
 	rt::SceneData getSceneData() const { return scene->mSceneRT->getSceneData(); }
@@ -96,6 +98,7 @@ public:
 
 protected:
 	void buildAccelStructure();
+	void updateAccelStructure();
 	void buildShaderBindingTable();
 
 	OptixProgramGroup createRaygenPG(const char *entrypoint) const;
@@ -125,7 +128,7 @@ protected:
 	std::vector<OptixShaderBindingTable> SBT;
 	
 	Scene::SharedPtr scene;
-	OptiXInitializeParameters optixParameters;
+	OptixInitializeParameters optixParameters;
 };
 
 KRR_NAMESPACE_END

@@ -19,13 +19,9 @@ extern "C" int main(int argc, char *argv[]) {
 		Log(Info, "Using specified config file at %s", configFile.c_str());
 	}
 
-	try {
-		RenderApp app;
-		app.loadConfigFrom(configFile);
-		app.run();
-	} catch (std::exception e) {
-		Log(Fatal, "Kiraray::Unhandled exception: %s\n", e.what());
-	}
+	RenderApp app;
+	app.loadConfigFrom(configFile);
+	app.run();
 
 	exit(EXIT_SUCCESS);
 }

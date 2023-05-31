@@ -21,7 +21,7 @@ class RTScene;
 class VKScene;
 class DescriptorTableManager;
 
-class Scene {
+class Scene : public std::enable_shared_from_this<Scene> {
 public:
 	using SharedPtr = std::shared_ptr<Scene>;
 
@@ -31,7 +31,7 @@ public:
 	bool onMouseEvent(const MouseEvent& mouseEvent);
 	bool onKeyEvent(const KeyboardEvent& keyEvent);
 
-	bool update(size_t frameIndex);
+	bool update(size_t frameIndex, double currentTime);
 	bool getChanges() const { return mHasChanges; }
 	void renderUI();
 
@@ -39,9 +39,10 @@ public:
 	CameraController::SharedPtr getCameraController() { return mCameraController; }
 	SceneGraph::SharedPtr getSceneGraph() { return mGraph; }
 
-	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mGraph->getMeshInstances(); }
 	std::vector<Mesh::SharedPtr> &getMeshes() { return mGraph->getMeshes(); }
 	std::vector<Material::SharedPtr> &getMaterials() { return mGraph->getMaterials(); }
+	std::vector<SceneAnimation::SharedPtr> &getAnimations() { return mGraph->getAnimations(); }
+	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mGraph->getMeshInstances(); }
 	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(mesh); }
 	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(material); }
 
@@ -71,13 +72,16 @@ public:
 	Camera::SharedPtr mCamera;
 	OrbitCameraController::SharedPtr mCameraController;
 	std::vector<Texture::SharedPtr> environments;
-	bool mHasChanges = false;
+	bool mHasChanges	  = false;
+	bool mEnableAnimation = false;
 
 	std::shared_ptr<RTScene> mSceneRT;
 	std::shared_ptr<VKScene> mSceneVK;
 	void initializeSceneRT();
 	void initializeSceneVK(nvrhi::vulkan::IDevice* device,
 		std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr);
+	std::shared_ptr<RTScene> getSceneRT() const { return mSceneRT; }
+	std::shared_ptr<VKScene> getSceneVK() const { return mSceneVK; }
 };
 
 namespace rt {
@@ -98,18 +102,19 @@ public:
 	using SharedPtr = std::shared_ptr<RTScene>;
 
 	RTScene() = default;
-	RTScene(Scene* scene) : mScene(scene){}
+	RTScene(Scene::SharedPtr scene) : mScene(scene){}
 	~RTScene() = default;
 
 	void toDevice();
 	void renderUI();
+	void uploadSceneData();
 	void updateSceneData();
 	const rt::SceneData &getSceneData() const { return mDeviceData; }
 
 private:
 	void processLights();
 
-	Scene* mScene;
+	Scene::SharedPtr mScene;
 	rt::SceneData mDeviceData;
 };
 

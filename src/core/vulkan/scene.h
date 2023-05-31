@@ -97,7 +97,7 @@ public:
 	using SharedPtr = std::shared_ptr<VKScene>;
 
 	VKScene() = default;
-	VKScene(Scene *scene, vkrhi::vulkan::IDevice* device, 
+	VKScene(Scene::SharedPtr scene, vkrhi::vulkan::IDevice* device, 
 		std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr) : 
 		mScene(scene), mDevice(device), mDescriptorTable(descriptorTable) {}
 	~VKScene() = default;
@@ -115,7 +115,7 @@ protected:
 	void writeInstanceBuffer(vkrhi::ICommandList *commandList);
 	void writeGeometryBuffer(vkrhi::ICommandList *commandList);
 
-	Scene *mScene{};
+	Scene::SharedPtr mScene{};
 	vkrhi::vulkan::DeviceHandle mDevice{};
 	std::shared_ptr<DescriptorTableManager> mDescriptorTable{};
 	std::shared_ptr<TextureCache> mTextureLoader;

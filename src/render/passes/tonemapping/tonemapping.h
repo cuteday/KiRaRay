@@ -36,15 +36,20 @@ public:
 
 private:
 	friend void to_json(json& j, const ToneMappingPass& p) {
-		j = json{ { "exposure", p.mExposureCompensation }, { "operator", p.mOperator } };
+		j = json{ 
+			{ "exposure", p.mExposureCompensation }, 
+			{ "operator", p.mOperator },
+			{ "gamma", p.mUseGamma }
+		};
 	}
 	
 	friend void from_json(const json &j, ToneMappingPass &p) {
 		p.mOperator = j.value("operator", Operator::Linear);
 		p.mExposureCompensation = j.value("exposure", 1.f);
+		p.mUseGamma				= j.value("gamma", true);
 	}
 	
-	bool mUseGamma{false};
+	bool mUseGamma{true};
 	float mExposureCompensation{ 1 };
 	Operator mOperator{ Operator::Linear };
 };

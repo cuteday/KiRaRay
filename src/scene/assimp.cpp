@@ -407,7 +407,7 @@ void AssimpImporter::loadAnimations() {
 			auto graphNode = mNodeMap[aiCast(aiNode->mNodeName)];			
 			resetNegativeKeyframeTimes(aiNode);
 		
-			auto createAnimationChannel = [](auto keys, size_t count, 
+			auto createAnimationChannel = [=](auto keys, size_t count, 
 				SceneGraphNode::SharedPtr node, anime::AnimationAttribute attribute)
 				-> SceneAnimationChannel::SharedPtr {
 				auto sampler = std::make_shared<anime::Sampler>();
@@ -416,7 +416,7 @@ void AssimpImporter::loadAnimations() {
 				for (size_t i = 0; i < count; i++) {
 					auto key = keys[i];
 					anime::Keyframe keyframe;
-					keyframe.time = key.mTime;
+					keyframe.time = key.mTime / ticksPerSecond;
 					keyframe.value = aiKeyframeCast(key.mValue);
 					sampler->addKeyframe(keyframe);
 				}
@@ -428,11 +428,11 @@ void AssimpImporter::loadAnimations() {
 				animation->addChannel(
 					createAnimationChannel(aiNode->mPositionKeys, aiNode->mNumPositionKeys, 
 					graphNode, anime::AnimationAttribute::Translation));
-			if (aiNode->mNumPositionKeys)
+			if (aiNode->mNumRotationKeys)
 				animation->addChannel(
-					createAnimationChannel(aiNode->mRotationKeys, aiNode->mNumPositionKeys, 
+					createAnimationChannel(aiNode->mRotationKeys, aiNode->mNumRotationKeys, 
 					graphNode, anime::AnimationAttribute::Rotation));
-			if (aiNode->mNumPositionKeys)
+			if (aiNode->mNumScalingKeys)
 				animation->addChannel(
 					createAnimationChannel(aiNode->mScalingKeys, aiNode->mNumScalingKeys, 
 					graphNode, anime::AnimationAttribute::Scaling));
