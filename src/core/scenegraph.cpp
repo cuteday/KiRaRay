@@ -1,5 +1,6 @@
 #include "scenegraph.h"
 #include "window.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -74,7 +75,7 @@ void SceneGraphNode::updateLocalTransform() {
 }
 
 void SceneGraphNode::propagateUpdateFlags(UpdateFlags flags) { 
-	SceneGraphWalker walker(this);
+	SceneGraphWalker walker(this, nullptr);
 	while (walker) {
 		walker->mUpdateFlags |= flags;	
 		walker.up();
@@ -346,6 +347,7 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 }
 
 void SceneGraph::update(size_t frameIndex) {
+	PROFILE("Update scene graph");
 	struct AncestorContext {
 		// Used to determine whether the subgraph transform should be updated,
 		// due to the updated transform of an ancestor node.
@@ -458,54 +460,84 @@ void SceneGraph::animate(double currentTime) {
 	}
 }
 
-void SceneGraph::printSceneGraph() const {
-	SceneGraphWalker walker(mRoot.get());
-	int depth = 0;
-	while (walker) {
-		std::stringstream ss;
+void SceneAnimationChannel::renderUI() {
+	if (!isValid()) return;
+	ui::Text("Duration: %f - %f", getSampler()->getStartTime(), getSampler()->getEndTime());
+	ui::Text("Key frames: %zd", getSampler()->getKeyframes().size());
+	ui::Text("Target node: %s", getTargetNode()->getName().c_str());
+}
 
-		for (int i = 0; i < depth; i++) ss << "  ";
-
-		ss << (walker->getName().empty() ? "<Unnamed Node>" : walker->getName());
-
-		bool hasTranslation = walker->getTranslation() != Vector3f::Zero();
-		bool hasRotation	= walker->getRotation() != Quaternionf::Identity();
-		bool hasScaling		= walker->getScaling() != Vector3f::Ones();
-
-		if (hasTranslation || hasRotation || hasScaling) {
-			ss << " (";
-			if (hasTranslation) ss << "T: " << walker->getTranslation();
-			if (hasRotation) ss << " R: " << walker->getRotation();
-			if (hasScaling) ss << " S: " << walker->getScaling();
-			ss << ")";
-		}
-
-		auto bbox = walker->getGlobalBoundingBox();
-		if (!bbox.isEmpty()) {
-			ss << " [" << bbox.min()[0] << ", " << bbox.min()[1] << ", " << bbox.min()[2] << " .. "
-			   << bbox.max()[0] << ", " << bbox.max()[1] << ", " << bbox.max()[2] << "]";
-		}
-
-		if (walker->getLeaf()) {
-			ss << ": ";
-
-			if (auto meshInstance = dynamic_cast<MeshInstance *>(walker->getLeaf().get())) {
-				ss << (meshInstance->getMesh()->getName().empty() ? 
-					"Unnamed Mesh" : meshInstance->getMesh()->getName());
-				ss << " (" << meshInstance->getMesh()->indices.size() << " faces)";
-			} else {
-				ss << "Unkwown Leaf Type";
+void SceneAnimation::renderUI() {
+	ui::Text("End time: %f", getDuration());
+	ui::Text("Channels: ");
+	static const auto getChannelName = [](const SceneAnimationChannel::SharedPtr &channel)
+	-> std::string{
+		if (!channel->isValid()) return "<Invalid Channel>";
+		std::string name = channel->getTargetNode()->getName();
+		auto attribute	 = channel->getAttribute();
+		if (attribute == anime::AnimationAttribute::Scaling) name += " <S>";
+		else if (attribute == anime::AnimationAttribute::Rotation) name += " <R>";
+		else if (attribute == anime::AnimationAttribute::Translation) name += " <T>";
+		return name;
+	};
+	for (auto channel : mChannels) {
+		if (channel->isValid()) {
+			channel->getAttribute();
+			if (ui::TreeNode(getChannelName(channel).c_str())) {
+				channel->renderUI();
+				ui::TreePop();
 			}
 		}
+	}
+}
 
-		if (!ss.str().empty()) Log(Info, "%s", ss.str().c_str());
-
-		depth += walker.next(true);
+void SceneGraphNode::renderUI() { 
+	if (mHasLocalTransform && ui::TreeNode("Transformation")) {
+		if (getScaling() != Vector3f::Ones())
+			ui::Text(("Scaling:\n" + getScaling().string()).c_str());
+		if (getRotation() != Quaternionf::Identity())
+			ui::Text(("Rotation:\n" + getRotation().string()).c_str());
+		if (getTranslation() != Vector3f::Zero())
+			ui::Text(("Translation:\n" + getTranslation().string()).c_str());
+		ui::TreePop();
+	}
+	if (ui::TreeNode("Bounding box")) {
+		ui::Text(("Min:\n" + Vector3f(getGlobalBoundingBox().min()).string()).c_str());
+		ui::Text(("Max:\n" + Vector3f(getGlobalBoundingBox().max()).string()).c_str());
+		ui::TreePop();
+	}
+	if (getLeaf()) {
+		ui::Text("Leaf:");
+		if (auto *instance = dynamic_cast<MeshInstance *>(getLeaf().get())) {
+			if (ui::TreeNode("Mesh Instance")) {
+				ui::TreePop();
+			}
+		} else if (auto animation = dynamic_cast<SceneAnimation *>(getLeaf().get())) {
+			if (ui::TreeNode("Animation")) {
+				animation->renderUI();
+				ui::TreePop();
+			}
+		}
+	}
+	SceneGraphNode *child = getFirstChild();
+	if (child) ui::Text("Children nodes");
+	while (child) {
+		if (ui::TreeNode(child->getName().empty() ?
+			"Unnamed Node" : child->getName().c_str())) {
+			child->renderUI();
+			ui::TreePop();
+		}
+		child = child->getNextSibling();
 	}
 }
 
 void SceneGraph::renderUI() {
-	if (ui::Button("Print graph")) printSceneGraph();
+	if (mRoot && ui::TreeNode(mRoot->getName().empty() ? 
+		"Root" : mRoot->getName().c_str())) {
+		mRoot->renderUI();
+		ui::TreePop();
+	}
+
 }
 
 KRR_NAMESPACE_END

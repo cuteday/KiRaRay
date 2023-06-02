@@ -43,6 +43,7 @@ public:
 	void addKeyframe(const Keyframe& keyframe);
 
 	InterpolationMode getInterpolationMode() const { return mMode; }
+	const std::vector<Keyframe> &getKeyframes() const { return mKeyframes; }
 	void setInterpolationMode(InterpolationMode mode) { mMode = mode; }
 
 	float getStartTime() const;

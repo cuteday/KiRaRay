@@ -109,6 +109,7 @@ public:
 	SceneGraphNode &operator=(const SceneGraphNode &)  = delete;
 	SceneGraphNode &operator=(const SceneGraphNode &&) = delete;
 
+	void renderUI();
 private:
 	friend class SceneGraph;
 	std::weak_ptr<SceneGraph> mGraph;
@@ -173,6 +174,7 @@ public:
 	anime::AnimationAttribute getAttribute() const { return mAttribute; }
 	SceneGraphNode::SharedPtr getTargetNode() const { return mTargetNode.lock(); }
 	void setTargetNode(const SceneGraphNode::SharedPtr &node) { mTargetNode = node; }
+	void renderUI();
 	bool apply(float time) const;
 
 private:
@@ -191,6 +193,7 @@ public:
 	bool isValid() const;
 	bool apply(float time) const;
 	void addChannel(const SceneAnimationChannel::SharedPtr &channel);
+	void renderUI();
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 
 private:
@@ -226,7 +229,6 @@ public:
 	// Detach a node and its subgraph from the graph, then unregister all its resources.
 	SceneGraphNode::SharedPtr detach(const SceneGraphNode::SharedPtr &node);
 
-	void printSceneGraph() const;
 	void renderUI();
 
 protected:

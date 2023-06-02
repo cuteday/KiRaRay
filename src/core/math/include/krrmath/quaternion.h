@@ -33,6 +33,12 @@ public:
 									Eigen::AngleAxis<T>(roll, krr::Vector3<T>::UnitZ()) *
 									Eigen::AngleAxis<T>(pitch, krr::Vector3<T>::UnitX()));
 	}
+
+	std::string string() const {
+		std::stringstream ss;
+		ss << *this;
+		return ss.str();
+	}
 };
 
 using Quaternionf = Quaternion<float>;

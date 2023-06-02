@@ -2,6 +2,7 @@
 #include "scene.h"
 
 #include "device/context.h"
+#include "render/profiler/profiler.h"
 #include "scene.h"
 
 KRR_NAMESPACE_BEGIN
@@ -22,26 +23,38 @@ bool Scene::update(size_t frameIndex, double currentTime) {
 }
 
 void Scene::renderUI() {
-	if (ui::CollapsingHeader("Statistics")) {
+	if (ui::TreeNode("Statistics")) {
 		ui::Text("Meshes: %d", getMeshes().size());
 		ui::Text("Materials: %d", getMaterials().size());
 		ui::Text("Instances: %d", getMeshInstances().size());
+		ui::Text("Animations: %d", getAnimations().size());
 		ui::Text("Environment lights: %d", environments.size());
+		ui::TreePop();
 	}
-	if (mCamera && ui::CollapsingHeader("Camera")) {
+	if (mCamera && ui::TreeNode("Camera")) {
 		ui::Text("Camera parameters");
 		mCamera->renderUI();
 		ui::Text("Orbit controller");
 		mCameraController->renderUI();
+		ui::TreePop();
 	}
-	if (mGraph && ui::CollapsingHeader("Scene Graph")) {
+	if (mGraph && ui::TreeNode("Scene Graph")) {
 		mGraph->renderUI();
+		ui::TreePop();
 	}
-	if (mGraph && ui::CollapsingHeader("Scene Animation")) {
+	if (mGraph && ui::TreeNode("Scene Animation")) {
 		ui::Checkbox("Enable animation", &mEnableAnimation);
+		for (int i = 0; i < getAnimations().size(); i++) {
+			if (ui::TreeNode(std::to_string(i).c_str())) {
+				getAnimations()[i]->renderUI();
+				ui::TreePop();
+			}
+		}
+		ui::TreePop();
 	}
-	if (mSceneRT && ui::CollapsingHeader("Ray-tracing Data")) {
+	if (mSceneRT && ui::TreeNode("Ray-tracing Data")) {
 		mSceneRT->renderUI();
+		ui::TreePop();
 	}
 }
 
@@ -87,20 +100,24 @@ void RTScene::toDevice() {
 void RTScene::renderUI() {
 	cudaDeviceSynchronize();
 
-	if (ui::CollapsingHeader("Environment lights")) {
+	if (ui::TreeNode("Environment lights")) {
 		for (int i = 0; i < mDeviceData.infiniteLights->size(); i++) {
-			if (ui::CollapsingHeader(to_string(i).c_str())) {
+			if (ui::TreeNode(to_string(i).c_str())) {
 				(*mDeviceData.infiniteLights)[i].renderUI();
+				ui::TreePop();
 			}
 		}
+		ui::TreePop();
 	}
-	if (ui::CollapsingHeader("Materials")) {
+	if (ui::TreeNode("Materials")) {
 		for (int i = 0; i < mDeviceData.materials->size(); i++) {
-			if (ui::CollapsingHeader((*mDeviceData.materials)[i]
+			if (ui::TreeNode((*mDeviceData.materials)[i]
 					.getHostMaterialPtr()->getName().c_str())) {
 				(*mDeviceData.materials)[i].renderUI();
+				ui::TreePop();
 			}
 		}
+		ui::TreePop();
 	}
 }
 
@@ -207,6 +224,7 @@ void RTScene::processLights() {
 
 // This routine should only be called by OptixBackend...
 void RTScene::updateSceneData() {
+	PROFILE("Update scene data");
 	// Currently we only support updating instance transformations...
 	auto lastUpdates = mScene->getSceneGraph()->getLastUpdateRecord();
 	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)

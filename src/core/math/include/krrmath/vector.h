@@ -45,7 +45,6 @@ public:
 	}
 
 	KRR_CALLABLE bool hasInf() const { return this->array().isInf().any(); }
-
 	KRR_CALLABLE friend Vector max(const Vector &vec1, const Vector &vec2) {
 		return vec1.cwiseMax(vec2);
 	}
@@ -55,6 +54,12 @@ public:
 	KRR_CALLABLE friend Vector abs(const Vector &vec) { return vec.cwiseAbs(); }
 	KRR_CALLABLE friend Vector sqrt(const Vector &vec) { return vec.cwiseSqrt(); }
 	KRR_CALLABLE friend Vector inverse(const Vector &vec) { return vec.cwiseInverse(); }
+	
+	std::string string() const {
+		std::stringstream ss;
+		ss << *this;
+		return ss.str();
+	}
 };
 
 template <typename T>

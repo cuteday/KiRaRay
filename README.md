@@ -11,6 +11,7 @@
 > This project is purposed for learning only with limited features.
 
 - [x] GPU path tracing (megakernel/wavefront).
+- [x] Animated scenes (rigging only).
 - [x] Post processing passes (e.g. denoising).
 - [x] Basic support for importing multiple scenes formats.
 - [x] Basic support for Vulkan and CUDA/OptiX interoperation.
@@ -24,7 +25,7 @@
 
 - Nvidia RTX GPU (Turing or higher).
 - [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix) **7.3+** and [CUDA](https://developer.nvidia.com/cuda-toolkit) **11.4+**.
-- [Vulkan SDK](https://vulkan.lunarg.com/) (**1.3+**).
+- [Vulkan SDK](https://vulkan.lunarg.com/) **1.3+**.
 
 This project is developed with on Windows (MSVC). It cannot compile on Linux. 
 
@@ -105,12 +106,11 @@ Currently, the renderer runs extremely slow on *Debug* build for unknown reasons
 
 #### Scene loading
 
-*Kiraray* provided limited support for importing scenes like OBJ, glTF2 using [Assimp](https://github.com/assimp/assimp.git). [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes (get some [here](https://benedikt-bitterli.me/resources/)).
+*Kiraray* provided limited support for importing scenes like OBJ, glTF2 using [Assimp](https://github.com/assimp/assimp.git). Most of the rigging animations in glTF2 models could be correctly imported.. [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes (get some [here](https://benedikt-bitterli.me/resources/), change the file url to download the pbrt-v3 format models).
 
 #### Writing new render passes.
 
 It is possible to write your own render pass, see the examples [here](src/misc/samples/). Check these [post-processing passes](src/render/passes/) for more working examples.
-
 
 ### Epilogue
 

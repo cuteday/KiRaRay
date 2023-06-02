@@ -2,6 +2,7 @@
 #include "context.h"
 #include "optix.h"
 #include "util/check.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -134,33 +135,29 @@ OptixBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstre
 
 	// Figure out memory requirements.
 	OptixAccelBuildOptions accelOptions = {};
-	accelOptions.buildFlags				= OPTIX_BUILD_FLAG_ALLOW_UPDATE |
-		OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+	accelOptions.buildFlags				= OPTIX_BUILD_FLAG_ALLOW_UPDATE | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+	if (compact) accelOptions.buildFlags |= OPTIX_BUILD_FLAG_ALLOW_COMPACTION; 
 	accelOptions.motionOptions.numKeys = 1;
-	accelOptions.operation			   = update ? OPTIX_BUILD_OPERATION_UPDATE 
-		: OPTIX_BUILD_OPERATION_BUILD;
+	accelOptions.operation = update ? OPTIX_BUILD_OPERATION_UPDATE : OPTIX_BUILD_OPERATION_BUILD;
 
 	OptixAccelBufferSizes blasBufferSizes;
 	OPTIX_CHECK(optixAccelComputeMemoryUsage(optixContext, &accelOptions, buildInputs.data(),
 											 buildInputs.size(), &blasBufferSizes));
-	
 
-	uint64_t *compactedSizePtr;
-	CUDA_CHECK(cudaMalloc(&compactedSizePtr, sizeof(uint64_t)));
-	OptixAccelEmitDesc emitDesc;
-	emitDesc.type	= OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
-	emitDesc.result = (CUdeviceptr) compactedSizePtr;
-
-	// Allocate buffers.
 	void *tempBuffer;
 	size_t tempSizeInBytes =
 		update ? blasBufferSizes.tempUpdateSizeInBytes : blasBufferSizes.tempSizeInBytes;
 	CUDA_CHECK(cudaMalloc(&tempBuffer, tempSizeInBytes));
 	
-	// Build.
 	OptixTraversableHandle traversableHandle{0};
 
 	if (compact) {
+		uint64_t *compactedSizePtr;
+		CUDA_CHECK(cudaMalloc(&compactedSizePtr, sizeof(uint64_t)));
+		OptixAccelEmitDesc emitDesc;
+		emitDesc.type	= OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
+		emitDesc.result = (CUdeviceptr) compactedSizePtr;
+
 		void *uncompactedBuffer;
 		CUDA_CHECK(cudaMalloc(&uncompactedBuffer, blasBufferSizes.outputSizeInBytes));
 
@@ -189,7 +186,7 @@ OptixBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstre
 		OPTIX_CHECK(optixAccelBuild(
 			optixContext, cudaStream, &accelOptions, buildInputs.data(), buildInputs.size(),
 			CUdeviceptr(tempBuffer), tempSizeInBytes, CUdeviceptr(accelBuffer.data()),
-			blasBufferSizes.outputSizeInBytes, &traversableHandle, &emitDesc, 1));
+			blasBufferSizes.outputSizeInBytes, &traversableHandle, nullptr, 0));
 	}
 	CUDA_CHECK(cudaFree(tempBuffer));
 	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
@@ -368,6 +365,7 @@ void OptixBackend::update() {
 }
 
 void OptixBackend::updateAccelStructure() {
+	PROFILE("Update AS");
 	const auto &instances = scene->getMeshInstances();
 	// Currently only supports updating subgraph transformations.
 	for (int idx = 0; idx < instances.size(); idx++) {

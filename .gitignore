@@ -54,6 +54,7 @@ temp
 enc_temp_folder
 /common/outputs
 /common/configs/test*
+/common/assets/textures/local
 /common/assets/scenes/local
 /common/assets/scenes/pbrt
 /common/images
