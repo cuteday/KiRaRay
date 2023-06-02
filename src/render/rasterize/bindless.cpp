@@ -182,6 +182,7 @@ void BindlessRender::render(RenderFrame::SharedPtr frame) {
 		mGraphicsPipeline = getVulkanDevice()->createGraphicsPipeline(pipelineDesc, mFramebuffer);
 	}
 	mCommandList->open();
+	mScene->getSceneVK()->update(mCommandList);
 	mRenderTargets->clear(mCommandList);
 
 	/* Set view constants */

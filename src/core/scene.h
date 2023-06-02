@@ -114,7 +114,7 @@ public:
 private:
 	void processLights();
 
-	Scene::SharedPtr mScene;
+	std::weak_ptr<Scene> mScene;
 	rt::SceneData mDeviceData;
 };
 

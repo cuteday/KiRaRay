@@ -4,6 +4,7 @@
 #include "device/context.h"
 #include "render/profiler/profiler.h"
 #include "scene.h"
+#include "vulkan/scene.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -17,8 +18,8 @@ bool Scene::update(size_t frameIndex, double currentTime) {
 	bool hasChanges = false;
 	if (mCameraController) hasChanges |= mCameraController->update();
 	if (mCamera) hasChanges |= mCamera->update();
+	if (mEnableAnimation) mGraph->animate(currentTime);
 	mGraph->update(frameIndex);
-	if(mEnableAnimation) mGraph->animate(currentTime);
 	return mHasChanges = hasChanges;
 }
 
@@ -123,7 +124,7 @@ void RTScene::renderUI() {
 
 void RTScene::uploadSceneData() {
 	/* Upload texture and material data to device... */
-	auto& materials = mScene->getMaterials();
+	auto& materials = mScene.lock()->getMaterials();
 	mDeviceData.materials->resize(materials.size());
 	for (size_t idx = 0; idx < materials.size(); idx++) {
 		const auto &material = materials[idx];
@@ -132,7 +133,7 @@ void RTScene::uploadSceneData() {
 	}
 
 	/* Upload mesh data to device... */
-	auto &meshes = mScene->getMeshes();
+	auto &meshes = mScene.lock()->getMeshes();
 	mDeviceData.meshes->resize(meshes.size());
 	for (size_t idx = 0; idx < meshes.size(); idx++) {
 		const auto &mesh = meshes[idx];
@@ -146,7 +147,7 @@ void RTScene::uploadSceneData() {
 	}
 
 	/* Upload instance data to device... */
-	auto &instances = mScene->getMeshInstances();
+	auto &instances = mScene.lock()->getMeshInstances();
 	mDeviceData.instances->resize(instances.size());
 	for (size_t idx = 0; idx < instances.size(); idx++) {
 		const auto &instance	 = instances[idx];
@@ -173,7 +174,7 @@ void RTScene::processLights() {
 		return triangles;
 	};
 
-	auto infiniteLights = mScene->environments;
+	auto infiniteLights = mScene.lock()->environments;
 	mDeviceData.infiniteLights->reserve(infiniteLights.size());
 	for (auto& infiniteLight : infiniteLights) {
 		rt::TextureData textureData;
@@ -181,8 +182,8 @@ void RTScene::processLights() {
 		mDeviceData.infiniteLights->push_back(InfiniteLight(textureData));
 	}
 
-	uint nMeshes = mScene->getMeshes().size();
-	for (const auto &instance: mScene->getMeshInstances()) {
+	uint nMeshes = mScene.lock()->getMeshes().size();
+	for (const auto &instance : mScene.lock()->getMeshInstances()) {
 		const auto &mesh			   = instance->getMesh();
 		const auto &material		   = mesh->getMaterial();
 		rt::MaterialData &materialData = (*mDeviceData.materials)[material->getMaterialId()];
@@ -226,10 +227,11 @@ void RTScene::processLights() {
 void RTScene::updateSceneData() {
 	PROFILE("Update scene data");
 	// Currently we only support updating instance transformations...
-	auto lastUpdates = mScene->getSceneGraph()->getLastUpdateRecord();
+	static size_t lastUpdatedFrame = 0;
+	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
 	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)
-		!= SceneGraphNode::UpdateFlags::None) {
-		auto &instances = mScene->getMeshInstances();
+		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
+		auto &instances = mScene.lock()->getMeshInstances();
 		for (size_t idx = 0; idx < instances.size(); idx++) {
 			const auto &instance   = instances[idx];
 			auto &instanceData	   = (*mDeviceData.instances)[idx];
@@ -238,6 +240,7 @@ void RTScene::updateSceneData() {
 			instanceData.transposedInverseTransform =
 				transform.matrix().inverse().transpose().block<3, 3>(0, 0);
 		}
+		lastUpdatedFrame = lastUpdates.frameIndex;
 	}
 }
 
