@@ -179,8 +179,8 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
 	mScene = scene;
 	if (!backend) {
-		backend		= new OptiXBackend();
-		auto params = OptiXInitializeParameters()
+		backend		= new OptixBackend();
+		auto params = OptixInitializeParameters()
 						  .setPTX(WAVEFRONT_PTX)
 						  .addRaygenEntry("Closest")
 						  .addRaygenEntry("Shadow")
@@ -206,6 +206,7 @@ void WavefrontPathTracer::beginFrame() {
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
 		});
+	backend->update();	// rebuild accel structures
 }
 
 void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {

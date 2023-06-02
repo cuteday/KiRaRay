@@ -47,8 +47,10 @@ private:
 	void traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr graphNode);
 	void loadMaterials(const string &modelFolder);
 	void loadMeshes();
+	void loadAnimations();
 
 	ImportMode mImportMode = ImportMode::Default;
+	std::map<string, SceneGraphNode::SharedPtr> mNodeMap; // unique node name
 	string mFilepath;
 	aiScene *mAiScene = nullptr;
 	Scene::SharedPtr mScene;

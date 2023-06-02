@@ -50,6 +50,7 @@ void ToneMappingPass::renderUI() {
 	if (mEnable) {
 		ui::DragFloat("Exposure compensation", &mExposureCompensation, 0.01, 0.01, 100, "%.2f");
 		ui::Combo("Tonemap operator", (int *) &mOperator, operators, (int) Operator::NumsOperators);
+		ui::Checkbox("Use Gamma", &mUseGamma);
 	}
 }
 
@@ -79,6 +80,7 @@ void ToneMappingPass::render(RenderFrame::SharedPtr frame) {
 		default:
 			break;
 		}
+		if (mUseGamma) color = color.pow(0.45454545f);
 		frameBuffer.write(Color4f(color, 1.f), pixelId);
 	});
 }

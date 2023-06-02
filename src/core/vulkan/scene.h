@@ -97,25 +97,29 @@ public:
 	using SharedPtr = std::shared_ptr<VKScene>;
 
 	VKScene() = default;
-	VKScene(Scene *scene, vkrhi::vulkan::IDevice* device, 
-		std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr) : 
-		mScene(scene), mDevice(device), mDescriptorTable(descriptorTable) {}
+	VKScene(Scene::SharedPtr scene, vkrhi::vulkan::IDevice *device,
+			std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr);
 	~VKScene() = default;
 
 	[[nodiscard]] vkrhi::IBuffer* getMaterialBuffer() const { return mMaterialConstantsBuffer; }
 	[[nodiscard]] vkrhi::IBuffer *getInstanceBuffer() const { return mInstanceDataBuffer; }
 	[[nodiscard]] vkrhi::IBuffer* getGeometryBuffer() const { return mMeshDataBuffer; }
 
+	void update(vkrhi::ICommandList *commandList);
+
 protected:	
 	friend Scene;
-	void writeMeshBuffers(vkrhi::ICommandList *commandList);
-	void writeMaterialTextures(vkrhi::ICommandList *commandList);
+	void createMeshBuffers(vkrhi::ICommandList *commandList);
+	void createMaterialTextures(vkrhi::ICommandList *commandList);
+	void createMaterialBuffer();	
+	void createInstanceBuffer();
+	void createGeometryBuffer();
 	
 	void writeMaterialBuffer(vkrhi::ICommandList *commandList);
 	void writeInstanceBuffer(vkrhi::ICommandList *commandList);
 	void writeGeometryBuffer(vkrhi::ICommandList *commandList);
 
-	Scene *mScene{};
+	std::weak_ptr<Scene> mScene{};
 	vkrhi::vulkan::DeviceHandle mDevice{};
 	std::shared_ptr<DescriptorTableManager> mDescriptorTable{};
 	std::shared_ptr<TextureCache> mTextureLoader;

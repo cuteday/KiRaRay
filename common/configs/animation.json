@@ -1,0 +1,77 @@
+{
+	"environment": "common/assets/textures/snowwhite.jpg",
+	"model": "common/assets/scenes/anime-cube/AnimatedCube.gltf",
+	"resolution": [
+		750,
+		750
+	],
+	"passes": [
+		{
+			"enable": true,
+			"name": "WavefrontPathTracer",
+			"params": {
+				"nee": true,
+				"rr": 0.8,
+				"max_depth": 10
+			}
+		},
+		{
+			"enable": true,
+			"name": "AccumulatePass",
+			"params": {
+				"spp": 0,
+				"mode": "accumulate"
+			}
+		},
+		{
+			"enable": false,
+			"name": "DenoisePass"
+		},
+		{
+			"enable": true,
+			"name": "ToneMappingPass",
+			"params": {
+				"exposure": 0.5,
+				"operator": "aces"
+			}
+		}
+	],
+    "scene": {
+        "camera": {
+            "mData": {
+                "aspectRatio": 1.0,
+                "focalDistance": 10.0,
+                "focalLength": 21.0,
+                "lensRadius": 0.0,
+                "pos": [
+                    -3.2098886966705322,
+                    2.5321357250213623,
+                    3.122187614440918
+                ],
+                "target": [
+                    0.04572635143995285,
+                    0.5694323182106018,
+                    -0.14481861889362335
+                ],
+                "up": [
+                    0.0,
+                    1.0,
+                    0.0
+                ]
+            }
+        },
+        "cameraController": {
+            "mData": {
+                "pitch": -0.40233325958251953,
+                "radius": 5.0124406814575195,
+                "target": [
+                    0.04572635143995285,
+                    0.5694323182106018,
+                    -0.14481861889362335
+                ],
+                "yaw": -0.7836516499519348
+            }
+        }
+    },
+	"spp": 0
+}

@@ -2,42 +2,60 @@
 #include "scene.h"
 
 #include "device/context.h"
+#include "render/profiler/profiler.h"
 #include "scene.h"
+#include "vulkan/scene.h"
 
 KRR_NAMESPACE_BEGIN
 
 Scene::Scene() {
-	mGraph			   = std::make_shared<SceneGraph>();
-	mCamera		   = std::make_shared<Camera>();
+	mGraph			  = std::make_shared<SceneGraph>();
+	mCamera			  = std::make_shared<Camera>();
 	mCameraController = std::make_shared<OrbitCameraController>(mCamera);
 }
 
-bool Scene::update(size_t frameIndex){
+bool Scene::update(size_t frameIndex, double currentTime) {
 	bool hasChanges = false;
 	if (mCameraController) hasChanges |= mCameraController->update();
 	if (mCamera) hasChanges |= mCamera->update();
+	if (mEnableAnimation) mGraph->animate(currentTime);
 	mGraph->update(frameIndex);
 	return mHasChanges = hasChanges;
 }
 
 void Scene::renderUI() {
-	if (ui::CollapsingHeader("Statistics")) {
+	if (ui::TreeNode("Statistics")) {
 		ui::Text("Meshes: %d", getMeshes().size());
 		ui::Text("Materials: %d", getMaterials().size());
 		ui::Text("Instances: %d", getMeshInstances().size());
+		ui::Text("Animations: %d", getAnimations().size());
 		ui::Text("Environment lights: %d", environments.size());
+		ui::TreePop();
 	}
-	if (mCamera && ui::CollapsingHeader("Camera")) {
+	if (mCamera && ui::TreeNode("Camera")) {
 		ui::Text("Camera parameters");
 		mCamera->renderUI();
 		ui::Text("Orbit controller");
 		mCameraController->renderUI();
+		ui::TreePop();
 	}
-	if (mGraph && ui::CollapsingHeader("Scene Graph")) {
+	if (mGraph && ui::TreeNode("Scene Graph")) {
 		mGraph->renderUI();
+		ui::TreePop();
 	}
-	if (mSceneRT && ui::CollapsingHeader("Ray-tracing Data")) {
+	if (mGraph && ui::TreeNode("Scene Animation")) {
+		ui::Checkbox("Enable animation", &mEnableAnimation);
+		for (int i = 0; i < getAnimations().size(); i++) {
+			if (ui::TreeNode(std::to_string(i).c_str())) {
+				getAnimations()[i]->renderUI();
+				ui::TreePop();
+			}
+		}
+		ui::TreePop();
+	}
+	if (mSceneRT && ui::TreeNode("Ray-tracing Data")) {
 		mSceneRT->renderUI();
+		ui::TreePop();
 	}
 }
 
@@ -57,9 +75,10 @@ bool Scene::onKeyEvent(const KeyboardEvent& keyEvent){
 	return false;
 }
 
-void Scene::initializeSceneRT() { 
-	update(0);				// must be done before preparing device data.
-	mSceneRT = std::make_shared<RTScene>(this); 
+void Scene::initializeSceneRT() {
+	if (!mGraph) Log(Fatal, "Scene graph must be initialized.");
+	mGraph->update(0); // must be done before preparing device data.
+	mSceneRT = std::make_shared<RTScene>(shared_from_this()); 
 	mSceneRT->toDevice();
 }
 
@@ -75,33 +94,37 @@ void RTScene::toDevice() {
 		mDeviceData.lights	= gpContext->alloc->new_object<inter::vector<Light>>();
 	if (!mDeviceData.infiniteLights)
 		mDeviceData.infiniteLights = gpContext->alloc->new_object<inter::vector<InfiniteLight>>();
-	updateSceneData();
+	uploadSceneData();
 	CUDA_SYNC_CHECK();
 }
 
 void RTScene::renderUI() {
 	cudaDeviceSynchronize();
 
-	if (ui::CollapsingHeader("Environment lights")) {
+	if (ui::TreeNode("Environment lights")) {
 		for (int i = 0; i < mDeviceData.infiniteLights->size(); i++) {
-			if (ui::CollapsingHeader(to_string(i).c_str())) {
+			if (ui::TreeNode(to_string(i).c_str())) {
 				(*mDeviceData.infiniteLights)[i].renderUI();
+				ui::TreePop();
 			}
 		}
+		ui::TreePop();
 	}
-	if (ui::CollapsingHeader("Materials")) {
+	if (ui::TreeNode("Materials")) {
 		for (int i = 0; i < mDeviceData.materials->size(); i++) {
-			if (ui::CollapsingHeader((*mDeviceData.materials)[i]
+			if (ui::TreeNode((*mDeviceData.materials)[i]
 					.getHostMaterialPtr()->getName().c_str())) {
 				(*mDeviceData.materials)[i].renderUI();
+				ui::TreePop();
 			}
 		}
+		ui::TreePop();
 	}
 }
 
-void RTScene::updateSceneData() {
+void RTScene::uploadSceneData() {
 	/* Upload texture and material data to device... */
-	auto& materials = mScene->getMaterials();
+	auto& materials = mScene.lock()->getMaterials();
 	mDeviceData.materials->resize(materials.size());
 	for (size_t idx = 0; idx < materials.size(); idx++) {
 		const auto &material = materials[idx];
@@ -110,7 +133,7 @@ void RTScene::updateSceneData() {
 	}
 
 	/* Upload mesh data to device... */
-	auto &meshes = mScene->getMeshes();
+	auto &meshes = mScene.lock()->getMeshes();
 	mDeviceData.meshes->resize(meshes.size());
 	for (size_t idx = 0; idx < meshes.size(); idx++) {
 		const auto &mesh = meshes[idx];
@@ -124,7 +147,7 @@ void RTScene::updateSceneData() {
 	}
 
 	/* Upload instance data to device... */
-	auto &instances = mScene->getMeshInstances();
+	auto &instances = mScene.lock()->getMeshInstances();
 	mDeviceData.instances->resize(instances.size());
 	for (size_t idx = 0; idx < instances.size(); idx++) {
 		const auto &instance	 = instances[idx];
@@ -151,7 +174,7 @@ void RTScene::processLights() {
 		return triangles;
 	};
 
-	auto infiniteLights = mScene->environments;
+	auto infiniteLights = mScene.lock()->environments;
 	mDeviceData.infiniteLights->reserve(infiniteLights.size());
 	for (auto& infiniteLight : infiniteLights) {
 		rt::TextureData textureData;
@@ -159,8 +182,8 @@ void RTScene::processLights() {
 		mDeviceData.infiniteLights->push_back(InfiniteLight(textureData));
 	}
 
-	uint nMeshes = mScene->getMeshes().size();
-	for (const auto &instance: mScene->getMeshInstances()) {
+	uint nMeshes = mScene.lock()->getMeshes().size();
+	for (const auto &instance : mScene.lock()->getMeshInstances()) {
 		const auto &mesh			   = instance->getMesh();
 		const auto &material		   = mesh->getMaterial();
 		rt::MaterialData &materialData = (*mDeviceData.materials)[material->getMaterialId()];
@@ -198,6 +221,27 @@ void RTScene::processLights() {
 		gpContext->alloc->new_object<UniformLightSampler>(
 			(inter::span<Light>) *mDeviceData.lights);
 	CUDA_SYNC_CHECK();
+}
+
+// This routine should only be called by OptixBackend...
+void RTScene::updateSceneData() {
+	PROFILE("Update scene data");
+	// Currently we only support updating instance transformations...
+	static size_t lastUpdatedFrame = 0;
+	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
+	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)
+		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
+		auto &instances = mScene.lock()->getMeshInstances();
+		for (size_t idx = 0; idx < instances.size(); idx++) {
+			const auto &instance   = instances[idx];
+			auto &instanceData	   = (*mDeviceData.instances)[idx];
+			Affine3f transform	   = instance->getNode()->getGlobalTransform();
+			instanceData.transform = transform;
+			instanceData.transposedInverseTransform =
+				transform.matrix().inverse().transpose().block<3, 3>(0, 0);
+		}
+		lastUpdatedFrame = lastUpdates.frameIndex;
+	}
 }
 
 KRR_NAMESPACE_END

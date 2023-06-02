@@ -362,6 +362,10 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 
 	UpdateWindowSize();
 	mNvrhiDevice->waitForIdle();
+
+	auto ctx = ImGui::CreateContext();
+	ImGui::SetCurrentContext(ctx);
+
 	return true;
 }
 
@@ -370,9 +374,9 @@ void DeviceManager::AddRenderPassToFront(RenderPass::SharedPtr pRenderPass) {
 	mRenderPasses.push_front(pRenderPass);
 
 	pRenderPass->setDeviceManager(this);
-	pRenderPass->resizing();
-	pRenderPass->resize({int(mDeviceParams.backBufferWidth),
-						 int(mDeviceParams.backBufferHeight)});
+	//pRenderPass->resizing();
+	//pRenderPass->resize({int(mDeviceParams.backBufferWidth),
+	//					 int(mDeviceParams.backBufferHeight)});
 }
 
 void DeviceManager::AddRenderPassToBack(RenderPass::SharedPtr pRenderPass) {
@@ -380,9 +384,9 @@ void DeviceManager::AddRenderPassToBack(RenderPass::SharedPtr pRenderPass) {
 	mRenderPasses.push_back(pRenderPass);
 
 	pRenderPass->setDeviceManager(this);
-	pRenderPass->resizing();
-	pRenderPass->resize({int(mDeviceParams.backBufferWidth),
-						 int(mDeviceParams.backBufferHeight)});
+	//pRenderPass->resizing();
+	//pRenderPass->resize({int(mDeviceParams.backBufferWidth),
+	//					 int(mDeviceParams.backBufferHeight)});
 }
 
 void DeviceManager::RemoveRenderPass(RenderPass::SharedPtr pRenderPass) {
@@ -455,6 +459,7 @@ void DeviceManager::UpdateAverageFrameTime(double elapsedTime) {
 }
 
 void DeviceManager::RunMessageLoop() {
+	glfwSetTime(0);
 	mPreviousFrameTimestamp = glfwGetTime();
 
 	while (!glfwWindowShouldClose(mWindow) && !gpContext->shouldQuit()) {
@@ -469,7 +474,7 @@ void DeviceManager::RunMessageLoop() {
 
 		if (mwindowVisible) {
 			if (mcallbacks.beforeTick) mcallbacks.beforeTick(*this);
-			Tick(elapsedTime);
+			Tick(curTime);
 			if (mcallbacks.afterTick) mcallbacks.afterTick(*this);
 			if (mcallbacks.beforeRender) mcallbacks.beforeRender(*this);
 			Render();
@@ -501,8 +506,8 @@ void DeviceManager::GetWindowDimensions(int &width, int &height) const {
 }
 
 void DeviceManager::UpdateWindowSize() {
-	int width;
-	int height;
+	if (mWindow == nullptr) return;
+	int width, height;
 	glfwGetWindowSize(mWindow, &width, &height);
 
 	if (width == 0 || height == 0) {

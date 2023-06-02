@@ -1,7 +1,6 @@
 #include <stddef.h>
 
 #include <window.h>
-
 #include "render/profiler/profiler.h"
 #include "uirender.h"
 #include "shader.h"
@@ -110,7 +109,6 @@ void UIRenderer::initialize() {
 	if (!this->device) Log(Fatal, "Set device for UIRenderer before initialization!");
 	
 	auto shaderLoader = std::make_unique<ShaderLoader>(getVulkanDevice());
-	ImGui::CreateContext();
 
 	m_commandList = device->createCommandList();
 	m_commandList->open();
@@ -189,12 +187,13 @@ void UIRenderer::initialize() {
 		basePSODesc.bindingLayouts = {bindingLayout};
 	}
 	
+	auto &io = ImGui::GetIO();
+	auto* font = io.Fonts->AddFontDefault();
+
 	m_commandList->close();
 	device->executeCommandList(m_commandList);
 	device->waitForIdle();
 
-	auto &io = ImGui::GetIO();
-	io.Fonts->AddFontDefault();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard |
 					  ImGuiConfigFlags_DockingEnable |
 					  ImGuiConfigFlags_ViewportsEnable;
@@ -261,8 +260,6 @@ void UIRenderer::tick(float elapsedTimeSeconds) {
 }
 
 void UIRenderer::beginFrame() {
-	ImGui::NewFrame();
-
 	int width, height;
 	float scaleX, scaleY;
 
@@ -278,6 +275,7 @@ void UIRenderer::beginFrame() {
 	io.KeyShift = io.KeysDown[GLFW_KEY_LEFT_SHIFT] || io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
 	io.KeyAlt = io.KeysDown[GLFW_KEY_LEFT_ALT] || io.KeysDown[GLFW_KEY_RIGHT_ALT];
 	io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
+	ImGui::NewFrame();
 }
 
 void UIRenderer::endFrame() {

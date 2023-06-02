@@ -2,10 +2,11 @@
 #include "context.h"
 #include "optix.h"
 #include "util/check.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
-OptixPipelineCompileOptions OptiXBackendInterface::getPipelineCompileOptions() {
+OptixPipelineCompileOptions OptixBackendInterface::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
 	// [TODO] check this: currently we want single-level instancing only.
 	pipelineCompileOptions.traversableGraphFlags =
@@ -19,7 +20,7 @@ OptixPipelineCompileOptions OptiXBackendInterface::getPipelineCompileOptions() {
 	return pipelineCompileOptions;
 }
 
-OptixModule OptiXBackendInterface::createOptiXModule(OptixDeviceContext optixContext,
+OptixModule OptixBackendInterface::createOptixModule(OptixDeviceContext optixContext,
 													 const char *ptx) {
 	OptixModuleCompileOptions moduleCompileOptions = {};
 	moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
@@ -53,7 +54,7 @@ OptixModule OptiXBackendInterface::createOptiXModule(OptixDeviceContext optixCon
 	return optixModule;
 }
 
-OptixProgramGroup OptiXBackendInterface::createRaygenPG(OptixDeviceContext optixContext,
+OptixProgramGroup OptixBackendInterface::createRaygenPG(OptixDeviceContext optixContext,
 														OptixModule optixModule,
 														const char *entrypoint) {
 	OptixProgramGroupOptions pgOptions = {};
@@ -72,7 +73,7 @@ OptixProgramGroup OptiXBackendInterface::createRaygenPG(OptixDeviceContext optix
 	return pg;
 }
 
-OptixProgramGroup OptiXBackendInterface::createMissPG(OptixDeviceContext optixContext,
+OptixProgramGroup OptixBackendInterface::createMissPG(OptixDeviceContext optixContext,
 													  OptixModule optixModule,
 													  const char *entrypoint) {
 	OptixProgramGroupOptions pgOptions = {};
@@ -92,7 +93,7 @@ OptixProgramGroup OptiXBackendInterface::createMissPG(OptixDeviceContext optixCo
 	return pg;
 }
 
-OptixProgramGroup OptiXBackendInterface::createIntersectionPG(OptixDeviceContext optixContext,
+OptixProgramGroup OptixBackendInterface::createIntersectionPG(OptixDeviceContext optixContext,
 															  OptixModule optixModule,
 															  const char *closest, const char *any,
 															  const char *intersect) {
@@ -125,60 +126,74 @@ OptixProgramGroup OptiXBackendInterface::createIntersectionPG(OptixDeviceContext
 }
 
 OptixTraversableHandle
-OptiXBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstream cudaStream,
+OptixBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstream cudaStream,
 										 const std::vector<OptixBuildInput> &buildInputs,
-										 CUDABuffer &accelBuffer) {
+										 CUDABuffer &accelBuffer, bool compact, bool update) {
 	if (buildInputs.empty()) return {};
+	if (compact && update)	// updating compacted AS is a to-do.
+		Log(Error, "Currently OptixBackend do not support update a compacted AS.");
 
 	// Figure out memory requirements.
 	OptixAccelBuildOptions accelOptions = {};
-	accelOptions.buildFlags				= OPTIX_BUILD_FLAG_ALLOW_UPDATE |
-		OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+	accelOptions.buildFlags				= OPTIX_BUILD_FLAG_ALLOW_UPDATE | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+	if (compact) accelOptions.buildFlags |= OPTIX_BUILD_FLAG_ALLOW_COMPACTION; 
 	accelOptions.motionOptions.numKeys = 1;
-	accelOptions.operation			   = OPTIX_BUILD_OPERATION_BUILD;
+	accelOptions.operation = update ? OPTIX_BUILD_OPERATION_UPDATE : OPTIX_BUILD_OPERATION_BUILD;
 
 	OptixAccelBufferSizes blasBufferSizes;
 	OPTIX_CHECK(optixAccelComputeMemoryUsage(optixContext, &accelOptions, buildInputs.data(),
 											 buildInputs.size(), &blasBufferSizes));
 
-	uint64_t *compactedSizePtr;
-	CUDA_CHECK(cudaMalloc(&compactedSizePtr, sizeof(uint64_t)));
-	OptixAccelEmitDesc emitDesc;
-	emitDesc.type	= OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
-	emitDesc.result = (CUdeviceptr) compactedSizePtr;
-
-	// Allocate buffers.
-	void *tempBuffer, *uncompactedBuffer;
-	CUDA_CHECK(cudaMalloc(&tempBuffer, blasBufferSizes.tempSizeInBytes));
-	CUDA_CHECK(cudaMalloc(&uncompactedBuffer, blasBufferSizes.outputSizeInBytes));
-	// Build.
+	void *tempBuffer;
+	size_t tempSizeInBytes =
+		update ? blasBufferSizes.tempUpdateSizeInBytes : blasBufferSizes.tempSizeInBytes;
+	CUDA_CHECK(cudaMalloc(&tempBuffer, tempSizeInBytes));
+	
 	OptixTraversableHandle traversableHandle{0};
-	OPTIX_CHECK(optixAccelBuild(
-		optixContext, cudaStream, &accelOptions, buildInputs.data(), buildInputs.size(),
-		CUdeviceptr(tempBuffer), blasBufferSizes.tempSizeInBytes, CUdeviceptr(uncompactedBuffer),
-		blasBufferSizes.outputSizeInBytes, &traversableHandle, &emitDesc, 1));
 
+	if (compact) {
+		uint64_t *compactedSizePtr;
+		CUDA_CHECK(cudaMalloc(&compactedSizePtr, sizeof(uint64_t)));
+		OptixAccelEmitDesc emitDesc;
+		emitDesc.type	= OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
+		emitDesc.result = (CUdeviceptr) compactedSizePtr;
+
+		void *uncompactedBuffer;
+		CUDA_CHECK(cudaMalloc(&uncompactedBuffer, blasBufferSizes.outputSizeInBytes));
+
+		OPTIX_CHECK(optixAccelBuild(
+			optixContext, cudaStream, &accelOptions, buildInputs.data(), buildInputs.size(),
+			CUdeviceptr(tempBuffer), tempSizeInBytes, CUdeviceptr(uncompactedBuffer),
+			blasBufferSizes.outputSizeInBytes, &traversableHandle, &emitDesc, 1));
+
+		CUDA_CHECK(cudaStreamSynchronize(cudaStream));
+
+		uint64_t compactedSize;
+		CUDA_CHECK(cudaMemcpyAsync(&compactedSize, compactedSizePtr, sizeof(uint64_t),
+								   cudaMemcpyDeviceToHost, cudaStream));
+		CUDA_CHECK(cudaFree(compactedSizePtr));
+		CUDA_CHECK(cudaStreamSynchronize(cudaStream));
+
+		// Compact the acceleration structure
+		accelBuffer.resize(compactedSize);
+		OPTIX_CHECK(optixAccelCompact(optixContext, cudaStream, traversableHandle,
+									  CUdeviceptr(accelBuffer.data()), compactedSize,
+									  &traversableHandle));
+		CUDA_CHECK(cudaFree(uncompactedBuffer));
+		
+	} else {
+		accelBuffer.resize(blasBufferSizes.outputSizeInBytes);
+		OPTIX_CHECK(optixAccelBuild(
+			optixContext, cudaStream, &accelOptions, buildInputs.data(), buildInputs.size(),
+			CUdeviceptr(tempBuffer), tempSizeInBytes, CUdeviceptr(accelBuffer.data()),
+			blasBufferSizes.outputSizeInBytes, &traversableHandle, nullptr, 0));
+	}
 	CUDA_CHECK(cudaFree(tempBuffer));
-	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
-
-	uint64_t compactedSize;
-	CUDA_CHECK(cudaMemcpyAsync(&compactedSize, compactedSizePtr, sizeof(uint64_t),
-							   cudaMemcpyDeviceToHost, cudaStream));
-	CUDA_CHECK(cudaFree(compactedSizePtr));
-	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
-
-	// Compact the acceleration structure
-	accelBuffer.resize(compactedSize);
-	CUDABuffer compactedBuffer(compactedSize);	// temporal buffer to store compacted AS
-	OPTIX_CHECK(optixAccelCompact(optixContext, cudaStream, traversableHandle,
-								  CUdeviceptr(accelBuffer.data()), compactedSize,
-									&traversableHandle));
-	CUDA_CHECK(cudaFree(uncompactedBuffer));
 	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
 	return traversableHandle;
 }
 
-OptixTraversableHandle OptiXBackendInterface::buildTriangleMeshGAS(OptixDeviceContext optixContext,
+OptixTraversableHandle OptixBackendInterface::buildTriangleMeshGAS(OptixDeviceContext optixContext,
 																   CUstream cudaStream,
 																   const rt::MeshData &mesh,
 																   CUDABuffer &accelBuffer) {
@@ -217,25 +232,24 @@ OptixTraversableHandle OptiXBackendInterface::buildTriangleMeshGAS(OptixDeviceCo
 	Log(Debug, "Building GAS for triangle mesh: %zd vertices and %zd faces", 
 		mesh.positions.size(), mesh.indices.size());
 
-	return buildASFromInputs(optixContext, cudaStream, {triangleInputs}, accelBuffer);
+	return buildASFromInputs(optixContext, cudaStream, {triangleInputs}, accelBuffer, true);
 }
 
-OptixProgramGroup
-OptiXBackend::createRaygenPG(const char *entrypoint) const {
-	return OptiXBackendInterface::createRaygenPG(optixContext, optixModule, entrypoint);
+OptixProgramGroup OptixBackend::createRaygenPG(const char *entrypoint) const {
+	return OptixBackendInterface::createRaygenPG(optixContext, optixModule, entrypoint);
 }
 
-OptixProgramGroup OptiXBackend::createMissPG(const char *entrypoint) const {
-	return OptiXBackendInterface::createMissPG(optixContext, optixModule, entrypoint);
+OptixProgramGroup OptixBackend::createMissPG(const char *entrypoint) const {
+	return OptixBackendInterface::createMissPG(optixContext, optixModule, entrypoint);
 }
 
-OptixProgramGroup OptiXBackend::createIntersectionPG(
+OptixProgramGroup OptixBackend::createIntersectionPG(
 	const char *closest, const char *any, const char *intersect) const {
-	return OptiXBackendInterface::createIntersectionPG(optixContext, optixModule,
+	return OptixBackendInterface::createIntersectionPG(optixContext, optixModule,
 											  closest, any, intersect);
 }
 
-void OptiXBackend::initialize(const OptiXInitializeParameters &params) {
+void OptixBackend::initialize(const OptixInitializeParameters &params) {
 	char log[OPTIX_LOG_SIZE];
 	size_t logSize = sizeof(log);
 	// temporary workaround for setup context
@@ -244,7 +258,7 @@ void OptiXBackend::initialize(const OptiXInitializeParameters &params) {
 	cudaStream		= gpContext->cudaStream;
 	
 	// creating optix module from ptx
-	optixModule = createOptiXModule(optixContext, params.ptx);
+	optixModule = createOptixModule(optixContext, params.ptx);
 	// creating program groups
 	std::vector<OptixProgramGroup> allPGs;
 	// creating RAYGEN PG
@@ -271,9 +285,7 @@ void OptiXBackend::initialize(const OptiXInitializeParameters &params) {
 	OptixPipelineCompileOptions pipelineCompileOptions = getPipelineCompileOptions();
 	OptixPipelineLinkOptions pipelineLinkOptions = {};
 	pipelineLinkOptions.maxTraceDepth			 = 3;
-#ifdef KRR_DEBUG_BUILD
-	pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
-#endif
+
 	OPTIX_CHECK_WITH_LOG(
 		optixPipelineCreate(optixContext, &pipelineCompileOptions,
 							&pipelineLinkOptions, allPGs.data(), allPGs.size(),
@@ -285,7 +297,7 @@ void OptiXBackend::initialize(const OptiXInitializeParameters &params) {
 	Log(Debug, log);
 }
 
-void OptiXBackend::setScene(Scene::SharedPtr _scene) {
+void OptixBackend::setScene(Scene::SharedPtr _scene) {
 	scene = _scene;
 	scene->initializeSceneRT();		// upload bindless scene data to device buffers.
 	buildAccelStructure();			// build single-level IAS.
@@ -294,7 +306,7 @@ void OptiXBackend::setScene(Scene::SharedPtr _scene) {
 
 // [TODO] This routine currently do not support rebuild or dynamic update,
 // check back later.
-void OptiXBackend::buildAccelStructure() {
+void OptixBackend::buildAccelStructure() {
 	// this is the first time we met...
 	const auto &graph			= scene->getSceneGraph();
 	const auto &instances		= scene->getMeshInstances();
@@ -328,7 +340,6 @@ void OptiXBackend::buildAccelStructure() {
 		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
 				   cudaMemcpyHostToDevice);
 	}
-	CUDA_SYNC_CHECK();
 
 	// build IAS
 	OptixBuildInput iasBuildInput			 = {};
@@ -337,11 +348,46 @@ void OptiXBackend::buildAccelStructure() {
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
 	Log(Debug, "Building root IAS: %zd instances", instances.size());
 
-	traversableIAS = buildASFromInputs(optixContext, cudaStream, {iasBuildInput}, accelBufferIAS);
+	traversableIAS = buildASFromInputs(optixContext, cudaStream, {iasBuildInput}, accelBufferIAS, false);
 	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
 }
 
-void OptiXBackend::buildShaderBindingTable() {
+// [TODO] Currently supports updating subgraph transforms only.
+void OptixBackend::update() {
+	static size_t lastUpdatedFrame = 0;
+	auto lastUpdates		= scene->getSceneGraph()->getLastUpdateRecord();
+	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphUpdates)
+		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {		
+		updateAccelStructure();
+		scene->getSceneRT()->updateSceneData();
+		lastUpdatedFrame = lastUpdates.frameIndex;
+	}
+}
+
+void OptixBackend::updateAccelStructure() {
+	PROFILE("Update AS");
+	const auto &instances = scene->getMeshInstances();
+	// Currently only supports updating subgraph transformations.
+	for (int idx = 0; idx < instances.size(); idx++) {
+		const auto &instance		   = instances[idx];
+		OptixInstance &instanceData	   = instancesIAS[idx];
+		Affine3f transform			   = instance->getNode()->getGlobalTransform();
+		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+				   cudaMemcpyHostToDevice);
+	}
+
+	// build IAS
+	OptixBuildInput iasBuildInput			 = {};
+	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+	iasBuildInput.instanceArray.numInstances = instances.size();
+	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
+	Log(Debug, "Building root IAS: %zd instances", instances.size());
+
+	traversableIAS = buildASFromInputs(optixContext, cudaStream, {iasBuildInput}, accelBufferIAS, false, true);
+	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
+}
+
+void OptixBackend::buildShaderBindingTable() {
 	size_t nRayTypes = optixParameters.rayTypes.size();
 
 	for (const auto [raygenEntry, index] : entryPoints) {

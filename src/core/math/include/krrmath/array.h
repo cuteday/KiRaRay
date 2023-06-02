@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "quaternion.h"
 #include <Eigen/Dense>
 
 KRR_NAMESPACE_BEGIN
@@ -37,6 +38,12 @@ public:
 	KRR_CALLABLE friend Array abs(const Array &arr) { return arr.abs(); }
 	KRR_CALLABLE friend Array sqrt(const Array &arr) { return arr.sqrt(); }
 	KRR_CALLABLE friend Array inverse(const Array &arr) { return arr.inverse(); }
+
+	std::string string() const {
+		std::stringstream ss;
+		ss << *this;
+		return ss.str();
+	}
 };
 
 template <typename T>
@@ -157,6 +164,13 @@ public:
 		this->operator[](1) = v.operator[](1);
 		this->operator[](2) = v.operator[](2);
 		this->operator[](3) = w;
+	}
+
+	KRR_CALLABLE Array4(const Quaternion<T> &q) { 
+		this->operator[](0) = q.x();
+		this->operator[](1) = q.y();
+		this->operator[](2) = q.z();
+		this->operator[](3) = q.w();
 	}
 
 	KRR_CALLABLE Array4(const T &x, const T &y, const T &z, const T &w) {

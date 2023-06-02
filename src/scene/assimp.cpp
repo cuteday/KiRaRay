@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <regex>
 
 #include "assimp/DefaultLogger.hpp"
 #include "assimp/Importer.hpp"
@@ -24,8 +25,11 @@ using ImportMode = AssimpImporter::ImportMode;
 
 MaterialLoader sMaterialLoader;
 
+std::string aiCast(const aiString &str) { return std::string(str.C_Str()); }
 Vector3f aiCast(const aiColor3D &ai) { return Vector3f(ai.r, ai.g, ai.b); }
 Vector3f aiCast(const aiVector3D &val) { return Vector3f(val.x, val.y, val.z); }
+Array4f aiKeyframeCast(const aiVector3D &val) { return Array4f(val.x, val.y, val.z, 0); }
+Array4f aiKeyframeCast(const aiQuaternion &val) { return Array4f(val.x, val.y, val.z, val.w); }
 Quaternionf aiCast(const aiQuaternion &q) {
 	return Quaternionf{q.w, q.x, q.y, q.z};
 }
@@ -75,8 +79,10 @@ void loadTextures(const aiMaterial *pAiMaterial, const std::string &folder,
 		aiString aiPath;
 		pAiMaterial->GetTexture(source.aiType, source.aiIndex, &aiPath);
 		std::string path(aiPath.data);
+		path = std::regex_replace(path, std::regex("%20"), " ");
+	
 		if (path.empty()) {
-			logWarning("Texture has empty file name, ignoring.");
+			logError("Texture has empty file name, ignoring.");
 			continue;
 		}
 		// Load the texture
@@ -219,7 +225,7 @@ void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial,
 	assert(pMaterial);
 	bool srgb = mUseSrgb && pMaterial->determineSrgb(filename, type);
 	if (!fs::exists(filename)) {
-		logWarning("Can't find texture image file '" + filename + "'");
+		logError("Can't find texture image file '" + filename + "'");
 		return;
 	}
 	TextureKey textureKey{filename, srgb};
@@ -241,8 +247,8 @@ bool AssimpImporter::import(const fs::path filepath,
 	unsigned int postProcessSteps = 0 
 									| aiProcess_CalcTangentSpace
 									| aiProcess_FindDegenerates
-									| aiProcess_OptimizeMeshes
-									| aiProcess_OptimizeGraph
+									//| aiProcess_OptimizeMeshes
+									//| aiProcess_OptimizeGraph
 									| aiProcess_JoinIdenticalVertices 
 									| aiProcess_FindInvalidData
 									//| aiProcess_MakeLeftHanded
@@ -293,6 +299,7 @@ bool AssimpImporter::import(const fs::path filepath,
 	loadMaterials(modelFolder);
 	loadMeshes();
 	traverseNode(mAiScene->mRootNode, root);
+	loadAnimations();
 	root->setName(filepath.filename().string());
 	Assimp::DefaultLogger::kill();
 	return true;
@@ -300,7 +307,9 @@ bool AssimpImporter::import(const fs::path filepath,
 
 void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr graphNode) {
 	Affine3f transform = aiCast(assimpNode->mTransformation);
-	graphNode->setName(std::string(assimpNode->mName.C_Str()));
+	graphNode->setName(aiCast(assimpNode->mName));
+	if (!graphNode->getName().empty())
+		mNodeMap[graphNode->getName()] = graphNode;
 	graphNode->setRotation(Quaternionf(transform.rotation()));
 	graphNode->setScaling(transform.scaling());
 	graphNode->setTranslation(transform.translation());
@@ -371,6 +380,74 @@ void AssimpImporter::loadMeshes() {
 		mesh->aabb	   = aiCast(pAiMesh->mAABB);
 		mesh->setName(std::string(pAiMesh->mName.C_Str()));
 		mScene->getSceneGraph()->addMesh(mesh);
+	}
+}
+
+void AssimpImporter::loadAnimations() {
+	auto resetNegativeKeyframeTimes = [](aiNodeAnim *pAiNode) {
+		auto resetTime = [](auto keys, uint32_t count) {
+			if (count > 1) assert(keys[1].mTime >= 0);
+			if (keys[0].mTime < 0) keys[0].mTime = 0;
+		};
+		resetTime(pAiNode->mPositionKeys, pAiNode->mNumPositionKeys);
+		resetTime(pAiNode->mRotationKeys, pAiNode->mNumRotationKeys);
+		resetTime(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys);				
+	};
+
+	auto sceneGraph			= mScene->getSceneGraph();
+	auto animationContainer = std::make_shared<SceneGraphNode>();
+	animationContainer->setName("Animation Container");
+	sceneGraph->attach(sceneGraph->getRoot(), animationContainer);
+	
+	for (int i = 0; i < mAiScene->mNumAnimations; i++) {
+		aiAnimation *pAiAnimation = mAiScene->mAnimations[i];
+		auto animation			  = std::make_shared<SceneAnimation>();
+		float duration			  = pAiAnimation->mDuration;
+		float ticksPerSecond	  = pAiAnimation->mTicksPerSecond;
+		float durationInSeconds	  = duration / ticksPerSecond;
+
+		for (int ch = 0; ch < pAiAnimation->mNumChannels; ch++) {
+			aiNodeAnim *aiNode = pAiAnimation->mChannels[ch];
+			auto graphNode = mNodeMap[aiCast(aiNode->mNodeName)];			
+			resetNegativeKeyframeTimes(aiNode);
+		
+			auto createAnimationChannel = [=](auto keys, size_t count, 
+				SceneGraphNode::SharedPtr node, anime::AnimationAttribute attribute)
+				-> SceneAnimationChannel::SharedPtr {
+				auto sampler = std::make_shared<anime::Sampler>();
+				auto animationChannel =
+					std::make_shared<SceneAnimationChannel>(sampler, node, attribute);
+				for (size_t i = 0; i < count; i++) {
+					auto key = keys[i];
+					anime::Keyframe keyframe;
+					keyframe.time = key.mTime / ticksPerSecond;
+					keyframe.value = aiKeyframeCast(key.mValue);
+					sampler->addKeyframe(keyframe);
+				}
+				sampler->setInterpolationMode(anime::InterpolationMode::Linear);
+				if (attribute == anime::AnimationAttribute::Rotation)
+					sampler->setInterpolationMode(anime::InterpolationMode::Slerp);
+				return animationChannel;
+			};
+			if (aiNode->mNumScalingKeys)
+				animation->addChannel(
+					createAnimationChannel(aiNode->mScalingKeys, aiNode->mNumScalingKeys, 
+					graphNode, anime::AnimationAttribute::Scaling));
+			if (aiNode->mNumRotationKeys)
+				animation->addChannel(
+					createAnimationChannel(aiNode->mRotationKeys, aiNode->mNumRotationKeys, 
+					graphNode, anime::AnimationAttribute::Rotation));
+			if (aiNode->mNumPositionKeys)
+				animation->addChannel(
+					createAnimationChannel(aiNode->mPositionKeys, aiNode->mNumPositionKeys, 
+					graphNode, anime::AnimationAttribute::Translation));
+		}
+
+		// attach the newly created animation to the container node
+		auto animationNode = std::make_shared<SceneGraphNode>();
+		animationNode->setLeaf(animation);
+		animationNode->setName(aiCast(pAiAnimation->mName));
+		sceneGraph->attach(animationContainer, animationNode);
 	}
 }
 

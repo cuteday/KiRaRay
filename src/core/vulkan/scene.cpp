@@ -5,13 +5,17 @@ KRR_NAMESPACE_BEGIN
 
 void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device, 
 	std::shared_ptr<DescriptorTableManager> descriptorTable) { 
-	update(0);
-	mSceneVK = std::make_shared<VKScene>(this, device, descriptorTable); 
+	if (!mGraph) Log(Fatal, "Scene graph must be initialized.");
+	mGraph->update(0); // must be done before preparing device data.
+	mSceneVK = std::make_shared<VKScene>(shared_from_this(), device, descriptorTable); 
 	vkrhi::CommandListHandle commandList = device->createCommandList();
 	commandList->open();
-	mSceneVK->writeMeshBuffers(commandList);		// bindless buffers
+	mSceneVK->createMeshBuffers(commandList);		// bindless buffers
+	mSceneVK->createMaterialTextures(commandList);	// bindless textures
+	mSceneVK->createInstanceBuffer();
+	mSceneVK->createMaterialBuffer();
+	mSceneVK->createGeometryBuffer();
 	mSceneVK->writeInstanceBuffer(commandList);
-	mSceneVK->writeMaterialTextures(commandList);	// bindless textures
 	mSceneVK->writeMaterialBuffer(commandList);
 	mSceneVK->writeGeometryBuffer(commandList);
 	commandList->close();
@@ -19,7 +23,12 @@ void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device,
 	device->waitForIdle();
 }
 
-void VKScene::writeMeshBuffers(vkrhi::ICommandList *commandList) {
+VKScene::VKScene(Scene::SharedPtr scene, vkrhi::vulkan::IDevice *device,
+	std::shared_ptr<DescriptorTableManager> descriptorTable) :	
+	mScene(scene), mDevice(device), mDescriptorTable(descriptorTable) {
+}
+
+void VKScene::createMeshBuffers(vkrhi::ICommandList *commandList) {
 	auto appendBufferRange = [](vkrhi::BufferRange &range, size_t size,
 								uint64_t &currentBufferSize) {
 		range.byteOffset = currentBufferSize;
@@ -27,7 +36,7 @@ void VKScene::writeMeshBuffers(vkrhi::ICommandList *commandList) {
 		currentBufferSize += size;
 	};
 	mMeshBuffers.clear();
-	for (const auto &mesh : mScene->getMeshes()) {
+	for (const auto &mesh : mScene.lock()->getMeshes()) {
 		mMeshBuffers.push_back(rs::MeshBuffers());
 		rs::MeshBuffers &buffers = mMeshBuffers.back();
 		
@@ -113,11 +122,11 @@ void VKScene::writeMeshBuffers(vkrhi::ICommandList *commandList) {
 	}
 }
 
-void VKScene::writeMaterialTextures(vkrhi::ICommandList* commandList) {
+void VKScene::createMaterialTextures(vkrhi::ICommandList* commandList) {
 	mMaterialTextures.clear();
 	if (!mTextureLoader) mTextureLoader =
 			std::make_shared<TextureCache>(mDevice, mDescriptorTable);
-	for (auto material : mScene->getMaterials()) {
+	for (auto material : mScene.lock()->getMaterials()) {
 		mMaterialTextures.push_back(rs::MaterialTextures());
 		auto &textures = mMaterialTextures.back();
 		for (int type = 0; type < (int) Material::TextureType::Count; type++) {
@@ -133,9 +142,49 @@ void VKScene::writeMaterialTextures(vkrhi::ICommandList* commandList) {
 	}
 }
 
+void VKScene::createMaterialBuffer() {
+	/* Create and write material constants buffer. */
+	mMaterialConstantsBuffer = nullptr;
+	vkrhi::BufferDesc bufferDesc;
+	bufferDesc.byteSize	 = sizeof(rs::MaterialConstants) * mScene.lock()->getMaterials().size();
+	bufferDesc.debugName		= "BindlessMaterials";
+	bufferDesc.structStride		= sizeof(rs::MaterialConstants);
+	bufferDesc.canHaveRawViews	= true;
+	bufferDesc.canHaveUAVs		= true;
+	bufferDesc.initialState		= vkrhi::ResourceStates::ShaderResource;
+	bufferDesc.keepInitialState = true;
+	mMaterialConstantsBuffer	= mDevice->createBuffer(bufferDesc);
+}
+
+void VKScene::createInstanceBuffer() {
+	/* Create and write instance data buffer. */
+	vkrhi::BufferDesc bufferDesc;
+	bufferDesc.byteSize	 = sizeof(rs::InstanceData) * mScene.lock()->getMeshInstances().size();
+	bufferDesc.debugName		= "BindlessInstance";
+	bufferDesc.structStride		= sizeof(rs::InstanceData);
+	bufferDesc.canHaveRawViews	= true;
+	bufferDesc.canHaveUAVs		= true;
+	bufferDesc.initialState		= vkrhi::ResourceStates::ShaderResource;
+	bufferDesc.keepInitialState = true;
+	mInstanceDataBuffer			= mDevice->createBuffer(bufferDesc);
+}
+
+void VKScene::createGeometryBuffer() {
+	/* Create and write mesh data buffer. */
+	vkrhi::BufferDesc bufferDesc;
+	bufferDesc.byteSize			= sizeof(rs::MeshData) * mScene.lock()->getMeshes().size();
+	bufferDesc.debugName		= "BindlessMesh";
+	bufferDesc.structStride		= sizeof(rs::MeshData);
+	bufferDesc.canHaveRawViews	= true;
+	bufferDesc.canHaveUAVs		= true;
+	bufferDesc.initialState		= vkrhi::ResourceStates::ShaderResource;
+	bufferDesc.keepInitialState = true;
+	mMeshDataBuffer				= mDevice->createBuffer(bufferDesc);
+}
+
 void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 	/* Fill material constants buffer on host. */
-	auto &materials = mScene->getMaterials();
+	auto &materials = mScene.lock()->getMaterials();
 	for (int i = 0; i < materials.size(); i++) {
 		const auto &material = materials[i];
 		rs::MaterialConstants materialConstants;
@@ -158,18 +207,6 @@ void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 		mMaterialConstants.push_back(materialConstants);
 	}
 	
-	/* Create and write material constants buffer. */
-	mMaterialConstantsBuffer = nullptr;
-	vkrhi::BufferDesc bufferDesc;
-	bufferDesc.byteSize = sizeof(rs::MaterialConstants) * materials.size();
-	bufferDesc.debugName		= "BindlessMaterials";
-	bufferDesc.structStride		= sizeof(rs::MaterialConstants);
-	bufferDesc.canHaveRawViews	= true;
-	bufferDesc.canHaveUAVs		= true;
-	bufferDesc.initialState		= vkrhi::ResourceStates::ShaderResource;
-	bufferDesc.keepInitialState = true;
-	mMaterialConstantsBuffer	= mDevice->createBuffer(bufferDesc);
-	
 	commandList->writeBuffer(
 		mMaterialConstantsBuffer, mMaterialConstants.data(),
 		mMaterialConstants.size() * sizeof(rs::MaterialConstants), 0);
@@ -179,7 +216,7 @@ void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 	/* Fill mesh data buffer on host. */
 	/* Normally, a instance is from a mesh, which may contain several geometries.
 		In kiraray, we simply ignore this (i.e. the concept of geometry and instances). */
-	auto meshes = mScene->getMeshes();
+	auto meshes = mScene.lock()->getMeshes();
 	for (int i = 0; i < meshes.size(); i++) {
 		const auto &mesh = meshes[i];
 		rs::MeshData meshData;
@@ -201,22 +238,13 @@ void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 		
 		mMeshData.push_back(meshData);
 	}
-	/* Create and write mesh data buffer. */
-	vkrhi::BufferDesc bufferDesc;
-	bufferDesc.byteSize			= sizeof(rs::MeshData) * mMeshData.size();
-	bufferDesc.debugName		= "BindlessMesh";
-	bufferDesc.structStride		= sizeof(rs::MeshData);
-	bufferDesc.canHaveRawViews	= true;
-	bufferDesc.canHaveUAVs		= true;
-	bufferDesc.initialState		= vkrhi::ResourceStates::ShaderResource;
-	bufferDesc.keepInitialState = true;
-	mMeshDataBuffer				= mDevice->createBuffer(bufferDesc);
-	
-	commandList->writeBuffer(mMeshDataBuffer, mMeshData.data(), bufferDesc.byteSize, 0);
+
+	commandList->writeBuffer(mMeshDataBuffer, mMeshData.data(),
+							 sizeof(rs::MeshData) * meshes.size(), 0);
 }
 
 void VKScene::writeInstanceBuffer(vkrhi::ICommandList *commandList) {
-	auto instances = mScene->getMeshInstances();
+	auto instances = mScene.lock()->getMeshInstances();
 	for (int i = 0; i < instances.size(); i++) {
 		const auto &instance = instances[i];
 		rs::InstanceData instanceData;
@@ -224,18 +252,25 @@ void VKScene::writeInstanceBuffer(vkrhi::ICommandList *commandList) {
 		instanceData.meshIndex = instance->getMesh()->getMeshId();
 		mInstanceData.push_back(instanceData);
 	}
-	/* Create and write instance data buffer. */
-	vkrhi::BufferDesc bufferDesc;
-	bufferDesc.byteSize			= sizeof(rs::InstanceData) * mInstanceData.size();
-	bufferDesc.debugName		= "BindlessInstance";
-	bufferDesc.structStride		= sizeof(rs::InstanceData);
-	bufferDesc.canHaveRawViews	= true;
-	bufferDesc.canHaveUAVs		= true;
-	bufferDesc.initialState		= vkrhi::ResourceStates::ShaderResource;
-	bufferDesc.keepInitialState = true;
-	mInstanceDataBuffer			= mDevice->createBuffer(bufferDesc);
+	commandList->writeBuffer(mInstanceDataBuffer, mInstanceData.data(), sizeof(rs::InstanceData) * instances.size(), 0);
+}
 
-	commandList->writeBuffer(mInstanceDataBuffer, mInstanceData.data(), bufferDesc.byteSize, 0);
+void VKScene::update(vkrhi::ICommandList *commandList) {
+	static size_t lastUpdatedFrame = 0;
+	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
+	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)
+		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
+		// update instance transformations
+		auto instances = mScene.lock()->getMeshInstances();
+		for (int i = 0; i < instances.size(); i++) {
+			rs::InstanceData &instanceData = mInstanceData[i];
+			instanceData.transform		   = instances[i]->getNode()->getGlobalTransform().matrix();
+			instanceData.meshIndex		   = instances[i]->getMesh()->getMeshId();
+		}
+		commandList->writeBuffer(mInstanceDataBuffer, mInstanceData.data(),
+								 sizeof(rs::InstanceData) * instances.size(), 0);
+		lastUpdatedFrame = lastUpdates.frameIndex;
+	}
 }
 
 KRR_NAMESPACE_END

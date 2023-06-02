@@ -1,5 +1,6 @@
 #include "scenegraph.h"
 #include "window.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -18,6 +19,15 @@ void SceneGraphLeaf::setName(const std::string &name) const {
 
 SceneGraphLeaf::SharedPtr MeshInstance::clone() {
 	return std::make_shared<MeshInstance>(mMesh);
+}
+
+SceneGraphLeaf::SharedPtr SceneAnimation::clone() {
+	auto copy = std::make_shared<SceneAnimation>();
+	for (const auto &channel : mChannels) {
+		copy->addChannel(std::make_shared<SceneAnimationChannel>(
+			channel->getSampler(), channel->getTargetNode(), channel->getAttribute()));
+	}
+	return std::static_pointer_cast<SceneGraphLeaf>(copy);
 }
 
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
@@ -65,7 +75,7 @@ void SceneGraphNode::updateLocalTransform() {
 }
 
 void SceneGraphNode::propagateUpdateFlags(UpdateFlags flags) { 
-	SceneGraphWalker walker(this);
+	SceneGraphWalker walker(this, nullptr);
 	while (walker) {
 		walker->mUpdateFlags |= flags;	
 		walker.up();
@@ -117,6 +127,50 @@ int SceneGraphWalker::up() {
 	if (!mCurrent) return 0;
 	mCurrent = mCurrent->getParent();
 	return -1;
+}
+
+bool SceneAnimationChannel::apply(float time) const { 
+	auto node = mTargetNode.lock();
+	if (!node) {
+		Log(Warning, "Animation channel has no target node");
+		return false;
+	}
+
+	auto valueOptional = mSampler->evaluate(time);
+	if (!valueOptional.has_value()) return false;
+	Array4f value = valueOptional.value();
+
+	switch (mAttribute) { 
+	case anime::AnimationAttribute::Scaling:
+		node->setScaling(Vector3f(value.head<3>()));
+		break;
+	case anime::AnimationAttribute::Rotation: {
+		Quaternionf quat = Quaternionf(value.w(), value.x(), value.y(), value.z());
+		if( quat.norm() != 0 ) node->setRotation(quat.normalized());
+		else Log(Warning, "Rotation quaternion is zero, skipping rotation update");
+		break;
+	}
+	case anime::AnimationAttribute::Translation:
+		node->setTranslation(Vector3f(value.head<3>()));
+		break;
+	case anime::AnimationAttribute::Undefined:
+	default:
+		Log(Warning, "Undefined animation attribute");
+		return false;
+	}
+	return true; 
+}
+
+bool SceneAnimation::apply(float time) const {
+	bool success = true;
+	for (const auto &channel : mChannels) 
+		success &= channel->apply(time);
+	return success;
+}
+
+void SceneAnimation::addChannel(const SceneAnimationChannel::SharedPtr& channel) {
+	mChannels.push_back(channel);
+	mDuration = max(mDuration, channel->getSampler()->getEndTime());
 }
 
 SceneGraphNode::SharedPtr SceneGraph::setRoot(const SceneGraphNode::SharedPtr &root) {
@@ -273,6 +327,8 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 			Log(Error, "The leaf node points to a mesh that does not added to the scene");
 		meshInstance->mInstanceId = mMeshInstances.size();
 		mMeshInstances.push_back(meshInstance);
+	} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(leaf)) {
+		mAnimations.push_back(animation);
 	}
 }
 
@@ -291,12 +347,15 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 }
 
 void SceneGraph::update(size_t frameIndex) {
+	PROFILE("Update scene graph");
 	struct AncestorContext {
 		// Used to determine whether the subgraph transform should be updated,
 		// due to the updated transform of an ancestor node.
 		bool superGraphTransformUpdated = false;
 	};
 
+	if (mRoot->getUpdateFlags() != SceneGraphNode::UpdateFlags::None)
+		mLastUpdateRecord = {frameIndex, mRoot->getUpdateFlags()};
 	bool hasPendingStructureChanges =
 		mRoot && (mRoot->getUpdateFlags() & (SceneGraphNode::UpdateFlags::SubgraphStructure |
 											 SceneGraphNode::UpdateFlags::SubgraphContent)) != 0;
@@ -393,54 +452,92 @@ void SceneGraph::update(size_t frameIndex) {
 	}
 }
 
-void SceneGraph::printSceneGraph() const {
-	SceneGraphWalker walker(mRoot.get());
-	int depth = 0;
-	while (walker) {
-		std::stringstream ss;
+void SceneGraph::animate(double currentTime) {
+	for (const auto &animation : mAnimations) {
+		float duration		= animation->getDuration();
+		float animationTime = std::fmod(currentTime, duration);
+		animation->apply(animationTime);
+	}
+}
 
-		for (int i = 0; i < depth; i++) ss << "  ";
+void SceneAnimationChannel::renderUI() {
+	if (!isValid()) return;
+	ui::Text("Duration: %f - %f", getSampler()->getStartTime(), getSampler()->getEndTime());
+	ui::Text("Key frames: %zd", getSampler()->getKeyframes().size());
+	ui::Text("Target node: %s", getTargetNode()->getName().c_str());
+}
 
-		ss << (walker->getName().empty() ? "<Unnamed Node>" : walker->getName());
-
-		bool hasTranslation = walker->getTranslation() != Vector3f::Zero();
-		bool hasRotation	= walker->getRotation() != Quaternionf::Identity();
-		bool hasScaling		= walker->getScaling() != Vector3f::Ones();
-
-		if (hasTranslation || hasRotation || hasScaling) {
-			ss << " (";
-			if (hasTranslation) ss << "T: " << walker->getTranslation();
-			if (hasRotation) ss << " R: " << walker->getRotation();
-			if (hasScaling) ss << " S: " << walker->getScaling();
-			ss << ")";
-		}
-
-		auto bbox = walker->getGlobalBoundingBox();
-		if (!bbox.isEmpty()) {
-			ss << " [" << bbox.min()[0] << ", " << bbox.min()[1] << ", " << bbox.min()[2] << " .. "
-			   << bbox.max()[0] << ", " << bbox.max()[1] << ", " << bbox.max()[2] << "]";
-		}
-
-		if (walker->getLeaf()) {
-			ss << ": ";
-
-			if (auto meshInstance = dynamic_cast<MeshInstance *>(walker->getLeaf().get())) {
-				ss << (meshInstance->getMesh()->getName().empty() ? 
-					"Unnamed Mesh" : meshInstance->getMesh()->getName());
-				ss << " (" << meshInstance->getMesh()->indices.size() << " faces)";
-			} else {
-				ss << "Unkwown Leaf Type";
+void SceneAnimation::renderUI() {
+	ui::Text("End time: %f", getDuration());
+	ui::Text("Channels: ");
+	static const auto getChannelName = [](const SceneAnimationChannel::SharedPtr &channel)
+	-> std::string{
+		if (!channel->isValid()) return "<Invalid Channel>";
+		std::string name = channel->getTargetNode()->getName();
+		auto attribute	 = channel->getAttribute();
+		if (attribute == anime::AnimationAttribute::Scaling) name += " <S>";
+		else if (attribute == anime::AnimationAttribute::Rotation) name += " <R>";
+		else if (attribute == anime::AnimationAttribute::Translation) name += " <T>";
+		return name;
+	};
+	for (auto channel : mChannels) {
+		if (channel->isValid()) {
+			channel->getAttribute();
+			if (ui::TreeNode(getChannelName(channel).c_str())) {
+				channel->renderUI();
+				ui::TreePop();
 			}
 		}
+	}
+}
 
-		if (!ss.str().empty()) Log(Info, "%s", ss.str().c_str());
-
-		depth += walker.next(true);
+void SceneGraphNode::renderUI() { 
+	if (mHasLocalTransform && ui::TreeNode("Transformation")) {
+		if (getScaling() != Vector3f::Ones())
+			ui::Text(("Scaling:\n" + getScaling().string()).c_str());
+		if (getRotation() != Quaternionf::Identity())
+			ui::Text(("Rotation:\n" + getRotation().string()).c_str());
+		if (getTranslation() != Vector3f::Zero())
+			ui::Text(("Translation:\n" + getTranslation().string()).c_str());
+		ui::TreePop();
+	}
+	if (ui::TreeNode("Bounding box")) {
+		ui::Text(("Min:\n" + Vector3f(getGlobalBoundingBox().min()).string()).c_str());
+		ui::Text(("Max:\n" + Vector3f(getGlobalBoundingBox().max()).string()).c_str());
+		ui::TreePop();
+	}
+	if (getLeaf()) {
+		ui::Text("Leaf:");
+		if (auto *instance = dynamic_cast<MeshInstance *>(getLeaf().get())) {
+			if (ui::TreeNode("Mesh Instance")) {
+				ui::TreePop();
+			}
+		} else if (auto animation = dynamic_cast<SceneAnimation *>(getLeaf().get())) {
+			if (ui::TreeNode("Animation")) {
+				animation->renderUI();
+				ui::TreePop();
+			}
+		}
+	}
+	SceneGraphNode *child = getFirstChild();
+	if (child) ui::Text("Children nodes");
+	while (child) {
+		if (ui::TreeNode(child->getName().empty() ?
+			"Unnamed Node" : child->getName().c_str())) {
+			child->renderUI();
+			ui::TreePop();
+		}
+		child = child->getNextSibling();
 	}
 }
 
 void SceneGraph::renderUI() {
-	if (ui::Button("Print graph")) printSceneGraph();
+	if (mRoot && ui::TreeNode(mRoot->getName().empty() ? 
+		"Root" : mRoot->getName().c_str())) {
+		mRoot->renderUI();
+		ui::TreePop();
+	}
+
 }
 
 KRR_NAMESPACE_END

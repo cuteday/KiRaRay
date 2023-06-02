@@ -115,7 +115,7 @@ protected:
 	double mFrameTimeSum			  = .0;
 	int mNumberOfAccumulatedFrames	  =  0;
 
-	uint32_t mFrameIndex;
+	uint32_t mFrameIndex = 0;
 
 	std::vector<nvrhi::FramebufferHandle> mSwapChainFramebuffers;
 	std::vector<RenderFrame::SharedPtr> mRenderFramebuffers;

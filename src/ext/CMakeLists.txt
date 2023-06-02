@@ -44,15 +44,15 @@ ADD_SUBDIRECTORY(assimp EXCLUDE_FROM_ALL)
 INCLUDE_DIRECTORIES(assimp/include)
 SET(ASSIMP_INCLUDE_DIRS 
 	${CMAKE_CURRENT_SOURCE_DIR}/assimp/include 
-	${CMAKE_CURRENT_BINARY_DIR}/assimp/include)
+	${CMAKE_CURRENT_BINARY_DIR}/assimp/include
+	${CMAKE_CURRENT_SOURCE_DIR}/assimp/contrib/zlib
+	${CMAKE_CURRENT_BINARY_DIR}/assimp/contrib/zlib)
 SET(ASSIMP_INCLUDE_DIRS ${ASSIMP_INCLUDE_DIRS} PARENT_SCOPE)
 
 # for tinyexr, currently used the zlib contained in assimp, according to https://github.com/syoyo/tinyexr
 # could switch to miniz if anything happens.
 SET(IMAGEIO_INCLUDE_DIRS 
-	${CMAKE_CURRENT_SOURCE_DIR}/image 
-	${CMAKE_CURRENT_SOURCE_DIR}/assimp/contrib/zlib
-	${CMAKE_CURRENT_BINARY_DIR}/assimp/contrib/zlib)
+	${CMAKE_CURRENT_SOURCE_DIR}/image )
 SET(IMAGEIO_INCLUDE_DIRS ${IMAGEIO_INCLUDE_DIRS} PARENT_SCOPE)
 
 # json

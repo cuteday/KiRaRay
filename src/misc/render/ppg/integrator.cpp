@@ -30,8 +30,8 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 	mScene = scene;
 	initialize();
 	if (!backend) {
-		backend		= new OptiXBackend();
-		auto params = OptiXInitializeParameters()
+		backend		= new OptixBackend();
+		auto params = OptixInitializeParameters()
 						  .setPTX(PPG_PTX)
 						  .addRaygenEntry("Closest")
 						  .addRaygenEntry("Shadow")
@@ -59,7 +59,7 @@ void PPGPathTracer::initialize(){
 	else guidedPathState = alloc.new_object<GuidedPathStateBuffer>(maxQueueSize, alloc);
 	if (guidedRayQueue) guidedRayQueue->resize(maxQueueSize, alloc);
 	else guidedRayQueue = alloc.new_object<GuidedRayQueue>(maxQueueSize, alloc);
-	//if (!backend) backend = new OptiXPPGBackend();
+	//if (!backend) backend = new OptixPPGBackend();
 	/* @addition VAPG */
 	if (m_image)  m_image->resize(mFrameSize);
 	else m_image = alloc.new_object<Film>(mFrameSize);

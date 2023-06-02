@@ -102,7 +102,7 @@ public:
 	virtual void setDeviceManager(DeviceManager *deviceManager) {
 		mDeviceManager = deviceManager;
 	}
-
+	// The total time elapsed after the first frame, in seconds.
 	virtual void tick(float elapsedSeconds) {}
 	virtual void beginFrame() {}
 	virtual void render(RenderFrame::SharedPtr frame) {}
