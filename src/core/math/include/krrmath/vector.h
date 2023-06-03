@@ -57,8 +57,8 @@ public:
 	
 	std::string string() const {
 		std::stringstream ss;
-		ss << *this;
-		return ss.str();
+		ss << "[" << *this << "]";
+		return std::regex_replace(ss.str(), std::regex("\n"), ", ");
 	}
 };
 

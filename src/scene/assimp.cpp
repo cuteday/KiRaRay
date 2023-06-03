@@ -247,8 +247,8 @@ bool AssimpImporter::import(const fs::path filepath,
 	unsigned int postProcessSteps = 0 
 									| aiProcess_CalcTangentSpace
 									| aiProcess_FindDegenerates
-									//| aiProcess_OptimizeMeshes
-									//| aiProcess_OptimizeGraph
+									| aiProcess_OptimizeMeshes
+									| aiProcess_OptimizeGraph
 									| aiProcess_JoinIdenticalVertices 
 									| aiProcess_FindInvalidData
 									//| aiProcess_MakeLeftHanded
@@ -264,7 +264,10 @@ bool AssimpImporter::import(const fs::path filepath,
 									//| aiProcess_PreTransformVertices
 									| aiProcess_FlipUVs
 									//| aiProcess_FlipWindingOrder 
-									| aiProcess_GenBoundingBoxes;
+									| aiProcess_GenBoundingBoxes
+									| aiProcess_FindInstances
+									| aiProcess_ImproveCacheLocality
+									| aiProcess_SplitLargeMeshes;
 	int removeFlags = aiComponent_COLORS;
 	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS;
 		 uvLayer++)
@@ -274,8 +277,10 @@ bool AssimpImporter::import(const fs::path filepath,
 	mScene	  = pScene;
 
 	Assimp::Importer importer;
-	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
 	importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, 60);
+	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
+	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE,
+								aiPrimitiveType_LINE | aiPrimitiveType_POINT);
 
 	logDebug("Start loading scene with assimp importer");
 	mAiScene = (aiScene *) importer.ReadFile(filepath.string(), postProcessSteps);
@@ -341,38 +346,45 @@ void AssimpImporter::loadMaterials(const string &modelFolder) {
 }
 
 void AssimpImporter::loadMeshes() {
-	for (uint i = 0; i < mAiScene->mNumMeshes; i++) {
-		aiMesh *pAiMesh = mAiScene->mMeshes[i];
+	for (uint meshId = 0; meshId < mAiScene->mNumMeshes; meshId++) {
+		aiMesh *pAiMesh = mAiScene->mMeshes[meshId];
 		auto mesh		= std::make_shared<Mesh>();
 		mesh->indices.reserve(pAiMesh->mNumFaces);
 
 		assert(pAiMesh->HasNormals());
-		for (uint i = 0; i < pAiMesh->mNumVertices; i++) {
-			Vector3f normal = normalize(aiCast(pAiMesh->mNormals[i]));
+		for (uint vertexId = 0; vertexId < pAiMesh->mNumVertices; vertexId++) {
+			Vector3f normal = normalize(aiCast(pAiMesh->mNormals[vertexId]));
 			Vector3f T, B;
 
 			if (pAiMesh->HasTangentsAndBitangents() && (pAiMesh->mTangents != NULL)) {
-				T = aiCast(pAiMesh->mTangents[i]);
+				T = aiCast(pAiMesh->mTangents[vertexId]);
 				//  in assimp the tangents and bitangents are not necessarily
 				//  orthogonal! however we need them to be orthonormal since we use
 				//  tbn as world-local transformations
 				T = normalize(T - normal * dot(normal, T));
 				mesh->tangents.push_back(T);
 			}
-			mesh->positions.push_back(aiCast(pAiMesh->mVertices[i]));
+			mesh->positions.push_back(aiCast(pAiMesh->mVertices[vertexId]));
 			if (pAiMesh->HasTextureCoords(0)) {
-				Vector3f texcoord = Vector3f(aiCast(pAiMesh->mTextureCoords[0][i]));
+				Vector3f texcoord = Vector3f(aiCast(pAiMesh->mTextureCoords[0][vertexId]));
 				mesh->texcoords.push_back(texcoord);
 			} else
 				Log(Debug, "Lost UV coords when importing with Assimp");
 			mesh->normals.push_back(normal);
 		}
 
-		for (uint i = 0; i < pAiMesh->mNumFaces; i++) {
-			aiFace face = pAiMesh->mFaces[i];
+		for (uint faceId = 0; faceId < pAiMesh->mNumFaces; faceId++) {
+			aiFace face = pAiMesh->mFaces[faceId];
 			assert(face.mNumIndices == 3);
 			Vector3i indices = {(int) face.mIndices[0], (int) face.mIndices[1],
 								(int) face.mIndices[2]};
+			
+			if (indices.cwiseSign().cwiseEqual(-1).any()) 
+				Log(Warning, "Find invalid negative indices: %s (#%d in mesh %d)", 
+					indices.string().c_str(), faceId, meshId);
+			if ((indices + Vector3i(1 - pAiMesh->mNumVertices)).cwiseSign().cwiseEqual(1).any())
+				Log(Warning, "Find invalid out-of-bound indices: %s (#%d in mesh %d)", 
+					indices.string().c_str(), faceId, meshId);
 			mesh->indices.push_back(indices);
 		}
 

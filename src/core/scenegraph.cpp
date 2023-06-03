@@ -23,10 +23,9 @@ SceneGraphLeaf::SharedPtr MeshInstance::clone() {
 
 SceneGraphLeaf::SharedPtr SceneAnimation::clone() {
 	auto copy = std::make_shared<SceneAnimation>();
-	for (const auto &channel : mChannels) {
+	for (const auto &channel : mChannels) 
 		copy->addChannel(std::make_shared<SceneAnimationChannel>(
 			channel->getSampler(), channel->getTargetNode(), channel->getAttribute()));
-	}
 	return std::static_pointer_cast<SceneGraphLeaf>(copy);
 }
 
@@ -502,8 +501,8 @@ void SceneGraphNode::renderUI() {
 		ui::TreePop();
 	}
 	if (ui::TreeNode("Bounding box")) {
-		ui::Text(("Min:\n" + Vector3f(getGlobalBoundingBox().min()).string()).c_str());
-		ui::Text(("Max:\n" + Vector3f(getGlobalBoundingBox().max()).string()).c_str());
+		ui::Text(("Min: " + Vector3f(getGlobalBoundingBox().min()).string()).c_str());
+		ui::Text(("Max: " + Vector3f(getGlobalBoundingBox().max()).string()).c_str());
 		ui::TreePop();
 	}
 	if (getLeaf()) {

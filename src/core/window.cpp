@@ -372,21 +372,13 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 void DeviceManager::AddRenderPassToFront(RenderPass::SharedPtr pRenderPass) {
 	mRenderPasses.remove(pRenderPass);
 	mRenderPasses.push_front(pRenderPass);
-
 	pRenderPass->setDeviceManager(this);
-	//pRenderPass->resizing();
-	//pRenderPass->resize({int(mDeviceParams.backBufferWidth),
-	//					 int(mDeviceParams.backBufferHeight)});
 }
 
 void DeviceManager::AddRenderPassToBack(RenderPass::SharedPtr pRenderPass) {
 	mRenderPasses.remove(pRenderPass);
 	mRenderPasses.push_back(pRenderPass);
-
 	pRenderPass->setDeviceManager(this);
-	//pRenderPass->resizing();
-	//pRenderPass->resize({int(mDeviceParams.backBufferWidth),
-	//					 int(mDeviceParams.backBufferHeight)});
 }
 
 void DeviceManager::RemoveRenderPass(RenderPass::SharedPtr pRenderPass) {

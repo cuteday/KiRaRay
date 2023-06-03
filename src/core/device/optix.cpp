@@ -1,3 +1,5 @@
+#include <regex>
+
 #include "logger.h"
 #include "context.h"
 #include "optix.h"
@@ -5,6 +7,13 @@
 #include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
+
+void meshSanityCheck(const Mesh::SharedPtr mesh) {
+	for (int i = 0; i < mesh->positions.size(); i++) 
+		Log(Info, "POS#%d: %s", i, mesh->positions[i].string().c_str());
+	for (int i = 0; i < mesh->indices.size(); i++) 
+		Log(Info, "IDX#%d: %s", i, mesh->indices[i].string().c_str());	
+}
 
 OptixPipelineCompileOptions OptixBackendInterface::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
@@ -231,7 +240,6 @@ OptixTraversableHandle OptixBackendInterface::buildTriangleMeshGAS(OptixDeviceCo
 
 	Log(Debug, "Building GAS for triangle mesh: %zd vertices and %zd faces", 
 		mesh.positions.size(), mesh.indices.size());
-
 	return buildASFromInputs(optixContext, cudaStream, {triangleInputs}, accelBuffer, true);
 }
 
@@ -346,8 +354,8 @@ void OptixBackend::buildAccelStructure() {
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = instances.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
-	Log(Debug, "Building root IAS: %zd instances", instances.size());
-
+	
+	Log(Info, "Building root IAS: %zd instances", instances.size());
 	traversableIAS = buildASFromInputs(optixContext, cudaStream, {iasBuildInput}, accelBufferIAS, false);
 	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
 }

@@ -1,14 +1,11 @@
 #pragma once
 #define NOMINMAX
-#include <cstdio>
+#include <regex>
 #include <iostream>
 #include <stdexcept>
 #include <memory>
-#include <assert.h>
 #include <string>
-#include <math.h>
 #include <cmath>
-#include <algorithm>
 #include <sstream>
 #include <vector>
 
