@@ -251,4 +251,36 @@ private:
 	T* d_ptr{ nullptr };
 };
 
+template <typename T> class TypedBufferView {
+public:
+	using value_type	  = T;
+	using reference		  = value_type &;
+	using const_reference = const value_type &;
+	using const_pointer = const T*;
+	using iterator		  = T *;
+	using const_iterator		 = const T *;
+	using reverse_iterator		 = std::reverse_iterator<iterator>;
+	using const_reverse_iterator = std::reverse_iterator<const iterator>;
+
+	TypedBufferView() = default;
+	~TypedBufferView() = default;
+	TypedBufferView(const T *data, const size_t size) : d_ptr(data), m_size(size) {}
+	TypedBufferView(const TypedBuffer<T> &buffer) : d_ptr(buffer.data()), m_size(buffer.size()) {}
+
+	KRR_CALLABLE iterator begin() { return d_ptr; }
+	KRR_CALLABLE iterator end() { return d_ptr + m_size; }
+	KRR_CALLABLE const_iterator begin() const { return d_ptr; }
+	KRR_CALLABLE const_iterator end() const { return d_ptr + m_size; }
+
+	KRR_CALLABLE T *data() const { return d_ptr; }
+	KRR_CALLABLE const T &operator[](size_t index) const { return d_ptr[index]; }
+	KRR_CALLABLE T &operator[](size_t index) { return d_ptr[index]; }
+	KRR_CALLABLE size_t size() const { return m_size; }
+	KRR_CALLABLE size_t sizeInBytes() const { return m_size * sizeof(T); }
+
+private:
+	size_t m_size{0};
+	T *d_ptr{nullptr};
+};
+
 KRR_NAMESPACE_END
