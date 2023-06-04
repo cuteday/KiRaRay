@@ -39,7 +39,9 @@ void Context::initialize() {
 	CUDA_CHECK(cudaStreamCreate(&cudaStream));
 
 	cudaGetDeviceProperties(&deviceProps, deviceID);
-	logInfo("#krr: running on device: " + string(deviceProps.name));
+	Log(Success, "KiRaRay: running on device: " + string(deviceProps.name));
+	if (!deviceProps.concurrentManagedAccess)
+		Log(Debug, "Concurrent access of managed memory is not supported.");
 
 	CUresult cuRes = cuCtxGetCurrent(&cudaContext);
 	if (cuRes != CUDA_SUCCESS)
@@ -53,7 +55,6 @@ void Context::initialize() {
 	//OPTIX_CHECK(optixDeviceContextSetCacheEnabled(optixContext, false));
 
 	// tracked cuda device memory management
-	logInfo("Setting default memory manager to CUDA memory");
 	set_default_resource(&CUDATrackedMemory::singleton);
 	alloc = new Allocator(&CUDATrackedMemory::singleton);
 }

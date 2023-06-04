@@ -193,8 +193,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 }
 
 void WavefrontPathTracer::beginFrame() {
-	if (!mScene || !maxQueueSize)
-		return;
+	if (!mScene || !maxQueueSize) return;
 	PROFILE("Begin frame");
 	cudaMemcpy(camera, &mScene->getCamera()->getCameraData(), sizeof(Camera::CameraData),
 			   cudaMemcpyHostToDevice);
