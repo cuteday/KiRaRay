@@ -87,7 +87,7 @@ void WavefrontPathTracer::handleMiss() {
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
 			Color L = {};
 			Interaction intr(w.ray.origin);
-			for (const InfiniteLight &light : *sceneData.infiniteLights) {
+			for (const InfiniteLight &light : sceneData.infiniteLights) {
 				float misWeight = 1;
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 					float bsdfPdf  = w.pdf;

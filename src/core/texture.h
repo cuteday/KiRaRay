@@ -162,12 +162,16 @@ public:
 	
 	const string& getName() const { return mName; }
 	int getMaterialId() const { return mMaterialId; }
+	bool isUpdated() const { return mUpdated; }
+	void setUpdated(bool updated = true) { mUpdated = updated; }
+	void renderUI();
 
 	MaterialParams mMaterialParams;
 	Texture::SharedPtr mTextures[(uint32_t)TextureType::Count];
 	MaterialType mBsdfType{ MaterialType::Disney };
 	ShadingModel mShadingModel{ ShadingModel::SpecularGlossiness };
 	string mName;
+	bool mUpdated{false};
 	int mMaterialId{-1};
 };
 
@@ -199,10 +203,8 @@ public:
 	TextureData mTextures[(uint32_t) Material::TextureType::Count];
 	MaterialType mBsdfType{MaterialType::Disney};
 	Material::ShadingModel mShadingModel{Material::ShadingModel::MetallicRoughness};
-	Material *mpMaterialHost;
 
 	void initializeFromHost(Material::SharedPtr material);
-	Material *getHostMaterialPtr() const { return mpMaterialHost; }
 
 	KRR_CALLABLE TextureData getTexture(Material::TextureType type) const {
 		return mTextures[(uint32_t) type];

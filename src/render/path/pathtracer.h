@@ -23,6 +23,7 @@ public:
 	bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 	bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
 	void renderUI() override;
+	void beginFrame() override;
 	void render(RenderFrame::SharedPtr frame) override;
 	void resize(const Vector2i& size) override { 
 		mFrameSize = launchParams.fbSize = size; 
