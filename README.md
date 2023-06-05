@@ -51,6 +51,8 @@ Specify the json configuration file as command line argument to start the render
 build/src/kiraray.exe common/configs/example.json
 ~~~
 
+> The two necessary entries in the configuration are `model` (specifying the relative path to the scene file) and `passes` (describing the render pipeline). Once compiled, directly run `kiraray` without specifying configuration (the example configuration will be used) to get a feel for this toy renderer.
+
 </details>
 
 #### Usage

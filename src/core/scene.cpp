@@ -43,20 +43,35 @@ void Scene::renderUI() {
 		mGraph->renderUI();
 		ui::TreePop();
 	}
-	if (mGraph && getAnimations().size() && ui::TreeNode("Scene Animation")) {
-		ui::Checkbox("Enable animation", &mEnableAnimation);
-		for (int i = 0; i < getAnimations().size(); i++) {
-			if (ui::TreeNode(std::to_string(i).c_str())) {
-				getAnimations()[i]->renderUI();
+	if (mGraph && ui::TreeNode("Meshes")) {
+		for (auto &mesh : getMeshes()) {
+			if (ui::TreeNode(formatString("%d %s", mesh->getMeshId(),
+										  mesh->getName().c_str()).c_str())) {
+				ui::PushID(mesh->getMeshId());
+				mesh->renderUI();
+				ui::PopID();
 				ui::TreePop();
 			}
 		}
 		ui::TreePop();
 	}
 	if (mGraph && ui::TreeNode("Materials")) {
-		for (auto& material: getMaterials()) {
-			if (ui::TreeNode(material->getName().c_str())) {
+		for (auto &material : getMaterials()) {
+			if (ui::TreeNode(formatString("%d %s", material->getMaterialId(),
+										  material->getName().c_str()).c_str())) {
+				ui::PushID(material->getMaterialId());
 				material->renderUI();
+				ui::PopID();
+				ui::TreePop();
+			}
+		}
+		ui::TreePop();
+	}
+	if (mGraph && getAnimations().size() && ui::TreeNode("Scene Animation")) {
+		ui::Checkbox("Enable animation", &mEnableAnimation);
+		for (int i = 0; i < getAnimations().size(); i++) {
+			if (ui::TreeNode(std::to_string(i).c_str())) {
+				getAnimations()[i]->renderUI();
 				ui::TreePop();
 			}
 		}

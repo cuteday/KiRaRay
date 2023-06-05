@@ -214,7 +214,6 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 	pMaterial->mShadingModel = importMode == ImportMode::OBJ
 								   ? Material::ShadingModel::SpecularGlossiness
 								   : Material::ShadingModel::MetallicRoughness;
-
 	return pMaterial;
 }
 } // namespace assimp
@@ -410,6 +409,7 @@ void AssimpImporter::loadAnimations() {
 		resetTime(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys);				
 	};
 
+	if (!mAiScene->mNumAnimations) return;
 	auto sceneGraph			= mScene->getSceneGraph();
 	auto animationContainer = std::make_shared<SceneGraphNode>();
 	animationContainer->setName("Animation Container");

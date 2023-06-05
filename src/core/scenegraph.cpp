@@ -520,12 +520,15 @@ void SceneGraphNode::renderUI() {
 	}
 	SceneGraphNode *child = getFirstChild();
 	if (child) ui::Text("Children nodes");
+	size_t childId = 0;
 	while (child) {
+		ui::PushID(childId++);
 		if (ui::TreeNode(child->getName().empty() ?
 			"Unnamed Node" : child->getName().c_str())) {
 			child->renderUI();
 			ui::TreePop();
 		}
+		ui::PopID();
 		child = child->getNextSibling();
 	}
 }

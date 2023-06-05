@@ -57,6 +57,7 @@ public:
 	std::string getName() const { return name; }
 
 	void setName(const std::string& name) { this->name = name; }
+	void renderUI();
 
 	std::vector<Vector3f> positions;
 	std::vector<Vector3f> normals;
