@@ -87,7 +87,7 @@ void WavefrontPathTracer::handleMiss() {
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
 			Color L = {};
 			Interaction intr(w.ray.origin);
-			for (const InfiniteLight &light : *sceneData.infiniteLights) {
+			for (const InfiniteLight &light : sceneData.infiniteLights) {
 				float misWeight = 1;
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 					float bsdfPdf  = w.pdf;
@@ -193,8 +193,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 }
 
 void WavefrontPathTracer::beginFrame() {
-	if (!mScene || !maxQueueSize)
-		return;
+	if (!mScene || !maxQueueSize) return;
 	PROFILE("Begin frame");
 	cudaMemcpy(camera, &mScene->getCamera()->getCameraData(), sizeof(Camera::CameraData),
 			   cudaMemcpyHostToDevice);

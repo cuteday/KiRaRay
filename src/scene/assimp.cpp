@@ -214,7 +214,6 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 	pMaterial->mShadingModel = importMode == ImportMode::OBJ
 								   ? Material::ShadingModel::SpecularGlossiness
 								   : Material::ShadingModel::MetallicRoughness;
-
 	return pMaterial;
 }
 } // namespace assimp
@@ -237,12 +236,9 @@ void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial,
 }
 
 using namespace krr::assimp;
-bool AssimpImporter::import(const fs::path filepath,
-							const Scene::SharedPtr pScene) {
-	Assimp::DefaultLogger::create("", Assimp::Logger::NORMAL,
-								  aiDefaultLogStream_STDOUT);
-	Assimp::DefaultLogger::get()->info(
-		"KRR::Assimp::DefaultLogger initialized!");
+bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr pScene) {
+	Assimp::DefaultLogger::create("", Assimp::Logger::NORMAL, aiDefaultLogStream_STDOUT);
+	Assimp::DefaultLogger::get()->info("KRR::Assimp::DefaultLogger initialized!");
 
 	unsigned int postProcessSteps = 0 
 									| aiProcess_CalcTangentSpace
@@ -368,8 +364,9 @@ void AssimpImporter::loadMeshes() {
 			if (pAiMesh->HasTextureCoords(0)) {
 				Vector3f texcoord = Vector3f(aiCast(pAiMesh->mTextureCoords[0][vertexId]));
 				mesh->texcoords.push_back(texcoord);
-			} else
+			} else {
 				Log(Debug, "Lost UV coords when importing with Assimp");
+			}
 			mesh->normals.push_back(normal);
 		}
 
@@ -392,6 +389,12 @@ void AssimpImporter::loadMeshes() {
 		mesh->aabb	   = aiCast(pAiMesh->mAABB);
 		mesh->setName(std::string(pAiMesh->mName.C_Str()));
 		mScene->getSceneGraph()->addMesh(mesh);
+
+		if (mesh->material->hasTexture(Material::TextureType::Normal) &&
+			mesh->material->getTexture(Material::TextureType::Normal)->hasImage() &&
+			mesh->texcoords.size() == 0)
+			Log(Debug, "Mesh %s has a normal map but has no UV!", mesh->getName());
+
 	}
 }
 
@@ -406,6 +409,7 @@ void AssimpImporter::loadAnimations() {
 		resetTime(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys);				
 	};
 
+	if (!mAiScene->mNumAnimations) return;
 	auto sceneGraph			= mScene->getSceneGraph();
 	auto animationContainer = std::make_shared<SceneGraphNode>();
 	animationContainer->setName("Animation Container");

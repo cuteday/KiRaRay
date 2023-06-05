@@ -11,6 +11,7 @@ KRR_NAMESPACE_BEGIN
 template <typename T, int Size>
 class AxisAligned : public Eigen::AlignedBox<T, Size> {
 public:
+	using VectorType = Vector<T, Size>;
 	using Eigen::AlignedBox<T, Size>::AlignedBox;
 	
 	KRR_CALLABLE AxisAligned() : Eigen::AlignedBox<T, Size>() {}
@@ -28,6 +29,9 @@ public:
 	template <int Mode, int Options>
 	KRR_CALLABLE AxisAligned operator*(const Eigen::Transform<T, Size, Mode, Options> & t) 
 	{ return this->transformed(t); }
+
+	KRR_CALLABLE VectorType min() const { return Eigen::AlignedBox<T, Size>::min(); }
+	KRR_CALLABLE VectorType max() const { return Eigen::AlignedBox<T, Size>::max(); }
 
 	KRR_CALLABLE void inflate(T inflation) {
 		this->m_min -= VectorType::Constant(inflation);

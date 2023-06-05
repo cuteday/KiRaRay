@@ -466,6 +466,16 @@ void SceneAnimationChannel::renderUI() {
 	ui::Text("Target node: %s", getTargetNode()->getName().c_str());
 }
 
+void MeshInstance::renderUI() {
+	if (mMesh) {
+		ui::BulletText("Target mesh");
+		if (ui::TreeNode(mMesh->getName().c_str())){
+			mMesh->renderUI();
+			ui::TreePop();
+		}
+	}
+}
+
 void SceneAnimation::renderUI() {
 	ui::Text("End time: %f", getDuration());
 	ui::Text("Channels: ");
@@ -501,14 +511,17 @@ void SceneGraphNode::renderUI() {
 		ui::TreePop();
 	}
 	if (ui::TreeNode("Bounding box")) {
-		ui::Text(("Min: " + Vector3f(getGlobalBoundingBox().min()).string()).c_str());
-		ui::Text(("Max: " + Vector3f(getGlobalBoundingBox().max()).string()).c_str());
+		ui::Text(("Min: " + getGlobalBoundingBox().min().string()).c_str());
+		ui::Text(("Max: " + getGlobalBoundingBox().max().string()).c_str());
 		ui::TreePop();
 	}
 	if (getLeaf()) {
 		ui::Text("Leaf:");
 		if (auto *instance = dynamic_cast<MeshInstance *>(getLeaf().get())) {
 			if (ui::TreeNode("Mesh Instance")) {
+				ui::PushID(instance->getInstanceId());
+				instance->renderUI();
+				ui::PopID();
 				ui::TreePop();
 			}
 		} else if (auto animation = dynamic_cast<SceneAnimation *>(getLeaf().get())) {
@@ -520,12 +533,15 @@ void SceneGraphNode::renderUI() {
 	}
 	SceneGraphNode *child = getFirstChild();
 	if (child) ui::Text("Children nodes");
+	size_t childId = 0;
 	while (child) {
+		ui::PushID(childId++);
 		if (ui::TreeNode(child->getName().empty() ?
 			"Unnamed Node" : child->getName().c_str())) {
 			child->renderUI();
 			ui::TreePop();
 		}
+		ui::PopID();
 		child = child->getNextSibling();
 	}
 }

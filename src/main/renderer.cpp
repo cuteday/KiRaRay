@@ -159,11 +159,17 @@ void RenderApp::renderUI() {
 			if (ui::Button("Save config"))
 				saveConfig(saveConfigBuf);
 		}
-		if (mScene && ui::CollapsingHeader("Scene"))
+		if (mScene && ui::CollapsingHeader("Scene")) {
 			mScene->renderUI();
-		for (auto p : mRenderPasses)
-			if (p && ui::CollapsingHeader(p->getName().c_str()))
+
+		}
+		size_t pid = 0;
+		for (auto& p : mRenderPasses) {
+			ui::PushID(pid++);
+			if (p && ui::CollapsingHeader(p->getName().c_str())) 
 				p->renderUI();
+			ui::PopID();
+		}
 		ui::End();
 	}
 

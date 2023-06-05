@@ -167,23 +167,20 @@ bool Material::determineSrgb(string filename, TextureType type) {
 	return false;
 }
 
-namespace rt {
-
-void MaterialData::renderUI() {
-	static const char *shadingModels[] = {"MetallicRoughness",
-										  "SpecularGlossiness"};
-	static const char *textureTypes[]  = {"Diffuse", "Specular", "Emissive",
-										  "Normal", "Transmission"};
+void Material::renderUI() {
+	static const char *shadingModels[] = {"MetallicRoughness", "SpecularGlossiness"};
+	static const char *textureTypes[]  = {"Diffuse", "Specular", "Emissive", "Normal",
+										  "Transmission"};
 	static const char *bsdfTypes[]	   = {"Diffuse", "Dielectric", "Disney"};
-	ui::ListBox("Shading model", (int *) &mShadingModel, shadingModels, 2);
-	ui::ListBox("BSDF", (int *) &mBsdfType, bsdfTypes,
-				(int) MaterialType::Count);
-	ui::DragFloat4("Diffuse", (float *) &mMaterialParams.diffuse, 1e-3, 0, 5);
-	ui::DragFloat4("Specular", (float *) &mMaterialParams.specular, 1e-3, 0, 1);
-	ui::DragFloat("Specular transmission",
-				  &mMaterialParams.specularTransmission, 1e-3, 0, 1);
-	ui::DragFloat("Index of Refraction", &mMaterialParams.IoR, 1e-3, 0.1, 5);
+	mUpdated |= ui::ListBox("Shading model", (int *) &mShadingModel, shadingModels, 2);
+	mUpdated |= ui::ListBox("BSDF", (int *) &mBsdfType, bsdfTypes, (int) MaterialType::Count);
+	mUpdated |= ui::DragFloat4("Diffuse", (float *) &mMaterialParams.diffuse, 1e-3, 0, 5);
+	mUpdated |= ui::DragFloat4("Specular", (float *) &mMaterialParams.specular, 1e-3, 0, 1);
+	mUpdated |= ui::DragFloat("Specular transmission", &mMaterialParams.specularTransmission, 1e-3, 0, 1);
+	mUpdated |= ui::DragFloat("Index of Refraction", &mMaterialParams.IoR, 1e-3, 0.1, 5);
 }
+
+namespace rt {
 
 void TextureData::initializeFromHost(Texture::SharedPtr texture) {
 	mValid = texture.get() != nullptr;
@@ -243,7 +240,6 @@ void TextureData::initializeFromHost(Texture::SharedPtr texture) {
 }
 
 void MaterialData::initializeFromHost(Material::SharedPtr material) {
-	mpMaterialHost	= material.get();
 	mBsdfType		= material->mBsdfType;
 	mMaterialParams = material->mMaterialParams;
 	mShadingModel	= material->mShadingModel;

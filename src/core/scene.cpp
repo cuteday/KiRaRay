@@ -43,7 +43,41 @@ void Scene::renderUI() {
 		mGraph->renderUI();
 		ui::TreePop();
 	}
-	if (mGraph && ui::TreeNode("Scene Animation")) {
+	if (mGraph && ui::TreeNode("Meshes")) {
+		for (auto &mesh : getMeshes()) {
+			if (ui::TreeNode(formatString("%d %s", mesh->getMeshId(),
+										  mesh->getName().c_str()).c_str())) {
+				ui::PushID(mesh->getMeshId());
+				mesh->renderUI();
+				ui::PopID();
+				ui::TreePop();
+			}
+		}
+		ui::TreePop();
+	}
+	if (mGraph && ui::TreeNode("Materials")) {
+		for (auto &material : getMaterials()) {
+			if (ui::TreeNode(formatString("%d %s", material->getMaterialId(),
+										  material->getName().c_str()).c_str())) {
+				ui::PushID(material->getMaterialId());
+				material->renderUI();
+				ui::PopID();
+				ui::TreePop();
+			}
+		}
+		ui::TreePop();
+	}
+	if (mGraph && getMeshInstances().size() && ui::TreeNode("Instances")) {
+		for (int i = 0; i < getMeshInstances().size(); i++) {
+			if (ui::TreeNode(std::to_string(i).c_str())) {
+				ui::PushID(getMeshInstances()[i]->getInstanceId());
+				getMeshInstances()[i]->renderUI();
+				ui::PopID();
+				ui::TreePop();
+			}
+		}
+	}
+	if (mGraph && getAnimations().size() && ui::TreeNode("Animations")) {
 		ui::Checkbox("Enable animation", &mEnableAnimation);
 		for (int i = 0; i < getAnimations().size(); i++) {
 			if (ui::TreeNode(std::to_string(i).c_str())) {
@@ -51,10 +85,6 @@ void Scene::renderUI() {
 				ui::TreePop();
 			}
 		}
-		ui::TreePop();
-	}
-	if (mSceneRT && ui::TreeNode("Ray-tracing Data")) {
-		mSceneRT->renderUI();
 		ui::TreePop();
 	}
 }
@@ -84,86 +114,53 @@ void Scene::initializeSceneRT() {
 
 void RTScene::toDevice() {
 	cudaDeviceSynchronize();
-	if (!mDeviceData.materials)
-		mDeviceData.materials = gpContext->alloc->new_object<inter::vector<rt::MaterialData>>();
-	if (!mDeviceData.meshes)
-		mDeviceData.meshes	= gpContext->alloc->new_object<inter::vector<rt::MeshData>>();
-	if (!mDeviceData.instances)
-		mDeviceData.instances = gpContext->alloc->new_object<inter::vector<rt::InstanceData>>();
-	if (!mDeviceData.lights)
-		mDeviceData.lights	= gpContext->alloc->new_object<inter::vector<Light>>();
-	if (!mDeviceData.infiniteLights)
-		mDeviceData.infiniteLights = gpContext->alloc->new_object<inter::vector<InfiniteLight>>();
 	uploadSceneData();
 	CUDA_SYNC_CHECK();
-}
-
-void RTScene::renderUI() {
-	cudaDeviceSynchronize();
-
-	if (ui::TreeNode("Environment lights")) {
-		for (int i = 0; i < mDeviceData.infiniteLights->size(); i++) {
-			if (ui::TreeNode(to_string(i).c_str())) {
-				(*mDeviceData.infiniteLights)[i].renderUI();
-				ui::TreePop();
-			}
-		}
-		ui::TreePop();
-	}
-	if (ui::TreeNode("Materials")) {
-		for (int i = 0; i < mDeviceData.materials->size(); i++) {
-			if (ui::TreeNode((*mDeviceData.materials)[i]
-					.getHostMaterialPtr()->getName().c_str())) {
-				(*mDeviceData.materials)[i].renderUI();
-				ui::TreePop();
-			}
-		}
-		ui::TreePop();
-	}
 }
 
 void RTScene::uploadSceneData() {
 	/* Upload texture and material data to device... */
 	auto& materials = mScene.lock()->getMaterials();
-	mDeviceData.materials->resize(materials.size());
+	mMaterials.resize(materials.size());
 	for (size_t idx = 0; idx < materials.size(); idx++) {
 		const auto &material = materials[idx];
-		auto &materialData	 = (*mDeviceData.materials)[idx];
-		materialData.initializeFromHost(material);
+		mMaterials[idx].initializeFromHost(material);
 	}
+	mMaterialsBuffer.alloc_and_copy_from_host(mMaterials);
 
 	/* Upload mesh data to device... */
 	auto &meshes = mScene.lock()->getMeshes();
-	mDeviceData.meshes->resize(meshes.size());
+	mMeshes.resize(meshes.size());
 	for (size_t idx = 0; idx < meshes.size(); idx++) {
 		const auto &mesh = meshes[idx];
-		auto &meshData	 = (*mDeviceData.meshes)[idx];
-		meshData.positions.alloc_and_copy_from_host(mesh->positions);
-		meshData.normals.alloc_and_copy_from_host(mesh->normals);
-		meshData.texcoords.alloc_and_copy_from_host(mesh->texcoords);
-		meshData.tangents.alloc_and_copy_from_host(mesh->tangents);
-		meshData.indices.alloc_and_copy_from_host(mesh->indices);	
-		meshData.material = &(*mDeviceData.materials)[mesh->getMaterial()->getMaterialId()];
+		mMeshes[idx].positions.alloc_and_copy_from_host(mesh->positions);
+		mMeshes[idx].normals.alloc_and_copy_from_host(mesh->normals);
+		mMeshes[idx].texcoords.alloc_and_copy_from_host(mesh->texcoords);
+		mMeshes[idx].tangents.alloc_and_copy_from_host(mesh->tangents);
+		mMeshes[idx].indices.alloc_and_copy_from_host(mesh->indices);	
+		mMeshes[idx].material = &mMaterialsBuffer[mesh->getMaterial()->getMaterialId()];
 	}
+	mMeshesBuffer.alloc_and_copy_from_host(mMeshes);
 
 	/* Upload instance data to device... */
 	auto &instances = mScene.lock()->getMeshInstances();
-	mDeviceData.instances->resize(instances.size());
+	mInstances.resize(instances.size());
 	for (size_t idx = 0; idx < instances.size(); idx++) {
 		const auto &instance	 = instances[idx];
-		auto &instanceData		 = (*mDeviceData.instances)[idx];
+		auto &instanceData		 = mInstances[idx];
 		Affine3f transform		 = instance->getNode()->getGlobalTransform();
 		instanceData.transform	 = transform;
 		instanceData.transposedInverseTransform =
 			transform.matrix().inverse().transpose().block<3, 3>(0, 0);
-		instanceData.mesh		 = &(*mDeviceData.meshes)[instance->getMesh()->getMeshId()];
+		instanceData.mesh		 = &mMeshesBuffer[instance->getMesh()->getMeshId()];
 	}
+	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
 	processLights();
+	mInstancesBuffer.copy_from_host(mInstances.data(), mInstances.size());
 }
 
 void RTScene::processLights() {
-	mDeviceData.lights->clear();
-	cudaDeviceSynchronize();
+	mLights.clear();
 
 	auto createTrianglePrimitives = [](Mesh::SharedPtr mesh, rt::InstanceData* instance) 
 		-> std::vector<Triangle> {
@@ -175,27 +172,29 @@ void RTScene::processLights() {
 	};
 
 	auto infiniteLights = mScene.lock()->environments;
-	mDeviceData.infiniteLights->reserve(infiniteLights.size());
+	mInfiniteLights.reserve(infiniteLights.size());
 	for (auto& infiniteLight : infiniteLights) {
 		rt::TextureData textureData;
 		textureData.initializeFromHost(infiniteLight);
-		mDeviceData.infiniteLights->push_back(InfiniteLight(textureData));
+		mInfiniteLights.push_back(InfiniteLight(textureData));
 	}
+	mInfiniteLightsBuffer.alloc_and_copy_from_host(mInfiniteLights);
 
 	uint nMeshes = mScene.lock()->getMeshes().size();
 	for (const auto &instance : mScene.lock()->getMeshInstances()) {
 		const auto &mesh			   = instance->getMesh();
 		const auto &material		   = mesh->getMaterial();
-		rt::MaterialData &materialData = (*mDeviceData.materials)[material->getMaterialId()];
-		rt::MeshData &meshData		   = (*mDeviceData.meshes)[mesh->getMeshId()];
+		rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
+		rt::MeshData &meshData		   = mMeshes[mesh->getMeshId()];
 		if (material->hasEmission() || mesh->Le.any()) {
 			rt::TextureData &textureData = materialData.getTexture(Material::TextureType::Emissive);
-			rt::InstanceData &instanceData = (*mDeviceData.instances)[instance->getInstanceId()];
+			rt::InstanceData &instanceData = mInstances[instance->getInstanceId()];
 			Color3f Le = material->hasEmission()
 							 ? Color3f(textureData.getConstant()) : mesh->Le;
 			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld", 
 					 " constant emission(?): %f", mesh->indices.size(), luminance(Le));
-			std::vector<Triangle> primitives = createTrianglePrimitives(mesh, &instanceData);
+			std::vector<Triangle> primitives =
+				createTrianglePrimitives(mesh, &mInstancesBuffer[instance->getInstanceId()]);
 			size_t n_primitives				 = primitives.size();
 			instanceData.primitives.alloc_and_copy_from_host(primitives);
 			std::vector<DiffuseAreaLight> lights(n_primitives);
@@ -205,22 +204,30 @@ void RTScene::processLights() {
 			}
 			instanceData.lights.alloc_and_copy_from_host(lights);
 			for (size_t triId = 0; triId < n_primitives; triId++) 
-				mDeviceData.lights->push_back(Light(&instanceData.lights[triId]));
+				mLights.push_back(Light(&instanceData.lights[triId]));
 		}
 	}
-	for (InfiniteLight &light : *mDeviceData.infiniteLights)
-		mDeviceData.lights->push_back(&light);
-	Log(Info, "A total of %lld light(s) processed!", mDeviceData.lights->size());
-	if (!mDeviceData.lights->size())
+	for (int idx = 0; idx < mInfiniteLights.size(); idx++)
+		mLights.push_back(Light(&mInfiniteLightsBuffer[idx]));
+	mLightsBuffer.alloc_and_copy_from_host(mLights);
+	Log(Info, "A total of %zd light(s) processed!", mLights.size());
+	if (!mLights.size())
 		Log(Error, "There's no light source in the scene! "
 			"Image will be dark, and may even cause crash...");
-	if (mDeviceData.lightSampler)
-		gpContext->alloc->deallocate_object(
-			(UniformLightSampler *) mDeviceData.lightSampler.ptr());
-	mDeviceData.lightSampler =
-		gpContext->alloc->new_object<UniformLightSampler>(
-			(inter::span<Light>) *mDeviceData.lights);
+	mLightSampler = UniformLightSampler(mLightsBuffer);
+	mLightSamplerBuffer.alloc_and_copy_from_host(&mLightSampler, 1);
 	CUDA_SYNC_CHECK();
+}
+
+rt::SceneData RTScene::getSceneData() const {
+	rt::SceneData sceneData {};
+	sceneData.meshes		 = mMeshesBuffer;
+	sceneData.instances		 = mInstancesBuffer;
+	sceneData.materials		 = mMaterialsBuffer;
+	sceneData.lights		 = mLightsBuffer;
+	sceneData.infiniteLights = mInfiniteLightsBuffer;
+	sceneData.lightSampler	 = mLightSamplerBuffer.data();
+	return sceneData;
 }
 
 // This routine should only be called by OptixBackend...
@@ -234,14 +241,29 @@ void RTScene::updateSceneData() {
 		auto &instances = mScene.lock()->getMeshInstances();
 		for (size_t idx = 0; idx < instances.size(); idx++) {
 			const auto &instance   = instances[idx];
-			auto &instanceData	   = (*mDeviceData.instances)[idx];
+			auto &instanceData	   = mInstances[idx];
 			Affine3f transform	   = instance->getNode()->getGlobalTransform();
 			instanceData.transform = transform;
 			instanceData.transposedInverseTransform =
 				transform.matrix().inverse().transpose().block<3, 3>(0, 0);
 		}
+		mInstancesBuffer.copy_from_host(mInstances.data(), mInstances.size());
 		lastUpdatedFrame = lastUpdates.frameIndex;
 	}
+	bool materialsChanged{false};
+	for (const auto &material : mScene.lock()->getMaterials()) {
+		if (material->isUpdated()) {
+			materialsChanged |= material->isUpdated();
+			rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
+			materialData.mBsdfType		   = material->mBsdfType;
+			materialData.mMaterialParams   = material->mMaterialParams;
+			materialData.mShadingModel	   = material->mShadingModel;
+			material->setUpdated(false);
+		}
+	}
+	if (materialsChanged) 
+		mMaterialsBuffer.copy_from_host(mMaterials.data(), mMaterials.size());	
+	lastUpdatedFrame = lastUpdates.frameIndex;
 }
 
 KRR_NAMESPACE_END

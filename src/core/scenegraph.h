@@ -49,6 +49,7 @@ public:
 	const Mesh::SharedPtr &getMesh() const { return mMesh; }
 	int getInstanceId() const { return mInstanceId; }
 	virtual AABB getLocalBoundingBox() override { return mMesh->getBoundingBox(); }
+	void renderUI();
 
 private:
 	friend class SceneGraph;

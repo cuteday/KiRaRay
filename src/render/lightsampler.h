@@ -17,9 +17,7 @@ class UniformLightSampler {
 public:
 	UniformLightSampler() = default;
 
-	UniformLightSampler(inter::span<Light> lights)
-		: // use IterFirst and IterLast to initialize
-		  mLights(lights.begin(), lights.end()) {}
+	UniformLightSampler(const TypedBufferView<Light>& lights) : mLights(lights) {}
 
 	// assumes u in [0, 1)
 	KRR_CALLABLE SampledLight sample(float u) const {
@@ -33,10 +31,10 @@ public:
 
 	KRR_CALLABLE float pdf(const Light &light) const { return 1.f / mLights.size(); }
 
-	KRR_CALLABLE inter::vector<Light> *getLights() { return &mLights; }
+	KRR_CALLABLE TypedBufferView<Light> getLights() { return mLights; }
 
 private:
-	inter::vector<Light> mLights;
+	TypedBufferView<Light> mLights;
 };
 
 class LightSampler : public TaggedPointer<UniformLightSampler> {

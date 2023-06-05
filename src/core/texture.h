@@ -97,7 +97,7 @@ public:
 	Texture(Color4f value) { setConstant(value); }
 	Texture(const string& filepath, bool flip = false, bool srgb = false);
 
-	void setConstant(const Color4f value){ 
+	void setConstant(const Color4f value) { 
 		mValue = value;
 	};
 
@@ -106,9 +106,10 @@ public:
 		if(!mImage->loadImage(filepath, flip, srgb) || !mImage->isValid())
 			mImage.reset();
 	}
-	Image::SharedPtr getImage() { return mImage; }
+	Image::SharedPtr getImage() const { return mImage; }
 	Color4f getConstant() const { return mValue; }
-	string getFilemame() { return mFilename; }
+	std::string getFilemame() const { return mFilename; }
+	bool hasImage() const { return mImage && mImage->isValid(); }
 
 	static Texture::SharedPtr createFromFile(const fs::path &filepath, bool flip = false,
 											 bool srgb = false);
@@ -161,12 +162,16 @@ public:
 	
 	const string& getName() const { return mName; }
 	int getMaterialId() const { return mMaterialId; }
+	bool isUpdated() const { return mUpdated; }
+	void setUpdated(bool updated = true) { mUpdated = updated; }
+	void renderUI();
 
 	MaterialParams mMaterialParams;
 	Texture::SharedPtr mTextures[(uint32_t)TextureType::Count];
 	MaterialType mBsdfType{ MaterialType::Disney };
-	ShadingModel mShadingModel{ ShadingModel::MetallicRoughness };
+	ShadingModel mShadingModel{ ShadingModel::SpecularGlossiness };
 	string mName;
+	bool mUpdated{false};
 	int mMaterialId{-1};
 };
 
@@ -198,10 +203,8 @@ public:
 	TextureData mTextures[(uint32_t) Material::TextureType::Count];
 	MaterialType mBsdfType{MaterialType::Disney};
 	Material::ShadingModel mShadingModel{Material::ShadingModel::MetallicRoughness};
-	Material *mpMaterialHost;
 
 	void initializeFromHost(Material::SharedPtr material);
-	Material *getHostMaterialPtr() const { return mpMaterialHost; }
 
 	KRR_CALLABLE TextureData getTexture(Material::TextureType type) const {
 		return mTextures[(uint32_t) type];

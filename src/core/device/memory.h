@@ -69,24 +69,24 @@ public:
 	}
 
 	void PrefetchToGPU() const {
-#if KRR_PLATFORM_LINUX
 		// only linux supports uniform memory prefetching on demand
+#if KRR_PLATFORM_LINUX
 		static int deviceIndex = 0;
 		CUDA_CHECK(cudaGetDevice(&deviceIndex));
 
 		std::lock_guard<std::mutex> lock(mutex);
 
-		logDebug("Prefetching allocations to GPU memory, "
-			"total allocations: " + to_string(allocations.size()));
+		Log(Debug, "Prefetching allocations to GPU memory, "	
+			"total allocations: %zd" + allocations.size());
 		size_t bytes = 0;
 		for (auto iter : allocations) {
 			CUDA_CHECK(
 				cudaMemPrefetchAsync(iter.first, iter.second, 0, 0 /* stream */));
 			bytes += iter.second;
 		}
-		logDebug("Done prefetching total bytes: " + to_string(bytes));
-#endif
+#else 
 		CUDA_CHECK(cudaDeviceSynchronize());
+#endif
 	}
 	
 	size_t BytesAllocated() const { return bytesAllocated; }

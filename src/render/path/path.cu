@@ -73,7 +73,7 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 }
 
 KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
-	for (InfiniteLight &light : *launchParams.sceneData.infiniteLights) {
+	for (const InfiniteLight &light : launchParams.sceneData.infiniteLights) {
 		float weight{ 1 };
 		if (launchParams.NEE && path.depth > 0 && !(path.bsdfType & BSDF_SPECULAR)) {
 			float bsdfPdf  = path.pdf;

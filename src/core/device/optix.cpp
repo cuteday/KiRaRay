@@ -326,7 +326,7 @@ void OptixBackend::buildAccelStructure() {
 	accelBuffersGAS.resize(meshes.size());
 	for (int idx = 0; idx < meshes.size(); idx++) {
 		const auto &mesh = meshes[idx];
-		const auto &meshData = (*sceneDataDevice.meshes)[idx];
+		const auto &meshData = scene->getSceneRT()->getMeshData()[idx];
 		// build GAS for each mesh
 		traversablesGAS[idx] =
 			buildTriangleMeshGAS(optixContext, cudaStream, meshData, accelBuffersGAS[idx]);
@@ -367,9 +367,9 @@ void OptixBackend::update() {
 	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphUpdates)
 		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {		
 		updateAccelStructure();
-		scene->getSceneRT()->updateSceneData();
 		lastUpdatedFrame = lastUpdates.frameIndex;
 	}
+	scene->getSceneRT()->updateSceneData();
 }
 
 void OptixBackend::updateAccelStructure() {
@@ -410,11 +410,11 @@ void OptixBackend::buildShaderBindingTable() {
 	}
 
 	const auto &instances	 = scene->getMeshInstances();
-	const rt::SceneData &sceneData = scene->mSceneRT->getSceneData();
+	rt::SceneData sceneData = scene->mSceneRT->getSceneData();
 	for (uint instanceId = 0; instanceId < instances.size(); instanceId++) {
 		for (uint rayType = 0; rayType < nRayTypes; rayType++) {
 			HitgroupRecord hitgroupRecord = {};
-			rt::InstanceData *instance	  = &(*sceneData.instances)[instanceId];
+			rt::InstanceData *instance	  = &sceneData.instances[instanceId];
 			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayType], &hitgroupRecord));
 			hitgroupRecord.data = {instance};
 			hitgroupRecords.push_back(hitgroupRecord);

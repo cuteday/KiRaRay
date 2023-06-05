@@ -107,15 +107,12 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	else  // if the model does not contain normal...
 		sd.frame.N = face_normal;
 
-	if (mesh.tangents.size()) 
-		sd.frame.T = normalize(b[0] * mesh.tangents[v[0]] + 
-							   b[1] * mesh.tangents[v[1]] +
+	if (mesh.tangents.size()) {
+		sd.frame.T = normalize(b[0] * mesh.tangents[v[0]] + b[1] * mesh.tangents[v[1]] +
 							   b[2] * mesh.tangents[v[2]]);
-	else sd.frame.T = getPerpendicular(sd.frame.N);
-	// re-orthogonize the tangent space
-	// since tbn may become not orthogonal after the interpolation process.
-	// or they are not orthogonal at the beginning (when we import the models)
-	sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.N, sd.frame.T));
+		// re-orthogonize the tangent space
+		sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.N, sd.frame.T));
+	} else sd.frame.T = getPerpendicular(sd.frame.N);
 	sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
 
 	if (mesh.texcoords.size()) {
@@ -145,7 +142,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	Color4f spec	   = sampleTexture(specularTexture, sd.uv, materialParams.specular);
 	Color3f baseColor  = (Color3f) diff;
 
-	if (normalTexture.isValid()) { // be cautious if we have the tangent space TBN
+	if (normalTexture.isValid() && mesh.texcoords.size()) { // be cautious if we have TBN info
 		Vector3f normal = sampleTexture(normalTexture, sd.uv, Color3f{ 0, 0, 1 });
 		normal			= rgbToNormal(normal);
 

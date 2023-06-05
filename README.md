@@ -51,6 +51,8 @@ Specify the json configuration file as command line argument to start the render
 build/src/kiraray.exe common/configs/example.json
 ~~~
 
+> The two necessary entries in the configuration are `model` (specifying the relative path to the scene file) and `passes` (describing the render pipeline). Once compiled, directly run `kiraray` without specifying configuration (the example configuration will be used) to get a feel for this toy renderer.
+
 </details>
 
 #### Usage
@@ -106,7 +108,7 @@ Currently, the renderer runs extremely slow on *Debug* build for unknown reasons
 
 #### Scene loading
 
-*Kiraray* provided limited support for importing scenes like OBJ, glTF2 using [Assimp](https://github.com/assimp/assimp.git). Most of the rigging animations in glTF2 models could be correctly imported. [pbrt-parser](https://github.com/cuteday/pbrt-parser.git) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes (get some [here](https://benedikt-bitterli.me/resources/), modify the file url to download the pbrt-v3 format models).
+*Kiraray* provided limited support for importing scenes like OBJ, glTF2 using [Assimp](https://github.com/assimp/assimp.git). Most of the rigging animations in glTF2 models could be correctly imported. [pbrt-parser](https://github.com/ingowald/pbrt-parser) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes (get some [here](https://benedikt-bitterli.me/resources/), modify the file url to download the pbrt-v3 format models).
 
 #### Writing new render passes.
 
