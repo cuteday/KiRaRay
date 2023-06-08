@@ -76,6 +76,7 @@ void Scene::renderUI() {
 				ui::TreePop();
 			}
 		}
+		ui::TreePop();
 	}
 	if (mGraph && getAnimations().size() && ui::TreeNode("Animations")) {
 		ui::Checkbox("Enable animation", &mEnableAnimation);
