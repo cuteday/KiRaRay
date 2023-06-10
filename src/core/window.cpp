@@ -419,7 +419,7 @@ void DeviceManager::Tick(double elapsedTime) {
 
 void DeviceManager::Render() {
 	BeginFrame();
-	auto framebuffer = mRenderFramebuffers[GetCurrentBackBufferIndex()];
+	auto framebuffer = mRenderFramebuffers[0];
 	for (auto it : mRenderPasses) it->beginFrame();
 	for (auto it : mRenderPasses) {
 		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(mGraphicsSemaphore);
@@ -433,7 +433,7 @@ void DeviceManager::Render() {
 	mCommandList->open(); 
 	mHelperPass->BlitTexture(
 		mCommandList, mSwapChainFramebuffers[mSwapChainIndex],
-		GetRenderImage(mSwapChainIndex), mBindingCache.get());
+		GetRenderImage(0), mBindingCache.get());
 	mCommandList->close();
 	mNvrhiDevice->executeCommandList(mCommandList,
 									  nvrhi::CommandQueue::Graphics);

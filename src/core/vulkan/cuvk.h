@@ -168,9 +168,6 @@ using namespace cuvk;
 
 class CuVkSemaphore {
 public:
-	vk::Semaphore vk_sem;
-	cudaExternalSemaphore_t cuda_sem;
-
 	CuVkSemaphore() = default;
 	CuVkSemaphore(vk::Semaphore vk, cudaExternalSemaphore_t cuda) :
 		vk_sem(vk), cuda_sem(cuda) {}
@@ -180,6 +177,10 @@ public:
 
 	operator vk::Semaphore() const { return vk_sem; }
 	operator cudaExternalSemaphore_t() const { return cuda_sem; }
+
+private:
+	vk::Semaphore vk_sem;
+	cudaExternalSemaphore_t cuda_sem;
 };
 
 class CuVkHandler {

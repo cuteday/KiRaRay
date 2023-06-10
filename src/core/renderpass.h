@@ -8,6 +8,7 @@
 
 #include "device/buffer.h"
 #include "device/cuda.h"
+#include "device/optix.h"
 #include "scene.h"
 
 KRR_NAMESPACE_BEGIN
@@ -16,15 +17,122 @@ namespace vkrhi { using namespace nvrhi; }
 
 class DeviceManager;
 
+class RenderTexture {
+public:
+	using SharedPtr = std::shared_ptr<RenderTexture>;
+
+	RenderTexture(vkrhi::vulkan::IDevice *device, vkrhi::TextureHandle texture);
+	~RenderTexture() = default;
+
+	static RenderTexture::SharedPtr create(vkrhi::vulkan::IDevice *device, 
+		const Vector2i size, vkrhi::Format format, const std::string name = "");
+
+	operator vkrhi::TextureHandle() const { return mTexture; }
+	operator vkrhi::ITexture *() const { return mTexture.Get(); }
+	operator CudaRenderTarget() const { return getCudaRenderTarget(); }
+
+	Vector2i getSize() const {
+		auto &textureDesc = mTexture->getDesc();
+		return Vector2i{textureDesc.width, textureDesc.height};
+	}
+
+	CudaRenderTarget getCudaRenderTarget() const {
+		auto size = getSize();
+		return CudaRenderTarget{mCudaSurface, size[0], size[1]};
+	}
+
+protected:
+	static vkrhi::TextureDesc getVulkanDesc(const Vector2i size, vkrhi::Format format,
+												   const std::string name = "") { 
+		vkrhi::TextureDesc textureDesc;
+		textureDesc.width			 = size[0];
+		textureDesc.height			 = size[1];
+		textureDesc.format			 = format;
+		textureDesc.debugName		 = name;
+		textureDesc.initialState	 = nvrhi::ResourceStates::ShaderResource;
+		textureDesc.keepInitialState = true;
+		textureDesc.isRenderTarget	 = true;
+		textureDesc.isUAV			 = true;
+		textureDesc.sampleCount		 = 1;
+		return textureDesc;
+	}
+
+	vkrhi::TextureHandle mTexture;
+	cudaSurfaceObject_t mCudaSurface;
+};
+
+class RenderTarget {
+public:
+	using SharedPtr = std::shared_ptr<RenderTarget>;
+	RenderTarget(vkrhi::vulkan::IDevice *device) : mDevice(device) {}
+	~RenderTarget() = default;
+
+	vkrhi::IFramebuffer *getFramebuffer() const { return mFramebuffer.Get(); }
+	RenderTexture *getColorTexture() const { return mColor.get(); }
+	RenderTexture *getDepthTexture() const { return mDepth.get(); }
+	RenderTexture *getDiffuseTexture() const { return mDiffuse.get(); }
+	RenderTexture *getSpecularTexture() const { return mSpecular.get(); }
+	RenderTexture *getNormalTexture() const { return mNormal.get(); }
+	RenderTexture *getEmissiveTexture() const { return mEmissive.get(); }
+	RenderTexture *getMotionTexture() const { return mMotion.get(); }
+
+	void resize(const Vector2i size);
+	bool isUpdateNeeded(const Vector2i size) const { return size != mSize; };
+
+protected:
+	vkrhi::FramebufferHandle mFramebuffer;
+	RenderTexture::SharedPtr mColor{}; 
+	RenderTexture::SharedPtr mDepth{};
+	RenderTexture::SharedPtr mDiffuse{};
+	RenderTexture::SharedPtr mSpecular{};
+	RenderTexture::SharedPtr mNormal{};
+	RenderTexture::SharedPtr mEmissive{};
+	RenderTexture::SharedPtr mMotion{};
+
+	bool mEnableDepth{};
+	bool mEnableDiffuse{};
+	bool mEnableSpecular{};
+	bool mEnableNormal{};
+	bool mEnableEmissive{};
+	bool mEnableMotion{};
+
+	Vector2i mSize{};
+	vkrhi::vulkan::IDevice *mDevice{};
+};
+
 class RenderContext {
 public:
-	RenderContext(nvrhi::vulkan::DeviceHandle device, nvrhi::CommandListHandle commandList);
-	~RenderContext() = default;
+	RenderContext(nvrhi::vulkan::Device* device, nvrhi::CommandListHandle commandList);
+	~RenderContext();
+
+	nvrhi::vulkan::Device* getDevice() const { return mDevice; }
+	nvrhi::ICommandList* getCommandList() const { return mCommandList.Get(); }
+	CUstream getCudaStream() const { return mCudaStream; }
+	RenderTarget::SharedPtr getRenderTarget() const { return mRenderTarget; }
+	vkrhi::CuVkSemaphore getCudaSemaphore() const { return mCudaSemaphore; }
+	vkrhi::CuVkSemaphore getVulkanSemaphore() const { return mVulkanSemaphore; }
+
+	void resize(const Vector2i size);
+
+	void cudaParallelFor() {}
+
+	template <int W> void cudaLaunch() {}
+
+	template <typename T> void optixLaunch() {}
+
+protected:
+	void sychronizeCuda();
+	void sychronizeVulkan();
 
 private: 
-	nvrhi::vulkan::DeviceHandle mDevice;
+	nvrhi::vulkan::Device* mDevice;
 	nvrhi::CommandListHandle mCommandList;
+	RenderTarget::SharedPtr mRenderTarget;
 	std::unique_ptr<vkrhi::CuVkHandler> mCudaHandler;
+	vkrhi::CuVkSemaphore mCudaSemaphore;
+	vkrhi::CuVkSemaphore mVulkanSemaphore; 
+	uint64_t mCudaSemaphoreValue{};
+	CUstream mCudaStream;
 };
 
 class RenderFrame {
@@ -38,7 +146,7 @@ public:
 		if (mDevice) {	// this RenderFrame is once initialized.
 			vk::Device device = mDevice->getNativeObject(nvrhi::ObjectTypes::VK_Device);
 			device.waitIdle();
-			device.destroySemaphore(mSemaphore.vk_sem);
+			device.destroySemaphore(mSemaphore);
 		}
 	}
 
@@ -90,7 +198,7 @@ public:
 	vkrhi::FramebufferHandle mFramebuffer;
 	cudaSurfaceObject_t mCudaFrame{};
 	uint64_t mSemaphoreValue{};
-	vkrhi::CuVkSemaphore mSemaphore{};
+	vkrhi::CuVkSemaphore mSemaphore;
 };
 
 class RenderPass{
@@ -229,7 +337,6 @@ private:
 };
 
 #define KRR_REGISTER_PASS_DEC(name) static RenderPassRegister<name> reg;
-
 #define KRR_REGISTER_PASS_DEF(name)	RenderPassRegister<name> name::reg(#name);
 
 KRR_NAMESPACE_END
