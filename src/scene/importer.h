@@ -59,7 +59,7 @@ private:
 class PbrtImporter {
 public:
 	PbrtImporter() = default;
-	bool import(const fs::path filepath, Scene::SharedPtr pScene);
+	bool import(const fs::path filepath, Scene::SharedPtr scene);
 
 private:
 	PbrtImporter(const PbrtImporter &) = delete;

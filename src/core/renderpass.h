@@ -16,6 +16,17 @@ namespace vkrhi { using namespace nvrhi; }
 
 class DeviceManager;
 
+class RenderContext {
+public:
+	RenderContext(nvrhi::vulkan::DeviceHandle device, nvrhi::CommandListHandle commandList);
+	~RenderContext() = default;
+
+private: 
+	nvrhi::vulkan::DeviceHandle mDevice;
+	nvrhi::CommandListHandle mCommandList;
+	std::unique_ptr<vkrhi::CuVkHandler> mCudaHandler;
+};
+
 class RenderFrame {
 public:
 	using SharedPtr = std::shared_ptr<RenderFrame>;

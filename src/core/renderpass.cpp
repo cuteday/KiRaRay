@@ -3,6 +3,13 @@
 
 KRR_NAMESPACE_BEGIN
 
+RenderContext::RenderContext(nvrhi::vulkan::DeviceHandle device,
+						   nvrhi::CommandListHandle commandList) :
+	mDevice(device), 
+	mCommandList(commandList),
+	mCudaHandler(std::make_unique<vkrhi::CuVkHandler>(device)) {
+}
+
 DeviceManager* RenderPass::getDeviceManager() const {
 	return mDeviceManager;
 }

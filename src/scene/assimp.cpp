@@ -236,7 +236,7 @@ void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial,
 }
 
 using namespace krr::assimp;
-bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr pScene) {
+bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scene) {
 	Assimp::DefaultLogger::create("", Assimp::Logger::NORMAL, aiDefaultLogStream_STDOUT);
 	Assimp::DefaultLogger::get()->info("KRR::Assimp::DefaultLogger initialized!");
 
@@ -270,7 +270,7 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr pSce
 		removeFlags |= aiComponent_TEXCOORDSn(uvLayer);
 
 	mFilepath = filepath.string();
-	mScene	  = pScene;
+	mScene	  = scene;
 
 	Assimp::Importer importer;
 	importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, 60);
