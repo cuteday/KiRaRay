@@ -14,13 +14,13 @@ void ErrorMeasurePass::beginFrame() {
 	mNeedsEvaluate |= mContinuousEvaluate && (mFrameNumber % mEvaluateInterval == 0);
 }
 
-void ErrorMeasurePass::render(RenderFrame::SharedPtr frame) {
+void ErrorMeasurePass::render(RenderContext *context) {
 	if (mNeedsEvaluate && mReferenceImage.isValid()) {
 		PROFILE("Metric calculation");
 		CHECK_LOG(mReferenceImage.getSize() == mFrameSize,
 				  "ErrorMeasure::Reference image size does not match frame size!");
 		size_t n_elememts = mFrameSize[0] * mFrameSize[1];
-		float result = calc_metric(frame->getCudaRenderTarget(),
+		float result	  = calc_metric(context->getColorTexture()->getCudaRenderTarget(),
 			reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()),
 			n_elememts, mMetric);
 		mLastResult = { { string(metricNames[(int) mMetric]), result } };

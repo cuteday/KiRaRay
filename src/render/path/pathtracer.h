@@ -24,7 +24,7 @@ public:
 	bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
 	void renderUI() override;
 	void beginFrame() override;
-	void render(RenderFrame::SharedPtr frame) override;
+	void render(RenderContext *context) override;
 	void resize(const Vector2i& size) override { 
 		mFrameSize = launchParams.fbSize = size; 
 	}

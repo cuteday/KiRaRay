@@ -143,9 +143,9 @@ void BindlessRender::initialize() {
 		mBindingLayout, mBindingSet);
 }
 
-void BindlessRender::render(RenderFrame::SharedPtr frame) {
+void BindlessRender::render(RenderContext *context) {
 	PROFILE("Bindless Rendering");
-	vkrhi::IFramebuffer *framebuffer = frame->getFramebuffer();
+	vkrhi::IFramebuffer *framebuffer = context->getFramebuffer();
 	const auto &fbInfo				 = framebuffer->getFramebufferInfo();
 	int sampleCount = 1;
 	switch (mMSAA) {

@@ -75,13 +75,13 @@ void RenderApp::Render() {
 	if (sSaveFrames && GetFrameIndex() % sSaveFrameInterval == 0)
 		sRequestScreenshot = true;
 	DeviceManager::BeginFrame();
-	auto framebuffer = mRenderFramebuffers[GetCurrentBackBufferIndex()];
+	
 	mpUIRenderer->beginFrame();
 	for (auto it : mRenderPasses) it->beginFrame();
 	for (auto it : mRenderPasses) {
-		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(mGraphicsSemaphore);
-		it->render(framebuffer);
-		if (it->isCudaPass()) framebuffer->cudaUpdateVulkan();
+		if (it->isCudaPass()) GetRenderContext()->sychronizeCuda();
+		it->render(GetRenderContext());
+		if (it->isCudaPass()) GetRenderContext()->sychronizeVulkan();
 	}
 	for (auto it : mRenderPasses) it->endFrame();
 
@@ -92,14 +92,15 @@ void RenderApp::Render() {
 
 	// UI render. This is better done after taking screenshot.
 	renderUI();
-	mpUIRenderer->render(framebuffer);
+	mpUIRenderer->render(GetRenderContext());
 	mpUIRenderer->endFrame();
 	mNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, mPresentSemaphore, 0);
 	// Blit render buffer, from the render texture (usually HDR) to swapchain texture.
 	mCommandList->open();
 	mHelperPass->BlitTexture(
 		mCommandList, mSwapChainFramebuffers[GetCurrentBackBufferIndex()],
-		GetCurrentRenderImage(), mBindingCache.get());
+							 GetRenderContext()->getColorTexture()->getVulkanTexture(),
+							 mBindingCache.get());
 	mCommandList->close();
 	mNvrhiDevice->executeCommandList(mCommandList,
 									  nvrhi::CommandQueue::Graphics);
@@ -186,7 +187,7 @@ void RenderApp::renderUI() {
 void RenderApp::captureFrame(bool hdr, fs::path filename) {
 	string extension = hdr ? ".exr" : ".png";
 
-	vkrhi::TextureHandle renderTexture = GetCurrentRenderImage();
+	vkrhi::TextureHandle renderTexture = GetRenderContext()->getColorTexture()->getVulkanTexture();
 	vkrhi::TextureDesc textureDesc	   = renderTexture->getDesc();
 	textureDesc.format				   = vkrhi::Format::RGBA32_FLOAT;
 	textureDesc.initialState		   = nvrhi::ResourceStates::RenderTarget;

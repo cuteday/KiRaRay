@@ -46,7 +46,6 @@ struct DeviceCreationParameters {
 	bool enableComputeQueue			= true;
 	bool enableCopyQueue			= true;
 	bool enablePerMonitorDPI		= false;
-	bool enableCudaInterop			= true;
 
 	Log::Level infoLogSeverity = Log::Level::Info;
 
@@ -69,12 +68,10 @@ public:
 	[[nodiscard]] virtual vk::Device GetNativeDevice() const { return mVulkanDevice; }
 
 	[[nodiscard]] virtual nvrhi::vulkan::IDevice *GetDevice() const {
-		return dynamic_cast<nvrhi::vulkan::IDevice*>(mNvrhiDevice.Get());
+		return dynamic_cast<nvrhi::vulkan::IDevice *>(mNvrhiDevice.Get());
 	}
 
-	[[nodiscard]] virtual nvrhi::IDevice* GetValidationLayer() const {
-		return mValidationLayer;
-	}
+	[[nodiscard]] virtual nvrhi::IDevice *GetValidationLayer() const { return mValidationLayer; }
 
 	bool CreateWindowDeviceAndSwapChain(const DeviceCreationParameters &params,
 										const char *windowTitle);
@@ -108,18 +105,16 @@ protected:
 	// current DPI scale info (updated when window moves)
 	float mDPIScaleFactorX = 1.f;
 	float mDPIScaleFactorY = 1.f;
-	bool mRequestedVSync	= false;
+	bool mRequestedVSync   = false;
 
 	double mAverageFrameTime		  = .0;
-	double mAverageTimeUpdateInterval= .5;
+	double mAverageTimeUpdateInterval = .5;
 	double mFrameTimeSum			  = .0;
-	int mNumberOfAccumulatedFrames	  =  0;
+	int mNumberOfAccumulatedFrames	  = 0;
 
 	uint32_t mFrameIndex = 0;
 
 	std::vector<nvrhi::FramebufferHandle> mSwapChainFramebuffers;
-	std::vector<RenderFrame::SharedPtr> mRenderFramebuffers;
-
 	std::unique_ptr<CommonRenderPasses> mHelperPass;
 	std::unique_ptr<BindingCache> mBindingCache;
 
@@ -135,7 +130,9 @@ protected:
 	// device-specific methods
 	virtual bool CreateDeviceAndSwapChain();
 	virtual void DestroyDeviceAndSwapChain();
-	virtual void ResizeSwapChain() { if (mVulkanDevice) createSwapChain(); }
+	virtual void ResizeSwapChain() {
+		if (mVulkanDevice) createSwapChain();
+	}
 	virtual void BeginFrame();
 	virtual void Present();
 
@@ -150,18 +147,18 @@ public:
 		mRequestedVSync = enabled; /* will be processed later */
 	}
 	virtual void ReportLiveObjects() {}
-	
-	virtual Vector2f getMouseScale() { 
+
+	virtual Vector2f getMouseScale() {
 		Vector2i fbSize;
 		GetWindowDimensions(fbSize[0], fbSize[1]);
-		return fbSize.cast<float>().cwiseInverse(); 
+		return fbSize.cast<float>().cwiseInverse();
 	}
 	inline Vector2i getMousePos() const {
 		double x, y;
 		glfwGetCursorPos(mWindow, &x, &y);
 		return {(int) x, (int) y};
 	}
-	
+
 	virtual void onWindowClose() {}
 	virtual void onWindowIconify(int iconified) {}
 	virtual void onWindowFocus(int focused) {}
@@ -172,6 +169,7 @@ public:
 
 	[[nodiscard]] GLFWwindow *GetWindow() const { return mWindow; }
 	[[nodiscard]] size_t GetFrameIndex() const { return mFrameIndex; }
+	[[nodiscard]] RenderContext *GetRenderContext() const { return mRenderContext.get(); }
 
 	virtual nvrhi::ITexture *GetCurrentBackBuffer() const {
 		return mSwapChainImages[mSwapChainIndex].rhiHandle;
@@ -180,12 +178,8 @@ public:
 		if (index < mSwapChainImages.size()) return mSwapChainImages[index].rhiHandle;
 		return nullptr;
 	}
-	virtual nvrhi::ITexture *GetCurrentRenderImage() const {
-		return mRenderImages[mSwapChainIndex];
-	}
-	virtual nvrhi::ITexture *GetRenderImage(size_t index) const {
-		if (index < mRenderImages.size()) return mRenderImages[index];
-		return nullptr;
+	virtual nvrhi::ITexture *GetRenderImage() const {
+		return mRenderContext->getRenderTarget()->getColorTexture()->getVulkanTexture();
 	}
 	virtual size_t GetCurrentBackBufferIndex() { return mSwapChainIndex; }
 	virtual size_t GetBackBufferCount() { return mSwapChainImages.size(); }
@@ -227,10 +221,8 @@ public:
 protected:
 	nvrhi::vulkan::DeviceHandle mNvrhiDevice;
 	nvrhi::DeviceHandle mValidationLayer;
-
 	nvrhi::CommandListHandle mCommandList;
 	vkrhi::CuVkSemaphore mPresentSemaphore;
-	vkrhi::CuVkSemaphore mGraphicsSemaphore;
 	
 private:
 	bool createInstance();
@@ -324,13 +316,12 @@ private:
 	};
 
 	std::vector<SwapChainImage> mSwapChainImages;
-	std::vector<nvrhi::TextureHandle> mRenderImages;
+	RenderContext::SharedPtr mRenderContext;
 	uint32_t mSwapChainIndex = -1;
 
 	std::queue<nvrhi::EventQueryHandle> mFramesInFlight;
 	std::vector<nvrhi::EventQueryHandle> mQueryPool;
-
-	std::shared_ptr<vkrhi::CuVkHandler> mCuVkHandler;
+	std::shared_ptr<vkrhi::CuVkHandler> mCudaHandler;
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(VkDebugReportFlagsEXT flags,
 															  VkDebugReportObjectTypeEXT objType,

@@ -224,7 +224,7 @@ void PPGPathTracer::generateScatterRays() {
 	});
 }
 
-void PPGPathTracer::render(RenderFrame::SharedPtr frame) {
+void PPGPathTracer::render(RenderContext *context) {
 	if (!mScene || !maxQueueSize) return;
 	PROFILE("PPG Path Tracer");
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
@@ -258,7 +258,7 @@ void PPGPathTracer::render(RenderFrame::SharedPtr frame) {
 		}
 	}
 	// write results of the current frame...
-	CudaRenderTarget frameBuffer = frame->getCudaRenderTarget();
+	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 		Color3f L = Color3f(pixelState->L[pixelId]) / samplesPerPixel;
 		if (enableClamp) L = clamp(L, 0.f, clampMax);

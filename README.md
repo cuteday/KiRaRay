@@ -11,10 +11,9 @@
 > This project is purposed for learning only with limited features.
 
 - [x] GPU path tracing (megakernel/wavefront).
-- [x] Animated scenes (rigging only).
 - [x] Post processing passes (e.g. denoising).
-- [x] Basic support for importing multiple scenes formats.
 - [x] Basic support for Vulkan and CUDA/OptiX interoperation.
+- [x] Basic support for multiple scenes formats and scene animation.
 
 ### Build and run
 

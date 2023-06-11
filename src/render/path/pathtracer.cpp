@@ -46,13 +46,13 @@ void MegakernelPathTracer::renderUI() {
 
 void MegakernelPathTracer::beginFrame() { optixBackend->update(); }
 
-void MegakernelPathTracer::render(RenderFrame::SharedPtr frame) {
+void MegakernelPathTracer::render(RenderContext *context) {
 	if (mFrameSize[0] * mFrameSize[1] == 0)
 		return;
 	PROFILE("Megakernel Path Tracer");
 	{
 		launchParams.fbSize		 = mFrameSize;
-		launchParams.colorBuffer = frame->getCudaRenderTarget();
+		launchParams.colorBuffer = context->getColorTexture()->getCudaRenderTarget();
 		launchParams.camera		 = mScene->getCamera()->getCameraData();
 		launchParams.sceneData	 = mScene->mSceneRT->getSceneData();
 		launchParams.traversable = optixBackend->getRootTraversable();

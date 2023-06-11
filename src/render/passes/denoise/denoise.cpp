@@ -130,19 +130,18 @@ void DenoiseBackend::setPixelFormat(PixelFormat format) {
 	initialize();
 }
 
-void DenoisePass::render(RenderFrame::SharedPtr frame) {
+void DenoisePass::render(RenderContext *context) {
 	if (!mEnable) return;
 	PROFILE("Denoise");
-	uint32_t width, height; 
-	frame->getSize(width, height);
-	CudaRenderTarget cudaFrame = frame->getCudaRenderTarget();
+	auto size				   = context->getRenderTarget()->getSize();
+	CudaRenderTarget cudaFrame = context->getColorTexture()->getCudaRenderTarget();
 	Color4f* colorBuffer	   = mColorBuffer.data();
-	GPUParallelFor(width * height, [=] KRR_DEVICE(int pixelId) mutable{
+	GPUParallelFor(size[0] * size[1], [=] KRR_DEVICE(int pixelId) mutable {
 		colorBuffer[pixelId] = cudaFrame.read(pixelId);
 	});
 	mBackend.denoise(0, (float *) colorBuffer, nullptr, nullptr,
 					 (float *) colorBuffer);
-	GPUParallelFor(width * height, [=] KRR_DEVICE(int pixelId) mutable {
+	GPUParallelFor(size[0] * size[1], [=] KRR_DEVICE(int pixelId) mutable {
 		cudaFrame.write(colorBuffer[pixelId], pixelId);
 	});
 }

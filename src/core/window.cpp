@@ -387,8 +387,6 @@ void DeviceManager::RemoveRenderPass(RenderPass::SharedPtr pRenderPass) {
 
 void DeviceManager::BackBufferResizing() {
 	mSwapChainFramebuffers.clear();
-	mRenderFramebuffers.clear();
-
 	for (auto it : mRenderPasses) {
 		it->resizing();
 	}
@@ -402,15 +400,13 @@ void DeviceManager::BackBufferResized() {
 
 	uint32_t backBufferCount = GetBackBufferCount();
 	mSwapChainFramebuffers.resize(backBufferCount);
-	mRenderFramebuffers.resize(backBufferCount);
 	for (uint32_t index = 0; index < backBufferCount; index++) {
 		mSwapChainFramebuffers[index] = GetDevice()->createFramebuffer(
 			nvrhi::FramebufferDesc().addColorAttachment(GetBackBuffer(index)));
-
-		mRenderFramebuffers[index] = std::make_shared<RenderFrame>(GetDevice()->createFramebuffer(
-			nvrhi::FramebufferDesc().addColorAttachment(GetRenderImage(index))));
-		mRenderFramebuffers[index]->initialize(GetDevice());
 	}
+	// resize render targets
+	mRenderContext->resize(
+		{int(mDeviceParams.backBufferWidth), int(mDeviceParams.backBufferHeight)});
 }
 
 void DeviceManager::Tick(double elapsedTime) {
@@ -419,12 +415,11 @@ void DeviceManager::Tick(double elapsedTime) {
 
 void DeviceManager::Render() {
 	BeginFrame();
-	auto framebuffer = mRenderFramebuffers[0];
 	for (auto it : mRenderPasses) it->beginFrame();
 	for (auto it : mRenderPasses) {
-		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(mGraphicsSemaphore);
-		it->render(framebuffer);
-		if (it->isCudaPass()) framebuffer->cudaUpdateVulkan();
+		if (it->isCudaPass()) mRenderContext->sychronizeCuda();
+		it->render(mRenderContext.get());
+		if (it->isCudaPass()) mRenderContext->sychronizeVulkan();
 	}
 	for (auto it : mRenderPasses) it->endFrame();
 
@@ -433,7 +428,8 @@ void DeviceManager::Render() {
 	mCommandList->open(); 
 	mHelperPass->BlitTexture(
 		mCommandList, mSwapChainFramebuffers[mSwapChainIndex],
-		GetRenderImage(0), mBindingCache.get());
+		mRenderContext->getRenderTarget()->getColorTexture()->getVulkanTexture(),
+							 mBindingCache.get());
 	mCommandList->close();
 	mNvrhiDevice->executeCommandList(mCommandList,
 									  nvrhi::CommandQueue::Graphics);
@@ -566,7 +562,7 @@ static void ApplyDeadZone(Vector2f &v, const float deadZone = 0.1f) {
 
 void DeviceManager::Shutdown() {
 	mSwapChainFramebuffers.clear();
-	mRenderFramebuffers.clear();
+	mRenderContext.reset();
 	mBindingCache.reset();
 	mHelperPass.reset();
 
@@ -633,12 +629,10 @@ bool DeviceManager::createInstance() {
 	// figure out which optional extensions are supported
 	for (const auto &instanceExt : vk::enumerateInstanceExtensionProperties()) {
 		const std::string name = instanceExt.extensionName;
-		if (optionalExtensions.instance.find(name) != optionalExtensions.instance.end()) {
+		if (optionalExtensions.instance.count(name)) 
 			enabledExtensions.instance.insert(name);
-		}
-		if (mDeviceParams.enableCudaInterop && mCudaInteropExtensions.instance.count(name)) {
+		if (mCudaInteropExtensions.instance.count(name)) 
 			enabledExtensions.instance.insert(name);
-		}
 		requiredExtensions.erase(name);
 	}
 
@@ -901,18 +895,12 @@ bool DeviceManager::createDevice() {
 	auto deviceExtensions = mVulkanPhysicalDevice.enumerateDeviceExtensionProperties();
 	for (const auto &ext : deviceExtensions) {
 		const std::string name = ext.extensionName;
-		if (optionalExtensions.device.find(name) != optionalExtensions.device.end()) {
+		if (optionalExtensions.device.count(name)) 
 			enabledExtensions.device.insert(name);
-		}
-
-		if (mDeviceParams.enableCudaInterop && mCudaInteropExtensions.device.count(name)) {
+		if (mCudaInteropExtensions.device.count(name)) 
 			enabledExtensions.device.insert(name);
-		}
-
-		if (mDeviceParams.enableRayTracingExtensions &&
-			mRayTracingExtensions.find(name) != mRayTracingExtensions.end()) {
+		if (mDeviceParams.enableRayTracingExtensions && mRayTracingExtensions.count(name))
 			enabledExtensions.device.insert(name);
-		}
 	}
 
 	bool accelStructSupported	= false;
@@ -1041,8 +1029,6 @@ bool DeviceManager::createDevice() {
 	mRendererString = std::string(prop.deviceName.data());
 
 	Log(Info, "Created Vulkan device: %s", mRendererString.c_str());
-	if (!mDeviceParams.enableCudaInterop) 
-		Log(Error, "You should enable CUDA Interopability to allow CUDA render passes");
 	return true;
 }
 
@@ -1069,7 +1055,6 @@ void DeviceManager::destroySwapChain() {
 	}
 
 	mSwapChainImages.clear();
-	mRenderImages.clear();
 }
 
 // This routine will be called whenever resizing...
@@ -1135,23 +1120,8 @@ bool DeviceManager::createSwapChain() {
 		sci.rhiHandle = mNvrhiDevice->createHandleForNativeTexture(
 			nvrhi::ObjectTypes::VK_Image, nvrhi::Object(sci.image), textureDesc);
 		mSwapChainImages.push_back(sci);
-
-		textureDesc.format			 = mDeviceParams.renderFormat;
-		textureDesc.debugName		 = "Render Target";
-		textureDesc.initialState	 = nvrhi::ResourceStates::ShaderResource;
-		textureDesc.keepInitialState = true;
-		textureDesc.isRenderTarget	 = true;
-		textureDesc.isUAV			 = true;
-		textureDesc.sampleCount		 = 1;
-
-		nvrhi::TextureHandle renderImage = mDeviceParams.enableCudaInterop
-											   ? mCuVkHandler->createExternalTexture(textureDesc)
-											   : mNvrhiDevice->createTexture(textureDesc);
-		mRenderImages.push_back(renderImage);
 	}
-
 	mSwapChainIndex = 0;
-
 	return true;
 }
 
@@ -1228,26 +1198,25 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 		mValidationLayer = nvrhi::validation::createValidationLayer(mNvrhiDevice);
 	}
 
-	if (mDeviceParams.enableCudaInterop) {
-		mCuVkHandler = std::make_unique<vkrhi::CuVkHandler>(GetDevice());
-		mCuVkHandler->initCUDA();
-	}
+	mCudaHandler = std::make_unique<vkrhi::CuVkHandler>(GetDevice());
+	mCudaHandler->initCUDA();
 
 	vkrhi::CommandListParameters;
-	mPresentSemaphore = mCuVkHandler->createCuVkSemaphore(false); 
-	mGraphicsSemaphore = mCuVkHandler->createCuVkSemaphore(true); 
+	mPresentSemaphore = mCudaHandler->createCuVkSemaphore(false); 
 	// [not that descent] to make cuda wait for previous vulkan operations, 
 	// I use the following dirty routines to replace the queue semaphore with a
 	// vulkan-exported semaphore.
-	auto* graphicsQueue = dynamic_cast<vkrhi::vulkan::Device *>(mNvrhiDevice.Get())
-		->getQueue(nvrhi::CommandQueue::Graphics);
+
+	mCommandList   = mNvrhiDevice->createCommandList();
+	mRenderContext = std::make_shared<RenderContext>(GetDevice());
+	mHelperPass	   = std::make_unique<CommonRenderPasses>(GetDevice());
+	mBindingCache  = std::make_unique<BindingCache>(GetDevice());
+
+	auto *graphicsQueue = dynamic_cast<vkrhi::vulkan::Device *>(mNvrhiDevice.Get())
+							->getQueue(nvrhi::CommandQueue::Graphics);
 	mVulkanDevice.waitIdle();
 	mVulkanDevice.destroySemaphore(graphicsQueue->trackingSemaphore);
-	graphicsQueue->trackingSemaphore = mGraphicsSemaphore;
-
-	mCommandList  = mNvrhiDevice->createCommandList();
-	mHelperPass   = std::make_unique<CommonRenderPasses>(GetDevice());
-	mBindingCache = std::make_unique<BindingCache>(GetDevice());
+	graphicsQueue->trackingSemaphore = mRenderContext->getVulkanSemaphore();
 	CHECK(createSwapChain())
 
 #undef CHECK

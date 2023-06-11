@@ -24,7 +24,7 @@ public:
 	void setScene(Scene::SharedPtr scene) override;
 	void beginFrame() override;
 	void endFrame() override;
-	void render(RenderFrame::SharedPtr frame) override;
+	void render(RenderContext* context) override;
 	void renderUI() override;
 	void finalize() override; /* Save the rendering (of the last iter) maybe more. */
 

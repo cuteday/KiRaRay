@@ -359,7 +359,7 @@ bool UIRenderer::updateGeometry(nvrhi::ICommandList *commandList) {
 	return true;
 }
 
-void UIRenderer::render(RenderFrame::SharedPtr frame) {
+void UIRenderer::render(RenderContext *context) {
 	PROFILE("UI Render");
 	ImGui::Render();
 
@@ -382,7 +382,7 @@ void UIRenderer::render(RenderFrame::SharedPtr frame) {
 	// set up graphics state
 	nvrhi::GraphicsState drawState;
 
-	drawState.framebuffer = frame->getFramebuffer();
+	drawState.framebuffer = context->getFramebuffer();
 	assert(drawState.framebuffer);
 
 	drawState.pipeline = getPSO(drawState.framebuffer);

@@ -208,11 +208,10 @@ void WavefrontPathTracer::beginFrame() {
 	backend->update();	// rebuild accel structures
 }
 
-void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
-	if (!mScene || !maxQueueSize)
-		return;
+void WavefrontPathTracer::render(RenderContext *context) {
+	if (!mScene || !maxQueueSize) return;
 	PROFILE("Wavefront Path Tracer");
-	CudaRenderTarget frameBuffer = frame->getCudaRenderTarget();
+	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
 		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });

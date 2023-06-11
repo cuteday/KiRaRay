@@ -416,8 +416,8 @@ public:
 
 	CuVkSemaphore createCuVkSemaphore(bool timeline = false) const { 
 		CuVkSemaphore sem;
-		createExternalSemaphore(sem.vk_sem, timeline);
-		sem.cuda_sem = importVulkanSemaphoreToCuda(sem.vk_sem, timeline);
+		createExternalSemaphore(sem.vulkan(), timeline);
+		sem.cuda() = importVulkanSemaphoreToCuda(sem.vulkan(), timeline);
 		return sem;
 	}
 	
@@ -583,7 +583,7 @@ public:
 	}
 
 	
-	cudaExternalSemaphore_t importVulkanSemaphoreToCuda(vk::Semaphore &vkSem, bool timeline = false) const {
+	cudaExternalSemaphore_t importVulkanSemaphoreToCuda(vk::Semaphore vkSem, bool timeline = false) const {
 		cudaExternalSemaphoreHandleDesc externalSemaphoreHandleDesc = {};
 		vk::ExternalSemaphoreHandleTypeFlagBits handleType = getDefaultSemaphoreHandleType();
 		if (handleType & vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32) {
