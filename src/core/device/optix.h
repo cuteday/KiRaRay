@@ -30,7 +30,7 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 class OptixScene {
 public:
 	using SharedPtr = std::shared_ptr<OptixScene>;
-	OptixScene() = default;
+	OptixScene(Scene::SharedPtr _scene);
 
 	static OptixTraversableHandle buildASFromInputs(OptixDeviceContext optixContext, 
 		CUstream cudaStream, const std::vector<OptixBuildInput> &buildInputs, 
@@ -44,7 +44,6 @@ public:
 	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
 	rt::SceneData getSceneData() const { return scene.lock()->getSceneRT()->getSceneData(); }
 	
-	void setScene(Scene::SharedPtr _scene);
 	void update();
 
 protected:
@@ -139,6 +138,7 @@ protected:
 	OptixInitializeParameters optixParameters;
 
 public:
+	static const size_t OPTIX_MAX_RAY_TYPES = 2;
 	static OptixModule createOptixModule(OptixDeviceContext optixContext, const char* ptx);
 	static OptixPipelineCompileOptions getPipelineCompileOptions();
 

@@ -330,7 +330,7 @@ void OptixScene::buildAccelStructure() {
 		OptixInstance &instanceData	   = instancesIAS[idx];
 		Affine3f transform			   = instance->getNode()->getGlobalTransform();
 		instanceData.instanceId		   = idx;
-		instanceData.sbtOffset		   = idx * 1;
+		instanceData.sbtOffset		   = idx * OptixBackend::OPTIX_MAX_RAY_TYPES;
 		instanceData.visibilityMask	   = 255;
 		instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 		instanceData.traversableHandle = traversablesGAS[instance->getMesh()->getMeshId()];
@@ -349,7 +349,7 @@ void OptixScene::buildAccelStructure() {
 	Log(Info, "Building root IAS: %zd instances", instances.size());
 	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
 									   {iasBuildInput}, accelBufferIAS, false);
-	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
+	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
 }
 
 // [TODO] Currently supports updating subgraph transforms only.
@@ -364,7 +364,7 @@ void OptixScene::update() {
 	scene.lock()->getSceneRT()->updateSceneData();
 }
 
-void OptixScene::setScene(Scene::SharedPtr _scene) {
+OptixScene::OptixScene(Scene::SharedPtr _scene) {
 	scene = _scene;
 	buildAccelStructure();
 }
@@ -391,11 +391,14 @@ void OptixScene::updateAccelStructure() {
 	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
 									   {iasBuildInput},
 									   accelBufferIAS, false, true);
-	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
+	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
 }
 
 void OptixBackend::buildShaderBindingTable() {
 	size_t nRayTypes = optixParameters.rayTypes.size();
+	if (OPTIX_MAX_RAY_TYPES > 2) Log(Fatal, "Currently supports no more than %zd ray types only,"
+		"but there are %zd ray types", OPTIX_MAX_RAY_TYPES, nRayTypes);
+	else if (nRayTypes == 0) Log(Fatal, "No ray types has been specified!");
 
 	for (const auto [raygenEntry, index] : entryPoints) {
 		RaygenRecord raygenRecord = {};
@@ -418,6 +421,8 @@ void OptixBackend::buildShaderBindingTable() {
 			hitgroupRecord.data = {instance};
 			hitgroupRecords.push_back(hitgroupRecord);
 		}
+		for (int rayType = nRayTypes; rayType < OPTIX_MAX_RAY_TYPES; rayType++)
+			hitgroupRecords.push_back({});
 	}
 
 	for (const auto [raygenEntry, index] : entryPoints) {

@@ -259,7 +259,7 @@ void PPGPathTracer::render(RenderContext *context) {
 	}
 	// write results of the current frame...
 	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
-	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
+	GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 		Color3f L = Color3f(pixelState->L[pixelId]) / samplesPerPixel;
 		if (enableClamp) L = clamp(L, 0.f, clampMax);
 		m_image->put(Color4f(L, 1.f), pixelId);
@@ -273,7 +273,7 @@ void PPGPathTracer::render(RenderContext *context) {
 void PPGPathTracer::beginFrame(RenderContext* context) {
 	if (!mScene || !maxQueueSize) return;
 	WavefrontPathTracer::beginFrame(context);
-	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
+	GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		guidedPathState->n_vertices[pixelId] = 0;
 	});
 	// [offline mode] always training when auto-train enabled
@@ -285,7 +285,7 @@ void PPGPathTracer::beginFrame(RenderContext* context) {
 void PPGPathTracer::endFrame(RenderContext* context) {
 	if (enableLearning) {
 		PROFILE("Training SD-Tree");
-		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
+		GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 			Sampler sampler = &pixelState->sampler[pixelId];
 			Color pixelEstimate = 0.5f;
 			if (m_isBuilt && m_distribution == EDistribution::EFull)

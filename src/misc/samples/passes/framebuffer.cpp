@@ -90,8 +90,7 @@ public:
 		m_CommandList->close();
 		getVulkanDevice()->executeCommandList(m_CommandList);
 
-		vkrhi::CuVkHandler::cudaWaitExternalSemaphore(m_CudaStream, 0,
-														   &m_VkUpdateCudaSem.cuda());
+		vkrhi::CuVkHandler::cudaWaitExternalSemaphore(m_CudaStream, 0, &m_VkUpdateCudaSem.cuda());
 		auto cudaRenderTarget = context->getColorTexture()->getCudaRenderTarget();
 		drawScreen(m_CudaStream, cudaRenderTarget, m_ElapsedTime, fbInfo.width,
 				   fbInfo.height);

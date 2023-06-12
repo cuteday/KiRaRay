@@ -21,6 +21,7 @@ bool Scene::update(size_t frameIndex, double currentTime) {
 	if (mEnableAnimation) mGraph->animate(currentTime);
 	mGraph->update(frameIndex);
 	if (mSceneRT) mSceneRT->update();
+	if (mSceneVK) mSceneVK->update();
 	return mHasChanges = hasChanges;
 }
 
@@ -110,16 +111,16 @@ bool Scene::onKeyEvent(const KeyboardEvent& keyEvent){
 void Scene::initializeSceneRT() {
 	if (!mGraph) Log(Fatal, "Scene graph must be initialized.");
 	mGraph->update(0); // must be done before preparing device data.
-	if (mSceneRT)
-		Log(Error, "The RT scene data has been initialized once before."
-				   "I'm assuming you want to reinitialize it?");
+	if (mSceneRT) {
+		Log(Warning, "The RT scene data has been initialized once before."
+					 "I'm assuming you do not want to reinitialize it?");
+		return;
+	}
 	mSceneRT = std::make_shared<RTScene>(shared_from_this()); 
+	mSceneRT->uploadSceneData();
 }
 
-RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {
-	uploadSceneData(); 
-	mOptixScene = std::make_shared<OptixScene>(scene);
-}
+RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {}
 
 void RTScene::uploadSceneData() {
 	/* Upload texture and material data to device... */
@@ -161,6 +162,7 @@ void RTScene::uploadSceneData() {
 	processLights();
 	mInstancesBuffer.copy_from_host(mInstances.data(), mInstances.size());
 	CUDA_SYNC_CHECK();
+	mOptixScene = std::make_shared<OptixScene>(mScene.lock());
 }
 
 void RTScene::processLights() {
