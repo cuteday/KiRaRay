@@ -259,7 +259,7 @@ void UIRenderer::tick(float elapsedTimeSeconds) {
 	io.MouseDrawCursor = false;
 }
 
-void UIRenderer::beginFrame() {
+void UIRenderer::beginFrame(RenderContext* context) {
 	int width, height;
 	float scaleX, scaleY;
 
@@ -278,7 +278,7 @@ void UIRenderer::beginFrame() {
 	ImGui::NewFrame();
 }
 
-void UIRenderer::endFrame() {
+void UIRenderer::endFrame(RenderContext* context) {
 	// reconcile input key states
 	auto &io = ImGui::GetIO();
 	for (size_t i = 0; i < mouseDown.size(); i++) 

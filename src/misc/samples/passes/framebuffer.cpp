@@ -59,7 +59,7 @@ public:
 	}
 
 	void tick(float fElapsedTimeSeconds) override {
-		m_ElapsedTime += fElapsedTimeSeconds;
+		m_ElapsedTime = fElapsedTimeSeconds;
 	}
 
 	void render(RenderContext *context) override {

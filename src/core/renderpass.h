@@ -113,29 +113,20 @@ public:
 	RenderTexture *getColorTexture() const { return mRenderTarget->getColorTexture(); } 
 	CUstream getCudaStream() const { return mCudaStream; }
 	RenderTarget::SharedPtr getRenderTarget() const { return mRenderTarget; }
+	Scene::SharedPtr getScene() const { return mScene; }
 	vkrhi::CuVkSemaphore getCudaSemaphore() const { return mCudaSemaphore; }
 	vkrhi::CuVkSemaphore getVulkanSemaphore() const { return mVulkanSemaphore; }
-
+	
+	void setScene(Scene::SharedPtr scene);
 	void resize(const Vector2i size);
 	void sychronizeCuda();
 	void sychronizeVulkan();
-
-	void cudaParallelFor() { 
-		CudaScope scope(this);
-	}
-
-	template <int W> void cudaLaunch() {
-		CudaScope scope(this);
-	}
-
-	template <typename T> void optixLaunch() {
-		CudaScope scope(this);
-	}
 
 private: 
 	friend class CudaScope;
 	friend class DeviceManager;
 	nvrhi::IDevice* mDevice;
+	Scene::SharedPtr mScene;
 	nvrhi::CommandListHandle mCommandList;
 	RenderTarget::SharedPtr mRenderTarget;
 	std::unique_ptr<vkrhi::CuVkHandler> mCudaHandler;
@@ -167,10 +158,10 @@ public:
 	}
 	// The total time elapsed after the first frame, in seconds.
 	virtual void tick(float elapsedSeconds) {}
-	virtual void beginFrame() {}
-	virtual void render(RenderContext* context) {}
+	virtual void beginFrame(RenderContext *context) {}
+	virtual void render(RenderContext *context) {}
+	virtual void endFrame(RenderContext *context) {}
 	virtual void renderUI() {}
-	virtual void endFrame() {}
 	
 	virtual void initialize() {}
 	virtual void finalize() {}
@@ -183,10 +174,9 @@ public:
 	virtual bool onMouseEvent(const io::MouseEvent& mouseEvent) { return false; }
 	virtual bool onKeyEvent(const io::KeyboardEvent& keyEvent) { return false; }
 
-	// Is this render pass contains any cuda/vulkan-based operations? 
+	// Is this render pass contains any cuda operations? 
 	// Used mainly for synchronization between these two GAPIs.
 	virtual bool isCudaPass() const { return true; }	
-	virtual bool isVulkanPass() const { return true; } 
 
 	virtual string getName() const { return "RenderPass"; }
 	virtual bool enabled() const { return mEnable; }

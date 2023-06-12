@@ -55,6 +55,7 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 
 void RenderApp::setScene(Scene::SharedPtr scene) {
 	mScene = scene;
+	mRenderContext->setScene(scene);
 	for (auto p : mRenderPasses) if (p) p->setScene(scene);
 }
 
@@ -76,14 +77,14 @@ void RenderApp::render() {
 		sRequestScreenshot = true;
 	DeviceManager::beginFrame();
 	
-	mpUIRenderer->beginFrame();
-	for (auto it : mRenderPasses) it->beginFrame();
+	mpUIRenderer->beginFrame(getRenderContext());
+	for (auto it : mRenderPasses) it->beginFrame(getRenderContext());
 	for (auto it : mRenderPasses) {
 		if (it->isCudaPass()) getRenderContext()->sychronizeCuda();
 		it->render(getRenderContext());
 		if (it->isCudaPass()) getRenderContext()->sychronizeVulkan();
 	}
-	for (auto it : mRenderPasses) it->endFrame();
+	for (auto it : mRenderPasses) it->endFrame(getRenderContext());
 
 	if (sRequestScreenshot) {
 		captureFrame(sSaveHDR);
@@ -93,7 +94,7 @@ void RenderApp::render() {
 	// UI render. This is better done after taking screenshot.
 	renderUI();
 	mpUIRenderer->render(getRenderContext());
-	mpUIRenderer->endFrame();
+	mpUIRenderer->endFrame(getRenderContext());
 	mNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, mPresentSemaphore, 0);
 	// Blit render buffer, from the render texture (usually HDR) to swapchain texture.
 	mCommandList->open();
@@ -290,8 +291,7 @@ void RenderApp::loadConfig(const json config) {
 			Log(Fatal, "Import a model before doing scene configurations!");
 		scene->loadConfig(config["scene"]);
 	}
-	if (scene)
-		setScene(scene);
+	if (scene) mScene = scene;
 	if (config.contains("resolution")) {
 		Vector2i windowDimension = config.at("resolution");
 		mDeviceParams.backBufferWidth = windowDimension[0];
@@ -309,6 +309,7 @@ void RenderApp::loadConfigFrom(fs::path path) {
 
 void RenderApp::initialize() { 
 	createWindowDeviceAndSwapChain(mDeviceParams, KRR_PROJECT_NAME);
+	setScene(mScene);
 	mpUIRenderer = std::make_shared<UIRenderer>(this);
 	mpUIRenderer->initialize();
 	for (auto pass : mRenderPasses) pass->initialize();

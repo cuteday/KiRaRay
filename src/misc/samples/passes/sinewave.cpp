@@ -153,10 +153,7 @@ public:
 		Log(Info, "Finished simulator initialization");
 	}
 
-	void tick(float seconds) override {
-		m_elapsedTime += seconds;
-		m_sim.stepSimulation(m_elapsedTime, m_stream);
-	}
+	void tick(float seconds) override { m_sim.stepSimulation(seconds, m_stream); }
 
 	void resizing() override { m_pipeline = nullptr; }
 
@@ -213,7 +210,6 @@ public:
 	}
 
 private:
-	double m_elapsedTime{0};
 	cudaStream_t m_stream{0};
 
 	std::shared_ptr<CuVkHandler> m_CuVkHandler;

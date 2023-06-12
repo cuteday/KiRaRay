@@ -72,8 +72,10 @@ struct OptixInitializeParameters {
 
 class OptixBackend : public OptixBackendInterface {
 public:
-	OptixBackend() = default;
-	
+	using SharedPtr = std::shared_ptr<OptixBackend>;
+	OptixBackend()	= default;
+	~OptixBackend() = default;
+
 	void initialize(const OptixInitializeParameters& params);
 	void setScene(Scene::SharedPtr scene);
 	template <typename T>

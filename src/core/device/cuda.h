@@ -67,7 +67,7 @@ template <typename F>
 void GPUParallelFor(int nElements, F func, CUstream stream = 0);
 
 template <typename F> 
-void GPUCall(F &&func);
+void GPUCall(F &&func, CUstream stream = 0);
 
 template <typename K, typename T, typename... Types>
 void LinearKernelShmem(K kernel, uint32_t shmemSize, cudaStream_t stream, T n_elements,
@@ -97,8 +97,8 @@ inline void GPUParallelFor(int nElements, F func, CUstream stream) {
 }
 
 template <typename F> 
-void GPUCall(F &&func) {
-	GPUParallelFor(1, [=] KRR_DEVICE(int) mutable { func(); });
+void GPUCall(F &&func, CUstream stream) {
+	GPUParallelFor(1, [=] KRR_DEVICE(int) mutable { func(); }, stream);
 }
 
 template <typename K, typename T, typename... Types>

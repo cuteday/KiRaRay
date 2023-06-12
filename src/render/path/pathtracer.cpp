@@ -44,7 +44,7 @@ void MegakernelPathTracer::renderUI() {
 	ui::InputInt2("Debug pixel", (int *) &launchParams.debugPixel);
 }
 
-void MegakernelPathTracer::beginFrame() { optixBackend->update(); }
+void MegakernelPathTracer::beginFrame(RenderContext* context) { optixBackend->update(); }
 
 void MegakernelPathTracer::render(RenderContext *context) {
 	if (getFrameSize()[0] * getFrameSize()[1] == 0)

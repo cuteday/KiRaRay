@@ -109,12 +109,17 @@ protected:
 	double mAverageTimeUpdateInterval = .5;
 	double mFrameTimeSum			  = .0;
 	int mNumberOfAccumulatedFrames	  = 0;
-
 	uint32_t mFrameIndex = 0;
-
+	
+	nvrhi::vulkan::DeviceHandle mNvrhiDevice;
+	nvrhi::DeviceHandle mValidationLayer;
+	nvrhi::CommandListHandle mCommandList;
+	vkrhi::CuVkSemaphore mPresentSemaphore;
+	
 	std::vector<nvrhi::FramebufferHandle> mSwapChainFramebuffers;
 	std::unique_ptr<CommonRenderPasses> mHelperPass;
 	std::unique_ptr<BindingCache> mBindingCache;
+	RenderContext::SharedPtr mRenderContext;
 
 	void updateWindowSize();
 
@@ -211,14 +216,6 @@ public:
 		std::function<void(DeviceManager &)> beforePresent = nullptr;
 		std::function<void(DeviceManager &)> afterPresent  = nullptr;
 	} mcallbacks;
-
-
-	
-protected:
-	nvrhi::vulkan::DeviceHandle mNvrhiDevice;
-	nvrhi::DeviceHandle mValidationLayer;
-	nvrhi::CommandListHandle mCommandList;
-	vkrhi::CuVkSemaphore mPresentSemaphore;
 	
 private:
 	bool createInstance();
@@ -312,7 +309,6 @@ private:
 	};
 
 	std::vector<SwapChainImage> mSwapChainImages;
-	RenderContext::SharedPtr mRenderContext;
 	uint32_t mSwapChainIndex = -1;
 
 	std::queue<nvrhi::EventQueryHandle> mFramesInFlight;

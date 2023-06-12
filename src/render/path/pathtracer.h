@@ -23,7 +23,7 @@ public:
 	bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 	bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
 	void renderUI() override;
-	void beginFrame() override;
+	void beginFrame(RenderContext* context) override;
 	void render(RenderContext *context) override;
 	void initialize() override;
 

@@ -76,7 +76,11 @@ RenderContext::~RenderContext() {
 	vk::Device device = mDevice->getNativeObject(nvrhi::ObjectTypes::VK_Device);
 	device.waitIdle(); 
 	device.destroySemaphore(mCudaSemaphore);
-	//device.destroySemaphore(mVulkanSemaphore);
+	//device.destroySemaphore(mVulkanSemaphore);	// [TODO] this is managed by RHI.
+}
+
+void RenderContext::setScene(Scene::SharedPtr scene) {
+	mScene = scene;
 }
 
 void RenderContext::resize(Vector2i size) { mRenderTarget->resize(size); }

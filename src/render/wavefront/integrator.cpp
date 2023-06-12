@@ -162,13 +162,13 @@ void WavefrontPathTracer::generateCameraRays(int sampleId) {
 	PROFILE("Generate camera rays");
 	RayQueue *cameraRayQueue = currentRayQueue(0);
 	auto frameSize			 = getFrameSize();
-	ParallelFor(
+	GPUParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 			Sampler sampler		= &pixelState->sampler[pixelId];
 			Vector2i pixelCoord = {pixelId % frameSize[0], pixelId / frameSize[0]};
 			Ray cameraRay		= camera->getRay(pixelCoord, frameSize, sampler);
 			cameraRayQueue->pushCameraRay(cameraRay, pixelId);
-		});
+		}, gpContext->cudaStream);
 }
 
 void WavefrontPathTracer::resize(const Vector2i &size) {
@@ -193,20 +193,20 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	lightSampler = backend->getSceneData().lightSampler;
 }
 
-void WavefrontPathTracer::beginFrame() {
+void WavefrontPathTracer::beginFrame(RenderContext* context) {
 	if (!mScene || !maxQueueSize) return;
 	PROFILE("Begin frame");
 	cudaMemcpyAsync(camera, &mScene->getCamera()->getCameraData(), sizeof(Camera::CameraData),
 			   cudaMemcpyHostToDevice, 0);
 	size_t frameIndex = getFrameIndex();
 	auto frameSize = getFrameSize();
-	ParallelFor(
+	GPUParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
 			Vector2i pixelCoord	   = {pixelId % frameSize[0], pixelId / frameSize[0]};
 			pixelState->L[pixelId] = 0;
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
-		});
+		}, gpContext->cudaStream);
 	backend->update();	// rebuild accel structures
 }
 
@@ -216,7 +216,7 @@ void WavefrontPathTracer::render(RenderContext *context) {
 	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
-		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
+		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); }, gpContext->cudaStream);
 		generateCameraRays(sampleId);
 		// [STEP#2] do radiance estimation recursively
 		for (int depth = 0; true; depth++) {
@@ -226,7 +226,7 @@ void WavefrontPathTracer::render(RenderContext *context) {
 				missRayQueue->reset();
 				shadowRayQueue->reset();
 				scatterRayQueue->reset();
-			});
+			}, gpContext->cudaStream);
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
@@ -242,13 +242,13 @@ void WavefrontPathTracer::render(RenderContext *context) {
 			if (enableNEE) traceShadow();
 		}
 	}
-	ParallelFor(
+	GPUParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 			Color L = pixelState->L[pixelId] / float(samplesPerPixel);
 			if (enableClamp)
 				L = clamp(L, 0.f, clampMax);
 			frameBuffer.write(Color4f(L, 1), pixelId);
-		});
+		}, gpContext->cudaStream);
 }
 
 void WavefrontPathTracer::renderUI() {

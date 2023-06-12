@@ -270,9 +270,9 @@ void PPGPathTracer::render(RenderContext *context) {
 	});
 }
 
-void PPGPathTracer::beginFrame() {
+void PPGPathTracer::beginFrame(RenderContext* context) {
 	if (!mScene || !maxQueueSize) return;
-	WavefrontPathTracer::beginFrame();
+	WavefrontPathTracer::beginFrame(context);
 	ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		guidedPathState->n_vertices[pixelId] = 0;
 	});
@@ -282,7 +282,7 @@ void PPGPathTracer::beginFrame() {
 	train_frames_this_iteration = (1 << m_iter) * m_sppPerPass;
 }
 
-void PPGPathTracer::endFrame() {
+void PPGPathTracer::endFrame(RenderContext* context) {
 	if (enableLearning) {
 		PROFILE("Training SD-Tree");
 		ParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){

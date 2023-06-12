@@ -415,13 +415,13 @@ void DeviceManager::tick(double elapsedTime) {
 
 void DeviceManager::render() {
 	beginFrame();
-	for (auto it : mRenderPasses) it->beginFrame();
+	for (auto it : mRenderPasses) it->beginFrame(mRenderContext.get());
 	for (auto it : mRenderPasses) {
 		if (it->isCudaPass()) mRenderContext->sychronizeCuda();
 		it->render(mRenderContext.get());
 		if (it->isCudaPass()) mRenderContext->sychronizeVulkan();
 	}
-	for (auto it : mRenderPasses) it->endFrame();
+	for (auto it : mRenderPasses) it->endFrame(mRenderContext.get());
 
 	mNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics,
 										mPresentSemaphore, 0);

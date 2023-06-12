@@ -22,8 +22,8 @@ public:
 
 	void resize(const Vector2i& size) override;
 	void setScene(Scene::SharedPtr scene) override;
-	void beginFrame() override;
-	void endFrame() override;
+	void beginFrame(RenderContext* context) override;
+	void endFrame(RenderContext* context) override;
 	void render(RenderContext* context) override;
 	void renderUI() override;
 	void finalize() override; /* Save the rendering (of the last iter) maybe more. */

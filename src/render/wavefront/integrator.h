@@ -23,19 +23,13 @@ public:
 
 	void resize(const Vector2i& size) override;
 	void setScene(Scene::SharedPtr scene) override;
-	void beginFrame() override;
+	void beginFrame(RenderContext* context) override;
 	void render(RenderContext *context) override;
 	void renderUI() override;
 
 	void initialize();
 
 	string getName() const override { return "WavefrontPathTracer"; }
-
-	template <typename F>
-	void ParallelFor(int nElements, F&& func) {
-		DCHECK_GT(nElements, 0);
-		GPUParallelFor(nElements, func);
-	}
 
 	void handleHit();
 	void handleMiss();
