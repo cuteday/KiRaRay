@@ -46,7 +46,8 @@ public:
 		if (!m_VertexShader || !m_PixelShader) 
 			Log(Fatal, "Shader initialization failed");
 		
-		CUDA_CHECK(cudaStreamCreate(&m_CudaStream));
+		//CUDA_CHECK(cudaStreamCreate(&m_CudaStream));
+		m_CudaStream = gpContext->cudaStream;
 
 		m_CommandList = getVulkanDevice()->createCommandList();
 		m_CudaUpdateVkSem = m_CuVkHandler->createCuVkSemaphore();
@@ -61,8 +62,8 @@ public:
 		m_ElapsedTime += fElapsedTimeSeconds;
 	}
 
-	void render(RenderFrame::SharedPtr frame) override {
-		nvrhi::FramebufferHandle framebuffer = frame->getFramebuffer();
+	void render(RenderContext *context) override {
+		nvrhi::FramebufferHandle framebuffer = context->getFramebuffer();
 		auto fbInfo							 = framebuffer->getFramebufferInfo();
 		
 		if (!m_Pipeline) {
@@ -91,7 +92,7 @@ public:
 
 		vkrhi::CuVkHandler::cudaWaitExternalSemaphore(m_CudaStream, 0,
 														   &m_VkUpdateCudaSem.cuda());
-		auto cudaRenderTarget		  = frame->getCudaRenderTarget();
+		auto cudaRenderTarget = context->getColorTexture()->getCudaRenderTarget();
 		drawScreen(m_CudaStream, cudaRenderTarget, m_ElapsedTime, fbInfo.width,
 				   fbInfo.height);
 		CUDA_SYNC_CHECK();
@@ -101,8 +102,8 @@ public:
 
 extern "C" int main(int argc, const char *argv[]) {
 	auto app = std::make_unique<RenderApp>();
-	app->SetWindowTitle(g_WindowTitle);
-	app->AddRenderPassToFront(std::make_shared<HelloVkCuda>());
+	app->setWindowTitle(g_WindowTitle);
+	app->addRenderPassToFront(std::make_shared<HelloVkCuda>());
 	app->run();
 	exit(EXIT_SUCCESS);
 }

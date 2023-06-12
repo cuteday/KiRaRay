@@ -157,7 +157,7 @@ public:
 	RenderPass(DeviceManager *device) : mDeviceManager(device) {}
 
 	virtual void resizing() {}
-	virtual void resize(const Vector2i& size) { mFrameSize = size; }
+	virtual void resize(const Vector2i& size) {}
 	
 	virtual void setEnable(bool enable) { mEnable = enable; }
 	virtual void setScene(Scene::SharedPtr scene) { mScene = scene; }
@@ -196,6 +196,7 @@ protected:
 	[[nodiscard]] vk::Device getVulkanNativeDevice() const;
 	[[nodiscard]] vkrhi::vulkan::IDevice *getVulkanDevice() const;
 	[[nodiscard]] size_t getFrameIndex() const;
+	[[nodiscard]] Vector2i getFrameSize() const;
 
 	friend void to_json(json &j, const RenderPass &p) {
 		j = json{ { "enable", p.mEnable } };
@@ -206,7 +207,6 @@ protected:
 	}
 	
 	bool mEnable = true;
-	Vector2i mFrameSize{};
 	Scene::SharedPtr mScene = nullptr;
 };
 

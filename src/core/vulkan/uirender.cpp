@@ -263,8 +263,8 @@ void UIRenderer::beginFrame() {
 	int width, height;
 	float scaleX, scaleY;
 
-	getDeviceManager()->GetWindowDimensions(width, height);
-	getDeviceManager()->GetDPIScaleInfo(scaleX, scaleY);
+	getDeviceManager()->getFrameSize(width, height);
+	getDeviceManager()->getDPIScaleInfo(scaleX, scaleY);
 
 	ImGuiIO &io					 = ImGui::GetIO();
 	io.DisplaySize				 = ImVec2(float(width), float(height));

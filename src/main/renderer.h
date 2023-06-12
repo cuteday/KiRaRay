@@ -19,10 +19,10 @@ public:
 	RenderApp();
 	~RenderApp() = default;
 
-	void BackBufferResizing() override;
-	void BackBufferResized() override;
-	void Render() override;
-	void Tick(double elapsedTime /*delta time*/) override;
+	void backBufferResizing() override;
+	void backBufferResized() override;
+	void render() override;
+	void tick(double elapsedTime /*delta time*/) override;
 
 	void initialize();
 	void finalize();

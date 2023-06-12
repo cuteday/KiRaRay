@@ -101,15 +101,19 @@ DeviceManager* RenderPass::getDeviceManager() const {
 }
 
 vk::Device RenderPass::getVulkanNativeDevice() const {
-	return mDeviceManager->GetNativeDevice();
+	return mDeviceManager->getNativeDevice();
 }
 
 vkrhi::vulkan::IDevice *RenderPass::getVulkanDevice() const {
-	return mDeviceManager->GetDevice();
+	return mDeviceManager->getDevice();
 }
 
 size_t RenderPass::getFrameIndex() const { 
-	return mDeviceManager->GetFrameIndex(); 
+	return mDeviceManager->getFrameIndex(); 
+}
+
+Vector2i RenderPass::getFrameSize() const {
+	return mDeviceManager->getFrameSize();
 }
 
 KRR_NAMESPACE_END

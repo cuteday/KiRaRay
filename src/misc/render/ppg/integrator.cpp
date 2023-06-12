@@ -61,10 +61,10 @@ void PPGPathTracer::initialize(){
 	else guidedRayQueue = alloc.new_object<GuidedRayQueue>(maxQueueSize, alloc);
 	//if (!backend) backend = new OptixPPGBackend();
 	/* @addition VAPG */
-	if (m_image)  m_image->resize(mFrameSize);
-	else m_image = alloc.new_object<Film>(mFrameSize);
-	if (m_pixelEstimate)  m_pixelEstimate->resize(mFrameSize);
-	else m_pixelEstimate = alloc.new_object<Film>(mFrameSize);
+	if (m_image)  m_image->resize(getFrameSize());
+	else m_image = alloc.new_object<Film>(getFrameSize());
+	if (m_pixelEstimate)  m_pixelEstimate->resize(getFrameSize());
+	else m_pixelEstimate = alloc.new_object<Film>(getFrameSize());
 	m_image->reset();
 	m_pixelEstimate->reset();
 	m_task.reset();

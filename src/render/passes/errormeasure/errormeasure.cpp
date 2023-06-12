@@ -17,9 +17,9 @@ void ErrorMeasurePass::beginFrame() {
 void ErrorMeasurePass::render(RenderContext *context) {
 	if (mNeedsEvaluate && mReferenceImage.isValid()) {
 		PROFILE("Metric calculation");
-		CHECK_LOG(mReferenceImage.getSize() == mFrameSize,
+		CHECK_LOG(mReferenceImage.getSize() == getFrameSize(),
 				  "ErrorMeasure::Reference image size does not match frame size!");
-		size_t n_elememts = mFrameSize[0] * mFrameSize[1];
+		size_t n_elememts = getFrameSize()[0] * getFrameSize()[1];
 		float result	  = calc_metric(context->getColorTexture()->getCudaRenderTarget(),
 			reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()),
 			n_elememts, mMetric);

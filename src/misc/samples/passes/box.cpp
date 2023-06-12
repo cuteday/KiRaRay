@@ -213,8 +213,8 @@ public:
 
 	void resizing() override { m_Pipeline = nullptr; }
 
-	void render(RenderFrame::SharedPtr frame) override {
-		nvrhi::FramebufferHandle framebuffer = frame->getFramebuffer();
+	void render(RenderContext *context) override {
+		nvrhi::FramebufferHandle framebuffer = context->getFramebuffer();
 		const nvrhi::FramebufferInfoEx &fbinfo =
 			framebuffer->getFramebufferInfo();
 
@@ -289,8 +289,8 @@ public:
 
 extern "C" int main(int argc, const char *argv[]) {
 	auto app	 = std::make_unique<RenderApp>();
-	app->SetWindowTitle(g_WindowTitle);
-	app->AddRenderPassToFront(std::make_shared<VertexBuffer>());
+	app->setWindowTitle(g_WindowTitle);
+	app->addRenderPassToFront(std::make_shared<VertexBuffer>());
 	app->run();
 	exit(EXIT_SUCCESS);
 }

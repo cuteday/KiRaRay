@@ -24,13 +24,8 @@ public:
 	bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
 	void renderUI() override;
 	void render(RenderContext *context) override;
-	void resize(const Vector2i& size) override { 
-		mFrameSize = launchParams.fbSize = size; 
-	}
-
-	void setScene(Scene::SharedPtr scene) override {
-		mScene = scene;
-	}
+	void resize(const Vector2i& size) override {}
+	void setScene(Scene::SharedPtr scene) override { mScene = scene; }
 
 	string getName() const override { return "BDPTIntegrator"; }
 

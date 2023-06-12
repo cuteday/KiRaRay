@@ -25,11 +25,7 @@ public:
 	void renderUI() override;
 	void beginFrame() override;
 	void render(RenderContext *context) override;
-	void resize(const Vector2i& size) override { 
-		mFrameSize = launchParams.fbSize = size; 
-	}
-
-	void initialize();
+	void initialize() override;
 
 	void setScene(Scene::SharedPtr scene) override;
 
@@ -37,7 +33,7 @@ public:
 
 private:
 
-	OptixBackend *optixBackend{nullptr};
+	OptixBackend* optixBackend{nullptr};
 	LaunchParamsPT launchParams;
 
 	friend void to_json(json &j, const MegakernelPathTracer &p) {

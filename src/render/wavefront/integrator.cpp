@@ -18,7 +18,7 @@ KRR_DEVICE_FUNCTION void WavefrontPathTracer::debugPrint(uint pixelId, const cha
 
 void WavefrontPathTracer::initialize() {
 	Allocator &alloc = *gpContext->alloc;
-	maxQueueSize	 = mFrameSize[0] * mFrameSize[1];
+	maxQueueSize	 = getFrameSize()[0] * getFrameSize()[1];
 	CUDA_SYNC_CHECK(); // necessary, preventing kernel accessing memories tobe free'ed...
 	for (int i = 0; i < 2; i++) 
 		if (rayQueue[i]) rayQueue[i]->resize(maxQueueSize, alloc);
@@ -161,11 +161,12 @@ void WavefrontPathTracer::generateScatterRays() {
 void WavefrontPathTracer::generateCameraRays(int sampleId) {
 	PROFILE("Generate camera rays");
 	RayQueue *cameraRayQueue = currentRayQueue(0);
+	auto frameSize			 = getFrameSize();
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 			Sampler sampler		= &pixelState->sampler[pixelId];
-			Vector2i pixelCoord = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
-			Ray cameraRay		= camera->getRay(pixelCoord, mFrameSize, sampler);
+			Vector2i pixelCoord = {pixelId % frameSize[0], pixelId / frameSize[0]};
+			Ray cameraRay		= camera->getRay(pixelCoord, frameSize, sampler);
 			cameraRayQueue->pushCameraRay(cameraRay, pixelId);
 		});
 }
@@ -195,12 +196,13 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 void WavefrontPathTracer::beginFrame() {
 	if (!mScene || !maxQueueSize) return;
 	PROFILE("Begin frame");
-	cudaMemcpy(camera, &mScene->getCamera()->getCameraData(), sizeof(Camera::CameraData),
-			   cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(camera, &mScene->getCamera()->getCameraData(), sizeof(Camera::CameraData),
+			   cudaMemcpyHostToDevice, 0);
 	size_t frameIndex = getFrameIndex();
+	auto frameSize = getFrameSize();
 	ParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
-			Vector2i pixelCoord	   = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
+			Vector2i pixelCoord	   = {pixelId % frameSize[0], pixelId / frameSize[0]};
 			pixelState->L[pixelId] = 0;
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);

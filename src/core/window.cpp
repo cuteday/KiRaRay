@@ -266,7 +266,7 @@ static const struct {
     { nvrhi::Format::RGBA32_FLOAT,      32, 32, 32, 32,  0,  0, }
 };
 
-bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameters &params,
+bool DeviceManager::createWindowDeviceAndSwapChain(const DeviceCreationParameters &params,
 												   const char *windowTitle) {
 #ifdef _WINDOWS
 	if (params.enablePerMonitorDPI) {
@@ -352,7 +352,7 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 	//glfwSetCharCallback(mWindow, ApiCallbacks::charInputCallback);
 	glfwSetCharModsCallback(mWindow, ApiCallbacks::charInputModsCallback);
 
-	if (!CreateDeviceAndSwapChain()) return false;
+	if (!createDeviceAndSwapChain()) return false;
 
 	glfwShowWindow(mWindow);
 
@@ -360,7 +360,7 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 	mDeviceParams.backBufferWidth	= 0;
 	mDeviceParams.backBufferHeight = 0;
 
-	UpdateWindowSize();
+	updateWindowSize();
 	mNvrhiDevice->waitForIdle();
 
 	auto ctx = ImGui::CreateContext();
@@ -369,52 +369,52 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
 	return true;
 }
 
-void DeviceManager::AddRenderPassToFront(RenderPass::SharedPtr pRenderPass) {
+void DeviceManager::addRenderPassToFront(RenderPass::SharedPtr pRenderPass) {
 	mRenderPasses.remove(pRenderPass);
 	mRenderPasses.push_front(pRenderPass);
 	pRenderPass->setDeviceManager(this);
 }
 
-void DeviceManager::AddRenderPassToBack(RenderPass::SharedPtr pRenderPass) {
+void DeviceManager::addRenderPassToBack(RenderPass::SharedPtr pRenderPass) {
 	mRenderPasses.remove(pRenderPass);
 	mRenderPasses.push_back(pRenderPass);
 	pRenderPass->setDeviceManager(this);
 }
 
-void DeviceManager::RemoveRenderPass(RenderPass::SharedPtr pRenderPass) {
+void DeviceManager::removeRenderPass(RenderPass::SharedPtr pRenderPass) {
 	mRenderPasses.remove(pRenderPass);
 }
 
-void DeviceManager::BackBufferResizing() {
+void DeviceManager::backBufferResizing() {
 	mSwapChainFramebuffers.clear();
 	for (auto it : mRenderPasses) {
 		it->resizing();
 	}
 }
 
-void DeviceManager::BackBufferResized() {
+void DeviceManager::backBufferResized() {
 	for (auto it : mRenderPasses) {
 		it->resize({int(mDeviceParams.backBufferWidth),
 					int(mDeviceParams.backBufferHeight)});
 	}
 
-	uint32_t backBufferCount = GetBackBufferCount();
+	uint32_t backBufferCount = getBackBufferCount();
 	mSwapChainFramebuffers.resize(backBufferCount);
 	for (uint32_t index = 0; index < backBufferCount; index++) {
-		mSwapChainFramebuffers[index] = GetDevice()->createFramebuffer(
-			nvrhi::FramebufferDesc().addColorAttachment(GetBackBuffer(index)));
+		mSwapChainFramebuffers[index] = getDevice()->createFramebuffer(
+			nvrhi::FramebufferDesc().addColorAttachment(getBackBuffer(index)));
 	}
 	// resize render targets
 	mRenderContext->resize(
 		{int(mDeviceParams.backBufferWidth), int(mDeviceParams.backBufferHeight)});
 }
 
-void DeviceManager::Tick(double elapsedTime) {
+void DeviceManager::tick(double elapsedTime) {
 	for (auto it : mRenderPasses) it->tick(float(elapsedTime));
 }
 
-void DeviceManager::Render() {
-	BeginFrame();
+void DeviceManager::render() {
+	beginFrame();
 	for (auto it : mRenderPasses) it->beginFrame();
 	for (auto it : mRenderPasses) {
 		if (it->isCudaPass()) mRenderContext->sychronizeCuda();
@@ -435,7 +435,7 @@ void DeviceManager::Render() {
 									  nvrhi::CommandQueue::Graphics);
 }
 
-void DeviceManager::UpdateAverageFrameTime(double elapsedTime) {
+void DeviceManager::updateAverageFrameTime(double elapsedTime) {
 	mFrameTimeSum += elapsedTime;
 	mNumberOfAccumulatedFrames += 1;
 
@@ -446,7 +446,7 @@ void DeviceManager::UpdateAverageFrameTime(double elapsedTime) {
 	}
 }
 
-void DeviceManager::RunMessageLoop() {
+void DeviceManager::runMessageLoop() {
 	glfwSetTime(0);
 	mPreviousFrameTimestamp = glfwGetTime();
 
@@ -455,45 +455,45 @@ void DeviceManager::RunMessageLoop() {
 		if (mcallbacks.beforeFrame) mcallbacks.beforeFrame(*this);
 		++mFrameIndex;		// so we denote the first frame as #1.
 		glfwPollEvents();
-		UpdateWindowSize();
+		updateWindowSize();
 
 		double curTime	   = glfwGetTime();
 		double elapsedTime = curTime - mPreviousFrameTimestamp;
 
 		if (mwindowVisible) {
 			if (mcallbacks.beforeTick) mcallbacks.beforeTick(*this);
-			Tick(curTime);
+			tick(curTime);
 			if (mcallbacks.afterTick) mcallbacks.afterTick(*this);
 			if (mcallbacks.beforeRender) mcallbacks.beforeRender(*this);
-			Render();
+			render();
 			if (mcallbacks.afterRender) mcallbacks.afterRender(*this);
 			if (mcallbacks.beforePresent) mcallbacks.beforePresent(*this);
-			Present();
+			present();
 			if (mcallbacks.afterPresent) mcallbacks.afterPresent(*this);
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(0));
 
-		GetDevice()->runGarbageCollection();
+		getDevice()->runGarbageCollection();
 
-		UpdateAverageFrameTime(elapsedTime);
+		updateAverageFrameTime(elapsedTime);
 		mPreviousFrameTimestamp = curTime;
 	}
 
-	GetDevice()->waitForIdle();
+	getDevice()->waitForIdle();
 }
 
-Vector2i DeviceManager::GetWindowDimensions() const {
+Vector2i DeviceManager::getFrameSize() const {
 	return {(int32_t) mDeviceParams.backBufferWidth, 
 			(int32_t) mDeviceParams.backBufferHeight};
 }
 
-void DeviceManager::GetWindowDimensions(int &width, int &height) const {
+void DeviceManager::getFrameSize(int &width, int &height) const {
 	width  = mDeviceParams.backBufferWidth;
 	height = mDeviceParams.backBufferHeight;
 }
 
-void DeviceManager::UpdateWindowSize() {
+void DeviceManager::updateWindowSize() {
 	if (mWindow == nullptr) return;
 	int width, height;
 	glfwGetWindowSize(mWindow, &width, &height);
@@ -511,14 +511,14 @@ void DeviceManager::UpdateWindowSize() {
 		(mDeviceParams.vsyncEnabled != mRequestedVSync)) {
 		// window is not minimized, and the size has changed
 
-		BackBufferResizing();
+		backBufferResizing();
 
 		mDeviceParams.backBufferWidth	= width;
 		mDeviceParams.backBufferHeight = height;
 		mDeviceParams.vsyncEnabled		= mRequestedVSync;
 
-		ResizeSwapChain();
-		BackBufferResized();
+		resizeSwapChain();
+		backBufferResized();
 	}
 
 	mDeviceParams.vsyncEnabled = mRequestedVSync;
@@ -560,13 +560,13 @@ static void ApplyDeadZone(Vector2f &v, const float deadZone = 0.1f) {
 	v *= std::max(length(v) - deadZone, 0.f) / (1.f - deadZone);
 }
 
-void DeviceManager::Shutdown() {
+void DeviceManager::shutdown() {
 	mSwapChainFramebuffers.clear();
 	mRenderContext.reset();
 	mBindingCache.reset();
 	mHelperPass.reset();
 
-	DestroyDeviceAndSwapChain();
+	destroyDeviceAndSwapChain();
 
 	if (mWindow) {
 		glfwDestroyWindow(mWindow);
@@ -576,7 +576,7 @@ void DeviceManager::Shutdown() {
 	glfwTerminate();
 }
 
-void DeviceManager::SetWindowTitle(const char *title) {
+void DeviceManager::setWindowTitle(const char *title) {
 	assert(title);
 	if (mWindowTitle == title) return;
 
@@ -1125,7 +1125,7 @@ bool DeviceManager::createSwapChain() {
 	return true;
 }
 
-bool DeviceManager::CreateDeviceAndSwapChain() {
+bool DeviceManager::createDeviceAndSwapChain() {
 	if (mDeviceParams.enableDebugRuntime) {
 		enabledExtensions.instance.insert("VK_EXT_debug_report");
 		enabledExtensions.layers.insert("VK_LAYER_KHRONOS_validation");
@@ -1198,7 +1198,7 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 		mValidationLayer = nvrhi::validation::createValidationLayer(mNvrhiDevice);
 	}
 
-	mCudaHandler = std::make_unique<vkrhi::CuVkHandler>(GetDevice());
+	mCudaHandler = std::make_unique<vkrhi::CuVkHandler>(getDevice());
 	mCudaHandler->initCUDA();
 
 	vkrhi::CommandListParameters;
@@ -1208,9 +1208,9 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 	// vulkan-exported semaphore.
 
 	mCommandList   = mNvrhiDevice->createCommandList();
-	mRenderContext = std::make_shared<RenderContext>(GetDevice());
-	mHelperPass	   = std::make_unique<CommonRenderPasses>(GetDevice());
-	mBindingCache  = std::make_unique<BindingCache>(GetDevice());
+	mRenderContext = std::make_shared<RenderContext>(getDevice());
+	mHelperPass	   = std::make_unique<CommonRenderPasses>(getDevice());
+	mBindingCache  = std::make_unique<BindingCache>(getDevice());
 
 	auto *graphicsQueue = dynamic_cast<vkrhi::vulkan::Device *>(mNvrhiDevice.Get())
 							->getQueue(nvrhi::CommandQueue::Graphics);
@@ -1223,7 +1223,7 @@ bool DeviceManager::CreateDeviceAndSwapChain() {
 	return true;
 }
 
-void DeviceManager::DestroyDeviceAndSwapChain() {
+void DeviceManager::destroyDeviceAndSwapChain() {
 	destroySwapChain();
 	mVulkanDevice.waitIdle();
 	mVulkanDevice.destroySemaphore(mPresentSemaphore);
@@ -1257,7 +1257,7 @@ void DeviceManager::DestroyDeviceAndSwapChain() {
 	}
 }
 
-void DeviceManager::BeginFrame() {
+void DeviceManager::beginFrame() {
 	const vk::Result res =
 		mVulkanDevice.acquireNextImageKHR(mSwapChain,
 										   std::numeric_limits<uint64_t>::max(), // timeout
@@ -1268,7 +1268,7 @@ void DeviceManager::BeginFrame() {
 	mNvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, mPresentSemaphore, 0);
 }
 
-void DeviceManager::Present() {
+void DeviceManager::present() {
 
 	vk::PresentInfoKHR info = vk::PresentInfoKHR()
 								  .setWaitSemaphoreCount(1)

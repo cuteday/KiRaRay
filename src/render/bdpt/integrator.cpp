@@ -32,7 +32,7 @@ void BDPTIntegrator::renderUI() {
 }
 
 void BDPTIntegrator::render(RenderContext *context) {
-	if (mFrameSize[0] * mFrameSize[1] == 0)
+	if (getFrameSize()[0] * getFrameSize()[1] == 0)
 		return;
 	PROFILE("BDPT Integrator");
 	{

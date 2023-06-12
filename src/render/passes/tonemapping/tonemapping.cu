@@ -60,7 +60,7 @@ void ToneMappingPass::render(RenderContext *context) {
 	CUstream &stream = gpContext->cudaStream;
 	Color colorTransform = Color(mExposureCompensation);
 	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
-	GPUParallelFor(mFrameSize[0] * mFrameSize[1], KRR_DEVICE_LAMBDA(int pixelId) {
+	GPUParallelFor(getFrameSize()[0] * getFrameSize()[1], KRR_DEVICE_LAMBDA(int pixelId) {
 		Color color = frameBuffer.read(pixelId).head<3>() * colorTransform;
 		switch (mOperator) {
 		case krr::ToneMappingPass::Operator::Linear:

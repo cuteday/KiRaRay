@@ -160,8 +160,8 @@ public:
 
 	void resizing() override { m_pipeline = nullptr; }
 
-	void render(RenderFrame::SharedPtr frame) override { 
-		nvrhi::FramebufferHandle framebuffer = frame->getFramebuffer();
+	void render(RenderContext *context) override { 
+		nvrhi::FramebufferHandle framebuffer = context->getFramebuffer();
 		CUDA_SYNC_CHECK();
 
 		auto &fbInfo = framebuffer->getFramebufferInfo();
@@ -232,8 +232,8 @@ private:
 
 extern "C" int main(int argc, const char *argv[]) {
 	auto app = std::make_unique<RenderApp>();
-	app->SetWindowTitle(g_WindowTitle);
-	app->AddRenderPassToFront(std::make_shared<WaveRenderer>());
+	app->setWindowTitle(g_WindowTitle);
+	app->addRenderPassToFront(std::make_shared<WaveRenderer>());
 	app->run();
 	exit(EXIT_SUCCESS);
 }

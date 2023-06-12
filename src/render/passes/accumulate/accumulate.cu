@@ -26,7 +26,7 @@ void AccumulatePass::render(RenderContext *context) {
 	
 	Color4f *accumBuffer = (Color4f *) mAccumBuffer->data();
 	CudaRenderTarget currentBuffer = context->getColorTexture()->getCudaRenderTarget();
-	GPUParallelFor(mFrameSize[0] * mFrameSize[1], KRR_DEVICE_LAMBDA(int i) {
+	GPUParallelFor(getFrameSize()[0] * getFrameSize()[1], KRR_DEVICE_LAMBDA(int i) {
 		float currentWeight = 1.f / (mAccumCount + 1);
 		Color4f currentPixel = currentBuffer.read(i);
 		if (mAccumCount > 0) {

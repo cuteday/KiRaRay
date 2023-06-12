@@ -47,18 +47,18 @@ void MegakernelPathTracer::renderUI() {
 void MegakernelPathTracer::beginFrame() { optixBackend->update(); }
 
 void MegakernelPathTracer::render(RenderContext *context) {
-	if (mFrameSize[0] * mFrameSize[1] == 0)
+	if (getFrameSize()[0] * getFrameSize()[1] == 0)
 		return;
 	PROFILE("Megakernel Path Tracer");
 	{
-		launchParams.fbSize		 = mFrameSize;
+		launchParams.fbSize		 = getFrameSize();
 		launchParams.colorBuffer = context->getColorTexture()->getCudaRenderTarget();
 		launchParams.camera		 = mScene->getCamera()->getCameraData();
 		launchParams.sceneData	 = mScene->mSceneRT->getSceneData();
 		launchParams.traversable = optixBackend->getRootTraversable();
 		launchParams.frameID	 = (uint)getFrameIndex();
 
-		optixBackend->launch(launchParams, "Pathtracer", mFrameSize[0], mFrameSize[1]);
+		optixBackend->launch(launchParams, "Pathtracer", getFrameSize()[0], getFrameSize()[1]);
 	}
 	CUDA_SYNC_CHECK();
 }

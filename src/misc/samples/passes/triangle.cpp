@@ -36,8 +36,8 @@ public:
 
 	void tick(float fElapsedTimeSeconds) override {}
 
-	void render(RenderFrame::SharedPtr frame) override {
-		nvrhi::FramebufferHandle framebuffer = frame->getFramebuffer();
+	void render(RenderContext* context) override {
+		nvrhi::FramebufferHandle framebuffer = context->getFramebuffer();
 		
 		if (!m_Pipeline) {
 			nvrhi::GraphicsPipelineDesc psoDesc;
@@ -70,8 +70,8 @@ public:
 
 extern "C" int main(int argc, const char *argv[]) {
 	auto app = std::make_unique<RenderApp>();
-	app->SetWindowTitle(g_WindowTitle);
-	app->AddRenderPassToFront(std::make_shared<BasicTriangle>());
+	app->setWindowTitle(g_WindowTitle);
+	app->addRenderPassToFront(std::make_shared<BasicTriangle>());
 	app->run();
 	exit(EXIT_SUCCESS);
 }
