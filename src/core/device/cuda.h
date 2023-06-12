@@ -41,6 +41,8 @@ public:
 	}
 
 	KRR_CALLABLE operator cudaSurfaceObject_t() const { return mCudaFrame; }
+	KRR_CALLABLE operator bool() const { return mCudaFrame != 0; }
+	KRR_CALLABLE bool isValid() const { return mCudaFrame != 0; }
 
 	cudaSurfaceObject_t mCudaFrame{};
 	int width, height;

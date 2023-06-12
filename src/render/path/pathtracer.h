@@ -16,24 +16,20 @@ class MegakernelPathTracer: public RenderPass{
 public:
 	using SharedPtr = std::shared_ptr<MegakernelPathTracer>;
 	KRR_REGISTER_PASS_DEC(MegakernelPathTracer);
-
 	MegakernelPathTracer() = default;
-	~MegakernelPathTracer();
 
 	bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 	bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
 	void renderUI() override;
-	void beginFrame(RenderContext* context) override;
 	void render(RenderContext *context) override;
 	void initialize() override;
 
 	void setScene(Scene::SharedPtr scene) override;
-
 	string getName() const override { return "MegakernelPathTracer"; }
 
 private:
 
-	OptixBackend* optixBackend{nullptr};
+	OptixBackend::SharedPtr optixBackend;
 	LaunchParamsPT launchParams;
 
 	friend void to_json(json &j, const MegakernelPathTracer &p) {

@@ -11,7 +11,7 @@ extern "C" char PATHTRACER_PTX[];
 
 void MegakernelPathTracer::initialize() {
 	if (!optixBackend) {
-		optixBackend = new OptixBackend();
+		optixBackend = std::make_shared<OptixBackend>();
 		auto params	 = OptixInitializeParameters()
 						  .setPTX(PATHTRACER_PTX)
 						  .addRayType("Radiance", true, true, false)
@@ -20,8 +20,6 @@ void MegakernelPathTracer::initialize() {
 		optixBackend->initialize(params);
 	}
 }
-
-MegakernelPathTracer::~MegakernelPathTracer() { delete optixBackend; }
 
 void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
@@ -43,8 +41,6 @@ void MegakernelPathTracer::renderUI() {
 	ui::Checkbox("Shader debug output", &launchParams.debugOutput);
 	ui::InputInt2("Debug pixel", (int *) &launchParams.debugPixel);
 }
-
-void MegakernelPathTracer::beginFrame(RenderContext* context) { optixBackend->update(); }
 
 void MegakernelPathTracer::render(RenderContext *context) {
 	if (getFrameSize()[0] * getFrameSize()[1] == 0)

@@ -207,7 +207,6 @@ void WavefrontPathTracer::beginFrame(RenderContext* context) {
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
 		}, gpContext->cudaStream);
-	backend->update();	// rebuild accel structures
 }
 
 void WavefrontPathTracer::render(RenderContext *context) {

@@ -27,17 +27,10 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 	HitgroupSBTData data;
 };
 
-class OptixBackendInterface {
+class OptixScene {
 public:
-	OptixBackendInterface() = default;
-
-	static OptixModule createOptixModule(OptixDeviceContext optixContext, const char* ptx);
-	static OptixPipelineCompileOptions getPipelineCompileOptions();
-
-	static OptixProgramGroup createRaygenPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint);
-	static OptixProgramGroup createMissPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint);
-	static OptixProgramGroup createIntersectionPG(OptixDeviceContext optixContext, OptixModule optixModule,
-		const char* closest, const char* any, const char* intersect);
+	using SharedPtr = std::shared_ptr<OptixScene>;
+	OptixScene() = default;
 
 	static OptixTraversableHandle buildASFromInputs(OptixDeviceContext optixContext, 
 		CUstream cudaStream, const std::vector<OptixBuildInput> &buildInputs, 
@@ -46,6 +39,26 @@ public:
 													   CUstream cudaStream,
 													   const rt::MeshData &mesh,
 													   CUDABuffer &accelBuffer);
+
+	Scene::SharedPtr getScene() const { return scene.lock(); }
+	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
+	rt::SceneData getSceneData() const { return scene.lock()->getSceneRT()->getSceneData(); }
+	
+	void setScene(Scene::SharedPtr _scene);
+	void update();
+
+protected:
+	void buildAccelStructure();
+	void updateAccelStructure();
+
+	std::weak_ptr<Scene> scene;
+	inter::vector<OptixInstance> instancesIAS;
+
+	std::vector<CUDABuffer> accelBuffersGAS;
+	CUDABuffer accelBufferIAS{};
+
+	std::vector<OptixTraversableHandle> traversablesGAS;
+	OptixTraversableHandle traversableIAS;
 };
 
 struct OptixInitializeParameters {
@@ -70,14 +83,14 @@ struct OptixInitializeParameters {
 	}
 };
 
-class OptixBackend : public OptixBackendInterface {
+class OptixBackend {
 public:
 	using SharedPtr = std::shared_ptr<OptixBackend>;
-	OptixBackend()	= default;
+	OptixBackend()	= default; 
 	~OptixBackend() = default;
 
 	void initialize(const OptixInitializeParameters& params);
-	void setScene(Scene::SharedPtr scene);
+	void setScene(Scene::SharedPtr _scene);
 	template <typename T>
 	void launch(const T& parameters, string entryPoint, int width,
 		int height, int depth = 1) {
@@ -91,16 +104,15 @@ public:
 			sizeof(T), &SBT[entryPoints[entryPoint]], width, height, depth));
 	}
 
-	void update();
 	Scene::SharedPtr getScene() const { return scene; }
-	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
-	rt::SceneData getSceneData() const { return scene->mSceneRT->getSceneData(); }
+	rt::SceneData getSceneData() const { return scene->getSceneRT()->getSceneData(); }
 	std::vector<string> getRayTypes() const { return optixParameters.rayTypes; }
 	std::vector<string> getRaygenEntries() const { return optixParameters.raygenEntries; }
+	OptixTraversableHandle getRootTraversable() const {
+		return scene->getSceneRT()->getOptixScene()->getRootTraversable();
+	}
 
 protected:
-	void buildAccelStructure();
-	void updateAccelStructure();
 	void buildShaderBindingTable();
 
 	OptixProgramGroup createRaygenPG(const char *entrypoint) const;
@@ -120,17 +132,21 @@ protected:
 	inter::vector<HitgroupRecord> hitgroupRecords;
 	inter::vector<MissRecord> missRecords;
 
-	inter::vector<OptixInstance> instancesIAS;
-	std::vector<OptixTraversableHandle> traversablesGAS;
-	std::vector<CUDABuffer> accelBuffersGAS;
-	CUDABuffer accelBufferIAS{};
-	OptixTraversableHandle traversableIAS;
-
 	std::map<string, int> entryPoints;
 	std::vector<OptixShaderBindingTable> SBT;
 	
 	Scene::SharedPtr scene;
 	OptixInitializeParameters optixParameters;
+
+public:
+	static OptixModule createOptixModule(OptixDeviceContext optixContext, const char* ptx);
+	static OptixPipelineCompileOptions getPipelineCompileOptions();
+
+	static OptixProgramGroup createRaygenPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint);
+	static OptixProgramGroup createMissPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint);
+	static OptixProgramGroup createIntersectionPG(OptixDeviceContext optixContext, OptixModule optixModule,
+		const char* closest, const char* any, const char* intersect);
+
 };
 
 KRR_NAMESPACE_END

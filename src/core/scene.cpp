@@ -20,6 +20,7 @@ bool Scene::update(size_t frameIndex, double currentTime) {
 	if (mCamera) hasChanges |= mCamera->update();
 	if (mEnableAnimation) mGraph->animate(currentTime);
 	mGraph->update(frameIndex);
+	if (mSceneRT) mSceneRT->update();
 	return mHasChanges = hasChanges;
 }
 
@@ -109,14 +110,15 @@ bool Scene::onKeyEvent(const KeyboardEvent& keyEvent){
 void Scene::initializeSceneRT() {
 	if (!mGraph) Log(Fatal, "Scene graph must be initialized.");
 	mGraph->update(0); // must be done before preparing device data.
+	if (mSceneRT)
+		Log(Error, "The RT scene data has been initialized once before."
+				   "I'm assuming you want to reinitialize it?");
 	mSceneRT = std::make_shared<RTScene>(shared_from_this()); 
-	mSceneRT->toDevice();
 }
 
-void RTScene::toDevice() {
-	cudaDeviceSynchronize();
-	uploadSceneData();
-	CUDA_SYNC_CHECK();
+RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {
+	uploadSceneData(); 
+	mOptixScene = std::make_shared<OptixScene>(scene);
 }
 
 void RTScene::uploadSceneData() {
@@ -158,6 +160,7 @@ void RTScene::uploadSceneData() {
 	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
 	processLights();
 	mInstancesBuffer.copy_from_host(mInstances.data(), mInstances.size());
+	CUDA_SYNC_CHECK();
 }
 
 void RTScene::processLights() {
@@ -229,6 +232,16 @@ rt::SceneData RTScene::getSceneData() const {
 	sceneData.infiniteLights = mInfiniteLightsBuffer;
 	sceneData.lightSampler	 = mLightSamplerBuffer.data();
 	return sceneData;
+}
+
+void RTScene::update() { 
+	static size_t lastUpdatedFrame = 0;
+	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
+	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform) !=
+			SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
+		mOptixScene->update();
+		updateSceneData();
+	}
 }
 
 // This routine should only be called by OptixBackend...
