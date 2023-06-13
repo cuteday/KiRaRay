@@ -28,7 +28,6 @@ public:
 	string getName() const override { return "MegakernelPathTracer"; }
 
 private:
-
 	OptixBackend::SharedPtr optixBackend;
 	LaunchParamsPT launchParams;
 

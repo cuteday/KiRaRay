@@ -1,4 +1,3 @@
-#include <optix_function_table_definition.h>
 #include <optix_types.h>
 
 #include "device/cuda.h"

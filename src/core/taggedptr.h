@@ -112,19 +112,19 @@ namespace types {
 
 	// TaggedPointer Helper Templates
 	template <typename F, typename R, typename T>
-	__both__ R Dispatch(F &&func, const void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
 		DCHECK_EQ(0, index);
 		return func((const T *)ptr);
 	}
 
 	template <typename F, typename R, typename T>
-	__both__ R Dispatch(F &&func, void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 		DCHECK_EQ(0, index);
 		return func((T *)ptr);
 	}
 
 	template <typename F, typename R, typename T0, typename T1>
-	__both__ R Dispatch(F &&func, const void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 2);
 
@@ -135,7 +135,7 @@ namespace types {
 	}
 
 	template <typename F, typename R, typename T0, typename T1>
-	__both__ R Dispatch(F &&func, void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 2);
 
@@ -146,7 +146,7 @@ namespace types {
 	}
 
 	template <typename F, typename R, typename T0, typename T1, typename T2>
-	__both__ R Dispatch(F &&func, const void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 3);
 
@@ -161,7 +161,7 @@ namespace types {
 	}
 
 	template <typename F, typename R, typename T0, typename T1, typename T2>
-	__both__ R Dispatch(F &&func, void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 3);
 
@@ -176,7 +176,7 @@ namespace types {
 	}
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3>
-	__both__ R Dispatch(F &&func, const void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 4);
 
@@ -193,7 +193,7 @@ namespace types {
 	}
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3>
-	__both__ R Dispatch(F &&func, void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 4);
 
@@ -211,7 +211,7 @@ namespace types {
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
 			typename T4>
-	__both__ R Dispatch(F &&func, const void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 5);
 
@@ -231,7 +231,7 @@ namespace types {
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
 			typename T4>
-	__both__ R Dispatch(F &&func, void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 5);
 
@@ -251,7 +251,7 @@ namespace types {
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
 			typename T4, typename T5>
-	__both__ R Dispatch(F &&func, const void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 6);
 
@@ -273,7 +273,7 @@ namespace types {
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
 			typename T4, typename T5>
-	__both__ R Dispatch(F &&func, void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 6);
 
@@ -295,7 +295,7 @@ namespace types {
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
 			typename T4, typename T5, typename T6>
-	__both__ R Dispatch(F &&func, const void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 7);
 
@@ -319,7 +319,7 @@ namespace types {
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
 			typename T4, typename T5, typename T6>
-	__both__ R Dispatch(F &&func, void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 7);
 
@@ -343,7 +343,7 @@ namespace types {
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
 			typename T4, typename T5, typename T6, typename T7>
-	__both__ R Dispatch(F &&func, void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 		DCHECK_GE(index, 0);
 		DCHECK_LT(index, 8);
 
@@ -369,7 +369,7 @@ namespace types {
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
 			typename T4, typename T5, typename T6, typename T7, typename... Ts>
-	__both__ R Dispatch(F &&func, const void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
 		DCHECK_GE(index, 0);
 
 		switch (index) {
@@ -396,7 +396,7 @@ namespace types {
 
 	template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
 			typename T4, typename T5, typename T6, typename T7, typename... Ts>
-	__both__ R Dispatch(F &&func, void *ptr, int index) {
+	KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 		DCHECK_GE(index, 0);
 
 		switch (index) {
@@ -469,24 +469,24 @@ class TaggedPointer {
 	TaggedPointer() = default;
 
 	template <typename T>
-	__both__ TaggedPointer(T *ptr) {
+	KRR_CALLABLE TaggedPointer(T *ptr) {
 		uintptr_t iptr = reinterpret_cast<uintptr_t>(ptr);
 		DCHECK_EQ(iptr & ptrMask, iptr);
 		constexpr unsigned int type = typeIndex<T>();
 		bits = iptr | ((uintptr_t)type << tagShift);
 	}
 
-	__both__ TaggedPointer(std::nullptr_t np) {}
+	KRR_CALLABLE TaggedPointer(std::nullptr_t np) {}
 
-	__both__ TaggedPointer(const TaggedPointer &t) { bits = t.bits; }
+	KRR_CALLABLE TaggedPointer(const TaggedPointer &t) { bits = t.bits; }
 	
-	__both__ TaggedPointer &operator=(const TaggedPointer &t) {
+	KRR_CALLABLE TaggedPointer &operator=(const TaggedPointer &t) {
 		bits = t.bits;
 		return *this;
 	}
 
 	template <typename T>
-	__both__ static constexpr unsigned int typeIndex() {
+	KRR_CALLABLE static constexpr unsigned int typeIndex() {
 		using Tp = typename std::remove_cv_t<T>;
 		if constexpr (std::is_same_v<Tp, std::nullptr_t>)
 			return 0;
@@ -494,33 +494,33 @@ class TaggedPointer {
 	}
 
 	// the index of the type pack plus one. tag=0 means nullptr.
-	__both__ unsigned int tag() const { return ((bits & tagMask) >> tagShift); }
+	KRR_CALLABLE unsigned int tag() const { return ((bits & tagMask) >> tagShift); }
 	template <typename T>
-	__both__ bool is() const {
+	KRR_CALLABLE bool is() const {
 		return tag() == typeIndex<T>();
 	}
 
-	__both__ static constexpr unsigned int maxTag() { return sizeof...(Ts); }
-	__both__ static constexpr unsigned int numTags() { return maxTag() + 1; }
+	KRR_CALLABLE static constexpr unsigned int maxTag() { return sizeof...(Ts); }
+	KRR_CALLABLE static constexpr unsigned int numTags() { return maxTag() + 1; }
 
-	__both__ explicit operator bool() const { return (bits & ptrMask) != 0; }
+	KRR_CALLABLE explicit operator bool() const { return (bits & ptrMask) != 0; }
 
-	__both__ bool operator < (const TaggedPointer &tp) const { return bits < tp.bits; }
+	KRR_CALLABLE bool operator < (const TaggedPointer &tp) const { return bits < tp.bits; }
 
 	template <typename T>
-	__both__ T *cast() {
+	KRR_CALLABLE T *cast() {
 		DCHECK(is<T>());
 		return reinterpret_cast<T *>(ptr());
 	}
 
 	template <typename T>
-	__both__ const T * cast() const {
+	KRR_CALLABLE const T * cast() const {
 		DCHECK(is<T>());
 		return reinterpret_cast<const T *>(ptr());
 	}
 
 	template <typename T>
-	__both__ T *castOrNullptr() {
+	KRR_CALLABLE T *castOrNullptr() {
 		if (is<T>())
 			return reinterpret_cast<T *>(ptr());
 		else
@@ -528,42 +528,42 @@ class TaggedPointer {
 	}
 
 	template <typename T>
-	__both__ const T *castOrNullptr() const {
+	KRR_CALLABLE const T *castOrNullptr() const {
 		if (is<T>())
 			return reinterpret_cast<const T *>(ptr());
 		else
 			return nullptr;
 	}
 
-	__both__ bool operator==(const TaggedPointer &tp) const { return bits == tp.bits; }
+	KRR_CALLABLE bool operator==(const TaggedPointer &tp) const { return bits == tp.bits; }
 	
-	__both__ bool operator!=(const TaggedPointer &tp) const { return bits != tp.bits; }
+	KRR_CALLABLE bool operator!=(const TaggedPointer &tp) const { return bits != tp.bits; }
 
-	__both__ void *ptr() { return reinterpret_cast<void *>(bits & ptrMask); }
+	KRR_CALLABLE void *ptr() { return reinterpret_cast<void *>(bits & ptrMask); }
 
-	__both__ const void *ptr() const { return reinterpret_cast<const void *>(bits & ptrMask); }
+	KRR_CALLABLE const void *ptr() const { return reinterpret_cast<const void *>(bits & ptrMask); }
 
 	template <typename F>
-	__both__ decltype(auto) dispatch(F &&func) {
+	KRR_CALLABLE decltype(auto) dispatch(F &&func) {
 		DCHECK(ptr());
 		using R = typename types::ReturnType<F, Ts...>::type;
 		return types::Dispatch<F, R, Ts...>(func, ptr(), tag() - 1);
 	}
 
-	__both__ size_t realSize() const {
+	KRR_CALLABLE size_t realSize() const {
 		auto f = [&](auto* ptr)-> size_t {return sizeof * ptr; };
 		return dispatch(f);
 	}
 
 	template <typename F>
-	__both__ decltype(auto) dispatch(F &&func) const {
+	KRR_CALLABLE decltype(auto) dispatch(F &&func) const {
 		DCHECK(ptr());
 		using R = typename types::ReturnType<F, Ts...>::type;
 		return types::Dispatch<F, R, Ts...>(func, ptr(), tag() - 1);
 	}
 
 	template <typename F>
-	__both__ static decltype(auto) dispatch(F&& func, int index) {
+	KRR_CALLABLE static decltype(auto) dispatch(F&& func, int index) {
 		using R = typename types::ReturnType<F, Ts...>::type;
 		return types::Dispatch<F, R, Ts...>(func, (const void*)nullptr, index);
 	}

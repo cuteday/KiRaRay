@@ -5,6 +5,22 @@ KRR_NAMESPACE_BEGIN
 
 extern "C" char GBUFFER_PTX[];
 
+void GBufferPass::initialize() {
+	if (!mOptixBackend) {
+		mOptixBackend = std::make_shared<OptixBackend>();
+		mOptixBackend->initialize(OptixInitializeParameters()
+									  .setPTX(GBUFFER_PTX)
+									  .addRayType("Primary", true, false, false)
+									  .addRaygenEntry("Primary"));
+	}
+}
+
+void GBufferPass::setScene(Scene::SharedPtr scene) { 
+	initialize();
+	mScene = scene; 
+
+}
+
 void GBufferPass::render(RenderContext* context) {
 
 }

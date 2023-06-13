@@ -112,8 +112,11 @@ void Scene::initializeSceneRT() {
 	if (!mGraph) Log(Fatal, "Scene graph must be initialized.");
 	mGraph->update(0); // must be done before preparing device data.
 	if (mSceneRT) {
-		Log(Warning, "The RT scene data has been initialized once before."
+		if (mSceneRT->getScene() == shared_from_this())
+			Log(Debug, "The RT scene data has been initialized once before."
 					 "I'm assuming you do not want to reinitialize it?");
+		else Log(Error, "[Confused cat noise] A new scene?"
+			"Currently only initialization with one scene is supported!");
 		return;
 	}
 	mSceneRT = std::make_shared<RTScene>(shared_from_this()); 

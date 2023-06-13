@@ -1,4 +1,5 @@
 #include <regex>
+#include <optix_function_table_definition.h>
 
 #include "logger.h"
 #include "context.h"
