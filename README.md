@@ -8,12 +8,11 @@
 ### Features
 
 > __Working in progress (?) project__  
-> This project is purposed for learning only with limited features.
+> This toy renderer is purposed for learning and only with limited features. Currently, any part of this project could possibly produce unexpected errors.
 
 - [x] GPU path tracing (megakernel/wavefront).
 - [x] Post processing passes (e.g. denoising).
-- [x] Basic support for Vulkan and CUDA/OptiX interoperation.
-- [x] Basic support for multiple scenes formats and scene animation.
+- [x] Basic support for scene animation (glTF).
 
 ### Build and run
 
@@ -65,59 +64,23 @@ build/src/kiraray.exe common/configs/example.json
 <p align=center>
 <img src=common/demo/gallery.png width="800">
 
-### Algorithms
-
-I tried to implement some algorithms designed for path tracing (see [misc](src/misc) for details). 
-<details>
-<summary>Click for details (・ω< )★ </summary>
-
-Turn the CMake option `KRR_BUILD_STARLIGHT` on if one wants to build these additional algorithm implementations. Note that these code may not be maintained as the main repository.
-
-#### Path Guiding
-
-This implements [Practical Path Guiding (PPG)](https://github.com/Tom94/practical-path-guiding), which is a path guiding algorithm targeted for CPU offline rendering. What I did is largely to simply move the original implementation from CPU to GPU. The performance is not quite satisfying for real-time purposes on GPUs. 
-
-~~~json
-	"params": {
-		"spp_per_pass": 4,
-		"max_memory": 16,
-		"bsdf_fraction": 0.5,
-		"distribution": "full",
-		"stree_thres": 2000,
-		"dtree_thres": 0.005,
-		"auto_build": true,
-		"mode": "offline",
-		"sample_combination": "atomatic",
-		"budget": {
-			"type": "spp",
-			"value": 1000
-		}
-	}
-~~~
-
-I also implemented a later [Variance-aware](https://github.com/iRath96/variance-aware-path-guiding) enhancement, which improves PPG on the theoretical side. Use the `distribution` parameter to select from the two methods (`radiance` for standard PPG, and `full` for the variance-aware version).
-
-</details>
-
 ### Additional Information
 
 #### Performance
 
 Currently, the renderer runs extremely slow on *Debug* build for unknown reasons. Please switch to *Release* build for normal performance.
 
-#### Scene loading
-
-*Kiraray* provided limited support for importing scenes like OBJ, glTF2 using [Assimp](https://github.com/assimp/assimp.git). Most of the rigging animations in glTF2 models could be correctly imported. [pbrt-parser](https://github.com/ingowald/pbrt-parser) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes (get some [here](https://benedikt-bitterli.me/resources/), modify the file url to download the pbrt-v3 format models).
-
 #### Writing new render passes.
 
 It is possible to write your own render pass, see the examples [here](src/misc/samples/). Check these [post-processing passes](src/render/passes/) for more working examples.
 
+#### Scene loading
+
+*Kiraray* provided limited support for importing scenes like OBJ, glTF2 using [Assimp](https://github.com/assimp/assimp.git). Animations in glTF2 models could be correctly imported., but skeleton animation is not yet supported. [pbrt-parser](https://github.com/ingowald/pbrt-parser) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes (get some [here](https://benedikt-bitterli.me/resources/), modify the file url to download the pbrt-v3 format models).
+
 ### Epilogue
 
 Although the main purpose of this project is to let me (a beginner) learn c++ and optix, I really wish to add more features and make it a fully-functional renderer with support for both ray-tracing and rasterization based techniques, combined via vulkan-cuda interopration. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i am so lazy, trying to sleep as more as possible (\*/ω＼\*).
-
-For anyone that (accidentally) found this project: any questions and suggestions are appreciated. Bug reports might not be necessary since any part of this project could possibly produce unexpected errors ;  ;
 
 ### Credits
 - The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).

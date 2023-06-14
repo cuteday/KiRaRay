@@ -1,5 +1,6 @@
 #include "gbuffer.h"
 #include "window.h"
+#include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -18,11 +19,18 @@ void GBufferPass::initialize() {
 void GBufferPass::setScene(Scene::SharedPtr scene) { 
 	initialize();
 	mScene = scene; 
-
 }
 
 void GBufferPass::render(RenderContext* context) {
+	PROFILE("GBuffer drawing");
+	static LaunchParamsGBuffer launchParams = {};
+	launchParams.frameIndex					= getFrameIndex();
+	launchParams.frameSize					= getFrameSize();
+	launchParams.cameraData					= mScene->getCamera()->getCameraData();
+	launchParams.sceneData					= mScene->getSceneRT()->getSceneData();
+	launchParams.traversable				= mOptixBackend->getRootTraversable();
 
+	mOptixBackend->launch(launchParams, "Primary", getFrameSize()[0], getFrameSize()[1]);
 }
 
 void GBufferPass::renderUI() {

@@ -38,9 +38,13 @@ SET ( KRR_CORE_SOURCE
 	core/device/optix.cpp
 )
 
-FILE (GLOB_RECURSE KRR_RENDER_PASSES
-	"render/passes/*.cpp"
-	"render/passes/*.cu"
+SET (KRR_RENDER_PASSES
+	render/passes/accumulate/accumulate.cu
+	render/passes/denoise/denoise.cpp
+	render/passes/errormeasure/errormeasure.cpp
+	render/passes/errormeasure/metrics.cu
+	render/passes/tonemapping/tonemapping.cu
+	render/passes/gbuffer/gbuffer.cpp
 )
 
 SET (KRR_SOURCE
@@ -143,6 +147,7 @@ ADD_LIBRARY ( krr_lib STATIC
 	# PTX
 	${PATHTRACER_PTX}
 	${WAVEFRONT_PTX}
+	${GBUFFER_PTX}
 	${BDPT_PTX}
 )
 
