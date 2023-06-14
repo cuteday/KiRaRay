@@ -23,14 +23,9 @@ public:
 	bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 	bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
 	void renderUI() override;
-	void render(RenderFrame::SharedPtr frame) override;
-	void resize(const Vector2i& size) override { 
-		mFrameSize = launchParams.fbSize = size; 
-	}
-
-	void setScene(Scene::SharedPtr scene) override {
-		mScene = scene;
-	}
+	void render(RenderContext *context) override;
+	void resize(const Vector2i& size) override {}
+	void setScene(Scene::SharedPtr scene) override { mScene = scene; }
 
 	string getName() const override { return "BDPTIntegrator"; }
 

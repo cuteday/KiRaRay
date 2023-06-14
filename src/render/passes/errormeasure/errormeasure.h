@@ -22,9 +22,8 @@ public:
 
 	ErrorMeasurePass() = default;
 	~ErrorMeasurePass() = default;
-	void beginFrame() override;
-	void render(RenderFrame::SharedPtr frame) override;
-	void endFrame() override;
+	void beginFrame(RenderContext* context) override;
+	void render(RenderContext* context) override;
 	void renderUI() override;
 	void resize(const Vector2i& size) override;
 	void finalize() override;

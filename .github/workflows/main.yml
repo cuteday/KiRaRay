@@ -26,6 +26,18 @@ jobs:
     runs-on: ${{matrix.os}}
 
     steps:
+      
+    - name: Configure Pagefile
+      if:  ${{matrix.os == 'windows-2019'}}
+      uses: al-cheb/configure-pagefile-action@v1.3
+      with:
+        minimum-size: 4GB
+        maximum-size: 64GB
+    - name: Set up pagefile
+      if:  ${{matrix.os == 'windows-2019'}}
+      run: |
+        (Get-CimInstance Win32_PageFileUsage).AllocatedBaseSize
+
     - name: Checkout Kiraray
       uses: actions/checkout@v3
       with:
@@ -76,4 +88,4 @@ jobs:
       
     - name: Build
       run: | 
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 4
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 2

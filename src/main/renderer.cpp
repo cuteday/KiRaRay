@@ -15,13 +15,13 @@ RenderApp::RenderApp() {
 	if (!gpContext) gpContext = std::make_shared<Context>();
 }
 
-void RenderApp::BackBufferResizing() { 
+void RenderApp::backBufferResizing() { 
 	if (mpUIRenderer) mpUIRenderer->resizing();
-	DeviceManager::BackBufferResizing();
+	DeviceManager::backBufferResizing();
 }
 
-void RenderApp::BackBufferResized() {
-	DeviceManager::BackBufferResized();
+void RenderApp::backBufferResized() {
+	DeviceManager::backBufferResized();
 	if (mScene)
 		mScene->getCamera()->setAspectRatio((float) 
 			mDeviceParams.backBufferWidth /
@@ -55,35 +55,36 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 
 void RenderApp::setScene(Scene::SharedPtr scene) {
 	mScene = scene;
+	mRenderContext->setScene(scene);
 	for (auto p : mRenderPasses) if (p) p->setScene(scene);
 }
 
 void RenderApp::run() {
 	initialize();
-	DeviceManager::RunMessageLoop();
+	DeviceManager::runMessageLoop();
 	finalize();
 }
 
 // Called before beginFrame()...
-void RenderApp::Tick(double elapsedTime) {
+void RenderApp::tick(double elapsedTime) {
 	for (auto it : mRenderPasses) it->tick(float(elapsedTime));
 	mpUIRenderer->tick(float(elapsedTime));
-	if (mScene) mScene->update(GetFrameIndex(), elapsedTime);
+	if (mScene) mScene->update(getFrameIndex(), elapsedTime);
 }
 
-void RenderApp::Render() {
-	if (sSaveFrames && GetFrameIndex() % sSaveFrameInterval == 0)
+void RenderApp::render() {
+	if (sSaveFrames && getFrameIndex() % sSaveFrameInterval == 0)
 		sRequestScreenshot = true;
-	DeviceManager::BeginFrame();
-	auto framebuffer = mRenderFramebuffers[GetCurrentBackBufferIndex()];
-	mpUIRenderer->beginFrame();
-	for (auto it : mRenderPasses) it->beginFrame();
+	DeviceManager::beginFrame();
+	
+	mpUIRenderer->beginFrame(getRenderContext());
+	for (auto it : mRenderPasses) it->beginFrame(getRenderContext());
 	for (auto it : mRenderPasses) {
-		if (it->isCudaPass()) framebuffer->vulkanUpdateCuda(mGraphicsSemaphore);
-		it->render(framebuffer);
-		if (it->isCudaPass()) framebuffer->cudaUpdateVulkan();
+		if (it->isCudaPass()) getRenderContext()->sychronizeCuda();
+		it->render(getRenderContext());
+		if (it->isCudaPass()) getRenderContext()->sychronizeVulkan();
 	}
-	for (auto it : mRenderPasses) it->endFrame();
+	for (auto it : mRenderPasses) it->endFrame(getRenderContext());
 
 	if (sRequestScreenshot) {
 		captureFrame(sSaveHDR);
@@ -92,14 +93,15 @@ void RenderApp::Render() {
 
 	// UI render. This is better done after taking screenshot.
 	renderUI();
-	mpUIRenderer->render(framebuffer);
-	mpUIRenderer->endFrame();
+	mpUIRenderer->render(getRenderContext());
+	mpUIRenderer->endFrame(getRenderContext());
 	mNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, mPresentSemaphore, 0);
 	// Blit render buffer, from the render texture (usually HDR) to swapchain texture.
 	mCommandList->open();
 	mHelperPass->BlitTexture(
-		mCommandList, mSwapChainFramebuffers[GetCurrentBackBufferIndex()],
-		GetCurrentRenderImage(), mBindingCache.get());
+		mCommandList, mSwapChainFramebuffers[getCurrentBackBufferIndex()],
+							 getRenderContext()->getColorTexture()->getVulkanTexture(),
+							 mBindingCache.get());
 	mCommandList->close();
 	mNvrhiDevice->executeCommandList(mCommandList,
 									  nvrhi::CommandQueue::Graphics);
@@ -138,7 +140,7 @@ void RenderApp::renderUI() {
 		}
 		if (showFps) 
 			ui::BeginMenu(formatString("FPS: %.0lf", 
-				1.0 / GetAverageFrameTimeSeconds()).c_str(), false);
+				1.0 / getAverageFrameTimeSeconds()).c_str(), false);
 		ui::EndMainMenuBar();
 	}
 
@@ -186,34 +188,34 @@ void RenderApp::renderUI() {
 void RenderApp::captureFrame(bool hdr, fs::path filename) {
 	string extension = hdr ? ".exr" : ".png";
 
-	vkrhi::TextureHandle renderTexture = GetCurrentRenderImage();
+	vkrhi::TextureHandle renderTexture = getRenderContext()->getColorTexture()->getVulkanTexture();
 	vkrhi::TextureDesc textureDesc	   = renderTexture->getDesc();
 	textureDesc.format				   = vkrhi::Format::RGBA32_FLOAT;
 	textureDesc.initialState		   = nvrhi::ResourceStates::RenderTarget;
 	textureDesc.isRenderTarget		   = true;
 	textureDesc.keepInitialState	   = true;
-	auto stagingTexture				   = GetDevice()->createStagingTexture(
+	auto stagingTexture				   = getDevice()->createStagingTexture(
 		   textureDesc, vkrhi::CpuAccessMode::Read);
-	auto commandList = GetDevice()->createCommandList();
+	auto commandList = getDevice()->createCommandList();
 	commandList->open();
 	commandList->copyTexture(stagingTexture, vkrhi::TextureSlice(),
 							 renderTexture, vkrhi::TextureSlice());
 	commandList->close();
-	GetDevice()->executeCommandList(commandList);
+	getDevice()->executeCommandList(commandList);
 	
 	size_t pitch;
 	auto *data =
-		GetDevice()->mapStagingTexture(stagingTexture, vkrhi::TextureSlice(),
+		getDevice()->mapStagingTexture(stagingTexture, vkrhi::TextureSlice(),
 									   vkrhi::CpuAccessMode::Read, &pitch);
 
-	Image screenshot(GetWindowDimensions(), Image::Format::RGBAfloat);
+	Image screenshot(getFrameSize(), Image::Format::RGBAfloat);
 	memcpy(screenshot.data(), data, screenshot.getSizeInBytes());
-	GetDevice()->unmapStagingTexture(stagingTexture);
+	getDevice()->unmapStagingTexture(stagingTexture);
 
 	fs::path filepath(filename);
 	if (filename.empty()) // use default path for screen shots
 		filepath = File::outputDir() /
-				   ("frame_" + std::to_string(GetFrameIndex()) + extension);
+				   ("frame_" + std::to_string(getFrameIndex()) + extension);
 	if (!fs::exists(filepath.parent_path()))
 		fs::create_directories(filepath.parent_path());
 	screenshot.saveImage(filepath);
@@ -228,7 +230,7 @@ void RenderApp::saveConfig(string path) {
 		path.empty() ? dirpath / ("config_" + Log::nowToString("%H_%M_%S") + ".json") : path;
 
 	Vector2i resolution;
-	GetWindowDimensions(resolution[0], resolution[1]);
+	getFrameSize(resolution[0], resolution[1]);
 	json config			 = mConfig;
 	config["resolution"] = resolution;
 	config["scene"]		 = *mScene;
@@ -268,7 +270,7 @@ void RenderApp::loadConfig(const json config) {
 				pass = RenderPassFactory::createInstance(name);
 			}
 			pass->setEnable(p.value("enable", true));
-			AddRenderPassToBack(pass);
+			addRenderPassToBack(pass);
 		}
 	} else
 		logWarning("No specified render pass in configuration!");
@@ -289,13 +291,12 @@ void RenderApp::loadConfig(const json config) {
 			Log(Fatal, "Import a model before doing scene configurations!");
 		scene->loadConfig(config["scene"]);
 	}
-	if (scene)
-		setScene(scene);
+	if (scene) mScene = scene;
 	if (config.contains("resolution")) {
 		Vector2i windowDimension = config.at("resolution");
 		mDeviceParams.backBufferWidth = windowDimension[0];
 		mDeviceParams.backBufferHeight = windowDimension[1];
-		UpdateWindowSize();
+		updateWindowSize();
 	}	
 	mConfig		= config;
 }
@@ -307,7 +308,8 @@ void RenderApp::loadConfigFrom(fs::path path) {
 }
 
 void RenderApp::initialize() { 
-	CreateWindowDeviceAndSwapChain(mDeviceParams, KRR_PROJECT_NAME);
+	createWindowDeviceAndSwapChain(mDeviceParams, KRR_PROJECT_NAME);
+	setScene(mScene);
 	mpUIRenderer = std::make_shared<UIRenderer>(this);
 	mpUIRenderer->initialize();
 	for (auto pass : mRenderPasses) pass->initialize();
@@ -321,7 +323,7 @@ void RenderApp::finalize() {
 	mRenderPasses.clear();
 	mScene.reset();
 	// Destroy created vulkan resources before destroy vulkan device
-	Shutdown();
+	shutdown();
 }
 
 KRR_NAMESPACE_END

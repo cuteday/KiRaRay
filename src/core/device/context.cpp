@@ -36,7 +36,8 @@ void Context::initialize() {
 	// set up context
 	const int deviceID = 0;
 	CUDA_CHECK(cudaSetDevice(deviceID));
-	CUDA_CHECK(cudaStreamCreate(&cudaStream));
+	//CUDA_CHECK(cudaStreamCreate(&cudaStream));
+	cudaStream = 0;
 
 	cudaGetDeviceProperties(&deviceProps, deviceID);
 	Log(Success, "KiRaRay: running on device: " + string(deviceProps.name));

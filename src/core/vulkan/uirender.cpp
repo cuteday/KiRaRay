@@ -259,12 +259,12 @@ void UIRenderer::tick(float elapsedTimeSeconds) {
 	io.MouseDrawCursor = false;
 }
 
-void UIRenderer::beginFrame() {
+void UIRenderer::beginFrame(RenderContext* context) {
 	int width, height;
 	float scaleX, scaleY;
 
-	getDeviceManager()->GetWindowDimensions(width, height);
-	getDeviceManager()->GetDPIScaleInfo(scaleX, scaleY);
+	getDeviceManager()->getFrameSize(width, height);
+	getDeviceManager()->getDPIScaleInfo(scaleX, scaleY);
 
 	ImGuiIO &io					 = ImGui::GetIO();
 	io.DisplaySize				 = ImVec2(float(width), float(height));
@@ -278,7 +278,7 @@ void UIRenderer::beginFrame() {
 	ImGui::NewFrame();
 }
 
-void UIRenderer::endFrame() {
+void UIRenderer::endFrame(RenderContext* context) {
 	// reconcile input key states
 	auto &io = ImGui::GetIO();
 	for (size_t i = 0; i < mouseDown.size(); i++) 
@@ -359,7 +359,7 @@ bool UIRenderer::updateGeometry(nvrhi::ICommandList *commandList) {
 	return true;
 }
 
-void UIRenderer::render(RenderFrame::SharedPtr frame) {
+void UIRenderer::render(RenderContext *context) {
 	PROFILE("UI Render");
 	ImGui::Render();
 
@@ -382,7 +382,7 @@ void UIRenderer::render(RenderFrame::SharedPtr frame) {
 	// set up graphics state
 	nvrhi::GraphicsState drawState;
 
-	drawState.framebuffer = frame->getFramebuffer();
+	drawState.framebuffer = context->getFramebuffer();
 	assert(drawState.framebuffer);
 
 	drawState.pipeline = getPSO(drawState.framebuffer);

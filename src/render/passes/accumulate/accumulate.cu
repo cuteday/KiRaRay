@@ -12,7 +12,7 @@ void AccumulatePass::reset() {
 	mStartTime = mCurrentTime = CpuTimer::getCurrentTimePoint();
 }
 
-void AccumulatePass::render(RenderFrame::SharedPtr frame) {
+void AccumulatePass::render(RenderContext *context) {
 	if (!mEnable) return;
 	PROFILE("Accumulate pass");
 	if (mScene->getChanges()) reset();
@@ -25,8 +25,8 @@ void AccumulatePass::render(RenderFrame::SharedPtr frame) {
 	} 
 	
 	Color4f *accumBuffer = (Color4f *) mAccumBuffer->data();
-	CudaRenderTarget currentBuffer = frame->getCudaRenderTarget();
-	GPUParallelFor(mFrameSize[0] * mFrameSize[1], KRR_DEVICE_LAMBDA(int i) {
+	CudaRenderTarget currentBuffer = context->getColorTexture()->getCudaRenderTarget();
+	GPUParallelFor(getFrameSize()[0] * getFrameSize()[1], KRR_DEVICE_LAMBDA(int i) {
 		float currentWeight = 1.f / (mAccumCount + 1);
 		Color4f currentPixel = currentBuffer.read(i);
 		if (mAccumCount > 0) {

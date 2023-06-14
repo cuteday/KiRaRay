@@ -517,14 +517,14 @@ void SceneGraphNode::renderUI() {
 	}
 	if (getLeaf()) {
 		ui::Text("Leaf:");
-		if (auto *instance = dynamic_cast<MeshInstance *>(getLeaf().get())) {
+		if (auto instance = std::dynamic_pointer_cast<MeshInstance>(getLeaf())) {
 			if (ui::TreeNode("Mesh Instance")) {
 				ui::PushID(instance->getInstanceId());
 				instance->renderUI();
 				ui::PopID();
 				ui::TreePop();
 			}
-		} else if (auto animation = dynamic_cast<SceneAnimation *>(getLeaf().get())) {
+		} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(getLeaf())) {
 			if (ui::TreeNode("Animation")) {
 				animation->renderUI();
 				ui::TreePop();

@@ -138,13 +138,11 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo	   = getHitInfo();
 	ShadingData &sd	   = *getPRD<ShadingData>();
-	const rt::MaterialData &material = hitInfo.instance->getMaterial();
-	prepareShadingData(sd, hitInfo, material);
+	prepareShadingData(sd, hitInfo);
 }
 
 extern "C" __global__ void KRR_RT_AH(Radiance)() {
-	if (alphaKilled()) 
-		optixIgnoreIntersection();
+	if (alphaKilled()) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_MS(Radiance)() {
@@ -152,8 +150,7 @@ extern "C" __global__ void KRR_RT_MS(Radiance)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(ShadowRay)() {
-	if (alphaKilled())
-		optixIgnoreIntersection();
+	if (alphaKilled()) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_CH(ShadowRay)() {} /* skipped */
@@ -187,7 +184,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 
 extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	Vector3ui launchIndex = optixGetLaunchIndex();
-	Vector2ui pixel		   = {  launchIndex[0], launchIndex[1] };
+	Vector2ui pixel		  = {launchIndex[0], launchIndex[1]};
 
 	const uint frameID = launchParams.frameID;
 	const uint32_t fbIndex = pixel[0] + pixel[1] * launchParams.fbSize[0];

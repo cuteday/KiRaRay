@@ -46,8 +46,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	HitInfo hitInfo = getHitInfo();
 	ShadingData& sd = *getPRD<ShadingData>();
 	RayWorkItem r = getRayWorkItem();
-	const rt::MaterialData& material = hitInfo.instance->getMaterial();
-	prepareShadingData(sd, hitInfo, material);
+	prepareShadingData(sd, hitInfo);
 	if (sd.light) {		// push to hit ray queue if mesh has light
 		HitLightWorkItem w = {};
 		w.light			   = sd.light;

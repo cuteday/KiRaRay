@@ -31,8 +31,8 @@ void BDPTIntegrator::renderUI() {
 	}
 }
 
-void BDPTIntegrator::render(RenderFrame::SharedPtr frame) {
-	if (mFrameSize[0] * mFrameSize[1] == 0)
+void BDPTIntegrator::render(RenderContext *context) {
+	if (getFrameSize()[0] * getFrameSize()[1] == 0)
 		return;
 	PROFILE("BDPT Integrator");
 	{

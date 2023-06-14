@@ -97,18 +97,21 @@ public:
 };
 }
 
+class OptixScene;
 class RTScene {
 public:
 	using SharedPtr = std::shared_ptr<RTScene>;
 
-	RTScene() = default;
-	RTScene(Scene::SharedPtr scene) : mScene(scene){}
+	RTScene(Scene::SharedPtr scene);
 	~RTScene() = default;
 
-	void toDevice();
+	void update();
 	void uploadSceneData();
 	void updateSceneData();
+
 	rt::SceneData getSceneData() const;
+	Scene::SharedPtr getScene() const { return mScene.lock(); }
+	std::shared_ptr<OptixScene> getOptixScene() const { return mOptixScene; }
 
 	std::vector<rt::MaterialData> &getMaterialData() { return mMaterials; }
 	std::vector<rt::MeshData> &getMeshData() { return mMeshes; }
@@ -139,7 +142,7 @@ private:
 	TypedBuffer<UniformLightSampler> mLightSamplerBuffer;
 
 	std::weak_ptr<Scene> mScene;
+	std::shared_ptr<OptixScene> mOptixScene;
 };
-
 
 KRR_NAMESPACE_END

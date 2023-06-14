@@ -1,4 +1,5 @@
 #include <regex>
+#include <optix_function_table_definition.h>
 
 #include "logger.h"
 #include "context.h"
@@ -8,14 +9,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-void meshSanityCheck(const Mesh::SharedPtr mesh) {
-	for (int i = 0; i < mesh->positions.size(); i++) 
-		Log(Info, "POS#%d: %s", i, mesh->positions[i].string().c_str());
-	for (int i = 0; i < mesh->indices.size(); i++) 
-		Log(Info, "IDX#%d: %s", i, mesh->indices[i].string().c_str());	
-}
-
-OptixPipelineCompileOptions OptixBackendInterface::getPipelineCompileOptions() {
+OptixPipelineCompileOptions OptixBackend::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
 	// [TODO] check this: currently we want single-level instancing only.
 	pipelineCompileOptions.traversableGraphFlags =
@@ -29,7 +23,7 @@ OptixPipelineCompileOptions OptixBackendInterface::getPipelineCompileOptions() {
 	return pipelineCompileOptions;
 }
 
-OptixModule OptixBackendInterface::createOptixModule(OptixDeviceContext optixContext,
+OptixModule OptixBackend::createOptixModule(OptixDeviceContext optixContext,
 													 const char *ptx) {
 	OptixModuleCompileOptions moduleCompileOptions = {};
 	moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
@@ -63,7 +57,7 @@ OptixModule OptixBackendInterface::createOptixModule(OptixDeviceContext optixCon
 	return optixModule;
 }
 
-OptixProgramGroup OptixBackendInterface::createRaygenPG(OptixDeviceContext optixContext,
+OptixProgramGroup OptixBackend::createRaygenPG(OptixDeviceContext optixContext,
 														OptixModule optixModule,
 														const char *entrypoint) {
 	OptixProgramGroupOptions pgOptions = {};
@@ -82,7 +76,7 @@ OptixProgramGroup OptixBackendInterface::createRaygenPG(OptixDeviceContext optix
 	return pg;
 }
 
-OptixProgramGroup OptixBackendInterface::createMissPG(OptixDeviceContext optixContext,
+OptixProgramGroup OptixBackend::createMissPG(OptixDeviceContext optixContext,
 													  OptixModule optixModule,
 													  const char *entrypoint) {
 	OptixProgramGroupOptions pgOptions = {};
@@ -102,7 +96,7 @@ OptixProgramGroup OptixBackendInterface::createMissPG(OptixDeviceContext optixCo
 	return pg;
 }
 
-OptixProgramGroup OptixBackendInterface::createIntersectionPG(OptixDeviceContext optixContext,
+OptixProgramGroup OptixBackend::createIntersectionPG(OptixDeviceContext optixContext,
 															  OptixModule optixModule,
 															  const char *closest, const char *any,
 															  const char *intersect) {
@@ -135,7 +129,7 @@ OptixProgramGroup OptixBackendInterface::createIntersectionPG(OptixDeviceContext
 }
 
 OptixTraversableHandle
-OptixBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstream cudaStream,
+OptixScene::buildASFromInputs(OptixDeviceContext optixContext, CUstream cudaStream,
 										 const std::vector<OptixBuildInput> &buildInputs,
 										 CUDABuffer &accelBuffer, bool compact, bool update) {
 	if (buildInputs.empty()) return {};
@@ -202,7 +196,7 @@ OptixBackendInterface::buildASFromInputs(OptixDeviceContext optixContext, CUstre
 	return traversableHandle;
 }
 
-OptixTraversableHandle OptixBackendInterface::buildTriangleMeshGAS(OptixDeviceContext optixContext,
+OptixTraversableHandle OptixScene::buildTriangleMeshGAS(OptixDeviceContext optixContext,
 																   CUstream cudaStream,
 																   const rt::MeshData &mesh,
 																   CUDABuffer &accelBuffer) {
@@ -244,17 +238,16 @@ OptixTraversableHandle OptixBackendInterface::buildTriangleMeshGAS(OptixDeviceCo
 }
 
 OptixProgramGroup OptixBackend::createRaygenPG(const char *entrypoint) const {
-	return OptixBackendInterface::createRaygenPG(optixContext, optixModule, entrypoint);
+	return createRaygenPG(optixContext, optixModule, entrypoint);
 }
 
 OptixProgramGroup OptixBackend::createMissPG(const char *entrypoint) const {
-	return OptixBackendInterface::createMissPG(optixContext, optixModule, entrypoint);
+	return createMissPG(optixContext, optixModule, entrypoint);
 }
 
 OptixProgramGroup OptixBackend::createIntersectionPG(
 	const char *closest, const char *any, const char *intersect) const {
-	return OptixBackendInterface::createIntersectionPG(optixContext, optixModule,
-											  closest, any, intersect);
+	return createIntersectionPG(optixContext, optixModule, closest, any, intersect);
 }
 
 void OptixBackend::initialize(const OptixInitializeParameters &params) {
@@ -305,20 +298,19 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 	Log(Debug, log);
 }
 
-void OptixBackend::setScene(Scene::SharedPtr _scene) {
+void OptixBackend::setScene(Scene::SharedPtr _scene){
 	scene = _scene;
 	scene->initializeSceneRT();		// upload bindless scene data to device buffers.
-	buildAccelStructure();			// build single-level IAS.
 	buildShaderBindingTable();		// SBT[Instances [RayTypes ...] ...]
 }
 
 // [TODO] This routine currently do not support rebuild or dynamic update,
 // check back later.
-void OptixBackend::buildAccelStructure() {
+void OptixScene::buildAccelStructure() {
 	// this is the first time we met...
-	const auto &graph			= scene->getSceneGraph();
-	const auto &instances		= scene->getMeshInstances();
-	const auto &meshes			= scene->getMeshes();
+	const auto &graph			= scene.lock()->getSceneGraph();
+	const auto &instances		= scene.lock()->getMeshInstances();
+	const auto &meshes			= scene.lock()->getMeshes();
 	const auto &sceneDataDevice = getSceneData();
 
 	// build GAS for each mesh
@@ -326,10 +318,10 @@ void OptixBackend::buildAccelStructure() {
 	accelBuffersGAS.resize(meshes.size());
 	for (int idx = 0; idx < meshes.size(); idx++) {
 		const auto &mesh = meshes[idx];
-		const auto &meshData = scene->getSceneRT()->getMeshData()[idx];
+		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
 		// build GAS for each mesh
 		traversablesGAS[idx] =
-			buildTriangleMeshGAS(optixContext, cudaStream, meshData, accelBuffersGAS[idx]);
+			buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream, meshData, accelBuffersGAS[idx]);
 	}
 
 	// fill optix instance arrays
@@ -339,7 +331,7 @@ void OptixBackend::buildAccelStructure() {
 		OptixInstance &instanceData	   = instancesIAS[idx];
 		Affine3f transform			   = instance->getNode()->getGlobalTransform();
 		instanceData.instanceId		   = idx;
-		instanceData.sbtOffset		   = idx * getRayTypes().size();
+		instanceData.sbtOffset		   = idx * OptixBackend::OPTIX_MAX_RAY_TYPES;
 		instanceData.visibilityMask	   = 255;
 		instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 		instanceData.traversableHandle = traversablesGAS[instance->getMesh()->getMeshId()];
@@ -356,25 +348,31 @@ void OptixBackend::buildAccelStructure() {
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
 	
 	Log(Info, "Building root IAS: %zd instances", instances.size());
-	traversableIAS = buildASFromInputs(optixContext, cudaStream, {iasBuildInput}, accelBufferIAS, false);
-	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
+	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+									   {iasBuildInput}, accelBufferIAS, false);
+	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
 }
 
 // [TODO] Currently supports updating subgraph transforms only.
-void OptixBackend::update() {
+void OptixScene::update() {
 	static size_t lastUpdatedFrame = 0;
-	auto lastUpdates		= scene->getSceneGraph()->getLastUpdateRecord();
+	auto lastUpdates			   = scene.lock()->getSceneGraph()->getLastUpdateRecord();
 	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphUpdates)
 		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {		
 		updateAccelStructure();
 		lastUpdatedFrame = lastUpdates.frameIndex;
 	}
-	scene->getSceneRT()->updateSceneData();
+	scene.lock()->getSceneRT()->updateSceneData();
 }
 
-void OptixBackend::updateAccelStructure() {
+OptixScene::OptixScene(Scene::SharedPtr _scene) {
+	scene = _scene;
+	buildAccelStructure();
+}
+
+void OptixScene::updateAccelStructure() {
 	PROFILE("Update AS");
-	const auto &instances = scene->getMeshInstances();
+	const auto &instances = scene.lock()->getMeshInstances();
 	// Currently only supports updating subgraph transformations.
 	for (int idx = 0; idx < instances.size(); idx++) {
 		const auto &instance		   = instances[idx];
@@ -391,12 +389,17 @@ void OptixBackend::updateAccelStructure() {
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
 	Log(Debug, "Building root IAS: %zd instances", instances.size());
 
-	traversableIAS = buildASFromInputs(optixContext, cudaStream, {iasBuildInput}, accelBufferIAS, false, true);
-	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
+	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+									   {iasBuildInput},
+									   accelBufferIAS, false, true);
+	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
 }
 
 void OptixBackend::buildShaderBindingTable() {
 	size_t nRayTypes = optixParameters.rayTypes.size();
+	if (OPTIX_MAX_RAY_TYPES > 2) Log(Fatal, "Currently supports no more than %zd ray types only,"
+		"but there are %zd ray types", OPTIX_MAX_RAY_TYPES, nRayTypes);
+	else if (nRayTypes == 0) Log(Fatal, "No ray types has been specified!");
 
 	for (const auto [raygenEntry, index] : entryPoints) {
 		RaygenRecord raygenRecord = {};
@@ -419,6 +422,8 @@ void OptixBackend::buildShaderBindingTable() {
 			hitgroupRecord.data = {instance};
 			hitgroupRecords.push_back(hitgroupRecord);
 		}
+		for (int rayType = nRayTypes; rayType < OPTIX_MAX_RAY_TYPES; rayType++)
+			hitgroupRecords.push_back({});
 	}
 
 	for (const auto [raygenEntry, index] : entryPoints) {

@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "sampler.h"
 #include "scene.h"
 #include "render/lightsampler.h"

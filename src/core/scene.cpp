@@ -20,6 +20,8 @@ bool Scene::update(size_t frameIndex, double currentTime) {
 	if (mCamera) hasChanges |= mCamera->update();
 	if (mEnableAnimation) mGraph->animate(currentTime);
 	mGraph->update(frameIndex);
+	if (mSceneRT) mSceneRT->update();
+	if (mSceneVK) mSceneVK->update();
 	return mHasChanges = hasChanges;
 }
 
@@ -76,6 +78,7 @@ void Scene::renderUI() {
 				ui::TreePop();
 			}
 		}
+		ui::TreePop();
 	}
 	if (mGraph && getAnimations().size() && ui::TreeNode("Animations")) {
 		ui::Checkbox("Enable animation", &mEnableAnimation);
@@ -108,15 +111,19 @@ bool Scene::onKeyEvent(const KeyboardEvent& keyEvent){
 void Scene::initializeSceneRT() {
 	if (!mGraph) Log(Fatal, "Scene graph must be initialized.");
 	mGraph->update(0); // must be done before preparing device data.
+	if (mSceneRT) {
+		if (mSceneRT->getScene() == shared_from_this())
+			Log(Debug, "The RT scene data has been initialized once before."
+					 "I'm assuming you do not want to reinitialize it?");
+		else Log(Error, "[Confused cat noise] A new scene?"
+			"Currently only initialization with one scene is supported!");
+		return;
+	}
 	mSceneRT = std::make_shared<RTScene>(shared_from_this()); 
-	mSceneRT->toDevice();
+	mSceneRT->uploadSceneData();
 }
 
-void RTScene::toDevice() {
-	cudaDeviceSynchronize();
-	uploadSceneData();
-	CUDA_SYNC_CHECK();
-}
+RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {}
 
 void RTScene::uploadSceneData() {
 	/* Upload texture and material data to device... */
@@ -157,6 +164,8 @@ void RTScene::uploadSceneData() {
 	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
 	processLights();
 	mInstancesBuffer.copy_from_host(mInstances.data(), mInstances.size());
+	CUDA_SYNC_CHECK();
+	mOptixScene = std::make_shared<OptixScene>(mScene.lock());
 }
 
 void RTScene::processLights() {
@@ -228,6 +237,16 @@ rt::SceneData RTScene::getSceneData() const {
 	sceneData.infiniteLights = mInfiniteLightsBuffer;
 	sceneData.lightSampler	 = mLightSamplerBuffer.data();
 	return sceneData;
+}
+
+void RTScene::update() { 
+	static size_t lastUpdatedFrame = 0;
+	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
+	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform) !=
+			SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
+		mOptixScene->update();
+		updateSceneData();
+	}
 }
 
 // This routine should only be called by OptixBackend...

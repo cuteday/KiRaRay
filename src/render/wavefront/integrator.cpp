@@ -18,7 +18,7 @@ KRR_DEVICE_FUNCTION void WavefrontPathTracer::debugPrint(uint pixelId, const cha
 
 void WavefrontPathTracer::initialize() {
 	Allocator &alloc = *gpContext->alloc;
-	maxQueueSize	 = mFrameSize[0] * mFrameSize[1];
+	maxQueueSize	 = getFrameSize()[0] * getFrameSize()[1];
 	CUDA_SYNC_CHECK(); // necessary, preventing kernel accessing memories tobe free'ed...
 	for (int i = 0; i < 2; i++) 
 		if (rayQueue[i]) rayQueue[i]->resize(maxQueueSize, alloc);
@@ -161,13 +161,14 @@ void WavefrontPathTracer::generateScatterRays() {
 void WavefrontPathTracer::generateCameraRays(int sampleId) {
 	PROFILE("Generate camera rays");
 	RayQueue *cameraRayQueue = currentRayQueue(0);
-	ParallelFor(
+	auto frameSize			 = getFrameSize();
+	GPUParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 			Sampler sampler		= &pixelState->sampler[pixelId];
-			Vector2i pixelCoord = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
-			Ray cameraRay		= camera->getRay(pixelCoord, mFrameSize, sampler);
+			Vector2i pixelCoord = {pixelId % frameSize[0], pixelId / frameSize[0]};
+			Ray cameraRay		= camera->getRay(pixelCoord, frameSize, sampler);
 			cameraRayQueue->pushCameraRay(cameraRay, pixelId);
-		});
+		}, gpContext->cudaStream);
 }
 
 void WavefrontPathTracer::resize(const Vector2i &size) {
@@ -192,30 +193,29 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	lightSampler = backend->getSceneData().lightSampler;
 }
 
-void WavefrontPathTracer::beginFrame() {
+void WavefrontPathTracer::beginFrame(RenderContext* context) {
 	if (!mScene || !maxQueueSize) return;
 	PROFILE("Begin frame");
-	cudaMemcpy(camera, &mScene->getCamera()->getCameraData(), sizeof(Camera::CameraData),
-			   cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(camera, &mScene->getCamera()->getCameraData(), sizeof(Camera::CameraData),
+			   cudaMemcpyHostToDevice, 0);
 	size_t frameIndex = getFrameIndex();
-	ParallelFor(
+	auto frameSize = getFrameSize();
+	GPUParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
-			Vector2i pixelCoord	   = { pixelId % mFrameSize[0], pixelId / mFrameSize[0] };
+			Vector2i pixelCoord	   = {pixelId % frameSize[0], pixelId / frameSize[0]};
 			pixelState->L[pixelId] = 0;
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
-		});
-	backend->update();	// rebuild accel structures
+		}, gpContext->cudaStream);
 }
 
-void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
-	if (!mScene || !maxQueueSize)
-		return;
+void WavefrontPathTracer::render(RenderContext *context) {
+	if (!mScene || !maxQueueSize) return;
 	PROFILE("Wavefront Path Tracer");
-	CudaRenderTarget frameBuffer = frame->getCudaRenderTarget();
+	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
-		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
+		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); }, gpContext->cudaStream);
 		generateCameraRays(sampleId);
 		// [STEP#2] do radiance estimation recursively
 		for (int depth = 0; true; depth++) {
@@ -225,7 +225,7 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 				missRayQueue->reset();
 				shadowRayQueue->reset();
 				scatterRayQueue->reset();
-			});
+			}, gpContext->cudaStream);
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
@@ -241,13 +241,13 @@ void WavefrontPathTracer::render(RenderFrame::SharedPtr frame) {
 			if (enableNEE) traceShadow();
 		}
 	}
-	ParallelFor(
+	GPUParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 			Color L = pixelState->L[pixelId] / float(samplesPerPixel);
 			if (enableClamp)
 				L = clamp(L, 0.f, clampMax);
 			frameBuffer.write(Color4f(L, 1), pixelId);
-		});
+		}, gpContext->cudaStream);
 }
 
 void WavefrontPathTracer::renderUI() {

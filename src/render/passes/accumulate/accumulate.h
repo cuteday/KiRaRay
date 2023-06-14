@@ -18,12 +18,12 @@ public:
 
 	AccumulatePass() = default;
 	void renderUI() override;
-	void reset();
 	void resize(const Vector2i &size) override;
 	string getName() const override { return "AccumulatePass"; }
-	void render(RenderFrame::SharedPtr frame) override;
+	void render(RenderContext *context) override;
 
 private:
+	void reset();
 	friend void to_json(json &j, const AccumulatePass &p) {
 		j = json{ 
 			{ "spp", p.mMaxAccumCount }, { "mode", p.mMode }

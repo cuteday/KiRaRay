@@ -30,7 +30,7 @@ public:
 	void setOperator(Operator toneMappingOperator)
 		{mOperator = toneMappingOperator; }
 	Operator getOperator() const { return mOperator; }
-	void render(RenderFrame::SharedPtr frame) override;
+	void render(RenderContext* context) override;
 
 	string getName() const override { return "ToneMappingPass"; }
 

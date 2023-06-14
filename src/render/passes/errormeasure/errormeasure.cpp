@@ -8,19 +8,19 @@ namespace {
 static const char *metricNames[] = { "MSE", "MAPE", "SMAPE", "RelMSE" };
 }
 
-void ErrorMeasurePass::beginFrame() {
+void ErrorMeasurePass::beginFrame(RenderContext* context) {
 	if (!mFrameNumber) reset();
 	mFrameNumber++;
 	mNeedsEvaluate |= mContinuousEvaluate && (mFrameNumber % mEvaluateInterval == 0);
 }
 
-void ErrorMeasurePass::render(RenderFrame::SharedPtr frame) {
+void ErrorMeasurePass::render(RenderContext *context) {
 	if (mNeedsEvaluate && mReferenceImage.isValid()) {
 		PROFILE("Metric calculation");
-		CHECK_LOG(mReferenceImage.getSize() == mFrameSize,
+		CHECK_LOG(mReferenceImage.getSize() == getFrameSize(),
 				  "ErrorMeasure::Reference image size does not match frame size!");
-		size_t n_elememts = mFrameSize[0] * mFrameSize[1];
-		float result = calc_metric(frame->getCudaRenderTarget(),
+		size_t n_elememts = getFrameSize()[0] * getFrameSize()[1];
+		float result	  = calc_metric(context->getColorTexture()->getCudaRenderTarget(),
 			reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()),
 			n_elememts, mMetric);
 		mLastResult = { { string(metricNames[(int) mMetric]), result } };
@@ -34,8 +34,6 @@ void ErrorMeasurePass::render(RenderFrame::SharedPtr frame) {
 		mNeedsEvaluate = false;
 	}
 }
-
-void ErrorMeasurePass::endFrame() {}
 
 void ErrorMeasurePass::resize(const Vector2i &size) {
 	RenderPass::resize(size); }

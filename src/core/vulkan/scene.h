@@ -105,7 +105,7 @@ public:
 	[[nodiscard]] vkrhi::IBuffer *getInstanceBuffer() const { return mInstanceDataBuffer; }
 	[[nodiscard]] vkrhi::IBuffer* getGeometryBuffer() const { return mMeshDataBuffer; }
 
-	void update(vkrhi::ICommandList *commandList);
+	void update();
 
 protected:	
 	friend Scene;
@@ -121,6 +121,7 @@ protected:
 
 	std::weak_ptr<Scene> mScene{};
 	vkrhi::vulkan::DeviceHandle mDevice{};
+	vkrhi::CommandListHandle mCommandList;
 	std::shared_ptr<DescriptorTableManager> mDescriptorTable{};
 	std::shared_ptr<TextureCache> mTextureLoader;
 

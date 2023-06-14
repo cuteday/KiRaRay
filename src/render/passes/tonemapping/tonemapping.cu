@@ -54,13 +54,13 @@ void ToneMappingPass::renderUI() {
 	}
 }
 
-void ToneMappingPass::render(RenderFrame::SharedPtr frame) {
+void ToneMappingPass::render(RenderContext *context) {
 	if (!mEnable) return;
 	PROFILE("Tong mapping pass");
 	CUstream &stream = gpContext->cudaStream;
 	Color colorTransform = Color(mExposureCompensation);
-	CudaRenderTarget frameBuffer = frame->getCudaRenderTarget();
-	GPUParallelFor(mFrameSize[0] * mFrameSize[1], KRR_DEVICE_LAMBDA(int pixelId) {
+	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
+	GPUParallelFor(getFrameSize()[0] * getFrameSize()[1], KRR_DEVICE_LAMBDA(int pixelId) {
 		Color color = frameBuffer.read(pixelId).head<3>() * colorTransform;
 		switch (mOperator) {
 		case krr::ToneMappingPass::Operator::Linear:

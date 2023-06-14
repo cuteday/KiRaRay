@@ -38,9 +38,13 @@ SET ( KRR_CORE_SOURCE
 	core/device/optix.cpp
 )
 
-FILE (GLOB_RECURSE KRR_RENDER_PASSES
-	"render/passes/*.cpp"
-	"render/passes/*.cu"
+SET (KRR_RENDER_PASSES
+	render/passes/accumulate/accumulate.cu
+	render/passes/denoise/denoise.cpp
+	render/passes/errormeasure/errormeasure.cpp
+	render/passes/errormeasure/metrics.cu
+	render/passes/tonemapping/tonemapping.cu
+	render/passes/gbuffer/gbuffer.cpp
 )
 
 SET (KRR_SOURCE
@@ -105,7 +109,8 @@ add_custom_target (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
 
 INCLUDE_DIRECTORIES (${KRR_INCLUDE_ALL})
 INCLUDE (${KRR_PROJECT_ROOT}/common/build/CompilePTX.cmake)
-# the argument's name must match the extern variable declared in host c++ code 
+# the argument's name must match the extern variable declared in host c++ code
+CUDA_COMPILE_EMBED(GBUFFER_PTX render/passes/gbuffer/device.cu krr-gbuffer krr_soa_generated) 
 CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-path krr_soa_generated)
 CUDA_COMPILE_EMBED(WAVEFRONT_PTX render/wavefront/wavefront.cu krr-wavefront krr_soa_generated)
 CUDA_COMPILE_EMBED(BDPT_PTX render/bdpt/device.cu krr-bdpt krr_soa_generated)
@@ -114,6 +119,7 @@ ADD_LIBRARY (KRR_PTX STATIC
 	# PTX 
 	${PATHTRACER_PTX}
 	${WAVEFRONT_PTX}
+	${GBUFFER_PTX}
 	${BDPT_PTX}
 )
 ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
@@ -141,6 +147,7 @@ ADD_LIBRARY ( krr_lib STATIC
 	# PTX
 	${PATHTRACER_PTX}
 	${WAVEFRONT_PTX}
+	${GBUFFER_PTX}
 	${BDPT_PTX}
 )
 

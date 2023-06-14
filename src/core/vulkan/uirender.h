@@ -48,9 +48,9 @@ public:
 
 	void initialize() override;
 	void tick(float elapsedTimeSeconds) override;
-	void beginFrame() override;
-	void endFrame() override;
-	void render(RenderFrame::SharedPtr frame) override;
+	void beginFrame(RenderContext* context) override;
+	void endFrame(RenderContext* context) override;
+	void render(RenderContext *context) override;
 	void resizing() override;
 
 	virtual bool onMouseEvent(const io::MouseEvent &mouseEvent) override;

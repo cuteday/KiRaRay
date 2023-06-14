@@ -1,4 +1,3 @@
-#include <optix_function_table_definition.h>
 #include <optix_types.h>
 
 #include "device/cuda.h"
@@ -11,7 +10,7 @@ extern "C" char PATHTRACER_PTX[];
 
 void MegakernelPathTracer::initialize() {
 	if (!optixBackend) {
-		optixBackend = new OptixBackend();
+		optixBackend = std::make_shared<OptixBackend>();
 		auto params	 = OptixInitializeParameters()
 						  .setPTX(PATHTRACER_PTX)
 						  .addRayType("Radiance", true, true, false)
@@ -20,8 +19,6 @@ void MegakernelPathTracer::initialize() {
 		optixBackend->initialize(params);
 	}
 }
-
-MegakernelPathTracer::~MegakernelPathTracer() { delete optixBackend; }
 
 void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
@@ -44,23 +41,20 @@ void MegakernelPathTracer::renderUI() {
 	ui::InputInt2("Debug pixel", (int *) &launchParams.debugPixel);
 }
 
-void MegakernelPathTracer::beginFrame() { optixBackend->update(); }
-
-void MegakernelPathTracer::render(RenderFrame::SharedPtr frame) {
-	if (mFrameSize[0] * mFrameSize[1] == 0)
+void MegakernelPathTracer::render(RenderContext *context) {
+	if (getFrameSize()[0] * getFrameSize()[1] == 0)
 		return;
 	PROFILE("Megakernel Path Tracer");
 	{
-		launchParams.fbSize		 = mFrameSize;
-		launchParams.colorBuffer = frame->getCudaRenderTarget();
+		launchParams.fbSize		 = getFrameSize();
+		launchParams.colorBuffer = context->getColorTexture()->getCudaRenderTarget();
 		launchParams.camera		 = mScene->getCamera()->getCameraData();
-		launchParams.sceneData	 = mScene->mSceneRT->getSceneData();
+		launchParams.sceneData	 = mScene->getSceneRT()->getSceneData();
 		launchParams.traversable = optixBackend->getRootTraversable();
 		launchParams.frameID	 = (uint)getFrameIndex();
 
-		optixBackend->launch(launchParams, "Pathtracer", mFrameSize[0], mFrameSize[1]);
+		optixBackend->launch(launchParams, "Pathtracer", getFrameSize()[0], getFrameSize()[1]);
 	}
-	CUDA_SYNC_CHECK();
 }
 
 KRR_REGISTER_PASS_DEF(MegakernelPathTracer);

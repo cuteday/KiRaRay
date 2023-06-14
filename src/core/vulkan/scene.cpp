@@ -1,11 +1,17 @@
 #include "scene.h"
 #include "descriptor.h"
+#include "nvrhi/vulkan/vulkan-backend.h"
 
 KRR_NAMESPACE_BEGIN
 
 void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device, 
 	std::shared_ptr<DescriptorTableManager> descriptorTable) { 
 	if (!mGraph) Log(Fatal, "Scene graph must be initialized.");
+	if (mSceneRT) {
+		Log(Warning, "The RT scene data has been initialized once before."
+					 "I'm assuming you do not want to reinitialize it?");
+		return;
+	}
 	mGraph->update(0); // must be done before preparing device data.
 	mSceneVK = std::make_shared<VKScene>(shared_from_this(), device, descriptorTable); 
 	vkrhi::CommandListHandle commandList = device->createCommandList();
@@ -26,6 +32,7 @@ void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device,
 VKScene::VKScene(Scene::SharedPtr scene, vkrhi::vulkan::IDevice *device,
 	std::shared_ptr<DescriptorTableManager> descriptorTable) :	
 	mScene(scene), mDevice(device), mDescriptorTable(descriptorTable) {
+	mCommandList = mDevice->createCommandList();
 }
 
 void VKScene::createMeshBuffers(vkrhi::ICommandList *commandList) {
@@ -255,7 +262,7 @@ void VKScene::writeInstanceBuffer(vkrhi::ICommandList *commandList) {
 	commandList->writeBuffer(mInstanceDataBuffer, mInstanceData.data(), sizeof(rs::InstanceData) * instances.size(), 0);
 }
 
-void VKScene::update(vkrhi::ICommandList *commandList) {
+void VKScene::update() {
 	static size_t lastUpdatedFrame = 0;
 	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
 	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)
@@ -267,8 +274,19 @@ void VKScene::update(vkrhi::ICommandList *commandList) {
 			instanceData.transform		   = instances[i]->getNode()->getGlobalTransform().matrix();
 			instanceData.meshIndex		   = instances[i]->getMesh()->getMeshId();
 		}
-		commandList->writeBuffer(mInstanceDataBuffer, mInstanceData.data(),
+		
+		auto *device = dynamic_cast<vkrhi::vulkan::Device*>(mDevice.Get());
+		uint64_t waitValue = device->getQueue(vkrhi::CommandQueue::Graphics)->getLastSubmittedID();
+		vk::Semaphore waitSem = device->getQueueSemaphore(vkrhi::CommandQueue::Graphics);
+		device->queueWaitForSemaphore(vkrhi::CommandQueue::Graphics, waitSem, waitValue);
+		mCommandList->open();
+		mCommandList->writeBuffer(mInstanceDataBuffer, mInstanceData.data(),
 								 sizeof(rs::InstanceData) * instances.size(), 0);
+		mCommandList->close();
+		mDevice->executeCommandList(mCommandList);
+		waitValue = device->getQueue(vkrhi::CommandQueue::Graphics)->getLastSubmittedID();
+		device->queueWaitForSemaphore(vkrhi::CommandQueue::Graphics, waitSem, waitValue);
+		
 		lastUpdatedFrame = lastUpdates.frameIndex;
 	}
 }

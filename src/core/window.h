@@ -46,7 +46,6 @@ struct DeviceCreationParameters {
 	bool enableComputeQueue			= true;
 	bool enableCopyQueue			= true;
 	bool enablePerMonitorDPI		= false;
-	bool enableCudaInterop			= true;
 
 	Log::Level infoLogSeverity = Log::Level::Info;
 
@@ -66,31 +65,27 @@ public:
 	DeviceManager()			 = default;
 	virtual ~DeviceManager() = default;
 
-	[[nodiscard]] virtual vk::Device GetNativeDevice() const { return mVulkanDevice; }
-
-	[[nodiscard]] virtual nvrhi::vulkan::IDevice *GetDevice() const {
-		return dynamic_cast<nvrhi::vulkan::IDevice*>(mNvrhiDevice.Get());
+	[[nodiscard]] virtual vk::Device getNativeDevice() const { return mVulkanDevice; }
+	[[nodiscard]] virtual nvrhi::vulkan::IDevice *getDevice() const {
+		return dynamic_cast<nvrhi::vulkan::IDevice *>(mNvrhiDevice.Get());
 	}
+	[[nodiscard]] virtual nvrhi::IDevice *getValidationLayer() const { return mValidationLayer; }
 
-	[[nodiscard]] virtual nvrhi::IDevice* GetValidationLayer() const {
-		return mValidationLayer;
-	}
-
-	bool CreateWindowDeviceAndSwapChain(const DeviceCreationParameters &params,
+	bool createWindowDeviceAndSwapChain(const DeviceCreationParameters &params,
 										const char *windowTitle);
 
-	void AddRenderPassToFront(RenderPass::SharedPtr pController);
-	void AddRenderPassToBack(RenderPass::SharedPtr pController);
-	void RemoveRenderPass(RenderPass::SharedPtr pController);
+	void addRenderPassToFront(RenderPass::SharedPtr pController);
+	void addRenderPassToBack(RenderPass::SharedPtr pController);
+	void removeRenderPass(RenderPass::SharedPtr pController);
 
-	void RunMessageLoop();
+	void runMessageLoop();
 
 	// returns the size of the window in screen coordinates
-	Vector2i GetWindowDimensions() const;
-	void GetWindowDimensions(int &width, int &height) const;
+	Vector2i getFrameSize() const;
+	void getFrameSize(int &width, int &height) const;
 
 	// returns the screen coordinate to pixel coordinate scale factor
-	void GetDPIScaleInfo(float &x, float &y) const {
+	void getDPIScaleInfo(float &x, float &y) const {
 		x = mDPIScaleFactorX;
 		y = mDPIScaleFactorY;
 	}
@@ -108,60 +103,63 @@ protected:
 	// current DPI scale info (updated when window moves)
 	float mDPIScaleFactorX = 1.f;
 	float mDPIScaleFactorY = 1.f;
-	bool mRequestedVSync	= false;
+	bool mRequestedVSync   = false;
 
 	double mAverageFrameTime		  = .0;
-	double mAverageTimeUpdateInterval= .5;
+	double mAverageTimeUpdateInterval = .5;
 	double mFrameTimeSum			  = .0;
-	int mNumberOfAccumulatedFrames	  =  0;
-
+	int mNumberOfAccumulatedFrames	  = 0;
 	uint32_t mFrameIndex = 0;
-
+	
+	nvrhi::vulkan::DeviceHandle mNvrhiDevice;
+	nvrhi::DeviceHandle mValidationLayer;
+	nvrhi::CommandListHandle mCommandList;
+	vkrhi::CuVkSemaphore mPresentSemaphore;
+	
 	std::vector<nvrhi::FramebufferHandle> mSwapChainFramebuffers;
-	std::vector<RenderFrame::SharedPtr> mRenderFramebuffers;
-
 	std::unique_ptr<CommonRenderPasses> mHelperPass;
 	std::unique_ptr<BindingCache> mBindingCache;
+	RenderContext::SharedPtr mRenderContext;
 
-	void UpdateWindowSize();
+	void updateWindowSize();
 
-	virtual void BackBufferResizing();
-	virtual void BackBufferResized();
+	virtual void backBufferResizing();
+	virtual void backBufferResized();
 
-	virtual void Tick(double elapsedTime);
-	virtual void Render();
-	virtual void UpdateAverageFrameTime(double elapsedTime);
+	virtual void tick(double elapsedTime);
+	virtual void render();
+	virtual void updateAverageFrameTime(double elapsedTime);
 
 	// device-specific methods
-	virtual bool CreateDeviceAndSwapChain();
-	virtual void DestroyDeviceAndSwapChain();
-	virtual void ResizeSwapChain() { if (mVulkanDevice) createSwapChain(); }
-	virtual void BeginFrame();
-	virtual void Present();
+	virtual bool createDeviceAndSwapChain();
+	virtual void destroyDeviceAndSwapChain();
+	virtual void resizeSwapChain() { if (mVulkanDevice) createSwapChain(); }
+	virtual void beginFrame();
+	virtual void present();
 
 public:
-	[[nodiscard]] virtual const char *GetRendererString() const { return mRendererString.c_str(); }
-	const DeviceCreationParameters &GetDeviceParams() { return mDeviceParams; }
-	[[nodiscard]] double GetAverageFrameTimeSeconds() const { return mAverageFrameTime; }
-	[[nodiscard]] double GetPreviousFrameTimestamp() const { return mPreviousFrameTimestamp; }
-	void SetFrameTimeUpdateInterval(double seconds) { mAverageTimeUpdateInterval = seconds; }
-	[[nodiscard]] bool IsVsyncEnabled() const { return mDeviceParams.vsyncEnabled; }
-	virtual void SetVsyncEnabled(bool enabled) {
+	[[nodiscard]] virtual const char *getRendererString() const { return mRendererString.c_str(); }
+	const DeviceCreationParameters getDeviceParams() { return mDeviceParams; }
+	[[nodiscard]] double getAverageFrameTimeSeconds() const { return mAverageFrameTime; }
+	[[nodiscard]] double getPreviousFrameTimestamp() const { return mPreviousFrameTimestamp; }
+	void setFrameTimeUpdateInterval(double seconds) { mAverageTimeUpdateInterval = seconds; }
+	[[nodiscard]] bool isVsyncEnabled() const { return mDeviceParams.vsyncEnabled; }
+	virtual void setVsyncEnabled(bool enabled) {
 		mRequestedVSync = enabled; /* will be processed later */
 	}
-	virtual void ReportLiveObjects() {}
-	
-	virtual Vector2f getMouseScale() { 
+	virtual void reportLiveObjects() {}
+
+	virtual Vector2f getMouseScale() {
 		Vector2i fbSize;
-		GetWindowDimensions(fbSize[0], fbSize[1]);
-		return fbSize.cast<float>().cwiseInverse(); 
+		getFrameSize(fbSize[0], fbSize[1]);
+		return fbSize.cast<float>().cwiseInverse();
 	}
 	inline Vector2i getMousePos() const {
 		double x, y;
 		glfwGetCursorPos(mWindow, &x, &y);
 		return {(int) x, (int) y};
 	}
-	
+
 	virtual void onWindowClose() {}
 	virtual void onWindowIconify(int iconified) {}
 	virtual void onWindowFocus(int focused) {}
@@ -170,45 +168,42 @@ public:
 	virtual bool onMouseEvent(io::MouseEvent &mouseEvent);
 	virtual bool onKeyEvent(io::KeyboardEvent &keyEvent);
 
-	[[nodiscard]] GLFWwindow *GetWindow() const { return mWindow; }
-	[[nodiscard]] size_t GetFrameIndex() const { return mFrameIndex; }
+	[[nodiscard]] GLFWwindow *getWindow() const { return mWindow; }
+	[[nodiscard]] size_t getFrameIndex() const { return mFrameIndex; }
+	[[nodiscard]] RenderContext *getRenderContext() const { return mRenderContext.get(); }
 
-	virtual nvrhi::ITexture *GetCurrentBackBuffer() const {
+	virtual nvrhi::ITexture *getCurrentBackBuffer() const {
 		return mSwapChainImages[mSwapChainIndex].rhiHandle;
 	}
-	virtual nvrhi::ITexture *GetBackBuffer(size_t index) const {
+	virtual nvrhi::ITexture *getBackBuffer(size_t index) const {
 		if (index < mSwapChainImages.size()) return mSwapChainImages[index].rhiHandle;
 		return nullptr;
 	}
-	virtual nvrhi::ITexture *GetCurrentRenderImage() const {
-		return mRenderImages[mSwapChainIndex];
+	virtual nvrhi::ITexture *getRenderImage() const {
+		return mRenderContext->getRenderTarget()->getColorTexture()->getVulkanTexture();
 	}
-	virtual nvrhi::ITexture *GetRenderImage(size_t index) const {
-		if (index < mRenderImages.size()) return mRenderImages[index];
-		return nullptr;
-	}
-	virtual size_t GetCurrentBackBufferIndex() { return mSwapChainIndex; }
-	virtual size_t GetBackBufferCount() { return mSwapChainImages.size(); }
+	virtual size_t getCurrentBackBufferIndex() { return mSwapChainIndex; }
+	virtual size_t getBackBufferCount() { return mSwapChainImages.size(); }
 
-	void Shutdown();
-	void SetWindowTitle(const char *title);
+	void shutdown();
+	void setWindowTitle(const char *title);
 	
-	virtual bool IsVulkanInstanceExtensionEnabled(const char *extensionName) const {
+	virtual bool isVulkanInstanceExtensionEnabled(const char *extensionName) const {
 		return enabledExtensions.instance.find(extensionName) != enabledExtensions.instance.end();
 	}
-	virtual bool IsVulkanDeviceExtensionEnabled(const char *extensionName) const {
+	virtual bool isVulkanDeviceExtensionEnabled(const char *extensionName) const {
 		return enabledExtensions.device.find(extensionName) != enabledExtensions.device.end();
 	}
-	virtual bool IsVulkanLayerEnabled(const char *layerName) const {
+	virtual bool isVulkanLayerEnabled(const char *layerName) const {
 		return enabledExtensions.layers.find(layerName) != enabledExtensions.layers.end();
 	}
-	virtual void GetEnabledVulkanInstanceExtensions(std::vector<std::string> &extensions) const {
+	virtual void getEnabledVulkanInstanceExtensions(std::vector<std::string> &extensions) const {
 		for (const auto &ext : enabledExtensions.instance) extensions.push_back(ext);
 	}
-	virtual void GetEnabledVulkanDeviceExtensions(std::vector<std::string> &extensions) const {
+	virtual void getEnabledVulkanDeviceExtensions(std::vector<std::string> &extensions) const {
 		for (const auto &ext : enabledExtensions.device) extensions.push_back(ext);
 	}
-	virtual void GetEnabledVulkanLayers(std::vector<std::string> &layers) const {
+	virtual void getEnabledVulkanLayers(std::vector<std::string> &layers) const {
 		for (const auto &ext : enabledExtensions.layers) layers.push_back(ext);
 	}
 
@@ -221,16 +216,6 @@ public:
 		std::function<void(DeviceManager &)> beforePresent = nullptr;
 		std::function<void(DeviceManager &)> afterPresent  = nullptr;
 	} mcallbacks;
-
-
-	
-protected:
-	nvrhi::vulkan::DeviceHandle mNvrhiDevice;
-	nvrhi::DeviceHandle mValidationLayer;
-
-	nvrhi::CommandListHandle mCommandList;
-	vkrhi::CuVkSemaphore mPresentSemaphore;
-	vkrhi::CuVkSemaphore mGraphicsSemaphore;
 	
 private:
 	bool createInstance();
@@ -324,13 +309,11 @@ private:
 	};
 
 	std::vector<SwapChainImage> mSwapChainImages;
-	std::vector<nvrhi::TextureHandle> mRenderImages;
 	uint32_t mSwapChainIndex = -1;
 
 	std::queue<nvrhi::EventQueryHandle> mFramesInFlight;
 	std::vector<nvrhi::EventQueryHandle> mQueryPool;
-
-	std::shared_ptr<vkrhi::CuVkHandler> mCuVkHandler;
+	std::shared_ptr<vkrhi::CuVkHandler> mCudaHandler;
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL vulkanDebugCallback(VkDebugReportFlagsEXT flags,
 															  VkDebugReportObjectTypeEXT objType,

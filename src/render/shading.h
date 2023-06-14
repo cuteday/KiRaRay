@@ -79,8 +79,7 @@ KRR_DEVICE_FUNCTION bool alphaKilled() {
 	return u > alpha;
 }
 
-KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitInfo,
-											const rt::MaterialData &material) {
+KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitInfo) {
 	// [NOTE] about local shading frame (tangent space, TBN, etc.)
 	// The shading normal sd.frame.N and face normal sd.geoN is always points towards the outside of
 	// the object, we can use this convention to determine whether an incident ray is coming from
@@ -88,6 +87,7 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 
 	const rt::InstanceData &instance = hitInfo.getInstance();
 	const rt::MeshData &mesh		 = hitInfo.getMesh();
+	const rt::MaterialData &material = instance.getMaterial();
 	Vector3f b						 = hitInfo.barycentric;
 	Vector3i v						 = mesh.indices[hitInfo.primitiveId];
 	
