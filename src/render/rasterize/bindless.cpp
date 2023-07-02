@@ -136,6 +136,8 @@ void BindlessRender::initialize() {
 		vkrhi::BindingSetItem::StructuredBuffer_SRV(1, scene->getInstanceBuffer()),
 		/* Material data constants (for indexing bindless buffers) */
 		vkrhi::BindingSetItem::StructuredBuffer_SRV(2, scene->getMaterialBuffer()),
+		/* Light data constants */
+		vkrhi::BindingSetItem::StructuredBuffer_SRV(3, scene->getLightBuffer()),
 		vkrhi::BindingSetItem::Sampler(0, mHelperPass->m_AnisotropicWrapSampler)
 	};
 	vkrhi::utils::CreateBindingSetAndLayout(

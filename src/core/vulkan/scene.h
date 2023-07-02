@@ -51,7 +51,7 @@ public:
 	}
 };
 
-// structured buffer elements fulfill a 16-byte alignment.
+// [CAUTION] structured buffer elements fulfill a 16-byte alignment.
 
 struct MeshData {
 	uint numIndices;
@@ -90,6 +90,17 @@ struct MaterialConstants {
 	int normalTextureIndex;
 	int emissiveTextureIndex;
 };
+
+struct LightConstants {
+	Vector3f direction;
+	SceneLight::Type type;
+
+	Vector3f position;
+	int texture;	// for environment lights?
+
+	Color3f color;
+	float scale;
+};
 }
 
 class VKScene {
@@ -101,7 +112,8 @@ public:
 			std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr);
 	~VKScene() = default;
 
-	[[nodiscard]] vkrhi::IBuffer* getMaterialBuffer() const { return mMaterialConstantsBuffer; }
+	[[nodiscard]] vkrhi::IBuffer *getMaterialBuffer() const { return mMaterialConstantsBuffer; }
+	[[nodiscard]] vkrhi::IBuffer *getLightBuffer() const { return mLightConstantsBuffer; }
 	[[nodiscard]] vkrhi::IBuffer *getInstanceBuffer() const { return mInstanceDataBuffer; }
 	[[nodiscard]] vkrhi::IBuffer* getGeometryBuffer() const { return mMeshDataBuffer; }
 
@@ -114,10 +126,12 @@ protected:
 	void createMaterialBuffer();	
 	void createInstanceBuffer();
 	void createGeometryBuffer();
+	void createLightBuffer();
 	
 	void writeMaterialBuffer(vkrhi::ICommandList *commandList);
 	void writeInstanceBuffer(vkrhi::ICommandList *commandList);
 	void writeGeometryBuffer(vkrhi::ICommandList *commandList);
+	void writeLightBuffer(vkrhi::ICommandList *commandList);
 
 	std::weak_ptr<Scene> mScene{};
 	vkrhi::vulkan::DeviceHandle mDevice{};
@@ -126,11 +140,13 @@ protected:
 	std::shared_ptr<TextureCache> mTextureLoader;
 
 	std::vector<rs::MaterialConstants> mMaterialConstants;
+	std::vector<rs::LightConstants> mLightConstants;
 	std::vector<rs::MeshBuffers> mMeshBuffers;
 	std::vector<rs::MaterialTextures> mMaterialTextures;
 	std::vector<rs::MeshData> mMeshData;
 	std::vector<rs::InstanceData> mInstanceData;
 	vkrhi::BufferHandle mMaterialConstantsBuffer;
+	vkrhi::BufferHandle mLightConstantsBuffer;
 	vkrhi::BufferHandle mMeshDataBuffer;
 	vkrhi::BufferHandle mInstanceDataBuffer;
 };

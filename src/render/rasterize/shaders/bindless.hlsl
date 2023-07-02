@@ -26,6 +26,17 @@ struct MaterialConstants {
 	int emissiveTextureIndex;
 };
 
+struct LightConstants{
+    float3 direction;
+    int type;
+
+    float3 position;
+    int texture; 
+
+    float3 color;
+    float scale;
+};
+
 struct MeshData {
 	uint numIndices;
 	uint numVertices;
@@ -55,6 +66,7 @@ ConstantBuffer<ViewConstants> g_ViewConstants : register(b0);
 StructuredBuffer<MeshData> t_MeshData : register(t0);
 StructuredBuffer<InstanceData> t_InstanceData : register(t1);
 StructuredBuffer<MaterialConstants> t_MaterialConstants : register(t2);
+StructuredBuffer<LightConstants> t_LightConstants : register(t3);
 SamplerState s_MaterialSampler : register(s0);
 // the above bindings are implicitly assigned to register space 0.
 // the bindless buffer arrays below actually bind to a register range.

@@ -189,6 +189,18 @@ void VKScene::createGeometryBuffer() {
 	mMeshDataBuffer				= mDevice->createBuffer(bufferDesc);
 }
 
+void VKScene::createLightBuffer() {
+	vkrhi::BufferDesc bufferDesc;
+	bufferDesc.byteSize			= sizeof(rs::LightConstants) * mScene.lock()->getLights().size();
+	bufferDesc.debugName		= "BindlessLights";
+	bufferDesc.structStride		= sizeof(rs::LightConstants);
+	bufferDesc.canHaveRawViews	= true;
+	bufferDesc.canHaveUAVs		= true;
+	bufferDesc.initialState		= vkrhi::ResourceStates::ShaderResource;
+	bufferDesc.keepInitialState = true;
+	mLightConstantsBuffer		= mDevice->createBuffer(bufferDesc);
+}
+
 void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 	/* Fill material constants buffer on host. */
 	auto &materials = mScene.lock()->getMaterials();
@@ -245,21 +257,35 @@ void VKScene::writeGeometryBuffer(vkrhi::ICommandList *commandList) {
 		
 		mMeshData.push_back(meshData);
 	}
-
 	commandList->writeBuffer(mMeshDataBuffer, mMeshData.data(),
 							 sizeof(rs::MeshData) * meshes.size(), 0);
 }
 
 void VKScene::writeInstanceBuffer(vkrhi::ICommandList *commandList) {
 	auto instances = mScene.lock()->getMeshInstances();
-	for (int i = 0; i < instances.size(); i++) {
-		const auto &instance = instances[i];
+	for (auto instance : instances) {
 		rs::InstanceData instanceData;
 		instanceData.transform = instance->getNode()->getGlobalTransform().matrix();
 		instanceData.meshIndex = instance->getMesh()->getMeshId();
 		mInstanceData.push_back(instanceData);
 	}
 	commandList->writeBuffer(mInstanceDataBuffer, mInstanceData.data(), sizeof(rs::InstanceData) * instances.size(), 0);
+}
+
+void VKScene::writeLightBuffer(vkrhi::ICommandList *commandList) {
+	auto lights = mScene.lock()->getLights();
+	for (auto light : lights) {
+		rs::LightConstants lightData;
+		lightData.type = light->getType();
+		lightData.position;
+		lightData.direction;
+		lightData.scale = light->getScale();
+		lightData.color = light->getColor();
+		lightData.texture = 0;
+		mLightConstants.push_back(lightData);
+	}
+	commandList->writeBuffer(mLightConstantsBuffer, mLightConstants.data(),
+							 sizeof(rs::MaterialConstants) * lights.size());
 }
 
 void VKScene::update() {
