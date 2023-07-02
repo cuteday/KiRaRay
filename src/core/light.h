@@ -18,6 +18,63 @@ struct LightSampleContext {
 	Vector3f n;
 };
 
+class PointLight {
+public:
+
+	PointLight() = default;
+
+	PointLight(const Affine3f &transform, const Color &I, float scale = 1) :
+		transform(transform), I(I), scale(scale) {}
+
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
+		Vector3f p	= transform.translation();
+		Vector3f wi = (p - ctx.p).normalized();
+		Color Li	= scale * I / (p - ctx.p).squaredNorm();
+		return LightSample{Interaction{p}, Li, 1};
+	}
+
+	KRR_DEVICE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
+		return Color::Zero();
+	}
+
+	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
+		return 0;
+	}
+
+private:
+	Color I;
+	float scale;
+	Affine3f transform;
+};
+
+class DirectionalLight {
+public:
+
+	DirectionalLight() = default;
+
+	DirectionalLight(const Affine3f &transform, const Color &I, float scale = 1) :
+		transform(transform), I(I), scale(scale) {}
+
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
+		Vector3f wi = transform * Vector3f{0, 0, 1};
+		Vector3f p	= ctx.p + wi * 1e7f;
+		return LightSample{Interaction{p}, scale * I, 1};
+	}
+
+	KRR_DEVICE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
+		return Color::Zero();
+	}
+
+	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
+		return 0;
+	}
+
+private:
+	Color I;
+	float scale;
+	Affine3f transform;
+};
+
 class DiffuseAreaLight {
 public:
 
@@ -37,7 +94,6 @@ public:
 
 	KRR_DEVICE inline LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
 		LightSample ls = {};
-		//printf("Start Sampling\n");
 		ShapeSampleContext shapeCtx = { ctx.p, ctx.n };
 		ShapeSample ss = shape.sample(u, shapeCtx);
 		DCHECK(!isnan(ss.pdf));
@@ -57,7 +113,7 @@ public:
 		else return scale * Le;
 	}
 
-	KRR_CALLABLE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
+	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
 		ShapeSampleContext shapeCtx = { ctx.p, ctx.n };
 		return shape.pdf(p, shapeCtx);
 	}
@@ -75,13 +131,15 @@ public:
 
 	InfiniteLight() = default;
 
-	InfiniteLight(Color tint, float scale = 1, float rotation = 0)
-		:tint(tint), scale(scale), rotation(rotation) {}
+	InfiniteLight(Color tint, float scale = 1, const Affine3f& transform = Affine3f::Identity())
+		:tint(tint), scale(scale), transform(transform) {}
 
-	InfiniteLight(const rt::TextureData &image, Vector3f tint = Vector3f::Ones(), float scale = 1, float rotation = 0)
-		:image(image), tint(tint), scale(scale), rotation(rotation) {}
+	InfiniteLight(const rt::TextureData &image, Vector3f tint = Vector3f::Ones(), float scale = 1,
+				  const Affine3f &transform = Affine3f::Identity()) :
+		image(image), tint(tint), scale(scale), transform(transform) {}
 
 	KRR_DEVICE inline LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
+		// [TODO] use intensity importance sampling here.
 		LightSample ls = {};
 		Vector3f wi	   = uniformSampleSphere(u);
 		ls.intr		   = Interaction(ctx.p + wi * 1e7f);
@@ -90,66 +148,48 @@ public:
 		return ls;
 	}
 
-	KRR_CALLABLE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
+	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
 		return M_INV_4PI;
 	}
 
-	KRR_CALLABLE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
+	KRR_DEVICE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
 		return Color::Zero();
 	}
 
 	KRR_DEVICE inline Color Li(Vector3f wi) const {
 		Color L = tint * scale;
-
 		if (!image.isValid()) return L;
-		Vector2f uv = utils::cartesianToSphericalNormalized(wi);
-		uv[0] = fmod(uv[0] + rotation, 1.f);
+		Vector2f uv = utils::cartesianToSphericalNormalized(transform * wi);
 		L *= image.tex(uv).head<3>();
-
 		return L;
 	}
 
-	void renderUI();
-
-	friend void from_json(const json& j, InfiniteLight& p) {
-		p.scale	   = j.value("scale", 1.f);
-		p.tint	   = j.value("tint", Color{ 1 });
-		p.rotation = j.value("rotation", 0);
-	}
-
-	friend void to_json(json &j, const InfiniteLight &p) {
-		j = json{
-			{"scale", p.scale},
-			{"tint", p.tint},
-			{"rotation", p.rotation}
-		};
-	}
-
 private: 
-	rt::TextureData image{};
-	float scale{1};
-	float rotation{0};
 	Color tint{1};
+	float scale{1};
+	Affine3f transform;
+	rt::TextureData image{};
 };
 
-class Light :public TaggedPointer<DiffuseAreaLight, InfiniteLight> {
+class Light :public TaggedPointer<PointLight, DirectionalLight, DiffuseAreaLight, InfiniteLight> {
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_CALLABLE LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
 		auto sampleLi = [&](auto ptr) -> LightSample {return ptr->sampleLi(u, ctx); };
 		return dispatch(sampleLi);
 	}
 
-	KRR_CALLABLE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
+	KRR_DEVICE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
 		auto L = [&](auto ptr) -> Vector3f { return ptr->L(p, n, uv, w); };
 		return dispatch(L);
 	}
 	
-	KRR_CALLABLE float pdfLi(const Interaction& p, const LightSampleContext& ctx) const {
+	KRR_DEVICE float pdfLi(const Interaction& p, const LightSampleContext& ctx) const {
 		auto pdf = [&](auto ptr) -> float { return ptr->pdfLi(p, ctx); };
 		return dispatch(pdf);
 	}
 };
 
+/* You only have OneShot. */
 KRR_NAMESPACE_END
