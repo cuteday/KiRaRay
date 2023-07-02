@@ -29,6 +29,20 @@ SceneGraphLeaf::SharedPtr SceneAnimation::clone() {
 	return std::static_pointer_cast<SceneGraphLeaf>(copy);
 }
 
+SceneGraphLeaf::SharedPtr PointLight::clone() {
+	return std::make_shared<PointLight>(color, scale);
+}
+
+SceneGraphLeaf::SharedPtr DirectionalLight::clone() {
+	return std::make_shared<PointLight>(color, scale);
+}
+
+SceneGraphLeaf::SharedPtr InfiniteLight::clone() {
+	auto light = std::make_shared<InfiniteLight>(color, scale);
+	light->setTexture(texture);
+	return light;
+}
+
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
 								  const Vector3f *scaling) {
 	if (scaling) mScaling = *scaling;
@@ -328,6 +342,8 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 		mMeshInstances.push_back(meshInstance);
 	} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(leaf)) {
 		mAnimations.push_back(animation);
+	} else if (auto light = std::dynamic_pointer_cast<SceneLight>(leaf)) {
+		mLights.push_back(light);
 	}
 }
 
@@ -340,8 +356,15 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 	if (auto meshInstance = std::dynamic_pointer_cast<MeshInstance>(leaf)) {
 		auto it = std::find(mMeshInstances.begin(), mMeshInstances.end(), leaf);
 		if (it != mMeshInstances.end()) mMeshInstances.erase(it);
-		else Log(Warning, "Unregistering an instance that do not exist in graph...");
-		return;
+		else Log(Warning, "Unregistering a mesh instance that do not exist in graph...");
+	} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(leaf)) {
+		auto it = std::find(mAnimations.begin(), mAnimations.end(), leaf);
+		if (it != mAnimations.end()) mAnimations.erase(it);
+		else Log(Warning, "Unregistering an animation that do not exist in graph...");
+	} else if (auto light = std::dynamic_pointer_cast<SceneLight>(leaf)) {
+		auto it = std::find(mLights.begin(), mLights.end(), leaf);
+		if (it != mLights.end()) mLights.erase(it);
+		else Log(Warning, "Unregistering a light that do not exist in graph...");
 	}
 }
 

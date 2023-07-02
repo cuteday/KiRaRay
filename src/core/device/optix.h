@@ -146,7 +146,6 @@ public:
 	static OptixProgramGroup createMissPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint);
 	static OptixProgramGroup createIntersectionPG(OptixDeviceContext optixContext, OptixModule optixModule,
 		const char* closest, const char* any, const char* intersect);
-
 };
 
 KRR_NAMESPACE_END

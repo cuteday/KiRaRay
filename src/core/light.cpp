@@ -5,6 +5,8 @@
 
 KRR_NAMESPACE_BEGIN
 
+namespace rt {
 
+}
 
 KRR_NAMESPACE_END

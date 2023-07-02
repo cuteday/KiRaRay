@@ -42,6 +42,7 @@ public:
 	std::vector<Mesh::SharedPtr> &getMeshes() { return mGraph->getMeshes(); }
 	std::vector<Material::SharedPtr> &getMaterials() { return mGraph->getMaterials(); }
 	std::vector<SceneAnimation::SharedPtr> &getAnimations() { return mGraph->getAnimations(); }
+	std::vector<SceneLight::SharedPtr> &getLights() { return mGraph->getLights(); }
 	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mGraph->getMeshInstances(); }
 	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(mesh); }
 	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(material); }
@@ -88,11 +89,11 @@ namespace rt {
 
 class SceneData {
 public:
-	TypedBufferView<MaterialData> materials{};
-	TypedBufferView<MeshData> meshes{};
-	TypedBufferView<InstanceData> instances{};
-	TypedBufferView<Light> lights{};
-	TypedBufferView<InfiniteLight> infiniteLights{};
+	TypedBufferView<rt::MaterialData> materials{};
+	TypedBufferView<rt::MeshData> meshes{};
+	TypedBufferView<rt::InstanceData> instances{};
+	TypedBufferView<rt::Light> lights{};
+	TypedBufferView<rt::InfiniteLight> infiniteLights{};
 	LightSampler lightSampler;
 };
 }
@@ -116,14 +117,14 @@ public:
 	std::vector<rt::MaterialData> &getMaterialData() { return mMaterials; }
 	std::vector<rt::MeshData> &getMeshData() { return mMeshes; }
 	std::vector<rt::InstanceData> &getInstanceData() { return mInstances; }
-	std::vector<Light> &getLightData() { return mLights; }
-	std::vector<InfiniteLight> &getInfiniteLightData() { return mInfiniteLights; }
+	std::vector<rt::Light> &getLightData() { return mLights; }
+	std::vector<rt::InfiniteLight> &getInfiniteLightData() { return mInfiniteLights; }
 
 	TypedBuffer<rt::MaterialData> &getMaterialBuffer() { return mMaterialsBuffer; }
 	TypedBuffer<rt::MeshData> &getMeshBuffer() { return mMeshesBuffer; }
 	TypedBuffer<rt::InstanceData> &getInstanceBuffer() { return mInstancesBuffer; }
-	TypedBuffer<Light> &getLightBuffer() { return mLightsBuffer; }
-	TypedBuffer<InfiniteLight> &getInfiniteLightBuffer() { return mInfiniteLightsBuffer; }
+	TypedBuffer<rt::Light> &getLightBuffer() { return mLightsBuffer; }
+	TypedBuffer<rt::InfiniteLight> &getInfiniteLightBuffer() { return mInfiniteLightsBuffer; }
 
 private:
 	void processLights();
@@ -134,10 +135,10 @@ private:
 	TypedBuffer<rt::MeshData> mMeshesBuffer;
 	std::vector<rt::InstanceData> mInstances;
 	TypedBuffer<rt::InstanceData> mInstancesBuffer;
-	std::vector<Light> mLights;
-	TypedBuffer<Light> mLightsBuffer;
-	std::vector<InfiniteLight> mInfiniteLights; 
-	TypedBuffer<InfiniteLight> mInfiniteLightsBuffer;
+	std::vector<rt::Light> mLights;
+	TypedBuffer<rt::Light> mLightsBuffer;
+	std::vector<rt::InfiniteLight> mInfiniteLights; 
+	TypedBuffer<rt::InfiniteLight> mInfiniteLightsBuffer;
 	UniformLightSampler mLightSampler;
 	TypedBuffer<UniformLightSampler> mLightSamplerBuffer;
 

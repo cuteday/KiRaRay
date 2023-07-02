@@ -115,9 +115,8 @@ void RenderApp::renderUI() {
 	static bool showProfiler{};
 	static bool showFps{ true };
 	static bool showDashboard{ true };
-	if (!sShowUI)
-		return;
 	Profiler::instance().setEnabled(showProfiler);
+	if (!sShowUI) return;
 	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.8); // this sets the global transparency of UI windows.
 	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5);	// this sets the transparency of the main menubar.
 	if (ui::BeginMainMenuBar()) {
@@ -155,15 +154,12 @@ void RenderApp::renderUI() {
 			static char saveConfigBuf[512] = "common/configs/saved_config.json";
 			strcpy(loadConfigBuf, mConfigPath.c_str());
 			ui::InputText("Load path: ", loadConfigBuf, sizeof(loadConfigBuf));
-			if (ui::Button("Load config"))
-				loadConfig(fs::path(loadConfigBuf));
+			if (ui::Button("Load config")) loadConfig(fs::path(loadConfigBuf));
 			ui::InputText("Save path: ", saveConfigBuf, sizeof(saveConfigBuf));
-			if (ui::Button("Save config"))
-				saveConfig(saveConfigBuf);
+			if (ui::Button("Save config")) saveConfig(saveConfigBuf);
 		}
 		if (mScene && ui::CollapsingHeader("Scene")) {
 			mScene->renderUI();
-
 		}
 		size_t pid = 0;
 		for (auto& p : mRenderPasses) {
@@ -281,14 +277,15 @@ void RenderApp::loadConfig(const json config) {
 		importer::loadScene(model, scene);
 	}
 	if (config.contains("environment")) {
-		if (!scene)
-			Log(Fatal, "Import a model before doing scene configurations!");
-		string env = config["environment"].get<string>();
-		scene->addEnvironmentMap(Texture::createFromFile(env));
+		if (!scene) Log(Fatal, "Import a model before doing scene configurations!");
+		string env	 = config["environment"].get<string>();
+		auto texture = Texture::createFromFile(env);
+		auto root	 = scene->getSceneGraph()->getRoot();
+		auto light	 = std::make_shared<InfiniteLight>(texture);
+		scene->getSceneGraph()->attachLeaf(root, light);
 	}
 	if (config.contains("scene")) {
-		if (!scene)
-			Log(Fatal, "Import a model before doing scene configurations!");
+		if (!scene) Log(Fatal, "Import a model before doing scene configurations!");
 		scene->loadConfig(config["scene"]);
 	}
 	if (scene) mScene = scene;

@@ -8,6 +8,7 @@
 KRR_NAMESPACE_BEGIN
 
 using namespace shader;
+using namespace rt;
 
 /* Remember to copy these definitions to workitem.soa whenever changing them. */
 

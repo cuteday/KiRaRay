@@ -6,6 +6,7 @@
 #include "texture.h"
 
 KRR_NAMESPACE_BEGIN
+namespace rt {
 
 struct LightSample {
 	Interaction intr;
@@ -20,7 +21,6 @@ struct LightSampleContext {
 
 class PointLight {
 public:
-
 	PointLight() = default;
 
 	PointLight(const Affine3f &transform, const Color &I, float scale = 1) :
@@ -37,9 +37,7 @@ public:
 		return Color::Zero();
 	}
 
-	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
-		return 0;
-	}
+	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const { return 0; }
 
 private:
 	Color I;
@@ -49,7 +47,6 @@ private:
 
 class DirectionalLight {
 public:
-
 	DirectionalLight() = default;
 
 	DirectionalLight(const Affine3f &transform, const Color &I, float scale = 1) :
@@ -65,9 +62,7 @@ public:
 		return Color::Zero();
 	}
 
-	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
-		return 0;
-	}
+	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const { return 0; }
 
 private:
 	Color I;
@@ -77,66 +72,60 @@ private:
 
 class DiffuseAreaLight {
 public:
-
 	DiffuseAreaLight() = default;
 
-	DiffuseAreaLight(Shape &shape, Vector3f Le, 
-		bool twoSided = true, float scale = 1.f)
-		: shape(shape), Le(Le), twoSided(twoSided), scale(scale) {}
+	DiffuseAreaLight(Shape &shape, Vector3f Le, bool twoSided = true, float scale = 1.f) :
+		shape(shape), Le(Le), twoSided(twoSided), scale(scale) {}
 
 	DiffuseAreaLight(Shape &shape, const rt::TextureData &texture, Vector3f Le = {},
-		bool twoSided = true, float scale = 1.f) :
-		shape(shape),
-		texture(texture),
-		Le(Le),
-		twoSided(twoSided),
-		scale(scale) {}
+					 bool twoSided = true, float scale = 1.f) :
+		shape(shape), texture(texture), Le(Le), twoSided(twoSided), scale(scale) {}
 
 	KRR_DEVICE inline LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
-		LightSample ls = {};
-		ShapeSampleContext shapeCtx = { ctx.p, ctx.n };
-		ShapeSample ss = shape.sample(u, shapeCtx);
+		LightSample ls				= {};
+		ShapeSampleContext shapeCtx = {ctx.p, ctx.n};
+		ShapeSample ss				= shape.sample(u, shapeCtx);
 		DCHECK(!isnan(ss.pdf));
-		Interaction& intr = ss.intr;
-		intr.wo = normalize(ctx.p - intr.p);
+		Interaction &intr = ss.intr;
+		intr.wo			  = normalize(ctx.p - intr.p);
 
 		ls.intr = intr;
-		ls.pdf = ss.pdf;
-		ls.L = L(intr.p, intr.n, intr.uv, intr.wo);
+		ls.pdf	= ss.pdf;
+		ls.L	= L(intr.p, intr.n, intr.uv, intr.wo);
 		return ls;
 	}
 
 	KRR_DEVICE inline Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
 		if (!twoSided && dot(n, w) < 0.f) return Color::Zero(); // hit backface
 
-		if (texture.isValid()) return scale * texture.tex(uv).head<3>();
-		else return scale * Le;
+		if (texture.isValid())
+			return scale * texture.tex(uv).head<3>();
+		else
+			return scale * Le;
 	}
 
 	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
-		ShapeSampleContext shapeCtx = { ctx.p, ctx.n };
+		ShapeSampleContext shapeCtx = {ctx.p, ctx.n};
 		return shape.pdf(p, shapeCtx);
 	}
 
 private:
 	Shape shape;
-	rt::TextureData texture{};		// emissive image texture
-	Color Le{ 0 };
+	rt::TextureData texture{}; // emissive image texture
+	Color Le{0};
 	bool twoSided{true};
 	float scale{1};
 };
 
 class InfiniteLight {
 public:
-
 	InfiniteLight() = default;
 
-	InfiniteLight(Color tint, float scale = 1, const Affine3f& transform = Affine3f::Identity())
-		:tint(tint), scale(scale), transform(transform) {}
+	InfiniteLight(const Affine3f &transform, Color tint, float scale = 1) :
+		tint(tint), scale(scale), transform(transform) {}
 
-	InfiniteLight(const rt::TextureData &image, Vector3f tint = Vector3f::Ones(), float scale = 1,
-				  const Affine3f &transform = Affine3f::Identity()) :
-		image(image), tint(tint), scale(scale), transform(transform) {}
+	InfiniteLight(const Affine3f &transform, const rt::TextureData &image, float scale = 1) :
+		image(image), tint(Color::Ones()), scale(scale), transform(transform) {}
 
 	KRR_DEVICE inline LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
 		// [TODO] use intensity importance sampling here.
@@ -164,19 +153,21 @@ public:
 		return L;
 	}
 
-private: 
+private:
 	Color tint{1};
 	float scale{1};
 	Affine3f transform;
 	rt::TextureData image{};
 };
 
-class Light :public TaggedPointer<PointLight, DirectionalLight, DiffuseAreaLight, InfiniteLight> {
+class Light :
+	public TaggedPointer<rt::PointLight, rt::DirectionalLight, rt::DiffuseAreaLight,
+						 rt::InfiniteLight> {
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext& ctx) const {
-		auto sampleLi = [&](auto ptr) -> LightSample {return ptr->sampleLi(u, ctx); };
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
+		auto sampleLi = [&](auto ptr) -> LightSample { return ptr->sampleLi(u, ctx); };
 		return dispatch(sampleLi);
 	}
 
@@ -184,12 +175,13 @@ public:
 		auto L = [&](auto ptr) -> Vector3f { return ptr->L(p, n, uv, w); };
 		return dispatch(L);
 	}
-	
-	KRR_DEVICE float pdfLi(const Interaction& p, const LightSampleContext& ctx) const {
+
+	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
 		auto pdf = [&](auto ptr) -> float { return ptr->pdfLi(p, ctx); };
 		return dispatch(pdf);
 	}
 };
 
 /* You only have OneShot. */
+} // namespace rt
 KRR_NAMESPACE_END

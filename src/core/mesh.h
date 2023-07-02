@@ -9,7 +9,7 @@
 KRR_NAMESPACE_BEGIN
 
 class Triangle;
-class DiffuseAreaLight;
+namespace rt { class DiffuseAreaLight; }
 
 enum class VertexAttribute {
 	Position,
@@ -38,7 +38,7 @@ struct InstanceData {
 	KRR_CALLABLE const Matrix3f &getTransposedInverseTransform() const { return transposedInverseTransform; }
 
 	TypedBuffer<Triangle> primitives;		// Only emissive instances have these
-	TypedBuffer<DiffuseAreaLight> lights;
+	TypedBuffer<rt::DiffuseAreaLight> lights;
 
 	Affine3f transform					= Affine3f::Identity();		// global affine transform
 	Matrix3f transposedInverseTransform = Matrix3f::Identity();		// used to transform directions

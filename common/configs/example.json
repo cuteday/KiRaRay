@@ -1,4 +1,5 @@
 {
+	"environment": "common/assets/textures/snowwhite.jpg",
 	"model": "common/assets/scenes/cbox/cbox.obj",
 	"resolution": [
 		750,
