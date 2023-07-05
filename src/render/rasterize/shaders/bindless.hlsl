@@ -6,6 +6,11 @@ struct ViewConstants {
 	float4x4 worldToClip;
 };
 
+struct LightConstants {
+	uint numLights;
+	uint3 padding;
+};
+
 struct RenderConstants {
 	/* push constants */
 	uint instanceID;
@@ -26,7 +31,7 @@ struct MaterialConstants {
 	int emissiveTextureIndex;
 };
 
-struct LightConstants{
+struct LightData {
     float3 direction;
     int type;
 
@@ -61,12 +66,13 @@ struct InstanceData{
 };
 
 ConstantBuffer<ViewConstants> g_ViewConstants : register(b0);
-[[vk::push_constant]] ConstantBuffer<RenderConstants> g_RenderConstants : register(b1);
+ConstantBuffer<LightConstants> g_LightConstants : register(b1);
+[[vk::push_constant]] ConstantBuffer<RenderConstants> g_RenderConstants : register(b2);
 
 StructuredBuffer<MeshData> t_MeshData : register(t0);
 StructuredBuffer<InstanceData> t_InstanceData : register(t1);
 StructuredBuffer<MaterialConstants> t_MaterialConstants : register(t2);
-StructuredBuffer<LightConstants> t_LightConstants : register(t3);
+StructuredBuffer<LightData> t_LightData : register(t3);
 SamplerState s_MaterialSampler : register(s0);
 // the above bindings are implicitly assigned to register space 0.
 // the bindless buffer arrays below actually bind to a register range.
@@ -123,5 +129,22 @@ void ps_main(
 			s_MaterialSampler, i_uv);
 	}
 
-	o_color = float4(diffuse.rgb, 1);
+	/* forward lighting */
+	float3 diffuseTerm = 0, specularTerm = 0;
+	[loop] 
+	for (uint nLight = 0; nLight = g_LightConstants.numLights; nLight++) {
+
+		LightData light = t_LightData[nLight];
+
+		float3 diffuseRadiance, specularRadiance;
+		diffuseTerm += diffuseRadiance * light.color;
+		specularTerm += specularRadiance * light.color;
+
+	}
+	/* ambient term */
+
+
+	/* combine together */
+	o_color.rgb = diffuseTerm + specularTerm;
+	o_color.a = 1;
 }

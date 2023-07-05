@@ -482,6 +482,49 @@ void SceneGraph::animate(double currentTime) {
 	}
 }
 
+void SceneLight::setPosition(const Vector3f& position) {
+	if (auto node = getNode()) {
+		auto globalTransform = Affine3f::Identity();
+		if (auto parent = node->getParent())
+			globalTransform = parent->getGlobalTransform();
+		node->setTranslation(globalTransform.inverse() * position);
+	} else {
+		Log(Error, "Setting direction for a light that does not exist in scene graph.");
+	}
+}
+
+Vector3f SceneLight::getPosition() const { 
+	if (auto node = getNode())
+		return node->getGlobalTransform().translation();
+	else return Vector3f::Zero();
+}
+
+void SceneLight::setDirection(const Vector3f& direction) {
+	if (auto node = getNode()) {
+		Affine3f globalTransform = Affine3f::Identity();
+		if (auto parent = node->getParent()) globalTransform = parent->getGlobalTransform();
+		
+		Affine3f worldToLocal  = look_at(Vector3f{}, direction, Vector3f{0, 1, 0});
+		Affine3f localToParent = (worldToLocal * globalTransform).inverse();
+		node->setRotation(Quaternionf(localToParent.rotation()));
+		node->setScaling(localToParent.scaling());
+	} else {
+		Log(Error, "Setting direction for a light that does not exist in scene graph.");
+	}
+}
+
+Vector3f SceneLight::getDirection() const {
+	if (auto node = getNode())
+		return node->getGlobalTransform().rotation() * Vector3f::UnitZ();
+	else return Vector3f::Zero();
+}
+
+void SceneLight::renderUI() { 
+	auto direction = getDirection(), position = getPosition();
+	if (ui::DragFloat3("Direction", (float *) &direction, 1e-3, 0, 1)) setDirection(direction);
+	if (ui::InputFloat3("Position", (float *) &position)) setPosition(position);	
+}
+
 void SceneAnimationChannel::renderUI() {
 	if (!isValid()) return;
 	ui::Text("Duration: %f - %f", getSampler()->getStartTime(), getSampler()->getEndTime());

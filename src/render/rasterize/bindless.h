@@ -19,6 +19,11 @@ public:
 		Matrix4f worldToClip;
 	};
 
+	struct LightConstants {
+		uint32_t numLights;
+		Vector3i padding;
+	};
+
 	enum class MSAA {
 		NONE	 = 0, 
 		MSAA_2X	 = 1,
@@ -47,6 +52,7 @@ private:
 	vkrhi::GraphicsPipelineHandle mGraphicsPipeline;
 
 	vkrhi::BufferHandle mViewConstants;
+	vkrhi::BufferHandle mLightData;
 	vkrhi::FramebufferHandle mFramebuffer;
 
 	std::shared_ptr<ShaderLoader> mShaderLoader;

@@ -68,12 +68,17 @@ public:
 	};
 	SceneLight()		= default;
 	SceneLight(const Color &color, const float scale) : color(color), scale(scale) {}
+	virtual Type getType() const { return Type::Undefined; }
+	virtual void renderUI();
 
 	void setColor(const Color &_color) { color = _color; }
 	void setScale(const float _scale) { scale = _scale; }
+	void setPosition(const Vector3f& position);
+	void setDirection(const Vector3f& direction);
 	Color getColor() const { return color; }
 	float getScale() const { return scale; }
-	virtual Type getType() const { return Type::Undefined; }
+	Vector3f getPosition() const;
+	Vector3f getDirection() const;
 
 protected:
 	Color color;

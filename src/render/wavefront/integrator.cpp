@@ -253,7 +253,7 @@ void WavefrontPathTracer::render(RenderContext *context) {
 void WavefrontPathTracer::renderUI() {
 	ui::Text("Frame index (seed): %zd", getFrameIndex());
 	ui::Text("Render parameters");
-	ui::InputInt("Samples per pixel", &samplesPerPixel);
+	ui::InputInt("Samples per pixel", &samplesPerPixel, 1, 1);
 	ui::InputInt("Max bounces", &maxDepth, 1);
 	ui::SliderFloat("Russian roulette", &probRR, 0, 1);
 	ui::Checkbox("Enable NEE", &enableNEE);

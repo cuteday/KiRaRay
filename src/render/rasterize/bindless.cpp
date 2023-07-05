@@ -115,21 +115,26 @@ void BindlessRender::initialize() {
 
 	mCommandList = getVulkanDevice()->createCommandList();
 	
-	/* Create view constant buffer */
-	vkrhi::BufferDesc viewConstantsBufferDesc;
-	viewConstantsBufferDesc.byteSize		 = sizeof(ViewConstants);
-	viewConstantsBufferDesc.debugName		 = "ViewConstants";
-	viewConstantsBufferDesc.isConstantBuffer = true;
-	viewConstantsBufferDesc.isVolatile		 = true;
-	viewConstantsBufferDesc.maxVersions		 = 16U;
-	mViewConstants = getVulkanDevice()->createBuffer(viewConstantsBufferDesc);
+	/* Create constant buffers */
+	vkrhi::BufferDesc constantsBufferDesc;
+	constantsBufferDesc.byteSize			 = sizeof(ViewConstants);
+	constantsBufferDesc.debugName			 = "ViewConstants";
+	constantsBufferDesc.isConstantBuffer	 = true;
+	constantsBufferDesc.isVolatile			 = true;
+	constantsBufferDesc.maxVersions			 = 16U;
+	mViewConstants							 = getVulkanDevice()->createBuffer(constantsBufferDesc);
+
+	constantsBufferDesc.byteSize  = sizeof(LightConstants);
+	constantsBufferDesc.debugName = "LightData";
+	mLightData				  = getVulkanDevice()->createBuffer(constantsBufferDesc);
 
 	getVulkanDevice()->waitForIdle();
 	/* Create binding set */
 	vkrhi::BindingSetDesc bindingSetDesc;
 	bindingSetDesc.bindings = {
 		vkrhi::BindingSetItem::ConstantBuffer(0, mViewConstants),
-		vkrhi::BindingSetItem::PushConstants(1, sizeof(uint)),
+		vkrhi::BindingSetItem::ConstantBuffer(1, mLightData),
+		vkrhi::BindingSetItem::PushConstants(2, sizeof(uint)),
 		/* Mesh data constants (for indexing bindless buffers) */
 		vkrhi::BindingSetItem::StructuredBuffer_SRV(0, scene->getGeometryBuffer()),
 		/* Instance data constants (for transforming&indexing mesh) */
@@ -193,8 +198,12 @@ void BindlessRender::render(RenderContext *context) {
 	viewConstants.worldToView = camera->getViewMatrix();
 	viewConstants.worldToClip = camera->getViewProjectionMatrix();
 
-	mCommandList->writeBuffer(mViewConstants, &viewConstants,
-							  sizeof(viewConstants));
+	mCommandList->writeBuffer(mViewConstants, &viewConstants, sizeof(viewConstants));
+
+	/* Set light constsnts */
+	LightConstants lightConstants;
+	lightConstants.numLights = getScene()->getLights().size();
+	mCommandList->writeBuffer(mLightData, &lightConstants, sizeof(lightConstants));
 
 	/* Draw geometries. */
 	vkrhi::GraphicsState state;

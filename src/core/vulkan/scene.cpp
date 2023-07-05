@@ -191,14 +191,14 @@ void VKScene::createGeometryBuffer() {
 
 void VKScene::createLightBuffer() {
 	vkrhi::BufferDesc bufferDesc;
-	bufferDesc.byteSize			= sizeof(rs::LightConstants) * mScene.lock()->getLights().size();
+	bufferDesc.byteSize			= sizeof(rs::LightData) * mScene.lock()->getLights().size();
 	bufferDesc.debugName		= "BindlessLights";
-	bufferDesc.structStride		= sizeof(rs::LightConstants);
+	bufferDesc.structStride		= sizeof(rs::LightData);
 	bufferDesc.canHaveRawViews	= true;
 	bufferDesc.canHaveUAVs		= true;
 	bufferDesc.initialState		= vkrhi::ResourceStates::ShaderResource;
 	bufferDesc.keepInitialState = true;
-	mLightConstantsBuffer		= mDevice->createBuffer(bufferDesc);
+	mLightDataBuffer		= mDevice->createBuffer(bufferDesc);
 }
 
 void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
@@ -275,16 +275,16 @@ void VKScene::writeInstanceBuffer(vkrhi::ICommandList *commandList) {
 void VKScene::writeLightBuffer(vkrhi::ICommandList *commandList) {
 	auto lights = mScene.lock()->getLights();
 	for (auto light : lights) {
-		rs::LightConstants lightData;
+		rs::LightData lightData;
 		lightData.type = light->getType();
 		lightData.position;
 		lightData.direction;
 		lightData.scale = light->getScale();
 		lightData.color = light->getColor();
 		lightData.texture = 0;
-		mLightConstants.push_back(lightData);
+		mLightData.push_back(lightData);
 	}
-	commandList->writeBuffer(mLightConstantsBuffer, mLightConstants.data(),
+	commandList->writeBuffer(mLightDataBuffer, mLightData.data(),
 							 sizeof(rs::MaterialConstants) * lights.size());
 }
 

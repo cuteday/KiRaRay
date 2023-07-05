@@ -91,7 +91,7 @@ struct MaterialConstants {
 	int emissiveTextureIndex;
 };
 
-struct LightConstants {
+struct LightData {
 	Vector3f direction;
 	SceneLight::Type type;
 
@@ -113,7 +113,7 @@ public:
 	~VKScene() = default;
 
 	[[nodiscard]] vkrhi::IBuffer *getMaterialBuffer() const { return mMaterialConstantsBuffer; }
-	[[nodiscard]] vkrhi::IBuffer *getLightBuffer() const { return mLightConstantsBuffer; }
+	[[nodiscard]] vkrhi::IBuffer *getLightBuffer() const { return mLightDataBuffer; }
 	[[nodiscard]] vkrhi::IBuffer *getInstanceBuffer() const { return mInstanceDataBuffer; }
 	[[nodiscard]] vkrhi::IBuffer* getGeometryBuffer() const { return mMeshDataBuffer; }
 
@@ -140,13 +140,13 @@ protected:
 	std::shared_ptr<TextureCache> mTextureLoader;
 
 	std::vector<rs::MaterialConstants> mMaterialConstants;
-	std::vector<rs::LightConstants> mLightConstants;
+	std::vector<rs::LightData> mLightData;
 	std::vector<rs::MeshBuffers> mMeshBuffers;
 	std::vector<rs::MaterialTextures> mMaterialTextures;
 	std::vector<rs::MeshData> mMeshData;
 	std::vector<rs::InstanceData> mInstanceData;
 	vkrhi::BufferHandle mMaterialConstantsBuffer;
-	vkrhi::BufferHandle mLightConstantsBuffer;
+	vkrhi::BufferHandle mLightDataBuffer;
 	vkrhi::BufferHandle mMeshDataBuffer;
 	vkrhi::BufferHandle mInstanceDataBuffer;
 };
