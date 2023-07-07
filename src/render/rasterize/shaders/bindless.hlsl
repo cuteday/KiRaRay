@@ -65,6 +65,28 @@ struct InstanceData{
     float4x4 transform;
 };
 
+struct MaterialSample {
+    float4 diffuse;
+    float4 specular;
+    float4 normal;
+    float4 emissive;
+};
+
+MaterialSample EvaluateSceneMaterial(float3 normal, float4 tangent, MaterialConstants material) {
+    MaterialSample result;
+    result.diffuse = 1;
+    result.specular = 0;
+    result.normal = 0;
+    result.emissive = 0;
+	
+    return result;
+}
+
+void ShadeSurface(LightConstants light, MaterialSample materialSample, float3 surfacePos, float3 viewIncident, 
+	out float3 o_diffuseRadiance, out float3 o_specularRadiance) {
+
+}
+
 ConstantBuffer<ViewConstants> g_ViewConstants : register(b0);
 ConstantBuffer<LightConstants> g_LightConstants : register(b1);
 [[vk::push_constant]] ConstantBuffer<RenderConstants> g_RenderConstants : register(b2);
