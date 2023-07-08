@@ -242,6 +242,17 @@ void BindlessRender::renderUI() {
 	ui::Combo("MSAA", (int*) & mMSAA, msaa_mode, 4);
 }
 
+void BindlessRender::setScene(Scene::SharedPtr scene) {
+	RenderPass::setScene(scene);
+	if (scene->getLights().size() == 0) {
+		Log(Warning, "The scene does not contain any light, adding a default sun light.");
+		auto graph = scene->getSceneGraph();
+		auto sunLight = std::make_shared<DirectionalLight>(Color(1), 1);
+		graph->attachLeaf(graph->getRoot(), sunLight);
+		sunLight->setName("Sun");
+	}
+}
+
 void BindlessRender::resize(const Vector2i &size) {
 	mFramebuffer	  = nullptr;
 	mGraphicsPipeline = nullptr;

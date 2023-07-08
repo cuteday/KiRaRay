@@ -215,6 +215,7 @@ void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
 			material->mShadingModel == Material::ShadingModel::MetallicRoughness;
 		
 		const auto &textures = mMaterialTextures[i];
+		// write index -1 if the corresponding texture do not present.
 		materialConstants.baseTextureIndex =
 			textures.getDescriptor(Material::TextureType::Diffuse);
 		materialConstants.specularTextureIndex =

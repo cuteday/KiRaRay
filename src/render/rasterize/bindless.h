@@ -36,6 +36,7 @@ public:
 	KRR_REGISTER_PASS_DEC(BindlessRender);
 
 	void initialize() override;
+	void setScene(Scene::SharedPtr scene) override;
 	void render(RenderContext* context) override;
 	void renderUI() override;
 	void resize(const Vector2i &size) override;
