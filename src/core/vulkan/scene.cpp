@@ -21,9 +21,11 @@ void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device,
 	mSceneVK->createInstanceBuffer();
 	mSceneVK->createMaterialBuffer();
 	mSceneVK->createGeometryBuffer();
+	mSceneVK->createLightBuffer();
 	mSceneVK->writeInstanceBuffer(commandList);
 	mSceneVK->writeMaterialBuffer(commandList);
 	mSceneVK->writeGeometryBuffer(commandList);
+	mSceneVK->writeLightBuffer(commandList);
 	commandList->close();
 	device->executeCommandList(commandList);
 	device->waitForIdle();
@@ -286,7 +288,7 @@ void VKScene::writeLightBuffer(vkrhi::ICommandList *commandList) {
 		mLightData.push_back(lightData);
 	}
 	commandList->writeBuffer(mLightDataBuffer, mLightData.data(),
-							 sizeof(rs::MaterialConstants) * lights.size());
+							 sizeof(rs::LightData) * lights.size());
 }
 
 void VKScene::update() {

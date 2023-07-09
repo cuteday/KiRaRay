@@ -281,7 +281,7 @@ void ps_main(
 		LightData light = t_LightData[nLight];
 		float3 diffuseRadiance = 0, specularRadiance = 0;
 		
-		//ShadeSurface(light, materialSample, i_position.xyz, 0, diffuseRadiance, specularRadiance);
+		ShadeSurface(light, materialSample, i_position.xyz, 0, diffuseRadiance, specularRadiance);
 		
 		diffuseTerm += diffuseRadiance;
 		specularTerm += specularRadiance;
