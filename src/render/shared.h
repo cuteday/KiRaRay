@@ -22,6 +22,7 @@ KRR_NAMESPACE_BEGIN
 using namespace utils;
 
 namespace shader {
+using namespace rt;
 	
 struct HitInfo {
 	KRR_CALLABLE const rt::InstanceData &getInstance() const { return *instance; }
@@ -51,7 +52,7 @@ struct ShadingData { // for use as per ray data, generated from ch
 	float metallic{ 0 };	//
 	float anisotropic{ 0 }; //
 
-	Light light{ nullptr };
+	rt::Light light{ nullptr };
 	MaterialType bsdfType;
 
 	KRR_CALLABLE Interaction getInteraction() const { return Interaction(pos, wo, frame.N, uv); }

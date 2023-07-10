@@ -109,33 +109,47 @@ void BindlessRender::initialize() {
 	mDescriptorTableManager = std::make_shared<DescriptorTableManager>(
 		getVulkanDevice(), mBindlessLayout);
 	/* Initialize scene data on vulkan device. */
+	if (mScene->getLights().size() == 0) {
+		Log(Warning, "The scene does not contain any light, adding a default sun light.");
+		auto graph	  = mScene->getSceneGraph();
+		auto sunLight = std::make_shared<DirectionalLight>(Color(1), 2);
+		graph->attachLeaf(graph->getRoot(), sunLight);
+		sunLight->setDirection({0.5, -0.8, 0.5});
+		sunLight->setName("Sunlight");
+	}
 	// TODO: It seems possible to share the device buffer between vulkan and cuda/optix.
 	mScene->initializeSceneVK(getVulkanDevice(), mDescriptorTableManager);
 	std::shared_ptr<VKScene> scene = mScene->mSceneVK;
 
 	mCommandList = getVulkanDevice()->createCommandList();
 	
-	/* Create view constant buffer */
-	vkrhi::BufferDesc viewConstantsBufferDesc;
-	viewConstantsBufferDesc.byteSize		 = sizeof(ViewConstants);
-	viewConstantsBufferDesc.debugName		 = "ViewConstants";
-	viewConstantsBufferDesc.isConstantBuffer = true;
-	viewConstantsBufferDesc.isVolatile		 = true;
-	viewConstantsBufferDesc.maxVersions		 = 16U;
-	mViewConstants = getVulkanDevice()->createBuffer(viewConstantsBufferDesc);
+	/* Create constant buffers */
+	vkrhi::BufferDesc constantsBufferDesc;
+	constantsBufferDesc.byteSize		 = sizeof(ViewConstants);
+	constantsBufferDesc.debugName		 = "ViewConstants";
+	constantsBufferDesc.isConstantBuffer = true;
+	constantsBufferDesc.isVolatile		 = true;
+	constantsBufferDesc.maxVersions		 = 16U;
+	mViewConstants						 = getVulkanDevice()->createBuffer(constantsBufferDesc);
 
-	getVulkanDevice()->waitForIdle();
+	constantsBufferDesc.byteSize  = sizeof(LightConstants);
+	constantsBufferDesc.debugName = "LightData";
+	mLightConstants				  = getVulkanDevice()->createBuffer(constantsBufferDesc);
+
 	/* Create binding set */
 	vkrhi::BindingSetDesc bindingSetDesc;
 	bindingSetDesc.bindings = {
 		vkrhi::BindingSetItem::ConstantBuffer(0, mViewConstants),
-		vkrhi::BindingSetItem::PushConstants(1, sizeof(uint)),
+		vkrhi::BindingSetItem::ConstantBuffer(1, mLightConstants),
+		vkrhi::BindingSetItem::PushConstants(2, sizeof(uint)),
 		/* Mesh data constants (for indexing bindless buffers) */
 		vkrhi::BindingSetItem::StructuredBuffer_SRV(0, scene->getGeometryBuffer()),
 		/* Instance data constants (for transforming&indexing mesh) */
 		vkrhi::BindingSetItem::StructuredBuffer_SRV(1, scene->getInstanceBuffer()),
 		/* Material data constants (for indexing bindless buffers) */
 		vkrhi::BindingSetItem::StructuredBuffer_SRV(2, scene->getMaterialBuffer()),
+		/* Light data constants */
+		vkrhi::BindingSetItem::StructuredBuffer_SRV(3, scene->getLightBuffer()),
 		vkrhi::BindingSetItem::Sampler(0, mHelperPass->m_AnisotropicWrapSampler)
 	};
 	vkrhi::utils::CreateBindingSetAndLayout(
@@ -186,13 +200,19 @@ void BindlessRender::render(RenderContext *context) {
 
 	/* Set view constants */
 	ViewConstants viewConstants;
-	Camera::SharedPtr camera  = getScene()->getCamera();
-	viewConstants.viewToClip  = camera->getProjectionMatrix();
-	viewConstants.worldToView = camera->getViewMatrix();
-	viewConstants.worldToClip = camera->getViewProjectionMatrix();
+	Camera::SharedPtr camera	 = getScene()->getCamera();
+	viewConstants.viewToClip	 = camera->getProjectionMatrix();
+	viewConstants.worldToView	 = camera->getViewMatrix();
+	viewConstants.worldToClip	 = camera->getViewProjectionMatrix();
+	viewConstants.cameraPosition = camera->getPosition();
+	mCommandList->writeBuffer(mViewConstants, &viewConstants, sizeof(viewConstants));
 
-	mCommandList->writeBuffer(mViewConstants, &viewConstants,
-							  sizeof(viewConstants));
+	/* Set light constsnts */
+	LightConstants lightConstants;
+	lightConstants.numLights	 = getScene()->getLights().size();
+	lightConstants.ambientBottom = 0.2f;
+	lightConstants.ambientTop	 = lightConstants.ambientBottom * Color3f(0.3, 0.4, 0.3);
+	mCommandList->writeBuffer(mLightConstants, &lightConstants, sizeof(lightConstants));
 
 	/* Draw geometries. */
 	vkrhi::GraphicsState state;

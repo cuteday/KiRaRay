@@ -174,10 +174,10 @@ void Material::renderUI() {
 	static const char *bsdfTypes[]	   = {"Diffuse", "Dielectric", "Disney"};
 	mUpdated |= ui::ListBox("Shading model", (int *) &mShadingModel, shadingModels, 2);
 	mUpdated |= ui::ListBox("BSDF", (int *) &mBsdfType, bsdfTypes, (int) MaterialType::Count);
-	mUpdated |= ui::DragFloat4("Diffuse", (float *) &mMaterialParams.diffuse, 1e-3, 0, 5);
+	mUpdated |= ui::DragFloat4("Diffuse", (float *) &mMaterialParams.diffuse, 1e-3, 0, 1);
 	mUpdated |= ui::DragFloat4("Specular", (float *) &mMaterialParams.specular, 1e-3, 0, 1);
 	mUpdated |= ui::DragFloat("Specular transmission", &mMaterialParams.specularTransmission, 1e-3, 0, 1);
-	mUpdated |= ui::DragFloat("Index of Refraction", &mMaterialParams.IoR, 1e-3, 0.1, 5);
+	mUpdated |= ui::InputFloat("Index of Refraction", &mMaterialParams.IoR);
 }
 
 namespace rt {

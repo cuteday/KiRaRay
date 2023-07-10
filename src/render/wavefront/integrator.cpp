@@ -87,7 +87,7 @@ void WavefrontPathTracer::handleMiss() {
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
 			Color L = {};
 			Interaction intr(w.ray.origin);
-			for (const InfiniteLight &light : sceneData.infiniteLights) {
+			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
 				float misWeight = 1;
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 					float bsdfPdf  = w.pdf;
@@ -253,7 +253,7 @@ void WavefrontPathTracer::render(RenderContext *context) {
 void WavefrontPathTracer::renderUI() {
 	ui::Text("Frame index (seed): %zd", getFrameIndex());
 	ui::Text("Render parameters");
-	ui::InputInt("Samples per pixel", &samplesPerPixel);
+	ui::InputInt("Samples per pixel", &samplesPerPixel, 1, 1);
 	ui::InputInt("Max bounces", &maxDepth, 1);
 	ui::SliderFloat("Russian roulette", &probRR, 0, 1);
 	ui::Checkbox("Enable NEE", &enableNEE);

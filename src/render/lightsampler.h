@@ -9,7 +9,7 @@
 KRR_NAMESPACE_BEGIN
 
 struct SampledLight {
-	Light light;
+	rt::Light light;
 	float pdf;
 };
 
@@ -17,7 +17,7 @@ class UniformLightSampler {
 public:
 	UniformLightSampler() = default;
 
-	UniformLightSampler(const TypedBufferView<Light>& lights) : mLights(lights) {}
+	UniformLightSampler(const TypedBufferView<rt::Light> &lights) : mLights(lights) {}
 
 	// assumes u in [0, 1)
 	KRR_CALLABLE SampledLight sample(float u) const {
@@ -29,12 +29,12 @@ public:
 		return sl;
 	}
 
-	KRR_CALLABLE float pdf(const Light &light) const { return 1.f / mLights.size(); }
+	KRR_CALLABLE float pdf(const rt::Light &light) const { return 1.f / mLights.size(); }
 
-	KRR_CALLABLE TypedBufferView<Light> getLights() { return mLights; }
+	KRR_CALLABLE TypedBufferView<rt::Light> getLights() { return mLights; }
 
 private:
-	TypedBufferView<Light> mLights;
+	TypedBufferView<rt::Light> mLights;
 };
 
 class LightSampler : public TaggedPointer<UniformLightSampler> {
@@ -46,7 +46,7 @@ public:
 		return dispatch(sample);
 	}
 
-	KRR_CALLABLE float pdf(const Light &light) const {
+	KRR_CALLABLE float pdf(const rt::Light &light) const {
 		auto pdf = [&](auto ptr) -> float { return ptr->pdf(light); };
 		return dispatch(pdf);
 	}

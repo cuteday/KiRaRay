@@ -10,6 +10,7 @@
 #include <optix_device.h>
 
 KRR_NAMESPACE_BEGIN
+using namespace rt;
 
 namespace {
 KRR_DEVICE_FUNCTION float getMetallic(Color diffuse, Color spec) {

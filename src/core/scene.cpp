@@ -25,6 +25,12 @@ bool Scene::update(size_t frameIndex, double currentTime) {
 	return mHasChanges = hasChanges;
 }
 
+void Scene::loadConfig(const json& config) {
+	mCamera			  = std::make_shared<Camera>(config.at("camera")); 
+	mCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
+	mCameraController->setCamera(mCamera);
+}
+
 void Scene::renderUI() {
 	if (ui::TreeNode("Statistics")) {
 		ui::Text("Meshes: %d", getMeshes().size());
@@ -84,7 +90,21 @@ void Scene::renderUI() {
 		ui::Checkbox("Enable animation", &mEnableAnimation);
 		for (int i = 0; i < getAnimations().size(); i++) {
 			if (ui::TreeNode(std::to_string(i).c_str())) {
+				ui::PushID(i);
 				getAnimations()[i]->renderUI();
+				ui::PopID();
+				ui::TreePop();
+			}
+		}
+		ui::TreePop();
+	}
+	if (mGraph && getLights().size() && ui::TreeNode("Lights")) {
+		for (int i = 0; i < getLights().size(); i++) {
+			auto light = getLights()[i];
+			if (ui::TreeNode(light->getName().c_str())) {
+				ui::PushID(i);
+				getLights()[i]->renderUI();
+				ui::PopID();
 				ui::TreePop();
 			}
 		}
@@ -180,15 +200,9 @@ void RTScene::processLights() {
 		return triangles;
 	};
 
-	auto infiniteLights = mScene.lock()->environments;
-	mInfiniteLights.reserve(infiniteLights.size());
-	for (auto& infiniteLight : infiniteLights) {
-		rt::TextureData textureData;
-		textureData.initializeFromHost(infiniteLight);
-		mInfiniteLights.push_back(InfiniteLight(textureData));
-	}
-	mInfiniteLightsBuffer.alloc_and_copy_from_host(mInfiniteLights);
-
+	/* Process mesh lights (diffuse area lights).
+	   Mesh lights do not actually exists in the scene graph, since rasterization does 
+	   not inherently support them. We simply bypass them with storage in mesh data. */
 	uint nMeshes = mScene.lock()->getMeshes().size();
 	for (const auto &instance : mScene.lock()->getMeshInstances()) {
 		const auto &mesh			   = instance->getMesh();
@@ -206,18 +220,37 @@ void RTScene::processLights() {
 				createTrianglePrimitives(mesh, &mInstancesBuffer[instance->getInstanceId()]);
 			size_t n_primitives				 = primitives.size();
 			instanceData.primitives.alloc_and_copy_from_host(primitives);
-			std::vector<DiffuseAreaLight> lights(n_primitives);
+			std::vector<rt::DiffuseAreaLight> lights(n_primitives);
 			for (size_t triId = 0; triId < n_primitives; triId++) {
 				lights[triId] =
-					DiffuseAreaLight(Shape(&instanceData.primitives[triId]), textureData, Le, true);
+					rt::DiffuseAreaLight(Shape(&instanceData.primitives[triId]), textureData, Le, true);
 			}
 			instanceData.lights.alloc_and_copy_from_host(lights);
 			for (size_t triId = 0; triId < n_primitives; triId++) 
-				mLights.push_back(Light(&instanceData.lights[triId]));
+				mLights.push_back(rt::Light(&instanceData.lights[triId]));
 		}
 	}
+
+	/* Process other lights (environment lights and those analytical ones). */
+	for (auto light : mScene.lock()->getLights()) {
+		auto transform = light->getNode()->getGlobalTransform();
+		if (auto infiniteLight = std::dynamic_pointer_cast<InfiniteLight>(light)) {
+			rt::TextureData textureData;
+			textureData.initializeFromHost(infiniteLight->getTexture());
+			mInfiniteLights.push_back(rt::InfiniteLight(transform, textureData, 1));
+		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
+			Log(Warning, "Point light is not yet implemented in ray tracing, skipping...");
+		} else if (auto directionalLight = std::dynamic_pointer_cast<DirectionalLight>(light)) {
+			Log(Warning, "Directional light is not yet implemented in ray tracing, skipping...");
+		}
+	}
+
+	/* Upload infinite lights (a.k.a. environment lights). */
+	mInfiniteLightsBuffer.alloc_and_copy_from_host(mInfiniteLights);
 	for (int idx = 0; idx < mInfiniteLights.size(); idx++)
-		mLights.push_back(Light(&mInfiniteLightsBuffer[idx]));
+		mLights.push_back(rt::Light(&mInfiniteLightsBuffer[idx]));
+
+	/* Upload main constant light buffer and light sampler. */
 	mLightsBuffer.alloc_and_copy_from_host(mLights);
 	Log(Info, "A total of %zd light(s) processed!", mLights.size());
 	if (!mLights.size())

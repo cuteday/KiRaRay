@@ -11,6 +11,7 @@ KRR_NAMESPACE_BEGIN
 
 using namespace utils;
 using namespace shader;
+using namespace rt;
 using namespace types;
 
 extern "C" __constant__ LaunchParamsPT launchParams;
@@ -56,7 +57,7 @@ KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 }
 
 KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
-	const Light &light = sd.light;
+	const rt::Light &light = sd.light;
 	Interaction intr   = sd.getInteraction();
 	Color Le		   = light.L(intr.p, intr.n, intr.uv, intr.wo);
 
@@ -73,7 +74,7 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 }
 
 KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
-	for (const InfiniteLight &light : launchParams.sceneData.infiniteLights) {
+	for (const rt::InfiniteLight &light : launchParams.sceneData.infiniteLights) {
 		float weight{ 1 };
 		if (launchParams.NEE && path.depth > 0 && !(path.bsdfType & BSDF_SPECULAR)) {
 			float bsdfPdf  = path.pdf;
@@ -90,7 +91,7 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path
 	Vector3f woLocal = sd.frame.toLocal(sd.wo);
 
 	SampledLight sampledLight = path.lightSampler.sample(path.sampler.get1D());
-	Light &light			  = sampledLight.light;
+	rt::Light &light		  = sampledLight.light;
 	LightSample ls			  = light.sampleLi(path.sampler.get2D(), { sd.pos, sd.frame.N });
 
 	Vector3f wiWorld = normalize(ls.intr.p - sd.pos);

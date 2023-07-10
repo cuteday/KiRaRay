@@ -128,6 +128,7 @@ public:
 					   "Failed to get DXC compile errors");
 				if (errors && errors->GetStringLength() > 0) {
 					std::string message = errors->GetStringPointer();
+					Log(Error, "%s", message.c_str());
 					throw std::runtime_error{message};
 				}
 

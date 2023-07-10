@@ -30,13 +30,10 @@ Vector3f aiCast(const aiColor3D &ai) { return Vector3f(ai.r, ai.g, ai.b); }
 Vector3f aiCast(const aiVector3D &val) { return Vector3f(val.x, val.y, val.z); }
 Array4f aiKeyframeCast(const aiVector3D &val) { return Array4f(val.x, val.y, val.z, 0); }
 Array4f aiKeyframeCast(const aiQuaternion &val) { return Array4f(val.x, val.y, val.z, val.w); }
-Quaternionf aiCast(const aiQuaternion &q) {
-	return Quaternionf{q.w, q.x, q.y, q.z};
-}
-AABB aiCast(const aiAABB &aabb) {
-	return AABB(aiCast(aabb.mMin), aiCast(aabb.mMax));
-}
-Matrix4f aiCast(const aiMatrix4x4 &m) { return Matrix4f{{m.a1, m.a2, m.a3, m.a4}, 
+Quaternionf aiCast(const aiQuaternion &q) { return Quaternionf{q.w, q.x, q.y, q.z}; }
+AABB aiCast(const aiAABB &aabb) { return AABB(aiCast(aabb.mMin), aiCast(aabb.mMax)); }
+Matrix4f aiCast(const aiMatrix4x4 &m) {
+	return Matrix4f{{m.a1, m.a2, m.a3, m.a4},
 					{m.b1, m.b2, m.b3, m.b4},
 					{m.c1, m.c2, m.c3, m.c4},
 					{m.d1, m.d2, m.d3, m.d4}};

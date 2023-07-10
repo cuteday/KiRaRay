@@ -20,7 +20,7 @@ public:
 
 	SceneGraphNode *getNode() const { return mNode.lock().get(); }
 	std::shared_ptr<SceneGraphNode> getNodeSharedPtr() const { return mNode.lock(); }
-	virtual AABB getLocalBoundingBox() { return AABB(); }
+	virtual AABB getLocalBoundingBox() const { return AABB(); }
 	virtual std::shared_ptr<SceneGraphLeaf> clone() = 0;
 
 	const std::string &getName() const;
@@ -48,13 +48,79 @@ public:
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	const Mesh::SharedPtr &getMesh() const { return mMesh; }
 	int getInstanceId() const { return mInstanceId; }
-	virtual AABB getLocalBoundingBox() override { return mMesh->getBoundingBox(); }
+	virtual AABB getLocalBoundingBox() const override { return mMesh->getBoundingBox(); }
 	void renderUI();
 
 private:
 	friend class SceneGraph;
 	Mesh::SharedPtr mMesh;
 	int mInstanceId{-1};
+};
+
+class SceneLight : public SceneGraphLeaf {
+public:
+	using SharedPtr = std::shared_ptr<SceneLight>;
+	enum class Type : uint32_t {
+		Undefined		 = 0,
+		PointLight		 = 1,
+		DirectionalLight = 2,
+		InfiniteLight	 = 3
+	};
+	SceneLight()		= default;
+	SceneLight(const Color &color, const float scale) : color(color), scale(scale) {}
+	virtual Type getType() const { return Type::Undefined; }
+	virtual void renderUI();
+
+	void setColor(const Color &_color) { color = _color; setUpdated();}
+	void setScale(const float _scale) { scale = _scale; setUpdated();}
+	void setPosition(const Vector3f& position);
+	void setDirection(const Vector3f& direction);
+	Color getColor() const { return color; }
+	float getScale() const { return scale; }
+	Vector3f getPosition() const;
+	Vector3f getDirection() const;
+	bool isUpdated() const { return updated; }
+	void setUpdated(bool _updated = true) { updated = _updated; }
+
+protected:
+	Color color;
+	float scale;
+	bool updated{false};
+};
+
+class PointLight : public SceneLight {
+public:
+	using SharedPtr = std::shared_ptr<PointLight>;
+	using SceneLight::SceneLight;
+
+	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+	virtual Type getType() const override { return Type::PointLight; }
+};
+
+class DirectionalLight : public SceneLight {
+public:
+	using SharedPtr = std::shared_ptr<DirectionalLight>;
+	using SceneLight::SceneLight;
+
+	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+	virtual Type getType() const override { return Type::DirectionalLight; }
+};
+
+class InfiniteLight : public SceneLight {
+public:
+	using SharedPtr = std::shared_ptr<InfiniteLight>;
+	using SceneLight::SceneLight;
+	InfiniteLight(Texture::SharedPtr texture, const float scale = 1) :
+		SceneLight(Color::Ones(), 1), texture(texture) {}
+
+	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+	virtual Type getType() const override { return Type::InfiniteLight; }
+
+	void setTexture(Texture::SharedPtr _texture) { texture = texture; }
+	Texture::SharedPtr getTexture() const { return texture; }
+
+protected:
+	Texture::SharedPtr texture;
 };
 
 class SceneGraphNode final : public std::enable_shared_from_this<SceneGraphNode> {
@@ -217,6 +283,7 @@ public:
 	std::vector<Mesh::SharedPtr> &getMeshes() { return mMeshes; }
 	std::vector<Material::SharedPtr> &getMaterials() { return mMaterials; }
 	std::vector<SceneAnimation::SharedPtr> &getAnimations() { return mAnimations; }
+	std::vector<SceneLight::SharedPtr> &getLights() { return mLights; }
 	UpdateRecord getLastUpdateRecord() const { return mLastUpdateRecord; };
 	void addMesh(Mesh::SharedPtr mesh);
 	void addMaterial(Material::SharedPtr material);
@@ -247,6 +314,7 @@ private:
 	std::vector<Material::SharedPtr> mMaterials;
 	std::vector<MeshInstance::SharedPtr> mMeshInstances;
 	std::vector<SceneAnimation::SharedPtr> mAnimations;
+	std::vector<SceneLight::SharedPtr> mLights;
 	UpdateRecord mLastUpdateRecord;
 };
 

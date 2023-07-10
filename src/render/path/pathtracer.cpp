@@ -28,7 +28,7 @@ void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 
 void MegakernelPathTracer::renderUI() {
 	ui::Text("Path tracing parameters");
-	ui::InputInt("Samples per pixel", &launchParams.spp);
+	ui::InputInt("Samples per pixel", &launchParams.spp, 1, 1);
 	ui::SliderFloat("RR absorption probability", &launchParams.probRR, 0.f, 1.f, "%.3f");
 	ui::InputInt("Max bounces", &launchParams.maxDepth);
 	ui::DragFloat("Radiance clip", &launchParams.clampThreshold, 0.1, 1, 500);

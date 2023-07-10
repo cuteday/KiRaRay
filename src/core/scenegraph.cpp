@@ -29,6 +29,20 @@ SceneGraphLeaf::SharedPtr SceneAnimation::clone() {
 	return std::static_pointer_cast<SceneGraphLeaf>(copy);
 }
 
+SceneGraphLeaf::SharedPtr PointLight::clone() {
+	return std::make_shared<PointLight>(color, scale);
+}
+
+SceneGraphLeaf::SharedPtr DirectionalLight::clone() {
+	return std::make_shared<PointLight>(color, scale);
+}
+
+SceneGraphLeaf::SharedPtr InfiniteLight::clone() {
+	auto light = std::make_shared<InfiniteLight>(color, scale);
+	light->setTexture(texture);
+	return light;
+}
+
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
 								  const Vector3f *scaling) {
 	if (scaling) mScaling = *scaling;
@@ -328,6 +342,8 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 		mMeshInstances.push_back(meshInstance);
 	} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(leaf)) {
 		mAnimations.push_back(animation);
+	} else if (auto light = std::dynamic_pointer_cast<SceneLight>(leaf)) {
+		mLights.push_back(light);
 	}
 }
 
@@ -340,8 +356,15 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 	if (auto meshInstance = std::dynamic_pointer_cast<MeshInstance>(leaf)) {
 		auto it = std::find(mMeshInstances.begin(), mMeshInstances.end(), leaf);
 		if (it != mMeshInstances.end()) mMeshInstances.erase(it);
-		else Log(Warning, "Unregistering an instance that do not exist in graph...");
-		return;
+		else Log(Warning, "Unregistering a mesh instance that do not exist in graph...");
+	} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(leaf)) {
+		auto it = std::find(mAnimations.begin(), mAnimations.end(), leaf);
+		if (it != mAnimations.end()) mAnimations.erase(it);
+		else Log(Warning, "Unregistering an animation that do not exist in graph...");
+	} else if (auto light = std::dynamic_pointer_cast<SceneLight>(leaf)) {
+		auto it = std::find(mLights.begin(), mLights.end(), leaf);
+		if (it != mLights.end()) mLights.erase(it);
+		else Log(Warning, "Unregistering a light that do not exist in graph...");
 	}
 }
 
@@ -459,6 +482,55 @@ void SceneGraph::animate(double currentTime) {
 	}
 }
 
+void SceneLight::setPosition(const Vector3f& position) {
+	if (auto node = getNode()) {
+		auto globalTransform = Affine3f::Identity();
+		if (auto parent = node->getParent())
+			globalTransform = parent->getGlobalTransform();
+		node->setTranslation(globalTransform.inverse() * position);
+		setUpdated(true);
+	} else {
+		Log(Error, "Setting direction for a light that does not exist in scene graph.");
+	}
+}
+
+Vector3f SceneLight::getPosition() const { 
+	if (auto node = getNode())
+		return node->getGlobalTransform().translation();
+	else return Vector3f::Zero();
+}
+
+void SceneLight::setDirection(const Vector3f& direction) {
+	if (auto node = getNode()) {
+		Affine3f globalTransform = Affine3f::Identity();
+		if (auto parent = node->getParent()) globalTransform = parent->getGlobalTransform();
+		
+		Affine3f worldToLocal  = look_at(Vector3f{}, direction, Vector3f{0, 1, 0});
+		Affine3f localToParent = (worldToLocal * globalTransform).inverse();
+		node->setRotation(Quaternionf(localToParent.rotation()));
+		node->setScaling(localToParent.scaling());
+		setUpdated(true);
+	} else {
+		Log(Error, "Setting direction for a light that does not exist in scene graph.");
+	}
+}
+
+Vector3f SceneLight::getDirection() const {
+	if (auto node = getNode())
+		return node->getGlobalTransform().rotation() * -Vector3f::UnitZ();
+	else return Vector3f::Zero();
+}
+
+void SceneLight::renderUI() { 
+	auto direction = getDirection(), position = getPosition();
+	auto color	= getColor();
+	float scale = getScale();
+	if (ui::DragFloat3("Color", (float *) &color, 1e-3, 0, 1)) setColor(color);
+	if (ui::DragFloat("Scale", &scale, 1e-2, 0, 100)) setScale(scale);
+	if (ui::DragFloat3("Direction input", (float *) &direction, 1e-3, -1, 1)) setDirection(direction);
+	if (ui::DragFloat3("Position", (float *) &position), 1e-2, -100, 100) setPosition(position);
+}
+
 void SceneAnimationChannel::renderUI() {
 	if (!isValid()) return;
 	ui::Text("Duration: %f - %f", getSampler()->getStartTime(), getSampler()->getEndTime());
@@ -527,6 +599,11 @@ void SceneGraphNode::renderUI() {
 		} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(getLeaf())) {
 			if (ui::TreeNode("Animation")) {
 				animation->renderUI();
+				ui::TreePop();
+			}
+		} else if (auto light = std::dynamic_pointer_cast<SceneLight>(getLeaf())) {
+			if (ui::TreeNode("Light")) {
+				light->renderUI();
 				ui::TreePop();
 			}
 		}

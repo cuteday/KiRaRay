@@ -12,8 +12,6 @@
 #include "util/math_utils.h"
 
 KRR_NAMESPACE_BEGIN
-
-
 using namespace utils;
 
 KRR_CALLABLE int PermutationElement(uint32_t i, uint32_t l, uint32_t p) {
@@ -85,16 +83,6 @@ private:
     uint16_t* permutations;
 };
 
-//inline inter::vector<DigitPermutation>* ComputeRadicalInversePermutations(uint32_t seed,
-//    Allocator alloc = {}) {
-//    inter::vector<DigitPermutation>* perms =
-//        alloc.new_object<inter::vector<DigitPermutation>>(alloc);
-//    perms->resize(PrimeTableSize);
-//    for (int i = 0; i < PrimeTableSize; ++i)
-//        (*perms)[i] = DigitPermutation(Primes[i], seed, alloc);
-//    return perms;
-//}
-
 // NoRandomizer Definition
 struct NoRandomizer {
     KRR_CALLABLE uint32_t operator()(uint32_t v) const { return v; }
@@ -163,14 +151,6 @@ KRR_CALLABLE float OwenScrambledRadicalInverse(int baseIndex, uint64_t a,
         a = next;
     }
     return min(invBaseM * reversedDigits, OneMinusEpsilon);
-}
-
-KRR_CALLABLE uint32_t MultiplyGenerator(inter::span<const uint32_t> C, uint32_t a) {
-    uint32_t v = 0;
-    for (int i = 0; a != 0; ++i, a >>= 1)
-        if (a & 1)
-            v ^= C[i];
-    return v;
 }
 
 KRR_CALLABLE float BlueNoiseSample(Vector2i p, int instance) {
@@ -253,43 +233,5 @@ struct OwenScrambler {
 
 // RandomizeStrategy Definition
 enum class RandomizeStrategy { None, PermuteDigits, FastOwen, Owen };
-
-//template <typename R>
-//KRR_CALLABLE float SobolSample(int64_t a, int dimension, R randomizer) {
-//    DCHECK_LT(dimension, NSobolDimensions);
-//    DCHECK(a >= 0 && a < (1ull << SobolMatrixSize));
-//    // Compute initial Sobol sample _v_ using generator matrices
-//    uint32_t v = 0;
-//    for (int i = dimension * SobolMatrixSize; a != 0; a >>= 1, i++)
-//        if (a & 1)
-//            v ^= SobolMatrices32[i];
-//
-//    // Randomize Sobol sample and return floating-point value
-//    v = randomizer(v);
-//    return std::min(v * 0x1p-32f, floatOneMinusEpsilon);
-//}
-
-//KRR_CALLABLE
-//    uint64_t SobolIntervalToIndex(uint32_t m, uint64_t frame, Vector2i p) {
-//    if (m == 0)
-//        return frame;
-//
-//    const uint32_t m2 = m << 1;
-//    uint64_t index = uint64_t(frame) << m2;
-//
-//    uint64_t delta = 0;
-//    for (int c = 0; frame; frame >>= 1, ++c)
-//        if (frame & 1)  // Add flipped column m + c + 1.
-//            delta ^= VdCSobolMatrices[m - 1][c];
-//
-//    // flipped b
-//    uint64_t b = (((uint64_t)((uint32_t)p[0]) << m) | ((uint32_t)p[1])) ^ delta;
-//
-//    for (int c = 0; b; b >>= 1, ++c)
-//        if (b & 1)  // Add column 2 * m - c.
-//            index ^= VdCSobolMatricesInv[m - 1][c];
-//
-//    return index;
-//}
 
 KRR_NAMESPACE_END

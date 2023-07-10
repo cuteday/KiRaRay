@@ -5,10 +5,8 @@
 
 KRR_NAMESPACE_BEGIN
 
-void InfiniteLight::renderUI() {
-	ui::SliderFloat("Intensity", &scale, 0, 10, "%.02f");
-	ui::SliderFloat("Rotation", &rotation, 0, 1, "%.03f");
-	ui::ColorEdit3("Tint", (float *) &tint);
+namespace rt {
+
 }
 
 KRR_NAMESPACE_END
