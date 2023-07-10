@@ -52,13 +52,7 @@ public:
 		mCameraController = cameraController;
 	}
 	void addEnvironmentMap(Texture::SharedPtr infiniteLight);
-	
-	void loadConfig(const json &config) { 
-		mCamera = std::make_shared<Camera>(config.at("camera")); 
-		mCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
-		mCameraController->setCamera(mCamera);
-	}
-	
+	void loadConfig(const json &config);
 	AABB getBoundingBox() const { return mGraph->getRoot()->getGlobalBoundingBox(); }
 
 	friend void to_json(json& j, const Scene& scene) { 
@@ -74,7 +68,7 @@ public:
 	OrbitCameraController::SharedPtr mCameraController;
 	std::vector<Texture::SharedPtr> environments;
 	bool mHasChanges	  = false;
-	bool mEnableAnimation = false;
+	bool mEnableAnimation = true;
 
 	std::shared_ptr<RTScene> mSceneRT;
 	std::shared_ptr<VKScene> mSceneVK;

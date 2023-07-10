@@ -25,6 +25,12 @@ bool Scene::update(size_t frameIndex, double currentTime) {
 	return mHasChanges = hasChanges;
 }
 
+void Scene::loadConfig(const json& config) {
+	mCamera			  = std::make_shared<Camera>(config.at("camera")); 
+	mCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
+	mCameraController->setCamera(mCamera);
+}
+
 void Scene::renderUI() {
 	if (ui::TreeNode("Statistics")) {
 		ui::Text("Meshes: %d", getMeshes().size());

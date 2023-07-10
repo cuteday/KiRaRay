@@ -1,6 +1,6 @@
 # KiRaRay
 
-*KiRaRay* is a simple interactive ray-tracing renderer using optix. It is mainly for personal learning purpose with limited features.
+*KiRaRay* is a simple interactive ray-tracing renderer using optix.
 
 <p align=center>
 <img src=common/demo/kirara.jpg width="800">
@@ -8,7 +8,7 @@
 ### Features
 
 > __Working in progress (?) project__  
-> This toy renderer is purposed for learning and only with limited features. Currently, any part of this project could possibly produce unexpected errors.
+> This toy renderer is purposed for learning and only with limited features.
 
 - [x] GPU path tracing (megakernel/wavefront).
 - [x] Post processing passes (e.g. denoising).
@@ -72,11 +72,11 @@ Currently, the renderer runs extremely slow on *Debug* build for unknown reasons
 
 #### Writing new render passes.
 
-It is possible to write your own render pass, see the examples [here](src/misc/samples/). Check these [post-processing passes](src/render/passes/) for more working examples.
+It is possible to write your own render pass, see the examples [here](src/misc/samples/). Check [bindless render pass](src/render/rasterize/) (rasterization) or the [post-processing passes](src/render/passes/) for more working examples.
 
 #### Scene loading
 
-*Kiraray* provided limited support for importing scenes like OBJ, glTF2 using [Assimp](https://github.com/assimp/assimp.git). Animations in glTF2 models could be correctly imported., but skeleton animation is not yet supported. [pbrt-parser](https://github.com/ingowald/pbrt-parser) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes (get some [here](https://benedikt-bitterli.me/resources/), modify the file url to download the pbrt-v3 format models).
+*Kiraray* provided limited support for importing scenes like OBJ, glTF2 using [Assimp](https://github.com/assimp/assimp.git). Animations in glTF2 models could be correctly imported, but skeleton animation is not yet supported. [pbrt-parser](https://github.com/ingowald/pbrt-parser) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes (get some [here](https://benedikt-bitterli.me/resources/), modify the file url to download the pbrt-v3 format models).
 
 ### Epilogue
 
