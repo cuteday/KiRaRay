@@ -84,7 +84,21 @@ void Scene::renderUI() {
 		ui::Checkbox("Enable animation", &mEnableAnimation);
 		for (int i = 0; i < getAnimations().size(); i++) {
 			if (ui::TreeNode(std::to_string(i).c_str())) {
+				ui::PushID(i);
 				getAnimations()[i]->renderUI();
+				ui::PopID();
+				ui::TreePop();
+			}
+		}
+		ui::TreePop();
+	}
+	if (mGraph && getLights().size() && ui::TreeNode("Lights")) {
+		for (int i = 0; i < getLights().size(); i++) {
+			auto light = getLights()[i];
+			if (ui::TreeNode(light->getName().c_str())) {
+				ui::PushID(i);
+				getLights()[i]->renderUI();
+				ui::PopID();
 				ui::TreePop();
 			}
 		}

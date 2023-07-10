@@ -488,6 +488,7 @@ void SceneLight::setPosition(const Vector3f& position) {
 		if (auto parent = node->getParent())
 			globalTransform = parent->getGlobalTransform();
 		node->setTranslation(globalTransform.inverse() * position);
+		setUpdated(true);
 	} else {
 		Log(Error, "Setting direction for a light that does not exist in scene graph.");
 	}
@@ -508,6 +509,7 @@ void SceneLight::setDirection(const Vector3f& direction) {
 		Affine3f localToParent = (worldToLocal * globalTransform).inverse();
 		node->setRotation(Quaternionf(localToParent.rotation()));
 		node->setScaling(localToParent.scaling());
+		setUpdated(true);
 	} else {
 		Log(Error, "Setting direction for a light that does not exist in scene graph.");
 	}
@@ -515,14 +517,18 @@ void SceneLight::setDirection(const Vector3f& direction) {
 
 Vector3f SceneLight::getDirection() const {
 	if (auto node = getNode())
-		return node->getGlobalTransform().rotation() * Vector3f::UnitZ();
+		return node->getGlobalTransform().rotation() * -Vector3f::UnitZ();
 	else return Vector3f::Zero();
 }
 
 void SceneLight::renderUI() { 
 	auto direction = getDirection(), position = getPosition();
-	if (ui::DragFloat3("Direction", (float *) &direction, 1e-3, 0, 1)) setDirection(direction);
-	if (ui::InputFloat3("Position", (float *) &position)) setPosition(position);	
+	auto color	= getColor();
+	float scale = getScale();
+	if (ui::DragFloat3("Color", (float *) &color, 1e-3, 0, 1)) setColor(color);
+	if (ui::DragFloat("Scale", &scale, 1e-2, 0, 100)) setScale(scale);
+	if (ui::DragFloat3("Direction input", (float *) &direction, 1e-3, -1, 1)) setDirection(direction);
+	if (ui::DragFloat3("Position", (float *) &position), 1e-2, -100, 100) setPosition(position);
 }
 
 void SceneAnimationChannel::renderUI() {
@@ -593,6 +599,11 @@ void SceneGraphNode::renderUI() {
 		} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(getLeaf())) {
 			if (ui::TreeNode("Animation")) {
 				animation->renderUI();
+				ui::TreePop();
+			}
+		} else if (auto light = std::dynamic_pointer_cast<SceneLight>(getLeaf())) {
+			if (ui::TreeNode("Light")) {
+				light->renderUI();
 				ui::TreePop();
 			}
 		}

@@ -71,18 +71,21 @@ public:
 	virtual Type getType() const { return Type::Undefined; }
 	virtual void renderUI();
 
-	void setColor(const Color &_color) { color = _color; }
-	void setScale(const float _scale) { scale = _scale; }
+	void setColor(const Color &_color) { color = _color; setUpdated();}
+	void setScale(const float _scale) { scale = _scale; setUpdated();}
 	void setPosition(const Vector3f& position);
 	void setDirection(const Vector3f& direction);
 	Color getColor() const { return color; }
 	float getScale() const { return scale; }
 	Vector3f getPosition() const;
 	Vector3f getDirection() const;
+	bool isUpdated() const { return updated; }
+	void setUpdated(bool _updated = true) { updated = _updated; }
 
 protected:
 	Color color;
 	float scale;
+	bool updated{false};
 };
 
 class PointLight : public SceneLight {
@@ -91,7 +94,7 @@ public:
 	using SceneLight::SceneLight;
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
-	Type getType() const override { return Type::PointLight; }
+	virtual Type getType() const override { return Type::PointLight; }
 };
 
 class DirectionalLight : public SceneLight {
@@ -100,7 +103,7 @@ public:
 	using SceneLight::SceneLight;
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
-	Type getType() const override { return Type::DirectionalLight; }
+	virtual Type getType() const override { return Type::DirectionalLight; }
 };
 
 class InfiniteLight : public SceneLight {
@@ -111,7 +114,7 @@ public:
 		SceneLight(Color::Ones(), 1), texture(texture) {}
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
-	Type getType() const override { return Type::InfiniteLight; }
+	virtual Type getType() const override { return Type::InfiniteLight; }
 
 	void setTexture(Texture::SharedPtr _texture) { texture = texture; }
 	Texture::SharedPtr getTexture() const { return texture; }

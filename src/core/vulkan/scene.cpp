@@ -200,7 +200,7 @@ void VKScene::createLightBuffer() {
 	bufferDesc.canHaveUAVs		= true;
 	bufferDesc.initialState		= vkrhi::ResourceStates::ShaderResource;
 	bufferDesc.keepInitialState = true;
-	mLightDataBuffer		= mDevice->createBuffer(bufferDesc);
+	mLightDataBuffer			= mDevice->createBuffer(bufferDesc);
 }
 
 void VKScene::writeMaterialBuffer(vkrhi::ICommandList *commandList) {
@@ -279,12 +279,12 @@ void VKScene::writeLightBuffer(vkrhi::ICommandList *commandList) {
 	auto lights = mScene.lock()->getLights();
 	for (auto light : lights) {
 		rs::LightData lightData;
-		lightData.type = light->getType();
-		lightData.position;
-		lightData.direction;
-		lightData.scale = light->getScale();
-		lightData.color = light->getColor();
-		lightData.texture = 0;
+		lightData.type		= light->getType();
+		lightData.position	= light->getPosition();
+		lightData.direction = light->getDirection();
+		lightData.scale		= light->getScale();
+		lightData.color		= light->getColor();
+		lightData.texture	= 0;
 		mLightData.push_back(lightData);
 	}
 	commandList->writeBuffer(mLightDataBuffer, mLightData.data(),
@@ -293,9 +293,11 @@ void VKScene::writeLightBuffer(vkrhi::ICommandList *commandList) {
 
 void VKScene::update() {
 	static size_t lastUpdatedFrame = 0;
+	bool graphChanged{false}, materialsChanged{false}, lightsChanged{false};
 	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
-	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)
-		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
+	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform) !=
+			SceneGraphNode::UpdateFlags::None &&
+		lastUpdatedFrame < lastUpdates.frameIndex) {
 		// update instance transformations
 		auto instances = mScene.lock()->getMeshInstances();
 		for (int i = 0; i < instances.size(); i++) {
@@ -303,20 +305,62 @@ void VKScene::update() {
 			instanceData.transform		   = instances[i]->getNode()->getGlobalTransform().matrix();
 			instanceData.meshIndex		   = instances[i]->getMesh()->getMeshId();
 		}
-		
-		auto *device = dynamic_cast<vkrhi::vulkan::Device*>(mDevice.Get());
+
+		graphChanged	 = true;
+		lastUpdatedFrame = lastUpdates.frameIndex;
+	}
+
+	const auto &materials = mScene.lock()->getMaterials();
+	for (int materialId = 0; materialId < materials.size(); materialId++) {
+		const auto &material = materials[materialId];
+		if (material->isUpdated()) {
+			materialsChanged						 = true; 
+			rs::MaterialConstants &materialConstants = mMaterialConstants[materialId];
+			materialConstants.baseColor				 = material->mMaterialParams.diffuse;
+			materialConstants.specularColor			 = material->mMaterialParams.specular;
+			materialConstants.IoR					 = material->mMaterialParams.IoR;
+			materialConstants.opacity = material->mMaterialParams.specularTransmission;
+			materialConstants.metalRough =
+				material->mShadingModel == Material::ShadingModel::MetallicRoughness;
+			material->setUpdated(false);
+		}
+	}
+	
+	const auto &lights = mScene.lock()->getLights();
+	for (int lightId = 0; lightId < lights.size(); lightId++) {
+		const auto &light = lights[lightId];
+		if (lightsChanged = light->isUpdated()) {
+			lightsChanged			 = true;
+			rs::LightData &lightData = mLightData[lightId];
+			lightData.position		 = light->getPosition();
+			lightData.direction		 = light->getDirection();
+			lightData.scale			 = light->getScale();
+			lightData.color			 = light->getColor();
+			mLightData.push_back(lightData);
+			light->setUpdated(false);
+		}
+	}
+	
+	if (graphChanged || materialsChanged || lightsChanged) {
+		auto *device	   = dynamic_cast<vkrhi::vulkan::Device *>(mDevice.Get());
 		uint64_t waitValue = device->getQueue(vkrhi::CommandQueue::Graphics)->getLastSubmittedID();
 		vk::Semaphore waitSem = device->getQueueSemaphore(vkrhi::CommandQueue::Graphics);
 		device->queueWaitForSemaphore(vkrhi::CommandQueue::Graphics, waitSem, waitValue);
 		mCommandList->open();
-		mCommandList->writeBuffer(mInstanceDataBuffer, mInstanceData.data(),
-								 sizeof(rs::InstanceData) * instances.size(), 0);
+		/* write changed buffers... */
+		if (graphChanged)
+			mCommandList->writeBuffer(mInstanceDataBuffer, mInstanceData.data(),
+				sizeof(rs::InstanceData) * mScene.lock()->getMeshInstances().size());
+		if (materialsChanged)
+			mCommandList->writeBuffer(mMaterialConstantsBuffer, mMaterialConstants.data(),
+									  mMaterialConstants.size() * sizeof(rs::MaterialConstants));
+		if (lightsChanged)
+			mCommandList->writeBuffer(mLightDataBuffer, mLightData.data(),
+									  sizeof(rs::LightData) * lights.size());
 		mCommandList->close();
 		mDevice->executeCommandList(mCommandList);
 		waitValue = device->getQueue(vkrhi::CommandQueue::Graphics)->getLastSubmittedID();
 		device->queueWaitForSemaphore(vkrhi::CommandQueue::Graphics, waitSem, waitValue);
-		
-		lastUpdatedFrame = lastUpdates.frameIndex;
 	}
 }
 

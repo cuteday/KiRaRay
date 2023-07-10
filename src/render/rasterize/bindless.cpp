@@ -112,9 +112,10 @@ void BindlessRender::initialize() {
 	if (mScene->getLights().size() == 0) {
 		Log(Warning, "The scene does not contain any light, adding a default sun light.");
 		auto graph	  = mScene->getSceneGraph();
-		auto sunLight = std::make_shared<DirectionalLight>(Color(1), 1);
+		auto sunLight = std::make_shared<DirectionalLight>(Color(1), 2);
 		graph->attachLeaf(graph->getRoot(), sunLight);
-		sunLight->setName("Sun");
+		sunLight->setDirection({0.5, -0.8, 0.5});
+		sunLight->setName("Sunlight");
 	}
 	// TODO: It seems possible to share the device buffer between vulkan and cuda/optix.
 	mScene->initializeSceneVK(getVulkanDevice(), mDescriptorTableManager);
@@ -124,23 +125,22 @@ void BindlessRender::initialize() {
 	
 	/* Create constant buffers */
 	vkrhi::BufferDesc constantsBufferDesc;
-	constantsBufferDesc.byteSize			 = sizeof(ViewConstants);
-	constantsBufferDesc.debugName			 = "ViewConstants";
-	constantsBufferDesc.isConstantBuffer	 = true;
-	constantsBufferDesc.isVolatile			 = true;
-	constantsBufferDesc.maxVersions			 = 16U;
-	mViewConstants							 = getVulkanDevice()->createBuffer(constantsBufferDesc);
+	constantsBufferDesc.byteSize		 = sizeof(ViewConstants);
+	constantsBufferDesc.debugName		 = "ViewConstants";
+	constantsBufferDesc.isConstantBuffer = true;
+	constantsBufferDesc.isVolatile		 = true;
+	constantsBufferDesc.maxVersions		 = 16U;
+	mViewConstants						 = getVulkanDevice()->createBuffer(constantsBufferDesc);
 
 	constantsBufferDesc.byteSize  = sizeof(LightConstants);
 	constantsBufferDesc.debugName = "LightData";
-	mLightData				  = getVulkanDevice()->createBuffer(constantsBufferDesc);
+	mLightConstants				  = getVulkanDevice()->createBuffer(constantsBufferDesc);
 
-	getVulkanDevice()->waitForIdle();
 	/* Create binding set */
 	vkrhi::BindingSetDesc bindingSetDesc;
 	bindingSetDesc.bindings = {
 		vkrhi::BindingSetItem::ConstantBuffer(0, mViewConstants),
-		vkrhi::BindingSetItem::ConstantBuffer(1, mLightData),
+		vkrhi::BindingSetItem::ConstantBuffer(1, mLightConstants),
 		vkrhi::BindingSetItem::PushConstants(2, sizeof(uint)),
 		/* Mesh data constants (for indexing bindless buffers) */
 		vkrhi::BindingSetItem::StructuredBuffer_SRV(0, scene->getGeometryBuffer()),
@@ -200,17 +200,19 @@ void BindlessRender::render(RenderContext *context) {
 
 	/* Set view constants */
 	ViewConstants viewConstants;
-	Camera::SharedPtr camera  = getScene()->getCamera();
-	viewConstants.viewToClip  = camera->getProjectionMatrix();
-	viewConstants.worldToView = camera->getViewMatrix();
-	viewConstants.worldToClip = camera->getViewProjectionMatrix();
-
+	Camera::SharedPtr camera	 = getScene()->getCamera();
+	viewConstants.viewToClip	 = camera->getProjectionMatrix();
+	viewConstants.worldToView	 = camera->getViewMatrix();
+	viewConstants.worldToClip	 = camera->getViewProjectionMatrix();
+	viewConstants.cameraPosition = camera->getPosition();
 	mCommandList->writeBuffer(mViewConstants, &viewConstants, sizeof(viewConstants));
 
 	/* Set light constsnts */
 	LightConstants lightConstants;
-	lightConstants.numLights = getScene()->getLights().size();
-	mCommandList->writeBuffer(mLightData, &lightConstants, sizeof(lightConstants));
+	lightConstants.numLights	 = getScene()->getLights().size();
+	lightConstants.ambientBottom = 0.2f;
+	lightConstants.ambientTop	 = lightConstants.ambientBottom * Color3f(0.3, 0.4, 0.3);
+	mCommandList->writeBuffer(mLightConstants, &lightConstants, sizeof(lightConstants));
 
 	/* Draw geometries. */
 	vkrhi::GraphicsState state;

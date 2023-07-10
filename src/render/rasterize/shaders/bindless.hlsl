@@ -22,15 +22,26 @@ float3 slerp(float3 a, float3 b, float angle, float t) {
     return normalize(result);
 }
 
+struct Vertex{
+	float3 position : POSITION;
+	float2 uv : TEXCOORD;
+	centroid float3 normal : NORMAL;
+	centroid float3 tangent : TANGENT;
+};
+
 struct ViewConstants {
 	float4x4 worldToView;
 	float4x4 viewToClip;
 	float4x4 worldToClip;
+    float3 cameraPosition;
+    uint padding;
 };
 
 struct LightConstants {
 	uint numLights;
-	uint3 padding;
+    float3 ambientBottom;
+    float3 ambientTop;
+	uint padding;
 };
 
 struct RenderConstants {
@@ -95,6 +106,7 @@ struct MaterialSample {
 	float roughness;
 	float metallic;
 	float transmission;
+    int padding;
 };
 
 ConstantBuffer<ViewConstants> g_ViewConstants : register(b0);
@@ -165,11 +177,11 @@ float Lambert(float3 normal, float3 lightIncident) {
 float3 Schlick_Fresnel(float3 F0, float VdotH) {
 	return F0 + (1 - F0) * pow(max(1 - VdotH, 0), 5);
 }
-
+// light incident and view incident are both within the upper hemishpere.
 float3 GGX_AnalyticalLights(float3 lightIncident, float3 viewIncident, float3 normal, float roughness, float3 specularF0, float halfAngularSize) {
 	float3 N = normal;
-	float3 V = -viewIncident;
-	float3 L = -lightIncident;
+	float3 V = viewIncident;
+	float3 L = lightIncident;
 	float3 R = reflect(viewIncident, N);
 
     // Correction of light vector L for spherical / directional area lights.
@@ -205,7 +217,8 @@ float3 GGX_AnalyticalLights(float3 lightIncident, float3 viewIncident, float3 no
 }
 
 void ShadeSurface(LightData light, MaterialSample materialSample, float3 surfacePos, float3 viewIncident,
-	out float3 o_diffuseRadiance, out float3 o_specularRadiance) {
+	out float3 o_diffuseRadiance, out float3 o_specularRadiance)
+{
 	// [TODO]: add radius for point light and angular size for directional light.
 	o_diffuseRadiance = 0;
 	o_specularRadiance = 0;
@@ -216,24 +229,21 @@ void ShadeSurface(LightData light, MaterialSample materialSample, float3 surface
 	if (light.type == LightType_Point) {
 		lightIncident = light.position - surfacePos;
 		float distance = sqrt(dot(lightIncident, lightIncident));
-		lightIncident = -lightIncident / distance;
+		lightIncident = lightIncident / distance;
 		irradiance = light.scale / (distance * distance);
 	} else if (light.type == LightType_Directional) {
 		lightIncident = -normalize(light.direction);
 		irradiance = light.scale;
 	} else return;
 	
-	o_diffuseRadiance = Lambert(materialSample.normal, lightIncident) * materialSample.diffuse * irradiance;
-	o_specularRadiance = GGX_AnalyticalLights(lightIncident, viewIncident, materialSample.normal, materialSample.roughness, materialSample.specular, 0);
+	o_diffuseRadiance = Lambert(materialSample.normal, lightIncident) * materialSample.diffuse * irradiance * light.color;
+    o_specularRadiance = GGX_AnalyticalLights(lightIncident, viewIncident, materialSample.normal, materialSample.roughness, materialSample.specular, 0) * irradiance * light.color;
 }
 
 void vs_main(
-	in uint i_vertexID: SV_VertexID,
-	out float4 o_position: SV_Position,
-	out float2 o_uv: TEXCOORD,
-	out float3 o_normal: NORMAL,
-	out float3 o_tangent: TANGENT,
-	out uint o_material: MATERIAL) {
+	in uint i_vertexID : SV_VertexID,
+	out float4 o_position : SV_Position,
+	out Vertex o_vertex) {
 	
     InstanceData instance = t_InstanceData[g_RenderConstants.instanceID];
 	MeshData mesh = t_MeshData[instance.meshIndex];
@@ -254,40 +264,44 @@ void vs_main(
 	float4 worldSpacePosition = mul(instance.transform, float4(position, 1.0));
 	float4 clipSpacePosition  = mul(g_ViewConstants.worldToClip, worldSpacePosition);
 
-	o_uv = texcoord;
 	o_position = clipSpacePosition;
-	o_material = mesh.materialIndex;
-	o_normal   = mul(instance.transform, float4(normal, 1)).xyz;
-	o_tangent  = mul(instance.transform, float4(tangent, 1)).xyz;
+	// world-space shading data.
+	o_vertex.uv = texcoord;
+	o_vertex.position = worldSpacePosition;
+	o_vertex.normal = mul(instance.transform, float4(normal, 1)).xyz;
+	o_vertex.tangent = mul(instance.transform, float4(tangent, 1)).xyz;
 }
 
 void ps_main(
-	in float4 i_position: SV_Position,
-	in float2 i_uv: TEXCOORD,
-	in float3 i_normal: NORMAL,
-	in float3 i_tangent: TANGENT,
-	nointerpolation in uint i_material: MATERIAL,
+	in float4 i_position : SV_Position,
+	in Vertex i_vertex,
 	out float4 o_color: SV_Target0) {
 	
-	MaterialConstants material = t_MaterialConstants[i_material];
-	MaterialSample materialSample = EvaluateSceneMaterial(i_uv, i_normal, i_tangent, material);
-	
-	float3 diffuseRadiance = 0, specularRadiance = 0;
+	InstanceData instance = t_InstanceData[g_RenderConstants.instanceID];
+	MeshData mesh = t_MeshData[instance.meshIndex];
+	MaterialConstants material = t_MaterialConstants[mesh.materialIndex];
+	MaterialSample materialSample = EvaluateSceneMaterial(i_vertex.uv, i_vertex.normal, i_vertex.tangent, material);
 
 	/* forward lighting */
 	float3 diffuseTerm = 0, specularTerm = 0;
 	[loop] 
-	for (uint nLight = 0; nLight = g_LightConstants.numLights; nLight++) {
-		LightData light = t_LightData[nLight];
+	for (uint nLight = 0; nLight < g_LightConstants.numLights; nLight++) {
+        LightData light = t_LightData[nLight];
 		float3 diffuseRadiance = 0, specularRadiance = 0;
-		
-		ShadeSurface(light, materialSample, i_position.xyz, 0, diffuseRadiance, specularRadiance);
+        float3 viewIncident = normalize(g_ViewConstants.cameraPosition - i_vertex.position);
+		ShadeSurface(light, materialSample, i_vertex.position, viewIncident, diffuseRadiance, specularRadiance);
 		
 		diffuseTerm += diffuseRadiance;
-		specularTerm += specularRadiance;
-	}
+        specularTerm += specularRadiance;
+    }
+	
+    float3 ambientColor = lerp(g_LightConstants.ambientBottom, g_LightConstants.ambientTop, materialSample.normal.y * 0.5 + 0.5);
+    diffuseTerm += ambientColor * materialSample.diffuse;
+    specularTerm += ambientColor * materialSample.specular;
 	
 	/* combine together */
 	o_color.rgb = diffuseTerm + specularTerm;
+	//o_color.rgb = materialSample.diffuse;
+	//o_color.rgb = (materialSample.normal + 1) / 2;
 	o_color.a = 1;
 }
