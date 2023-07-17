@@ -104,6 +104,7 @@ public:
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual Type getType() const override { return Type::DirectionalLight; }
+	virtual void renderUI() override;
 };
 
 class InfiniteLight : public SceneLight {

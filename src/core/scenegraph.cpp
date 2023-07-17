@@ -531,6 +531,17 @@ void SceneLight::renderUI() {
 	if (ui::DragFloat3("Position", (float *) &position), 1e-2, -100, 100) setPosition(position);
 }
 
+void DirectionalLight::renderUI() {
+	Color3f color	= getColor();
+	float scale = getScale();
+	Vector2f sphericalDir = worldToLatLong(getDirection());
+	if (ui::DragFloat3("Color", (float *) &color, 1e-3, 0, 1)) setColor(color);
+	if (ui::DragFloat("Scale", &scale, 1e-2, 0, 100)) setScale(scale);
+	ui::SliderFloat("Azimuth", &sphericalDir[0], 0, 1);
+	ui::SliderFloat("Altitude", &sphericalDir[1], 0, 1);
+	setDirection(latlongToWorld(sphericalDir));
+}
+
 void SceneAnimationChannel::renderUI() {
 	if (!isValid()) return;
 	ui::Text("Duration: %f - %f", getSampler()->getStartTime(), getSampler()->getEndTime());
