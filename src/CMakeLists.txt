@@ -34,6 +34,7 @@ SET ( KRR_CORE_SOURCE
 	core/file.cpp
 	core/renderpass.cpp
 	core/texture.cpp
+	core/media.cpp
 	core/device/context.cpp
 	core/device/optix.cpp
 )
