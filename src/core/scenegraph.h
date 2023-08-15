@@ -22,6 +22,7 @@ public:
 	std::shared_ptr<SceneGraphNode> getNodeSharedPtr() const { return mNode.lock(); }
 	virtual AABB getLocalBoundingBox() const { return AABB(); }
 	virtual std::shared_ptr<SceneGraphLeaf> clone() = 0;
+	virtual void renderUI() {}
 
 	const std::string &getName() const;
 	void setName(const std::string &name) const;
@@ -49,7 +50,7 @@ public:
 	const Mesh::SharedPtr &getMesh() const { return mMesh; }
 	int getInstanceId() const { return mInstanceId; }
 	virtual AABB getLocalBoundingBox() const override { return mMesh->getBoundingBox(); }
-	void renderUI();
+	virtual void renderUI() override;
 
 private:
 	friend class SceneGraph;
@@ -69,7 +70,7 @@ public:
 	SceneLight()		= default;
 	SceneLight(const Color &color, const float scale) : color(color), scale(scale) {}
 	virtual Type getType() const { return Type::Undefined; }
-	virtual void renderUI();
+	virtual void renderUI() override;
 
 	void setColor(const Color &_color) { color = _color; setUpdated();}
 	void setScale(const float _scale) { scale = _scale; setUpdated();}
@@ -260,7 +261,7 @@ public:
 	bool isValid() const;
 	bool apply(float time) const;
 	void addChannel(const SceneAnimationChannel::SharedPtr &channel);
-	void renderUI();
+	virtual void renderUI() override;
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 
 private:
