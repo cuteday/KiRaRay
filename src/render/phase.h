@@ -2,12 +2,8 @@
 #include "common.h"
 #include "taggedptr.h"
 #include "krrmath/math.h"
-#include "util/math_utils.h"
-#include "shared.h"
 
 KRR_NAMESPACE_BEGIN
-
-namespace rt {
 
 struct PhaseFunctionSample {
 	Vector3f wi;
@@ -32,32 +28,10 @@ public:
 		return evalHenveyGreenstein(wo.dot(wi), g);
 	}
 
-	static float evalHenveyGreenstein(float cosTheta, float g) {
-		g			= clamp(g, -.99f, .99f);
-		float denom = 1 + pow2(g) + 2 * g * cosTheta;
-		return M_INV_4PI * (1 - pow2(g)) / (denom * safe_sqrt(denom));
-	}
+	KRR_CALLABLE static float evalHenveyGreenstein(float cosTheta, float g);
 
-	static Vector3f sampleHenveyGreenstein(const Vector3f& wo, float g, const Vector2f& u,
-		float* pdf = nullptr) {
-		g = clamp(g, -.99f, .99f);
-
-		// Compute $\cos\theta$ for Henyey--Greenstein sample
-		float cosTheta;
-		if (fabs(g) < 1e-3f)
-			cosTheta = 1 - 2 * u[0];
-		else
-			cosTheta = -1 / (2 * g) * (1 + pow2(g) - pow2((1 - pow2(g)) / (1 + g - 2 * g * u[0])));
-
-		// Compute direction _wi_ for Henyey--Greenstein sample
-		float sinTheta = safe_sqrt(1 - pow2(cosTheta));
-		float phi	   = M_2PI * u[1];
-		Frame wFrame(wo);
-		Vector3f wi	   = wFrame.toWorld(utils::sphericalToCartesian(sinTheta, cosTheta, phi));
-
-		if (pdf) *pdf = evalHenveyGreenstein(cosTheta, g);
-		return wi;
-	}
+	KRR_CALLABLE static Vector3f sampleHenveyGreenstein(const Vector3f &wo, float g,
+														const Vector2f &u, float *pdf = nullptr);
 
 private: 
 	float g;
@@ -82,7 +56,5 @@ public:
 		return dispatch(p);
 	}
 };
-
-} // namespace rt
 
 KRR_NAMESPACE_END

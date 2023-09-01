@@ -3,6 +3,8 @@
 #include "common.h"
 #include "krrmath/vector.h"
 #include "util/math_utils.h"
+#include "taggedptr.h"
+#include "medium.h"
 
 #define KRR_RAY_TMAX	(1e20f)
 #define KRR_RAY_EPS		(1e-5f)
@@ -26,10 +28,13 @@ enum class MaterialType {
 	Count
 };
 
+
 class Ray {
 public:
 	Vector3f origin;
 	Vector3f dir;
+	float time{0};
+	Medium medium{nullptr};
 };
 
 struct Frame {

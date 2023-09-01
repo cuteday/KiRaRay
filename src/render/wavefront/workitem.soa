@@ -4,7 +4,10 @@ flat float;
 flat BSDFType;
 flat bool;
 flat double;
+
 flat Light;
+flat Medium;
+flat PhaseFunction;
 flat MaterialType;
 flat LCGSampler;
 flat PCGSampler;
@@ -14,8 +17,14 @@ flat Vector2f;
 flat Vector3f;
 flat Color;
 
-struct Ray{ Vector3f origin, dir; };
 struct LightSampleContext{ Vector3f p, n; };
+
+struct Ray{ 
+	Vector3f origin;
+	Vector3f dir; 
+	float time;
+	Medium medium;
+};
 
 struct PixelState {
 	Color L;
