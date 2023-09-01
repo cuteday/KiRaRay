@@ -10,13 +10,34 @@ namespace rt {
 class HomogeneousMedium {
 public:
 
+	KRR_CALLABLE bool isEmissive() const {}
+
+	KRR_CALLABLE void samplePoint(const Vector3f &p) const {}
+
+	KRR_CALLABLE void sampleRay(const Ray &ray, float tMax) {}
+
 	Color sigma_a, sigma_s, Le;
 	HGPhaseFunction phase;
 };
 
 class Medium : public TaggedPointer<HomogeneousMedium> {
 public:
+	using TaggedPointer::TaggedPointer;
 
+	KRR_CALLABLE bool isEmissive() const {
+		auto emissive = [&](auto ptr) -> bool { return ptr->isEmissive(); };
+		return dispatch(emissive);
+	}
+
+	KRR_CALLABLE void samplePoint(const Vector3f& p) const {
+		auto sample = [&](auto pte) -> void { return ptr->samplePoint(p); };
+		return dispatch(sample);
+	}
+
+	KRR_CALLABLE void sampleRay(const Ray& ray, float tMax) {
+		auto sample = [&](auto pte) -> void { return ptr->sampleRay(ray, tMax); };
+		return dispatch(sample);
+	}
 };
 
 class MediumInterface {
