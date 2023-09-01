@@ -17,7 +17,7 @@ public:
 	enum class RenderMode { Interactive, Offline };
 
 	PPGPathTracer() = default;
-	~PPGPathTracer() = default;
+	virtual ~PPGPathTracer() = default;
 	void initialize();
 
 	void resize(const Vector2i& size) override;

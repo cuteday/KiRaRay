@@ -30,12 +30,12 @@ public:
 	}
 
 	KRR_CALLABLE void samplePoint(const Vector3f& p) const {
-		auto sample = [&](auto pte) -> void { return ptr->samplePoint(p); };
+		auto sample = [&](auto ptr) -> void { return ptr->samplePoint(p); };
 		return dispatch(sample);
 	}
 
 	KRR_CALLABLE void sampleRay(const Ray& ray, float tMax) {
-		auto sample = [&](auto pte) -> void { return ptr->sampleRay(ray, tMax); };
+		auto sample = [&](auto ptr) -> void { return ptr->sampleRay(ray, tMax); };
 		return dispatch(sample);
 	}
 };
