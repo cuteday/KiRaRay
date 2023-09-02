@@ -114,7 +114,7 @@ void BindlessRender::initialize() {
 		auto graph	  = mScene->getSceneGraph();
 		auto sunLight = std::make_shared<DirectionalLight>(Color(1), 2);
 		graph->attachLeaf(graph->getRoot(), sunLight);
-		sunLight->setDirection({0.5, -0.8, 0.5});
+		sunLight->setDirection({0.5f, -0.8f, 0.5f});
 		sunLight->setName("Sunlight");
 	}
 	// TODO: It seems possible to share the device buffer between vulkan and cuda/optix.

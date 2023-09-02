@@ -136,6 +136,13 @@ public:
 		this->operator[](1) = y;
 		this->operator[](2) = z;
 	}
+
+	template <typename OT> 
+	KRR_CALLABLE explicit Vector3(const OT &x, const OT &y, const OT &z) {
+		this->operator[](0) = static_cast<T>(x);
+		this->operator[](1) = static_cast<T>(y);
+		this->operator[](2) = static_cast<T>(z);
+	}
 	
 #ifdef __CUDACC__
 
@@ -192,6 +199,14 @@ public:
 	}
 
 	KRR_CALLABLE Vector4(const T &x, const T &y, const T &z, const T &w) {
+		this->operator[](0) = x;
+		this->operator[](1) = y;
+		this->operator[](2) = z;
+		this->operator[](3) = w;
+	}
+
+	template <typename OT>
+	KRR_CALLABLE Vector4(const OT &x, const OT &y, const OT &z, const OT &w) {
 		this->operator[](0) = x;
 		this->operator[](1) = y;
 		this->operator[](2) = z;

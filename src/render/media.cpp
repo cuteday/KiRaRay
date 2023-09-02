@@ -1,11 +1,5 @@
 #include "media.h"
 
-#include <nanovdb/NanoVDB.h>
-#define NANOVDB_USE_ZIP 1
-#include <nanovdb/util/IO.h>
-#include <nanovdb/util/GridHandle.h>
-#include <nanovdb/util/SampleFromVoxels.h>
-
 #include "raytracing.h"
 #include "medium.h"
 #include "util/math_utils.h"
@@ -46,7 +40,7 @@ KRR_CALLABLE bool Medium::isEmissive() const {
 	return dispatch(emissive);
 }
 
-KRR_CALLABLE MediumProperties Medium::samplePoint(const Vector3f &p) const {
+KRR_CALLABLE MediumProperties Medium::samplePoint(Vector3f p) const {
 	auto sample = [&](auto ptr) -> MediumProperties { return ptr->samplePoint(p); };
 	return dispatch(sample);
 }
@@ -54,6 +48,14 @@ KRR_CALLABLE MediumProperties Medium::samplePoint(const Vector3f &p) const {
 KRR_CALLABLE RayMajorantIterator Medium::sampleRay(const Ray &ray, float tMax) {
 	auto sample = [&](auto ptr) -> RayMajorantIterator { return ptr->sampleRay(ray, tMax); };
 	return dispatch(sample);
+}
+
+KRR_CALLABLE RayMajorantIterator NanoVDBMedium::sampleRay(const Ray &ray, float raytMax) {
+	// [TODO] currently we use a coarse majorant for the whole volume
+	// but it seems that nanovdb has a built-in hierachical DDA on gpu?
+	float tMin, tMax;
+	if (!bounds.intersect(ray.origin, ray.dir, raytMax, &tMin, &tMax)) return {};
+	return {tMin, tMax, sigma_maj};
 }
 
 KRR_NAMESPACE_END

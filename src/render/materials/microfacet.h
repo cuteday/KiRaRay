@@ -226,7 +226,7 @@ public:
 
 		if (wo[2] == 0) return sample;     
 		if (distribution.isSpecular()) {
-			return BSDFSample(Fr(wo, { 0, 0, 1 }) / AbsCosTheta(wo), 
+			return BSDFSample(Fr(wo, Vector3f{ 0, 0, 1 }) / AbsCosTheta(wo), 
 				{ -wo[0], -wo[1], wo[2] }, 
 				1 /* delta pdf */, BSDF_SPECULAR_REFLECTION /* bsdf type */);
 		}

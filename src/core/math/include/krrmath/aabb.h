@@ -41,6 +41,29 @@ public:
 	KRR_CALLABLE VectorType clip(const VectorType& p) const {
 		return p.cwiseMin(this->m_max).cwiseMax(this->m_min);
 	}
+
+	KRR_CALLABLE bool intersect(Vector3f o, Vector3f d, 
+		float tMax = std::numeric_limits<float>::max(), 
+		float* tHit0 = nullptr, float* tHit1 = nullptr) const {
+		float t0 = 0, t1 = tMax;
+		for (int i = 0; i < 3; ++i) {
+			// Update interval for _i_th bounding box slab
+			float invRayDir = 1 / d[i];
+			float tNear		= (min()[i] - o[i]) * invRayDir;
+			float tFar		= (max()[i] - o[i]) * invRayDir;
+			// Update parametric interval from slab intersection $t$ values
+			if (tNear > tFar) std::swap(tNear, tFar);
+			// Update _tFar_ to ensure robust ray--bounds intersection
+			tFar *= 1 + 2 * gamma(3);
+
+			t0 = tNear > t0 ? tNear : t0;
+			t1 = tFar < t1 ? tFar : t1;
+			if (t0 > t1) return false;
+		}
+		if (tHit0) *tHit0 = t0;
+		if (tHit1) *tHit1 = t1;
+		return true;
+	}
 };
 	
 using AABB3f = AxisAligned<float, 3>;

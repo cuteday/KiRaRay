@@ -12,6 +12,8 @@
 
 #include "common.h"
 
+KRR_NAMESPACE_BEGIN
+
 #ifndef M_PI
 #define M_PI			3.14159265358979323846f
 #endif
@@ -24,6 +26,11 @@
 
 #define M_EPSILON		1e-5f
 
+KRR_CALLABLE constexpr float gamma(int n) {
+	return (n * M_EPSILON) / (1 - n * M_EPSILON);
+}
+
+KRR_NAMESPACE_END
 
 #ifdef min
 #undef max

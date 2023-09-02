@@ -16,7 +16,7 @@ public:
 
 	KRR_CALLABLE bool isEmissive() const;
 
-	KRR_CALLABLE MediumProperties samplePoint(const Vector3f &p) const;
+	KRR_CALLABLE MediumProperties samplePoint(Vector3f p) const;
 
 	KRR_CALLABLE RayMajorantIterator sampleRay(const Ray &ray, float tMax);
 };

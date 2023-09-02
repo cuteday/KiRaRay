@@ -106,11 +106,11 @@ class OrbitCameraController: public CameraController{
 public:
 	using SharedPtr = std::shared_ptr<OrbitCameraController>;
 	struct CameraControllerData{
-		Vector3f target = {0, 0, 0};
-		Vector3f up		= {0, 1, 0};
-		float radius	= 5;
-		float pitch		= 0;
-		float yaw		= 0;
+		Vector3f target{0, 0, 0};
+		Vector3f up{0, 1, 0};
+		float radius = 5;
+		float pitch	 = 0;
+		float yaw	 = 0;
 		
 		KRR_CLASS_DEFINE(CameraControllerData, radius, pitch, yaw, target);
 	};

@@ -247,7 +247,7 @@ public:
 								 normalize(g_RotationAxes[viewIndex]))
 					.matrix();
 			Matrix4f viewMatrix =
-				look_at(Vector3f{0, -1, 3.5}, {0, 0, 0}, {0, -1, 0}).matrix();
+				look_at(Vector3f{0, -1, 3.5}, Vector3f{0, 0, 0}, Vector3f{0, -1, 0}).matrix();
 			Matrix4f projMatrix = perspective(
 				radians(30.f), float(fbinfo.width) / float(fbinfo.height),
 				0.01f, 1000.f);
