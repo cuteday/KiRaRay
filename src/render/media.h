@@ -46,7 +46,7 @@ public:
 
 	KRR_CALLABLE bool isEmissive() const { return !L_e.isZero(); }
 
-	KRR_CALLABLE Color Le(const Vector3f &p) const { return L_e; }
+	KRR_CALLABLE Color Le(Vector3f p) const { return L_e; }
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p) const {
 		return {sigma_a, sigma_s, &phase, L_e};
@@ -78,7 +78,7 @@ public:
 
 	KRR_CALLABLE bool isEmissive() const { return !L_e.isZero(); }
 
-	KRR_CALLABLE Color Le(const Vector3f &p) const { return L_e; }
+	KRR_CALLABLE Color Le(Vector3f p) const { return L_e; }
 
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p) const { 
 		p = inverseTransform * p;

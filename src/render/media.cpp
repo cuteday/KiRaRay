@@ -54,7 +54,8 @@ KRR_CALLABLE RayMajorantIterator NanoVDBMedium::sampleRay(const Ray &ray, float 
 	// [TODO] currently we use a coarse majorant for the whole volume
 	// but it seems that nanovdb has a built-in hierachical DDA on gpu?
 	float tMin, tMax;
-	if (!bounds.intersect(ray.origin, ray.dir, raytMax, &tMin, &tMax)) return {};
+	Ray r = inverseTransform * ray;
+	if (!bounds.intersect(r.origin, r.dir, raytMax, &tMin, &tMax)) return {};
 	return {tMin, tMax, sigma_maj};
 }
 

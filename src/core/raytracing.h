@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "krrmath/vector.h"
+#include "krrmath/transform.h"
 #include "util/math_utils.h"
 #include "taggedptr.h"
 #include "medium.h"
@@ -28,9 +29,17 @@ enum class MaterialType {
 	Count
 };
 
-
 class Ray {
 public:
+	KRR_CALLABLE Ray() = default;
+
+	KRR_CALLABLE Ray(Vector3f o, Vector3f d, float time = 0, Medium medium = nullptr) :
+		origin(o), dir(d), time(time), medium(medium) {}
+	
+	KRR_CALLABLE bool hasNaN() const { return origin.hasNaN() || dir.hasNaN(); }
+
+	KRR_CALLABLE Vector3f operator()(float t) const { return origin + dir * t; }
+
 	Vector3f origin;
 	Vector3f dir;
 	float time{0};
@@ -66,6 +75,12 @@ offsetRayOrigin(const Vector3f &p, const Vector3f &n, const Vector3f &w) {
 	if (dot(n, w) < 0.f) offset = -offset;
 	Vector3f po = p + offset;
 	return po;
+}
+
+KRR_CALLABLE Ray operator*(const Affine3f& transform, const Ray& ray) {
+	Vector3f o = transform * ray.origin;
+	Vector3f d = transform.rotation() * ray.dir;
+	return Ray{o, d, ray.time, ray.medium};
 }
 
 struct Interaction{

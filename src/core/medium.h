@@ -14,6 +14,8 @@ class Medium : public TaggedPointer<HomogeneousMedium> {
 public:
 	using TaggedPointer::TaggedPointer;
 
+	KRR_CALLABLE Color Le(Vector3f p) const;
+
 	KRR_CALLABLE bool isEmissive() const;
 
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p) const;
