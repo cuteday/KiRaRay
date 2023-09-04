@@ -275,11 +275,8 @@ rt::SceneData RTScene::getSceneData() const {
 void RTScene::update() { 
 	static size_t lastUpdatedFrame = 0;
 	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
-	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform) !=
-			SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
-		mOptixScene->update();
-		updateSceneData();
-	}
+	mOptixScene->update();
+	updateSceneData();
 }
 
 // This routine should only be called by OptixBackend...
