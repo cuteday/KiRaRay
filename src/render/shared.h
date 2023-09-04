@@ -38,6 +38,72 @@ struct HitInfo {
 	uint hitKind;
 };
 
+struct BSDFData {
+	float IoR{1.5};
+	Color diffuse;	// diffuse reflectance
+	Color specular; // specular reflectance
+	float specularTransmission{0};
+	float roughness{1};	  // linear roughness (alpha=roughness^2)
+	float metallic{0};	  //
+	float anisotropic{0}; //
+
+	MaterialType bsdfType;
+
+	KRR_CALLABLE BSDFType getBsdfType() const {
+		BSDFType type = BSDFType::BSDF_UNSET;
+		switch (bsdfType) {
+			case MaterialType::Diffuse:
+				type = BSDFType::BSDF_DIFFUSE_REFLECTION;
+				break;
+			case MaterialType::Dielectric:
+				type = roughness <= 1e-3f ? BSDF_SPECULAR : BSDF_GLOSSY;
+				type = type | BSDF_REFLECTION | BSDF_TRANSMISSION;
+				break;
+			case MaterialType::Disney:
+				type = roughness <= 1e-3f ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
+				if (diffuse.any() && specularTransmission < 1 && metallic < 1)
+					type = type | BSDFType::BSDF_DIFFUSE_REFLECTION;
+				if (specularTransmission > 0) type = type | BSDF_TRANSMISSION;
+				break;
+			default:
+				printf("[ShadingData::getBsdfType] Unsupported BSDF.\n");
+		}
+
+		return type;
+	}
+};
+
+class SurfaceInteraction : public Interaction {
+public:
+	using Interaction::Interaction;
+
+	SurfaceInteraction() = default;
+
+	KRR_CALLABLE Vector3f toWorld(const Vector3f &v) const {
+		return tangent * v[0] + bitangent * v[1] + n * v[2];
+	}
+
+	KRR_CALLABLE Vector3f toLocal(const Vector3f &v) const {
+		return {dot(tangent, v), dot(bitangent, v), dot(n, v)};
+	}
+
+	Vector3f tangent{0};
+	Vector3f bitangent{0};
+
+	Light light{nullptr};
+	BSDFData sd;
+};
+
+class MediumInteraction : public Interaction {
+public:
+	KRR_CALLABLE MediumInteraction() = default;
+
+	KRR_CALLABLE MediumInteraction(Vector3f p, Vector3f wo, float time, Medium medium) :
+		Interaction(p, wo, time, medium) {}
+
+	PhaseFunction phase{nullptr};
+};
+
 struct ShadingData { // for use as per ray data, generated from ch
 	Vector3f pos;
 	Vector3f wo; // view direction

@@ -98,15 +98,4 @@ public:
 	Color L_e;
 };
 
-class MediumInterface {
-public:
-	KRR_CALLABLE MediumInterface() = default;
-	KRR_CALLABLE MediumInterface(Medium m) : inside(m), outside(m) {}
-	KRR_CALLABLE MediumInterface(Medium mi, Medium mo) : inside(mi), outside(mo) {}
-
-	KRR_CALLABLE bool isTransition() const { return inside != outside; }
-
-	Medium inside, outside;
-};
-
 KRR_NAMESPACE_END
