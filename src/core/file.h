@@ -28,6 +28,8 @@ public:
 	static fs::path outputDir();
 	static fs::path dataDir();
 	static fs::path codeDir();
+	static fs::path assetDir();
+	static fs::path textureDir();
 
 	static void setOutputDir(const fs::path &outputDir);
 	static void setCwd(const fs::path &cwd);

@@ -30,6 +30,13 @@ bool Image::loadImage(const fs::path &filepath, bool flip, bool srgb) {
 	string filename = filepath.string();
 	string format	= filepath.extension().string();
 	uchar *data		= nullptr;
+	
+	if (filename.find("$") != string::npos) {
+		/* special built-in textures */
+		auto pos = filename.find("$") + 1;
+		filename = (File::textureDir() / filename.substr(pos, filename.size() - pos)).string();
+	}
+
 	stbi_set_flip_vertically_on_load(flip);
 	if (IsEXR(filename.c_str()) == TINYEXR_SUCCESS) {
 		char *errMsg = nullptr;
