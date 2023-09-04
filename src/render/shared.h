@@ -87,6 +87,8 @@ public:
 		return {dot(tangent, v), dot(bitangent, v), dot(n, v)};
 	}
 
+	KRR_CALLABLE BSDFType getBsdfType() const { return sd.getBsdfType(); }
+
 	Vector3f tangent{0};
 	Vector3f bitangent{0};
 
@@ -102,53 +104,6 @@ public:
 		Interaction(p, wo, time, medium) {}
 
 	PhaseFunction phase{nullptr};
-};
-
-struct ShadingData { // for use as per ray data, generated from ch
-	Vector3f pos;
-	Vector3f wo; // view direction
-	Vector2f uv; // texture coords
-	Frame frame;
-
-	float IoR{ 1.5 };
-	Color diffuse;			// diffuse reflectance
-	Color specular;			// specular reflectance
-	float specularTransmission{ 0 };
-	float roughness{ 1 };	// linear roughness (alpha=roughness^2)
-	float metallic{ 0 };	//
-	float anisotropic{ 0 }; //
-
-	rt::Light light{ nullptr };
-	MaterialType bsdfType;
-
-	KRR_CALLABLE Interaction getInteraction() const { return Interaction(pos, wo, frame.N, uv); }
-
-	/* This is a faster routine to get the bsdf type bypassing different bsdf implementations. */
-	KRR_CALLABLE BSDFType getBsdfType() const {
-		BSDFType type = BSDFType::BSDF_UNSET;
-		switch (bsdfType) {
-			case MaterialType::Diffuse:
-				type = BSDFType::BSDF_DIFFUSE_REFLECTION;
-				break;
-			case MaterialType::Dielectric:
-				type = roughness <= 1e-3f ? BSDF_SPECULAR : BSDF_GLOSSY;
-				type = type | BSDF_REFLECTION | BSDF_TRANSMISSION;
-				break;
-			//case MaterialType::Principled:
-			//	[[fallthrough]];
-			case MaterialType::Disney:
-				type = roughness <= 1e-3f ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
-				if (diffuse.any() && specularTransmission < 1 && metallic < 1)
-					type = type | BSDFType::BSDF_DIFFUSE_REFLECTION;
-				if (specularTransmission > 0)
-					type = type | BSDF_TRANSMISSION;
-				break;
-			default:
-				printf("[ShadingData::getBsdfType] Unsupported BSDF.\n");
-		}
-
-		return type;
-	}
 };
 
 // the following routines are used to encode 64-bit payload pointers

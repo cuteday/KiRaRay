@@ -56,9 +56,8 @@ KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 		printf(fmt, std::forward<Args>(args)...);
 }
 
-KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
-	const rt::Light &light = sd.light;
-	Interaction intr   = sd.getInteraction();
+KRR_DEVICE_FUNCTION void handleHit(const SurfaceInteraction& intr, PathData& path) {
+	const rt::Light &light = intr.light;
 	Color Le		   = light.L(intr.p, intr.n, intr.uv, intr.wo);
 
 	float weight{ 1 };
@@ -73,7 +72,7 @@ KRR_DEVICE_FUNCTION void handleHit(const ShadingData& sd, PathData& path) {
 	path.L += Le * weight * path.throughput;
 }
 
-KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
+KRR_DEVICE_FUNCTION void handleMiss(const SurfaceInteraction& intr, PathData& path) {
 	for (const rt::InfiniteLight &light : launchParams.sceneData.infiniteLights) {
 		float weight{ 1 };
 		if (launchParams.NEE && path.depth > 0 && !(path.bsdfType & BSDF_SPECULAR)) {
@@ -87,50 +86,50 @@ KRR_DEVICE_FUNCTION void handleMiss(const ShadingData& sd, PathData& path) {
 	}
 }
 
-KRR_DEVICE_FUNCTION void generateShadowRay(const ShadingData& sd, PathData& path) {
-	Vector3f woLocal = sd.frame.toLocal(sd.wo);
+KRR_DEVICE_FUNCTION void generateShadowRay(const SurfaceInteraction& intr, PathData& path) {
+	Vector3f woLocal = intr.toLocal(intr.wo);
 
 	SampledLight sampledLight = path.lightSampler.sample(path.sampler.get1D());
 	rt::Light &light		  = sampledLight.light;
-	LightSample ls			  = light.sampleLi(path.sampler.get2D(), { sd.pos, sd.frame.N });
+	LightSample ls			  = light.sampleLi(path.sampler.get2D(), { intr.p, intr.n });
 
-	Vector3f wiWorld = normalize(ls.intr.p - sd.pos);
-	Vector3f wiLocal = sd.frame.toLocal(wiWorld);
+	Vector3f wiWorld = normalize(ls.intr.p - intr.p);
+	Vector3f wiLocal = intr.toLocal(wiWorld);
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
 	if (lightPdf == 0)
 		return; // We have sampled on the primitive itself...
-	float bsdfPdf	= BxDF::pdf(sd, woLocal, wiLocal, (int) sd.bsdfType);
-	Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType) * fabs(wiLocal[2]);
+	float bsdfPdf	= BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+	Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType) * fabs(wiLocal[2]);
 	float misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
 	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any())
 		return;
 
-	Ray shadowRay = sd.getInteraction().spawnRay(ls.intr);
+	Ray shadowRay = intr.spawnRay(ls.intr);
 	if (traceShadowRay(launchParams.traversable, shadowRay, 1))
 		path.L +=
 			path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
 }
 
-KRR_DEVICE_FUNCTION void evalDirect(const ShadingData& sd, PathData& path) {
-	BSDFType bsdfType = sd.getBsdfType();
+KRR_DEVICE_FUNCTION void evalDirect(const SurfaceInteraction& intr, PathData& path) {
+	BSDFType bsdfType = intr.getBsdfType();
 	if (bsdfType & BSDF_SMOOTH) {	/* Disable NEE on specular surfaces. */
 		for (int i = 0; i < launchParams.lightSamples; i++) 
-			generateShadowRay(sd, path);
+			generateShadowRay(intr, path);
 	}
 }
 
-KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& path) {
+KRR_DEVICE_FUNCTION bool generateScatterRay(const SurfaceInteraction& intr, PathData& path) {
 	// how to eliminate branches here to improve performance?
-	Vector3f woLocal = sd.frame.toLocal(sd.wo);
-	BSDFSample sample = BxDF::sample(sd, woLocal, path.sampler, (int)sd.bsdfType);
+	Vector3f woLocal = intr.toLocal(intr.wo);
+	BSDFSample sample = BxDF::sample(intr, woLocal, path.sampler, (int)intr.sd.bsdfType);
 	if (sample.pdf == 0 || !any(sample.f)) return false;
 
-	Vector3f wiWorld = sd.frame.toWorld(sample.wi);
-	Vector3f po		 = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
+	Vector3f wiWorld = intr.toWorld(sample.wi);
+	Vector3f po		 = offsetRayOrigin(intr.p, intr.n, wiWorld);
 	path.bsdfType	 = sample.flags;
 	path.ray		 = { po, wiWorld };
-	path.ctx		 = { sd.pos, sd.frame.N };
+	path.ctx		 = { intr.p, intr.n };
 	path.pdf		 = sample.pdf;
 	path.throughput *= sample.f * fabs(sample.wi[2]) / sample.pdf;
 	return path.throughput.any();
@@ -138,8 +137,8 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const ShadingData& sd, PathData& pat
 
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo	   = getHitInfo();
-	ShadingData &sd	   = *getPRD<ShadingData>();
-	prepareShadingData(sd, hitInfo);
+	SurfaceInteraction &intr	   = *getPRD<SurfaceInteraction>();
+	prepareSurfaceInteraction(intr, hitInfo);
 }
 
 extern "C" __global__ void KRR_RT_AH(Radiance)() {
@@ -159,16 +158,16 @@ extern "C" __global__ void KRR_RT_CH(ShadowRay)() {} /* skipped */
 extern "C" __global__ void KRR_RT_MS(ShadowRay)() { optixSetPayload_0(1); }
 
 KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
-	ShadingData sd = {};
+	SurfaceInteraction intr = {};
 
 	for (int &depth = path.depth; true; depth++) {
 		if(!traceRay(launchParams.traversable, path.ray, KRR_RAY_TMAX, RADIANCE_RAY_TYPE,
-					  OPTIX_RAY_FLAG_NONE, (void *) &sd)) {
-			handleMiss(sd, path);
+					  OPTIX_RAY_FLAG_NONE, (void *) &intr)) {
+			handleMiss(intr, path);
 			break;
 		}
 		
-		if (sd.light) handleHit(sd, path);
+		if (intr.light) handleHit(intr, path);
 
 		/* If the path is terminated by this vertex, then NEE should not be evaluated
 		 * otherwise the MIS weight of this NEE action will be meaningless. */
@@ -177,9 +176,9 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 			break;
 		path.throughput /= launchParams.probRR;
 		
-		if (launchParams.NEE) evalDirect(sd, path);
+		if (launchParams.NEE) evalDirect(intr, path);
 
-		if (!generateScatterRay(sd, path)) break;
+		if (!generateScatterRay(intr, path)) break;
 	}
 }
 

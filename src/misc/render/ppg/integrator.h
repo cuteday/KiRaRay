@@ -41,8 +41,8 @@ public:
 	 *	wi: scatter direction in local shading frame
 	 */
 	KRR_CALLABLE float evalPdf(float& bsdfPdf, float& dTreePdf, int depth,
-		const ShadingData& sd, Vector3f wiLocal, float alpha, const DTreeWrapper* dTree, BSDFType bsdfType = BSDF_UNSET) const;
-	KRR_CALLABLE BSDFSample sample(Sampler& sampler, const ShadingData& sd,
+		const SurfaceInteraction& intr, Vector3f wiLocal, float alpha, const DTreeWrapper* dTree, BSDFType bsdfType = BSDF_UNSET) const;
+	KRR_CALLABLE BSDFSample sample(Sampler& sampler, const SurfaceInteraction& intr,
 		float& bsdfPdf, float& dTreePdf, int depth,
 		float bsdfSamplingFraction, const DTreeWrapper* dTree, BSDFType bsdfType = BSDF_UNSET) const;
 

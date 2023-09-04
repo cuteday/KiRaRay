@@ -83,9 +83,6 @@ KRR_CALLABLE Ray operator*(const Affine3f& transform, const Ray& ray) {
 	return Ray{o, d, ray.time, ray.medium};
 }
 
-class SurfaceInteraction;
-class MediumInteraction;
-
 struct Interaction{
 	Interaction() = default;
 
@@ -102,16 +99,6 @@ struct Interaction{
 
 	KRR_CALLABLE bool isSurfaceInteraction() const { return !n.isZero(); }
 	KRR_CALLABLE bool isMediumInteraction() const { return n.isZero(); }
-	
-	KRR_CALLABLE const SurfaceInteraction &asSurface() const { 
-		CHECK(isSurfaceInteraction());
-		return (const SurfaceInteraction&)*this;
-	}
-
-	KRR_CALLABLE const MediumInteraction& asMedium() const {
-		CHECK(isMediumInteraction());
-		return (const MediumInteraction&)*this;
-	}
 
 	KRR_CALLABLE Vector3f offsetRayOrigin(const Vector3f& w) const {
 		return krr::offsetRayOrigin(p, n, w);

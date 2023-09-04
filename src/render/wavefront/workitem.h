@@ -61,7 +61,7 @@ struct ShadowRayWorkItem {
 
 struct ScatterRayWorkItem {
 	Color thp;
-	ShadingData sd;
+	SurfaceInteraction intr;
 	uint depth;
 	uint pixelId;
 };

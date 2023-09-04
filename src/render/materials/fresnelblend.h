@@ -22,11 +22,11 @@ public:
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(FresnelBlendBrdf);
 
-	KRR_CALLABLE void setup(const ShadingData & sd) {
-		diffuse		= sd.diffuse;
-		specular	= sd.specular;
-		float alpha = ggx.RoughnessToAlpha(sd.roughness);
-		alpha		= sd.roughness * sd.roughness;
+	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
+		diffuse		= intr.sd.diffuse;
+		specular	= intr.sd.specular;
+		float alpha = ggx.RoughnessToAlpha(intr.sd.roughness);
+		alpha		= intr.sd.roughness * intr.sd.roughness;
 		ggx			= { alpha, alpha };
 	}
 

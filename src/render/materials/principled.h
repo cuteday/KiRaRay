@@ -70,13 +70,13 @@ public:
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(PrincipledBsdf);
 
-	KRR_CALLABLE void setup(const ShadingData &sd) { 
-		Color c				 = sd.diffuse;		/* base color*/
-		float metallicWeight = sd.metallic;
-		float e				 = sd.IoR;
-		float strans		 = sd.specularTransmission;
+	KRR_CALLABLE void setup(const SurfaceInteraction &intr) { 
+		Color c				 = intr.sd.diffuse;		/* base color*/
+		float metallicWeight = intr.sd.metallic;
+		float e				 = intr.sd.IoR;
+		float strans		 = intr.sd.specularTransmission;
 		float diffuseWeight	 = (1 - metallicWeight) * (1 - strans);
-		float roughness		 = sd.roughness;
+		float roughness		 = intr.sd.roughness;
 		float lum			 = luminance(c);
 		// normalize lum. to isolate hue+sat
 		Color Ctint = Color::Ones();
@@ -99,14 +99,14 @@ public:
 
 		// Create the microfacet distribution for metallic and/or specular
 		// transmission.
-		float aspect = sqrt(1 - sd.anisotropic * .9f);
+		float aspect = sqrt(1 - intr.sd.anisotropic * .9f);
 		float ax	 = max(1e-3f, pow2(roughness) / aspect);
 		float ay	 = max(1e-3f, pow2(roughness) * aspect);
 		delta		 = max(ax, ay) <= 1e-3f;
 
 		// Specular is Trowbridge-Reitz with a modified Fresnel function.
-		Color Cspec0   = sd.specular;
-		if (!any(sd.specular))
+		Color Cspec0   = intr.sd.specular;
+		if (!any(intr.sd.specular))
 			Cspec0 =
 				lerp(SchlickR0FromEta(e) * lerp(Color::Ones(), Ctint, 1), c, metallicWeight);
 

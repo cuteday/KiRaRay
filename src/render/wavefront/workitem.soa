@@ -37,20 +37,26 @@ struct Frame {
 	Vector3f B;
 };
 
-struct ShadingData {
-	Vector3f pos;
-	Vector3f wo;
-	Vector2f uv;
-	Frame frame;
+struct BSDFData {
 	float IoR;
-	Color diffuse;
+	Color diffuse;	
 	Color specular;
 	float specularTransmission;
-	float roughness;		
-	float metallic;		
+	float roughness;
+	float metallic;
 	float anisotropic;
-	Light light;			
 	MaterialType bsdfType;
+};
+
+struct SurfaceInteraction {
+	Vector3f p;
+	Vector3f wo;
+	Vector3f n;
+	Vector2f uv;
+	Vector3f tangent;
+	Vector3f bitangent;
+	Light light;
+	BSDFData sd;
 };
 
 struct RayWorkItem {
@@ -97,7 +103,7 @@ struct ShadowRayWorkItem {
 
 struct ScatterRayWorkItem {
 	Color thp;
-	ShadingData sd;
+	SurfaceInteraction intr;
 	uint depth;
 	uint pixelId;
 };
