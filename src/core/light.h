@@ -49,11 +49,11 @@ class DirectionalLight {
 public:
 	DirectionalLight() = default;
 
-	DirectionalLight(const Affine3f &transform, const Color &I, float scale = 1) :
-		transform(transform), I(I), scale(scale) {}
+	DirectionalLight(const Matrix3f &rotation, const Color &I, float scale = 1) :
+		rotation(rotation), I(I), scale(scale) {}
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
-		Vector3f wi = transform * Vector3f{0, 0, 1};
+		Vector3f wi = rotation * Vector3f{0, 0, 1};
 		Vector3f p	= ctx.p + wi * 1e7f;
 		return LightSample{Interaction{p}, scale * I, 1};
 	}
@@ -67,7 +67,7 @@ public:
 private:
 	Color I;
 	float scale;
-	Affine3f transform;
+	Matrix3f rotation;
 };
 
 class DiffuseAreaLight {
@@ -121,11 +121,11 @@ class InfiniteLight {
 public:
 	InfiniteLight() = default;
 
-	InfiniteLight(const Affine3f &transform, Color tint, float scale = 1) :
-		tint(tint), scale(scale), transform(transform) {}
+	InfiniteLight(const Matrix3f &rotation, Color tint, float scale = 1) :
+		tint(tint), scale(scale), rotation(rotation) {}
 
-	InfiniteLight(const Affine3f &transform, const rt::TextureData &image, float scale = 1) :
-		image(image), tint(Color::Ones()), scale(scale), transform(transform) {}
+	InfiniteLight(const Matrix3f &rotation, const rt::TextureData &image, float scale = 1) :
+		image(image), tint(Color::Ones()), scale(scale), rotation(rotation) {}
 
 	KRR_DEVICE inline LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
 		// [TODO] use intensity importance sampling here.
@@ -148,7 +148,7 @@ public:
 	KRR_DEVICE inline Color Li(Vector3f wi) const {
 		Color L = tint * scale;
 		if (!image.isValid()) return L;
-		Vector2f uv = utils::cartesianToSphericalNormalized(transform * wi);
+		Vector2f uv = worldToLatLong(rotation.transpose() * wi);
 		L *= image.tex(uv).head<3>();
 		return L;
 	}
@@ -156,7 +156,7 @@ public:
 private:
 	Color tint{1};
 	float scale{1};
-	Affine3f transform;
+	Matrix3f rotation;
 	rt::TextureData image{};
 };
 

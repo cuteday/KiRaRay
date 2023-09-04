@@ -237,7 +237,7 @@ void RTScene::processLights() {
 		if (auto infiniteLight = std::dynamic_pointer_cast<InfiniteLight>(light)) {
 			rt::TextureData textureData;
 			textureData.initializeFromHost(infiniteLight->getTexture());
-			mInfiniteLights.push_back(rt::InfiniteLight(transform, textureData, 1));
+			mInfiniteLights.push_back(rt::InfiniteLight(transform.rotation(), textureData, 1));
 		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
 			Log(Warning, "Point light is not yet implemented in ray tracing, skipping...");
 		} else if (auto directionalLight = std::dynamic_pointer_cast<DirectionalLight>(light)) {

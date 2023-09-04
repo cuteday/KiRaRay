@@ -154,7 +154,7 @@ KRR_CALLABLE Vector3f getPerpendicular(const Vector3f &u) {
 KRR_CALLABLE Vector2f worldToLatLong(const Vector3f &dir) {
 	Vector3f p = normalize(dir);
 	Vector2f uv;
-	uv[0] = atan2(p[0], -p[2]) / M_2PI + 0.5f;
+	uv[0] = atan2(p[0], -p[2]) * M_INV_2PI + 0.5f;
 	uv[1] = acos(p[1]) * M_INV_PI;
 	return uv;
 }
@@ -184,7 +184,7 @@ KRR_CALLABLE Vector2f cartesianToSpherical(const Vector3f &v) {
 
 KRR_CALLABLE Vector2f cartesianToSphericalNormalized(const Vector3f &v) {
 	Vector2f sph = cartesianToSpherical(v);
-	return { float(sph[0] / M_PI), float(sph[1] / M_2PI) };
+	return { float(sph[0] * M_INV_PI), float(sph[1] * M_INV_2PI) };
 }
 
 /// <param name="sph">\phi in [0, 2pi] and \theta in [0, pi]</param>

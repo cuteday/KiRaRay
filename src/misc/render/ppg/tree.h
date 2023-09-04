@@ -420,7 +420,7 @@ public:
 		while (phi < 0)
 			phi += M_2PI;
 
-		return { (cosTheta + 1) / 2, phi / M_2PI };
+		return { (cosTheta + 1) / 2, phi * M_INV_2PI };
 	}
 
 	KRR_HOST void build(EDistribution distribution);
