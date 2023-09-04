@@ -7,10 +7,11 @@ KRR_NAMESPACE_BEGIN
 class Ray;
 
 class HomogeneousMedium;
+class NanoVDBMedium;
 class MediumProperties;
 class RayMajorantIterator;
 
-class Medium : public TaggedPointer<HomogeneousMedium> {
+class Medium : public TaggedPointer<HomogeneousMedium, NanoVDBMedium> {
 public:
 	using TaggedPointer::TaggedPointer;
 

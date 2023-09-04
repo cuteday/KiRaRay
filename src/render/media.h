@@ -65,12 +65,12 @@ public:
 	using VDBSampler = nanovdb::SampleFromVoxels<nanovdb::FloatGrid::TreeType, 1, false>;
 
 	NanoVDBMedium(const Affine3f& transform, Color sigma_a, Color sigma_s, Color sigma_maj,
-		Color Le, float g, nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> gridHandle) :
-		transform(transform), phase(g), L_e(Le),
+		Color Le, float g, nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle) :
+		transform(transform), phase(g), L_e(Le), densityHandle(std::move(densityHandle)), 
 		sigma_a(sigma_a), sigma_s(sigma_s), sigma_maj(sigma_maj) {
 
-		inverseTransform = transform.inverse();
-		densityGrid		 = gridHandle.grid<float>();
+		inverseTransform				   = transform.inverse();
+		densityGrid						   = densityHandle.grid<float>();
 		nanovdb::BBox<nanovdb::Vec3R> bbox = densityGrid->worldBBox();
 		bounds = AABB3f{Vector3f{bbox.min()[0], bbox.min()[1], bbox.min()[2]}, 
 			Vector3f{bbox.max()[0], bbox.max()[1], bbox.max()[2]}};
@@ -92,7 +92,7 @@ public:
 	AABB3f bounds;
 	Affine3f transform, inverseTransform;
 	HGPhaseFunction phase;
-	//nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityGridHandle;
+	nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle;
 	nanovdb::FloatGrid *densityGrid;
 	Color sigma_a, sigma_s, sigma_maj;
 	Color L_e;
