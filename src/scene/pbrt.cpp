@@ -65,10 +65,11 @@ Material::SharedPtr PbrtImporter::loadMaterial(pbrt::Material::SP mat) {
 	if (auto m = std::dynamic_pointer_cast<pbrt::DisneyMaterial>(mat)) {
 		Log(Debug, "Encountered disney material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
-		matParams.diffuse	  = Vector4f(m->color.x, m->color.y, m->color.z, 1);
-		matParams.IoR		  = m->eta;
-		matParams.specular[2] = m->metallic;
-		matParams.specular[1] = m->roughness;
+		matParams.diffuse	    = Vector4f(m->color.x, m->color.y, m->color.z, 1);
+		matParams.IoR				   = m->eta;
+		matParams.specular[2]		   = m->metallic;
+		matParams.specular[1]		   = m->roughness;
+		matParams.specularTransmission = m->specTrans;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::PlasticMaterial>(mat)) {
 		Log(Debug, "Encountered plastic material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
@@ -267,7 +268,6 @@ Mesh::SharedPtr PbrtImporter::loadMesh(pbrt::TriangleMesh::SP pbrtMesh) {
 		mesh->positions.push_back(cast(pbrtMesh->vertex[i]));
 	}
 	for (int i = 0; i < n_faces; i++) mesh->indices.push_back(cast(pbrtMesh->index[i]));
-	//mesh->computeBoundingBox();
 	mesh->aabb = cast(pbrtMesh->getBounds());
 	if (pbrtMesh->material) mesh->material = loadMaterial(pbrtMesh->material);
 	else mesh->material = mScene->getMaterials()[0];

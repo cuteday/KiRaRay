@@ -125,6 +125,30 @@ protected:
 	Texture::SharedPtr texture;
 };
 
+class Volume : public SceneGraphLeaf {
+public:
+	using SharedPtr = std::shared_ptr<Volume>;
+
+protected:
+	
+};
+
+class HomogeneousVolume : public Volume {
+public:
+	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
+
+protected:
+	
+};
+
+class VDBVolume : public Volume {
+public:
+	using SharedPtr = std::shared_ptr<VDBVolume>;
+
+protected:
+
+};
+
 class SceneGraphNode final : public std::enable_shared_from_this<SceneGraphNode> {
 public:
 	using SharedPtr = std::shared_ptr<SceneGraphNode>;
@@ -286,6 +310,7 @@ public:
 	std::vector<Material::SharedPtr> &getMaterials() { return mMaterials; }
 	std::vector<SceneAnimation::SharedPtr> &getAnimations() { return mAnimations; }
 	std::vector<SceneLight::SharedPtr> &getLights() { return mLights; }
+	std::vector<Volume::SharedPtr> &getMedia() { return mMedia; }
 	UpdateRecord getLastUpdateRecord() const { return mLastUpdateRecord; };
 	void addMesh(Mesh::SharedPtr mesh);
 	void addMaterial(Material::SharedPtr material);
@@ -317,6 +342,7 @@ private:
 	std::vector<MeshInstance::SharedPtr> mMeshInstances;
 	std::vector<SceneAnimation::SharedPtr> mAnimations;
 	std::vector<SceneLight::SharedPtr> mLights;
+	std::vector<Volume::SharedPtr> mMedia;
 	UpdateRecord mLastUpdateRecord;
 };
 

@@ -44,6 +44,8 @@ public:
 	std::vector<SceneAnimation::SharedPtr> &getAnimations() { return mGraph->getAnimations(); }
 	std::vector<SceneLight::SharedPtr> &getLights() { return mGraph->getLights(); }
 	std::vector<MeshInstance::SharedPtr> &getMeshInstances() { return mGraph->getMeshInstances(); }
+	std::vector<Volume::SharedPtr> &getMedia() { return mGraph->getMedia(); }
+
 	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(mesh); }
 	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(material); }
 

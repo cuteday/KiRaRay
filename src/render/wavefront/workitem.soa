@@ -31,12 +31,6 @@ struct PixelState {
 	PCGSampler sampler;
 };
 
-struct Frame {
-	Vector3f N; 
-	Vector3f T; 
-	Vector3f B;
-};
-
 struct BSDFData {
 	float IoR;
 	Color diffuse;	
