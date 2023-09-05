@@ -67,7 +67,7 @@ private:
 
 	Mesh::SharedPtr loadMesh(pbrt::TriangleMesh::SP pbrtMesh);
 	Material::SharedPtr loadMaterial(pbrt::Material::SP pbrtMaterial);
-	
+	Volume::SharedPtr loadMedium(pbrt::Medium::SP pbrtMedium);
 
 	string resolve(string path);
 

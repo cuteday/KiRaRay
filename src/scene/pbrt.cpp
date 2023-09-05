@@ -278,6 +278,31 @@ Mesh::SharedPtr PbrtImporter::loadMesh(pbrt::TriangleMesh::SP pbrtMesh) {
 	return mesh;
 }
 
+Volume::SharedPtr PbrtImporter::loadMedium(pbrt::Medium::SP pbrtMedium) {
+	static std::map<pbrt::Medium::SP, Volume::SharedPtr> loadedMedia;
+	static SceneGraphNode::SharedPtr mediaContainer = nullptr;
+
+	auto sceneGraph = mScene->getSceneGraph();
+	if (!mediaContainer) {
+		mediaContainer = std::make_shared<SceneGraphNode>();
+		mediaContainer->setName("Media Container");
+		sceneGraph->attach(sceneGraph->getRoot(), mediaContainer);
+	}
+	if (loadedMedia.count(pbrtMedium)) return loadedMedia[pbrtMedium];
+
+	Volume::SharedPtr medium = nullptr;
+	if (auto m = std::dynamic_pointer_cast<pbrt::HomogeneousMedium>(pbrtMedium)) {
+		medium = std::make_shared<HomogeneousVolume>();
+	} else {
+		Log(Warning, "Encountered unsupported medium: %s", pbrtMedium->toString().c_str());
+		return nullptr;
+	}
+	
+	medium->setName(pbrtMedium->name);
+	loadedMedia[pbrtMedium] = medium;
+	return medium;
+}
+
 bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {
 	string basepath = fs::path(filepath).parent_path().string();
 	mBasepath		= basepath;

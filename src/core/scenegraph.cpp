@@ -43,6 +43,14 @@ SceneGraphLeaf::SharedPtr InfiniteLight::clone() {
 	return light;
 }
 
+SceneGraphLeaf::SharedPtr HomogeneousVolume::clone() {
+	return std::make_shared<HomogeneousVolume>();
+}
+
+SceneGraphLeaf::SharedPtr VDBVolume::clone() {
+	return std::make_shared<VDBVolume>();
+}
+
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
 								  const Vector3f *scaling) {
 	if (scaling) mScaling = *scaling;
@@ -344,6 +352,8 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 		mAnimations.push_back(animation);
 	} else if (auto light = std::dynamic_pointer_cast<SceneLight>(leaf)) {
 		mLights.push_back(light);
+	} else if (auto medium = std::dynamic_pointer_cast<Volume>(leaf)) {
+		mMedia.push_back(medium);
 	}
 }
 
@@ -365,6 +375,10 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 		auto it = std::find(mLights.begin(), mLights.end(), leaf);
 		if (it != mLights.end()) mLights.erase(it);
 		else Log(Warning, "Unregistering a light that do not exist in graph...");
+	} else if (auto medium = std::dynamic_pointer_cast<Volume>(leaf)) {
+		auto it = std::find(mMedia.begin(), mMedia.end(), leaf);
+		if (it != mMedia.end()) mMedia.erase(it);
+		else Log(Warning, "Unregistering a medium that do not exist in graph...");
 	}
 }
 
@@ -640,7 +654,6 @@ void SceneGraph::renderUI() {
 		mRoot->renderUI();
 		ui::TreePop();
 	}
-
 }
 
 KRR_NAMESPACE_END

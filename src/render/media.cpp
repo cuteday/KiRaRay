@@ -10,14 +10,14 @@ KRR_CALLABLE PhaseFunctionSample HGPhaseFunction::sample(const Vector3f &wo,
 														 const Vector2f &u) const {
 	float g = clamp(this->g, -.99f, .99f);
 
-	// Compute $\cos\theta$ for Henyey--Greenstein sample
+	// Compute $\cos\theta$ for Henyey-Greenstein sample
 	float cosTheta;
 	if (fabs(g) < 1e-3f)
 		cosTheta = 1 - 2 * u[0];
 	else
 		cosTheta = -1 / (2 * g) * (1 + pow2(g) - pow2((1 - pow2(g)) / (1 + g - 2 * g * u[0])));
 
-	// Compute direction _wi_ for Henyey--Greenstein sample
+	// Compute direction _wi_ for Henyey-Greenstein sample
 	float sinTheta = safe_sqrt(1 - pow2(cosTheta));
 	float phi	   = M_2PI * u[1];
 	Frame wFrame(wo);

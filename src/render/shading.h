@@ -128,8 +128,8 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 
 	const Material::MaterialParams &materialParams = material.mMaterialParams;
 
-	intr.sd.IoR					= materialParams.IoR;
-	intr.sd.bsdfType				= material.mBsdfType;
+	intr.sd.IoR					 = materialParams.IoR;
+	intr.sd.bsdfType			 = material.mBsdfType;
 	intr.sd.specularTransmission = materialParams.specularTransmission;
 
 	const rt::TextureData &diffuseTexture = 
@@ -155,23 +155,23 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// [SPECULAR] G - Roughness; B - Metallic
-		intr.sd.diffuse	 = lerp(baseColor, Color3f::Zero(), spec[2]);
-		intr.sd.specular	 = lerp(Color3f::Zero(), baseColor, spec[2]);
-		intr.sd.metallic	 = spec[2];
+		intr.sd.diffuse	  = lerp(baseColor, Color3f::Zero(), spec[2]);
+		intr.sd.specular  = lerp(Color3f::Zero(), baseColor, spec[2]);
+		intr.sd.metallic  = spec[2];
 		intr.sd.roughness = spec[1];
 	} else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		// [SPECULAR] RGB - Specular Color; A - Glossiness
-		intr.sd.diffuse	 = baseColor;
-		intr.sd.specular	 = (Color3f) spec; // specular reflectance
+		intr.sd.diffuse	  = baseColor;
+		intr.sd.specular  = (Color3f) spec; // specular reflectance
 		intr.sd.roughness = 1.f - spec[3];	//
-		intr.sd.metallic	 = getMetallic(intr.sd.diffuse, intr.sd.specular);
+		intr.sd.metallic  = getMetallic(intr.sd.diffuse, intr.sd.specular);
 	} else assert(false);
 	
 	// transform local interaction to world space 
 	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
-	intr.p	   = hitInfo.instance->getTransform() * intr.p;
-	intr.n = hitInfo.instance->getTransposedInverseTransform() * intr.n;
-	intr.tangent = hitInfo.instance->getTransposedInverseTransform() * intr.tangent;
+	intr.p		   = hitInfo.instance->getTransform() * intr.p;
+	intr.n		   = hitInfo.instance->getTransposedInverseTransform() * intr.n;
+	intr.tangent   = hitInfo.instance->getTransposedInverseTransform() * intr.tangent;
 	intr.bitangent = hitInfo.instance->getTransposedInverseTransform() * intr.bitangent;
 }
 

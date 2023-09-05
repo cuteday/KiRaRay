@@ -137,6 +137,7 @@ class HomogeneousVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
 
+	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 protected:
 	
 };
@@ -145,6 +146,7 @@ class VDBVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<VDBVolume>;
 
+	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 protected:
 
 };

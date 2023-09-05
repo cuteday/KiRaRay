@@ -160,11 +160,11 @@ public:
 
 		if (wo[2] == 0) return Color::Zero();
 
-		float alpha2 = gloss * gloss;
+		float alpha2   = gloss * gloss;
 		float cosTheta = sqrt(max(float(0), (1 - pow(alpha2, 1 - u[0])) / (1 - alpha2)));
-		float sinTheta = sqrt(max((float)0, 1 - cosTheta * cosTheta));
-		float phi = 2 * M_PI * u[1];
-		Vector3f wh = sphericalToCartesian(sinTheta, cosTheta, phi);
+		float sinTheta = sqrt(max((float) 0, 1 - cosTheta * cosTheta));
+		float phi	   = 2 * M_PI * u[1];
+		Vector3f wh	   = sphericalToCartesian(sinTheta, cosTheta, phi);
 		if (!SameHemisphere(wo, wh)) wh = -wh;
 
 		*wi = Reflect(wo, wh);
