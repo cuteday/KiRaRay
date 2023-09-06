@@ -41,7 +41,9 @@ public:
 
 class HomogeneousMedium {
 public:
-	HomogeneousMedium(Color sigma_a, Color sigma_s, Color L_e, float g) :
+	HomogeneousMedium() = default;
+
+	KRR_CALLABLE HomogeneousMedium(Color sigma_a, Color sigma_s, Color L_e, float g) :
 		sigma_a(sigma_a), sigma_s(sigma_s), L_e(L_e), phase(g) {}
 
 	KRR_CALLABLE bool isEmissive() const { return !L_e.isZero(); }

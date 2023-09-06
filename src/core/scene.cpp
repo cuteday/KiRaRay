@@ -162,15 +162,18 @@ void Scene::initializeSceneRT() {
 RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {}
 
 void RTScene::uploadSceneData() {
-	/* Upload texture and material data to device... */
-	auto& materials = mScene.lock()->getMaterials();
-	mMaterials.resize(materials.size());
-	for (size_t idx = 0; idx < materials.size(); idx++) {
-		const auto &material = materials[idx];
-		mMaterials[idx].initializeFromHost(material);
-	}
-	mMaterialsBuffer.alloc_and_copy_from_host(mMaterials);
+	// The order of upload is unchangeable since some of them are dependent to others.
+	uploadSceneMaterialData();
+	uploadSceneMediumData();
+	uploadSceneMeshData();
+	uploadSceneInstanceData();
+	uploadSceneLightData();
 
+	CUDA_SYNC_CHECK();
+	mOptixScene = std::make_shared<OptixScene>(mScene.lock());
+}
+
+void RTScene::uploadSceneMeshData() {
 	/* Upload mesh data to device... */
 	auto &meshes = mScene.lock()->getMeshes();
 	mMeshes.resize(meshes.size());
@@ -180,27 +183,41 @@ void RTScene::uploadSceneData() {
 		mMeshes[idx].normals.alloc_and_copy_from_host(mesh->normals);
 		mMeshes[idx].texcoords.alloc_and_copy_from_host(mesh->texcoords);
 		mMeshes[idx].tangents.alloc_and_copy_from_host(mesh->tangents);
-		mMeshes[idx].indices.alloc_and_copy_from_host(mesh->indices);	
+		mMeshes[idx].indices.alloc_and_copy_from_host(mesh->indices);
 		mMeshes[idx].material = &mMaterialsBuffer[mesh->getMaterial()->getMaterialId()];
+		if (mesh->inside) 
+			mMeshes[idx].mediumInterface.inside = mMedium[mesh->inside->getMediumId()];
+		if (mesh->outside)
+			mMeshes[idx].mediumInterface.outside = mMedium[mesh->outside->getMediumId()];
 	}
 	mMeshesBuffer.alloc_and_copy_from_host(mMeshes);
+}
 
+void RTScene::uploadSceneInstanceData() {
 	/* Upload instance data to device... */
 	auto &instances = mScene.lock()->getMeshInstances();
 	mInstances.resize(instances.size());
 	for (size_t idx = 0; idx < instances.size(); idx++) {
-		const auto &instance	 = instances[idx];
-		auto &instanceData		 = mInstances[idx];
-		Affine3f transform		 = instance->getNode()->getGlobalTransform();
-		instanceData.transform	 = transform;
+		const auto &instance   = instances[idx];
+		auto &instanceData	   = mInstances[idx];
+		Affine3f transform	   = instance->getNode()->getGlobalTransform();
+		instanceData.transform = transform;
 		instanceData.transposedInverseTransform =
 			transform.matrix().inverse().transpose().block<3, 3>(0, 0);
-		instanceData.mesh		 = &mMeshesBuffer[instance->getMesh()->getMeshId()];
+		instanceData.mesh = &mMeshesBuffer[instance->getMesh()->getMeshId()];
 	}
 	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
-	uploadSceneLightData();
-	CUDA_SYNC_CHECK();
-	mOptixScene = std::make_shared<OptixScene>(mScene.lock());
+}
+
+void RTScene::uploadSceneMaterialData() {
+	/* Upload texture and material data to device... */
+	auto &materials = mScene.lock()->getMaterials();
+	mMaterials.resize(materials.size());
+	for (size_t idx = 0; idx < materials.size(); idx++) {
+		const auto &material = materials[idx];
+		mMaterials[idx].initializeFromHost(material);
+	}
+	mMaterialsBuffer.alloc_and_copy_from_host(mMaterials);
 }
 
 void RTScene::uploadSceneLightData() {
@@ -276,7 +293,23 @@ void RTScene::uploadSceneLightData() {
 	CUDA_SYNC_CHECK();
 }
 
-void uploadSceneMediumData() {}
+void RTScene::uploadSceneMediumData() {
+	// For a medium, its index in mediumBuffer is the same as medium->getMediumId();
+	for (auto medium : mScene.lock()->getMedia()) {
+		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) {
+			HomogeneousMedium gMedium(m->sigma_a, m->sigma_s, m->Le, m->g);
+			mHomogeneousMedium.push_back(gMedium);
+		}
+	}
+	mHomogeneousMediumBuffer.alloc_and_copy_from_host(mHomogeneousMedium);
+
+	size_t homogeneousId = 0;
+	for (auto medium : mScene.lock()->getMedia()) {
+		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) 
+			mMedium.push_back(Medium(&mHomogeneousMediumBuffer[homogeneousId++]));
+	}
+	mMediumBuffer.alloc_and_copy_from_host(mMedium);
+}
 
 rt::SceneData RTScene::getSceneData() const {
 	rt::SceneData sceneData {};

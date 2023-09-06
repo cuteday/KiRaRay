@@ -126,6 +126,9 @@ public:
 	TypedBuffer<rt::InfiniteLight> &getInfiniteLightBuffer() { return mInfiniteLightsBuffer; }
 
 private:
+	void uploadSceneMaterialData();
+	void uploadSceneMeshData();
+	void uploadSceneInstanceData();
 	void uploadSceneLightData();
 	void uploadSceneMediumData();
 
