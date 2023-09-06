@@ -138,8 +138,14 @@ public:
 	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
-protected:
-	
+	virtual void renderUI() override;
+
+	bool isEmissive() const { return !Le.isZero(); }
+
+	Color sigma_a;
+	Color sigma_s;
+	Color Le;
+	float g;
 };
 
 class VDBVolume : public Volume {

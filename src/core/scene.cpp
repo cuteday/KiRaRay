@@ -37,6 +37,7 @@ void Scene::renderUI() {
 		ui::Text("Materials: %d", getMaterials().size());
 		ui::Text("Instances: %d", getMeshInstances().size());
 		ui::Text("Animations: %d", getAnimations().size());
+		ui::Text("Media: %d", getMedia().size());
 		ui::Text("Environment lights: %d", environments.size());
 		ui::TreePop();
 	}
@@ -53,8 +54,8 @@ void Scene::renderUI() {
 	}
 	if (mGraph && ui::TreeNode("Meshes")) {
 		for (auto &mesh : getMeshes()) {
-			if (ui::TreeNode(formatString("%d %s", mesh->getMeshId(),
-										  mesh->getName().c_str()).c_str())) {
+			if (ui::TreeNode(
+					formatString("%d %s", mesh->getMeshId(), mesh->getName().c_str()).c_str())) {
 				ui::PushID(mesh->getMeshId());
 				mesh->renderUI();
 				ui::PopID();
@@ -65,8 +66,9 @@ void Scene::renderUI() {
 	}
 	if (mGraph && ui::TreeNode("Materials")) {
 		for (auto &material : getMaterials()) {
-			if (ui::TreeNode(formatString("%d %s", material->getMaterialId(),
-										  material->getName().c_str()).c_str())) {
+			if (ui::TreeNode(
+					formatString("%d %s", material->getMaterialId(), material->getName().c_str())
+						.c_str())) {
 				ui::PushID(material->getMaterialId());
 				material->renderUI();
 				ui::PopID();
@@ -101,9 +103,23 @@ void Scene::renderUI() {
 	if (mGraph && getLights().size() && ui::TreeNode("Lights")) {
 		for (int i = 0; i < getLights().size(); i++) {
 			auto light = getLights()[i];
-			if (ui::TreeNode(light->getName().c_str())) {
+			if (ui::TreeNode(light->getName().empty() ? std::to_string(i).c_str()
+													  : light->getName().c_str())) {
 				ui::PushID(i);
-				getLights()[i]->renderUI();
+				light->renderUI();
+				ui::PopID();
+				ui::TreePop();
+			}
+		}
+		ui::TreePop();
+	}
+	if (mGraph && getMedia().size() && ui::TreeNode("Media")) {
+		for (int i = 0; i < getMedia().size(); i++) {
+			auto medium = getMedia()[i];
+			if (ui::TreeNode(medium->getName().empty() ? std::to_string(i).c_str()
+													   : medium->getName().c_str())) {
+				ui::PushID(i);
+				medium->renderUI();
 				ui::PopID();
 				ui::TreePop();
 			}

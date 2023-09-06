@@ -272,6 +272,11 @@ Mesh::SharedPtr PbrtImporter::loadMesh(pbrt::TriangleMesh::SP pbrtMesh) {
 	if (pbrtMesh->material) mesh->material = loadMaterial(pbrtMesh->material);
 	else mesh->material = mScene->getMaterials()[0];
 	if (pbrtMesh->areaLight) createAreaLight(mesh, pbrtMesh->areaLight);
+	if (pbrtMesh->mediumInterface) {
+		mesh->inside = loadMedium(pbrtMesh->mediumInterface->inside);
+		mesh->outside = loadMedium(pbrtMesh->mediumInterface->outside);
+	}
+
 	mesh->setName(pbrtMesh->toString());
 	loadedMeshes[pbrtMesh] = mesh;
 	mScene->addMesh(mesh);
@@ -282,6 +287,8 @@ Volume::SharedPtr PbrtImporter::loadMedium(pbrt::Medium::SP pbrtMedium) {
 	static std::map<pbrt::Medium::SP, Volume::SharedPtr> loadedMedia;
 	static SceneGraphNode::SharedPtr mediaContainer = nullptr;
 
+	if (!pbrtMedium) return nullptr;
+
 	auto sceneGraph = mScene->getSceneGraph();
 	if (!mediaContainer) {
 		mediaContainer = std::make_shared<SceneGraphNode>();
@@ -290,17 +297,25 @@ Volume::SharedPtr PbrtImporter::loadMedium(pbrt::Medium::SP pbrtMedium) {
 	}
 	if (loadedMedia.count(pbrtMedium)) return loadedMedia[pbrtMedium];
 
-	Volume::SharedPtr medium = nullptr;
+	Volume::SharedPtr result = nullptr;
 	if (auto m = std::dynamic_pointer_cast<pbrt::HomogeneousMedium>(pbrtMedium)) {
-		medium = std::make_shared<HomogeneousVolume>();
+		auto medium = std::make_shared<HomogeneousVolume>();
+		medium->sigma_a = cast(m->sigmaScale * m->sigma_a);
+		medium->sigma_s = cast(m->sigmaScale * m->sigma_s);
+		medium->Le		= cast(m->LeScale * m->Le);
+		medium->g		= m->g;
+		result = medium;
 	} else {
 		Log(Warning, "Encountered unsupported medium: %s", pbrtMedium->toString().c_str());
 		return nullptr;
 	}
 	
-	medium->setName(pbrtMedium->name);
-	loadedMedia[pbrtMedium] = medium;
-	return medium;
+	auto mediaNode = std::make_shared<SceneGraphNode>();
+	mediaNode->setLeaf(result);
+	mediaNode->setName(pbrtMedium->name);
+	sceneGraph->attach(mediaContainer, mediaNode);
+	loadedMedia[pbrtMedium] = result;
+	return result;
 }
 
 bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {

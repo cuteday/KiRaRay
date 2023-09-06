@@ -597,6 +597,14 @@ void SceneAnimation::renderUI() {
 	}
 }
 
+void HomogeneousVolume::renderUI() { 
+	ui::Text("Homogeneous volume"); 
+	ui::Text(("Sigma_a: " + sigma_a.string()).c_str());
+	ui::Text(("Sigma_s: " + sigma_s.string()).c_str());
+	ui::Text("g: %f", g);
+	if (isEmissive()) ui::Text("Le: %s", Le.string().c_str());
+}
+
 void SceneGraphNode::renderUI() { 
 	if (mHasLocalTransform && ui::TreeNode("Transformation")) {
 		if (getScaling() != Vector3f::Ones())
@@ -631,7 +639,13 @@ void SceneGraphNode::renderUI() {
 				light->renderUI();
 				ui::TreePop();
 			}
-		}
+		} else if (auto volume = std::dynamic_pointer_cast<Volume>(getLeaf())) {
+			if (ui::TreeNode("Volume")) {
+				volume->renderUI();
+				ui::TreePop();
+			}
+		} else
+			ui::Text("Unknown leaf type");
 	}
 	SceneGraphNode *child = getFirstChild();
 	if (child) ui::Text("Children nodes");

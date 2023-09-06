@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "medium.h"
 #include "texture.h"
 
 #include "device/memory.h"
@@ -9,6 +10,7 @@
 KRR_NAMESPACE_BEGIN
 
 class Triangle;
+class Volume;
 namespace rt { class DiffuseAreaLight; }
 
 enum class VertexAttribute {
@@ -57,6 +59,8 @@ public:
 	std::string getName() const { return name; }
 
 	void setName(const std::string& name) { this->name = name; }
+	void setMaterial(std::shared_ptr<Material> material) { this->material = material; }
+	void setMedium(std::shared_ptr<Volume> mi, std::shared_ptr<Volume> mo) { inside = mi; outside = mo; }
 	void renderUI();
 
 	std::vector<Vector3f> positions;
@@ -66,6 +70,7 @@ public:
 	std::vector<Vector3i> indices;
 
 	std::shared_ptr<Material> material;
+	std::shared_ptr<Volume> inside, outside;
 
 	int meshId{-1};
 	std::string name;

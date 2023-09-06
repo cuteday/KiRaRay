@@ -3,19 +3,7 @@
 #include "common.h"
 #include <Eigen/Dense>
 
-KRR_NAMESPACE_BEGIN
-
-// template parameters are not allowed (since they contain comma) 
-#define KRR_INHERIT_EIGEN(name, parent)																\
-		using Eigen::parent::parent;																\
-		KRR_CALLABLE name(void) : Eigen::parent() {}												\
-		template <typename OtherDerived>															\
-		KRR_CALLABLE name(const Eigen::MatrixBase<OtherDerived> &other) : Eigen::parent(other) {}	\
-		template <typename OtherDerived>															\
-		KRR_CALLABLE name &operator=(const Eigen::MatrixBase<OtherDerived> &other) {				\
-			this->Eigen::parent::operator=(other);													\
-			return *this;																			\
-		}																					
+KRR_NAMESPACE_BEGIN																				
 
 template <typename T, int Size>
 class Vector : public Eigen::Vector<T, Size> {
