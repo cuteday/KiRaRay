@@ -128,9 +128,14 @@ protected:
 class Volume : public SceneGraphLeaf {
 public:
 	using SharedPtr = std::shared_ptr<Volume>;
+	Volume()		= default;
+
+	int getMediumId() const { return mediumId; }
+	void setMediumId(int id) { mediumId = id; }
 
 protected:
-	
+	friend class SceneGraph;
+	int mediumId{-1};
 };
 
 class HomogeneousVolume : public Volume {

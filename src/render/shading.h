@@ -99,14 +99,12 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	
 	intr.p = b[0] * p0 + b[1] * p1  + b[2] * p2;
 
-	Vector3f face_normal = normalize(cross(p1 - p0, p2 - p0));
-
 	if (mesh.normals.size())
 		intr.n = normalize(b[0] * mesh.normals[v[0]] +
 							   b[1] * mesh.normals[v[1]] +
 							   b[2] * mesh.normals[v[2]]);
 	else  // if the model does not contain normal...
-		intr.n = face_normal;
+		intr.n = normalize(cross(p1 - p0, p2 - p0));
 
 	if (mesh.tangents.size()) {
 		intr.tangent = normalize(b[0] * mesh.tangents[v[0]] + b[1] * mesh.tangents[v[1]] +

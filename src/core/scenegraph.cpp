@@ -348,12 +348,14 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 			Log(Error, "The leaf node points to a mesh that does not added to the scene");
 		meshInstance->mInstanceId = mMeshInstances.size();
 		mMeshInstances.push_back(meshInstance);
+		mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
 	} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(leaf)) {
 		mAnimations.push_back(animation);
 	} else if (auto light = std::dynamic_pointer_cast<SceneLight>(leaf)) {
 		mLights.push_back(light);
 	} else if (auto medium = std::dynamic_pointer_cast<Volume>(leaf)) {
 		mMedia.push_back(medium);
+		mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
 	}
 }
 
@@ -484,6 +486,10 @@ void SceneGraph::update(size_t frameIndex) {
 		int materialIndex = 0;
 		for (Material::SharedPtr material : mMaterials) {
 			material->mMaterialId = materialIndex++;
+		}
+		int mediumIndex = 0;
+		for (Volume::SharedPtr medium : mMedia) {
+			medium->mediumId = mediumIndex++;
 		}
 	}
 }

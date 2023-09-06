@@ -31,6 +31,7 @@ struct MeshData {
 	TypedBuffer<Vector3f> tangents;
 	TypedBuffer<Vector3i> indices;
 	MaterialData *material;
+	MediumInterface mediumInterface;
 };
 
 struct InstanceData {

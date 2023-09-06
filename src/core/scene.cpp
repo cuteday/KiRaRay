@@ -38,7 +38,7 @@ void Scene::renderUI() {
 		ui::Text("Instances: %d", getMeshInstances().size());
 		ui::Text("Animations: %d", getAnimations().size());
 		ui::Text("Media: %d", getMedia().size());
-		ui::Text("Environment lights: %d", environments.size());
+		ui::Text("Lights: %d", getLights().size());
 		ui::TreePop();
 	}
 	if (mCamera && ui::TreeNode("Camera")) {
@@ -198,13 +198,12 @@ void RTScene::uploadSceneData() {
 		instanceData.mesh		 = &mMeshesBuffer[instance->getMesh()->getMeshId()];
 	}
 	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
-	processLights();
-	mInstancesBuffer.copy_from_host(mInstances.data(), mInstances.size());
+	uploadSceneLightData();
 	CUDA_SYNC_CHECK();
 	mOptixScene = std::make_shared<OptixScene>(mScene.lock());
 }
 
-void RTScene::processLights() {
+void RTScene::uploadSceneLightData() {
 	mLights.clear();
 
 	auto createTrianglePrimitives = [](Mesh::SharedPtr mesh, rt::InstanceData* instance) 
@@ -276,6 +275,8 @@ void RTScene::processLights() {
 	mLightSamplerBuffer.alloc_and_copy_from_host(&mLightSampler, 1);
 	CUDA_SYNC_CHECK();
 }
+
+void uploadSceneMediumData() {}
 
 rt::SceneData RTScene::getSceneData() const {
 	rt::SceneData sceneData {};

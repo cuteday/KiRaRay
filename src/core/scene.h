@@ -10,6 +10,7 @@
 #include "device/buffer.h"
 #include "device/memory.h"
 #include "render/lightsampler.h"
+#include "render/media.h"
 
 #include <nvrhi/vulkan.h>
 
@@ -114,16 +115,19 @@ public:
 	std::vector<rt::MeshData> &getMeshData() { return mMeshes; }
 	std::vector<rt::InstanceData> &getInstanceData() { return mInstances; }
 	std::vector<rt::Light> &getLightData() { return mLights; }
+	std::vector<Medium> &getMediumData() { return mMedium; }
 	std::vector<rt::InfiniteLight> &getInfiniteLightData() { return mInfiniteLights; }
 
 	TypedBuffer<rt::MaterialData> &getMaterialBuffer() { return mMaterialsBuffer; }
 	TypedBuffer<rt::MeshData> &getMeshBuffer() { return mMeshesBuffer; }
 	TypedBuffer<rt::InstanceData> &getInstanceBuffer() { return mInstancesBuffer; }
 	TypedBuffer<rt::Light> &getLightBuffer() { return mLightsBuffer; }
+	TypedBuffer<Medium> &getMediumBuffer() { return mMediumBuffer; }
 	TypedBuffer<rt::InfiniteLight> &getInfiniteLightBuffer() { return mInfiniteLightsBuffer; }
 
 private:
-	void processLights();
+	void uploadSceneLightData();
+	void uploadSceneMediumData();
 
 	std::vector<rt::MaterialData> mMaterials;
 	TypedBuffer<rt::MaterialData> mMaterialsBuffer;
@@ -135,6 +139,12 @@ private:
 	TypedBuffer<rt::Light> mLightsBuffer;
 	std::vector<rt::InfiniteLight> mInfiniteLights; 
 	TypedBuffer<rt::InfiniteLight> mInfiniteLightsBuffer;
+
+	std::vector<HomogeneousMedium> mHomogeneousMedium;
+	TypedBuffer<HomogeneousMedium> mHomogeneousMediumBuffer;
+	std::vector<Medium> mMedium;
+	TypedBuffer<Medium> mMediumBuffer;
+
 	UniformLightSampler mLightSampler;
 	TypedBuffer<UniformLightSampler> mLightSamplerBuffer;
 
