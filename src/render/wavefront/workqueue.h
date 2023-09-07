@@ -145,4 +145,17 @@ public:
     using WorkQueue::push;
 };
 
+class MediumSampleQueue : public WorkQueue<MediumSampleWorkItem> {
+public:
+    using WorkQueue::WorkQueue;
+	using WorkQueue::push;
+};
+
+class MediumScatterQueue : public WorkQueue<MediumScatterWorkItem> {
+public:
+	using WorkQueue::push;
+	using WorkQueue::WorkQueue;
+};
+
+
 KRR_NAMESPACE_END

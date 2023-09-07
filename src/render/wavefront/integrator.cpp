@@ -33,6 +33,12 @@ void WavefrontPathTracer::initialize() {
 	else scatterRayQueue = alloc.new_object<ScatterRayQueue>(maxQueueSize, alloc);
 	if (pixelState) pixelState->resize(maxQueueSize, alloc);
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
+	if (haveMedium) {
+		if (mediumSampleQueue) mediumSampleQueue->resize(maxQueueSize, alloc);
+		else mediumSampleQueue = alloc.new_object<MediumSampleQueue>(maxQueueSize, alloc);
+		if (mediumScatterQueue) mediumScatterQueue->resize(maxQueueSize, alloc);
+		else mediumScatterQueue = alloc.new_object<MediumScatterQueue>(maxQueueSize, alloc);
+	}
 	cudaDeviceSynchronize();
 	if (!camera) camera = alloc.new_object<Camera::CameraData>();
 	CUDA_SYNC_CHECK();
@@ -177,7 +183,6 @@ void WavefrontPathTracer::resize(const Vector2i &size) {
 }
 
 void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
-	initialize();
 	mScene = scene;
 	if (!backend) {
 		backend		= new OptixBackend();
@@ -192,6 +197,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	backend->setScene(scene);
 	lightSampler = backend->getSceneData().lightSampler;
 	haveMedium	 = scene->getMedia().size() != 0;
+	initialize();
 }
 
 void WavefrontPathTracer::beginFrame(RenderContext* context) {
@@ -229,16 +235,21 @@ void WavefrontPathTracer::render(RenderContext *context) {
 			}, gpContext->cudaStream);
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);
-			// [STEP#2.2] handle hit and missed rays, contribute to pixels
+			// [STEP#2.2] sample medium interaction, and optionally sample in-volume scattering events
+			if (haveMedium) {
+				sampleMediumInteraction(depth);
+				sampleMediumScattering(depth);
+			}
+			// [STEP#2.3] handle hit and missed rays, contribute to pixels
 			if (!depth || !enableNEE || enableMIS) {
 				handleHit();
 				handleMiss();
 			}
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
-			// [STEP#2.3] evaluate materials & bsdfs, and generate shadow rays
+			// [STEP#2.4] evaluate materials & bsdfs, and generate shadow rays
 			generateScatterRays();
-			// [STEP#2.4] trace shadow rays (next event estimation)
+			// [STEP#2.5] trace shadow rays (next event estimation)
 			if (enableNEE) traceShadow();
 		}
 	}

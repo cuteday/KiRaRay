@@ -53,6 +53,7 @@ SET (KRR_SOURCE
 	render/path/pathtracer.cpp
 	render/bdpt/integrator.cpp
 	render/wavefront/integrator.cpp
+	render/wavefront/medium.cpp
 	render/rasterize/bindless.cpp
 	render/profiler/profiler.cpp
 	render/profiler/ui.cpp
@@ -78,6 +79,7 @@ SET_SOURCE_FILES_PROPERTIES (
 	# the symbols that are defined within these .cpp files.
 	render/media.cpp
 	render/wavefront/integrator.cpp
+	render/wavefront/medium.cpp
 	render/passes/denoise/denoise.cpp
 	util/tables.cpp
 	PROPERTIES LANGUAGE CUDA

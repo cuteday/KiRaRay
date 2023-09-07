@@ -35,6 +35,8 @@ public:
 	void handleMiss();
 	void generateScatterRays();
 	void generateCameraRays(int sampleId);
+	void sampleMediumInteraction(int depth);
+	void sampleMediumScattering(int depth);
 	void traceClosest(int depth);
 	void traceShadow();
 
@@ -55,6 +57,8 @@ public:
 	HitLightRayQueue* hitLightRayQueue{ };
 	ShadowRayQueue* shadowRayQueue{ };
 	ScatterRayQueue* scatterRayQueue{ };
+	MediumSampleQueue* mediumSampleQueue{ };
+	MediumScatterQueue* mediumScatterQueue{ };
 	PixelStateBuffer* pixelState;
 
 	// path tracing parameters
