@@ -191,6 +191,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	}
 	backend->setScene(scene);
 	lightSampler = backend->getSceneData().lightSampler;
+	haveMedium	 = scene->getMedia().size() != 0;
 }
 
 void WavefrontPathTracer::beginFrame(RenderContext* context) {

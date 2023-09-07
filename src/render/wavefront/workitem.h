@@ -15,6 +15,7 @@ using namespace rt;
 struct PixelState {
 	Color L;
 	PCGSampler sampler;
+	SampledChannel channel;
 };
 
 struct RayWorkItem {
@@ -62,6 +63,23 @@ struct ShadowRayWorkItem {
 struct ScatterRayWorkItem {
 	Color thp;
 	SurfaceInteraction intr;
+	uint depth;
+	uint pixelId;
+};
+
+struct MediumSampleWorkItem {
+	Ray ray;
+	float tMax;
+	SurfaceInteraction intr;	// has hit a surface as well...
+	uint depth;
+	uint pixelId;
+};
+
+struct MediumScatterWorkItem {
+	Vector3f p;
+	float time;
+	Medium medium;
+	PhaseFunction phase;
 	uint depth;
 	uint pixelId;
 };

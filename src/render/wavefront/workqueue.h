@@ -57,6 +57,41 @@ private:
 	atomic<int> m_size{ 0 };
 };
 
+template <typename T> 
+class MultiWorkQueue;
+
+template <typename... Ts> 
+class MultiWorkQueue<types::TypePack<Ts...>> {
+public:
+    template <typename T> 
+    KRR_CALLABLE WorkQueue<T>* get() {
+        return &inter::get<WorkQueue<T>>(m_queues);
+    }
+
+    MultiWorkQueue(int n, Allocator alloc, inter::span<const bool> haveType) {
+        int index = 0;
+		((*get<Ts>() = WorkQueue<Ts>(haveType[index++] ? n : 1, alloc)), ...);
+    }
+
+    template <typename T>
+	KRR_CALLABLE int size() const {
+		return get<T>()->size();
+	}
+
+	template <typename T>
+    KRR_CALLABLE int push(const T& value) { 
+        return get<T>()->push(value);
+    }
+
+    KRR_CALLABLE void reset() { 
+        (get<Ts>()->reset(), ...);
+    }
+
+private:
+    inter::tuple<WorkQueue<Ts>...> m_queues;
+};
+
+// Helper functions and basic classes
 template <typename F, typename WorkItem>
 void ForAllQueued(const WorkQueue<WorkItem>* q, int nElements,
     F&& func, CUstream stream = 0) {

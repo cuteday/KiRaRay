@@ -50,7 +50,6 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	hitInfo.primitiveId		 = optixGetPrimitiveIndex();
 	hitInfo.instance		 = hitData->instance;
 	hitInfo.wo				 = -normalize((Vector3f) optixGetWorldRayDirection());
-	hitInfo.hitKind			 = optixGetHitKind();
 	hitInfo.barycentric = { 1 - barycentric[0] - barycentric[1], barycentric[0], barycentric[1] };
 	return hitInfo;
 }

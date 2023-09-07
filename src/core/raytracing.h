@@ -139,4 +139,19 @@ struct Interaction{
 	Medium medium{nullptr};
 };
 
+static constexpr int nSpectrumSamples = 4;
+
+class SampledChannel {
+public:
+	KRR_CALLABLE SampledChannel() = default;
+
+	KRR_CALLABLE SampledChannel(float u) : channel(u * Color3f::dim){}
+
+	KRR_CALLABLE static SampledChannel sampleUniform(float u) { return SampledChannel(u); }
+
+	KRR_CALLABLE operator int() const { return channel; }
+
+	int channel;
+};
+
 KRR_NAMESPACE_END

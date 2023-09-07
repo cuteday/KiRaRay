@@ -47,6 +47,7 @@ public:
 	OptixBackend *backend{ };
 	Camera::CameraData* camera{ };
 	LightSampler lightSampler;
+	bool haveMedium{ false };
 
 	// work queues
 	RayQueue* rayQueue[2]{ };	// switching bewteen current and next queue
