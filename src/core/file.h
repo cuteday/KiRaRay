@@ -11,7 +11,7 @@ class Blob {
 public:
 	using SharedPtr = std::shared_ptr<Blob>;
 	Blob(void *data, size_t size) : m_data(data), m_size(size) {}
-	~Blob() { if (m_data) free(m_data); m_data = nullptr;};
+	virtual ~Blob() { if (m_data) free(m_data); m_data = nullptr;};
 	const void *data() const { return m_data; }
 	size_t size() const { return m_size; }
 
@@ -28,6 +28,8 @@ public:
 	static fs::path outputDir();
 	static fs::path dataDir();
 	static fs::path codeDir();
+	static fs::path assetDir();
+	static fs::path textureDir();
 
 	static void setOutputDir(const fs::path &outputDir);
 	static void setCwd(const fs::path &cwd);

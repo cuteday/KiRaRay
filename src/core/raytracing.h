@@ -2,7 +2,10 @@
 
 #include "common.h"
 #include "krrmath/vector.h"
+#include "krrmath/transform.h"
 #include "util/math_utils.h"
+#include "taggedptr.h"
+#include "medium.h"
 
 #define KRR_RAY_TMAX	(1e20f)
 #define KRR_RAY_EPS		(1e-5f)
@@ -28,8 +31,19 @@ enum class MaterialType {
 
 class Ray {
 public:
+	KRR_CALLABLE Ray() = default;
+
+	KRR_CALLABLE Ray(Vector3f o, Vector3f d, float time = 0, Medium medium = nullptr) :
+		origin(o), dir(d), time(time), medium(medium) {}
+	
+	KRR_CALLABLE bool hasNaN() const { return origin.hasNaN() || dir.hasNaN(); }
+
+	KRR_CALLABLE Vector3f operator()(float t) const { return origin + dir * t; }
+
 	Vector3f origin;
 	Vector3f dir;
+	float time{0};
+	Medium medium{nullptr};
 };
 
 struct Frame {
@@ -63,6 +77,12 @@ offsetRayOrigin(const Vector3f &p, const Vector3f &n, const Vector3f &w) {
 	return po;
 }
 
+KRR_CALLABLE Ray operator*(const Affine3f& transform, const Ray& ray) {
+	Vector3f o = transform * ray.origin;
+	Vector3f d = transform.rotation() * ray.dir;
+	return Ray{o, d, ray.time, ray.medium};
+}
+
 struct Interaction{
 	Interaction() = default;
 
@@ -70,6 +90,15 @@ struct Interaction{
 	KRR_CALLABLE Interaction(Vector3f p, Vector2f uv): p(p), uv(uv) {}
 	KRR_CALLABLE Interaction(Vector3f p, Vector3f n, Vector2f uv) : p(p), n(n), uv(uv) {}
 	KRR_CALLABLE Interaction(Vector3f p, Vector3f wo, Vector3f n, Vector2f uv): p(p), wo(wo), n(n), uv(uv) {}
+	
+	KRR_CALLABLE Interaction(Vector3f p, Vector3f wo, float time, Medium medium): p(p), wo(wo), time(time), medium(medium) {}
+	KRR_CALLABLE Interaction(Vector3f p, float time, Medium medium): p(p), wo(wo), medium(medium) {}
+	KRR_CALLABLE Interaction(Vector3f p, const MediumInterface *mediumInterface): p(p), mediumInterface(mediumInterface) {}
+	KRR_CALLABLE Interaction(Vector3f p, float time, const MediumInterface *mediumInterface): p(p), time(time), mediumInterface(mediumInterface) {}
+	KRR_CALLABLE Interaction(Vector3f p, Vector3f wo, Vector3f n, Vector2f uv, float time): p(p), wo(wo), n(n), uv(uv), time(time) {}
+
+	KRR_CALLABLE bool isSurfaceInteraction() const { return !n.isZero(); }
+	KRR_CALLABLE bool isMediumInteraction() const { return n.isZero(); }
 
 	KRR_CALLABLE Vector3f offsetRayOrigin(const Vector3f& w) const {
 		return krr::offsetRayOrigin(p, n, w);
@@ -90,26 +119,24 @@ struct Interaction{
 		return spawnRay(to);
 	}
 
+	KRR_CALLABLE Medium getMedium(Vector3f w) const {
+		if(mediumInterface) 
+			return w.dot(n) > 0 ? mediumInterface->outside : mediumInterface->inside;		
+		return medium;
+	}
+
+	KRR_CALLABLE Medium getMedium() const {
+		if (mediumInterface) DCHECK_EQ(mediumInterface->inside, mediumInterface->outside);
+		return mediumInterface ? mediumInterface->inside : medium;
+	}
+
 	Vector3f p {0};
 	Vector3f wo {0};	// world-space out-scattering direction
 	Vector3f n {0};
 	Vector2f uv {0};
-};
-
-class SurfaceInteraction : public Interaction {
-public:
-	SurfaceInteraction() = default;
-
-	KRR_CALLABLE Vector3f toWorld(const Vector3f &v) const {
-		return tangent * v[0] + bitangent * v[1] + n * v[2];
-	}
-
-	KRR_CALLABLE Vector3f toLocal(const Vector3f &v) const {
-		return {dot(tangent, v), dot(bitangent, v), dot(n, v)};
-	}
-
-	Vector3f tangent{0};
-	Vector3f bitangent{0};
+	float time{0};
+	const MediumInterface *mediumInterface{nullptr};
+	Medium medium{nullptr};
 };
 
 KRR_NAMESPACE_END

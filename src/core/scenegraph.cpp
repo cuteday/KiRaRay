@@ -43,6 +43,14 @@ SceneGraphLeaf::SharedPtr InfiniteLight::clone() {
 	return light;
 }
 
+SceneGraphLeaf::SharedPtr HomogeneousVolume::clone() {
+	return std::make_shared<HomogeneousVolume>();
+}
+
+SceneGraphLeaf::SharedPtr VDBVolume::clone() {
+	return std::make_shared<VDBVolume>();
+}
+
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
 								  const Vector3f *scaling) {
 	if (scaling) mScaling = *scaling;
@@ -340,10 +348,14 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 			Log(Error, "The leaf node points to a mesh that does not added to the scene");
 		meshInstance->mInstanceId = mMeshInstances.size();
 		mMeshInstances.push_back(meshInstance);
+		mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
 	} else if (auto animation = std::dynamic_pointer_cast<SceneAnimation>(leaf)) {
 		mAnimations.push_back(animation);
 	} else if (auto light = std::dynamic_pointer_cast<SceneLight>(leaf)) {
 		mLights.push_back(light);
+	} else if (auto medium = std::dynamic_pointer_cast<Volume>(leaf)) {
+		mMedia.push_back(medium);
+		mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
 	}
 }
 
@@ -365,6 +377,10 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 		auto it = std::find(mLights.begin(), mLights.end(), leaf);
 		if (it != mLights.end()) mLights.erase(it);
 		else Log(Warning, "Unregistering a light that do not exist in graph...");
+	} else if (auto medium = std::dynamic_pointer_cast<Volume>(leaf)) {
+		auto it = std::find(mMedia.begin(), mMedia.end(), leaf);
+		if (it != mMedia.end()) mMedia.erase(it);
+		else Log(Warning, "Unregistering a medium that do not exist in graph...");
 	}
 }
 
@@ -471,6 +487,10 @@ void SceneGraph::update(size_t frameIndex) {
 		for (Material::SharedPtr material : mMaterials) {
 			material->mMaterialId = materialIndex++;
 		}
+		int mediumIndex = 0;
+		for (Volume::SharedPtr medium : mMedia) {
+			medium->mediumId = mediumIndex++;
+		}
 	}
 }
 
@@ -531,6 +551,17 @@ void SceneLight::renderUI() {
 	if (ui::DragFloat3("Position", (float *) &position), 1e-2, -100, 100) setPosition(position);
 }
 
+void DirectionalLight::renderUI() {
+	Color3f color	= getColor();
+	float scale = getScale();
+	Vector2f sphericalDir = worldToLatLong(getDirection());
+	if (ui::DragFloat3("Color", (float *) &color, 1e-3, 0, 1)) setColor(color);
+	if (ui::DragFloat("Scale", &scale, 1e-2, 0, 100)) setScale(scale);
+	ui::SliderFloat("Azimuth", &sphericalDir[0], 0, 1);
+	ui::SliderFloat("Altitude", &sphericalDir[1], 0, 1);
+	setDirection(latlongToWorld(sphericalDir));
+}
+
 void SceneAnimationChannel::renderUI() {
 	if (!isValid()) return;
 	ui::Text("Duration: %f - %f", getSampler()->getStartTime(), getSampler()->getEndTime());
@@ -572,6 +603,14 @@ void SceneAnimation::renderUI() {
 	}
 }
 
+void HomogeneousVolume::renderUI() { 
+	ui::Text("Homogeneous volume"); 
+	ui::Text(("Sigma_a: " + sigma_a.string()).c_str());
+	ui::Text(("Sigma_s: " + sigma_s.string()).c_str());
+	ui::Text("g: %f", g);
+	if (isEmissive()) ui::Text("Le: %s", Le.string().c_str());
+}
+
 void SceneGraphNode::renderUI() { 
 	if (mHasLocalTransform && ui::TreeNode("Transformation")) {
 		if (getScaling() != Vector3f::Ones())
@@ -606,7 +645,13 @@ void SceneGraphNode::renderUI() {
 				light->renderUI();
 				ui::TreePop();
 			}
-		}
+		} else if (auto volume = std::dynamic_pointer_cast<Volume>(getLeaf())) {
+			if (ui::TreeNode("Volume")) {
+				volume->renderUI();
+				ui::TreePop();
+			}
+		} else
+			ui::Text("Unknown leaf type");
 	}
 	SceneGraphNode *child = getFirstChild();
 	if (child) ui::Text("Children nodes");
@@ -629,7 +674,6 @@ void SceneGraph::renderUI() {
 		mRoot->renderUI();
 		ui::TreePop();
 	}
-
 }
 
 KRR_NAMESPACE_END

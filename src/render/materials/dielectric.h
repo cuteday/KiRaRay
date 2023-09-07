@@ -29,10 +29,10 @@ public:
 		distribution = GGXMicrofacetDistribution(alpha_x, alpha_y);
 	}
 
-	KRR_CALLABLE void setup(const ShadingData &sd) { 
-		baseColor	 = sd.diffuse * sd.specularTransmission;
-		eta			 = sd.IoR;
-		float alpha	 = pow2(sd.roughness);
+	KRR_CALLABLE void setup(const SurfaceInteraction &intr) { 
+		baseColor	 = intr.sd.diffuse * intr.sd.specularTransmission;
+		eta			 = intr.sd.IoR;
+		float alpha	 = pow2(intr.sd.roughness);
 		distribution = { alpha, alpha };
 	}
 

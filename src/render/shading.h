@@ -80,9 +80,9 @@ KRR_DEVICE_FUNCTION bool alphaKilled() {
 	return u > alpha;
 }
 
-KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitInfo) {
+KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, const HitInfo &hitInfo) {
 	// [NOTE] about local shading frame (tangent space, TBN, etc.)
-	// The shading normal sd.frame.N and face normal sd.geoN is always points towards the outside of
+	// The shading normal intr.n and face normal is always points towards the outside of
 	// the object, we can use this convention to determine whether an incident ray is coming from
 	// outside of the object.
 
@@ -92,45 +92,43 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	Vector3f b						 = hitInfo.barycentric;
 	Vector3i v						 = mesh.indices[hitInfo.primitiveId];
 	
-	sd.wo  = normalize(hitInfo.wo);
+	intr.wo  = normalize(hitInfo.wo);
 
 	Vector3f p0 = mesh.positions[v[0]], p1 = mesh.positions[v[1]],
 			 p2 = mesh.positions[v[2]];
 	
-	sd.pos = b[0] * p0 + b[1] * p1  + b[2] * p2;
-
-	Vector3f face_normal = normalize(cross(p1 - p0, p2 - p0));
+	intr.p = b[0] * p0 + b[1] * p1  + b[2] * p2;
 
 	if (mesh.normals.size())
-		sd.frame.N = normalize(b[0] * mesh.normals[v[0]] +
+		intr.n = normalize(b[0] * mesh.normals[v[0]] +
 							   b[1] * mesh.normals[v[1]] +
 							   b[2] * mesh.normals[v[2]]);
 	else  // if the model does not contain normal...
-		sd.frame.N = face_normal;
+		intr.n = normalize(cross(p1 - p0, p2 - p0));
 
 	if (mesh.tangents.size()) {
-		sd.frame.T = normalize(b[0] * mesh.tangents[v[0]] + b[1] * mesh.tangents[v[1]] +
+		intr.tangent = normalize(b[0] * mesh.tangents[v[0]] + b[1] * mesh.tangents[v[1]] +
 							   b[2] * mesh.tangents[v[2]]);
 		// re-orthogonize the tangent space
-		sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.N, sd.frame.T));
-	} else sd.frame.T = getPerpendicular(sd.frame.N);
-	sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
+		intr.tangent = normalize(intr.tangent - intr.n * dot(intr.n, intr.tangent));
+	} else intr.tangent = getPerpendicular(intr.n);
+	intr.bitangent = normalize(cross(intr.n, intr.tangent));
 
 	if (mesh.texcoords.size()) {
 		Vector2f uv[3] = {mesh.texcoords[v[0]], mesh.texcoords[v[1]],
 						  mesh.texcoords[v[2]]};
-		sd.uv		   = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
+		intr.uv		   = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
 	}
 
 	if (instance.lights.size())
-		sd.light = &instance.lights[hitInfo.primitiveId];
-	else sd.light = nullptr;
+		intr.light = &instance.lights[hitInfo.primitiveId];
+	else intr.light = nullptr;
 
 	const Material::MaterialParams &materialParams = material.mMaterialParams;
 
-	sd.IoR					= materialParams.IoR;
-	sd.bsdfType				= material.mBsdfType;
-	sd.specularTransmission = materialParams.specularTransmission;
+	intr.sd.IoR					 = materialParams.IoR;
+	intr.sd.bsdfType			 = material.mBsdfType;
+	intr.sd.specularTransmission = materialParams.specularTransmission;
 
 	const rt::TextureData &diffuseTexture = 
 		material.mTextures[(uint) Material::TextureType::Diffuse];
@@ -139,40 +137,40 @@ KRR_DEVICE_FUNCTION void prepareShadingData(ShadingData &sd, const HitInfo &hitI
 	const rt::TextureData &normalTexture =
 		material.mTextures[(uint) Material::TextureType::Normal];
 
-	Color4f diff	   = sampleTexture(diffuseTexture, sd.uv, materialParams.diffuse);
-	Color4f spec	   = sampleTexture(specularTexture, sd.uv, materialParams.specular);
+	Color4f diff	   = sampleTexture(diffuseTexture, intr.uv, materialParams.diffuse);
+	Color4f spec	   = sampleTexture(specularTexture, intr.uv, materialParams.specular);
 	Color3f baseColor  = (Color3f) diff;
 
 	if (normalTexture.isValid() && mesh.texcoords.size()) { // be cautious if we have TBN info
-		Vector3f normal = sampleTexture(normalTexture, sd.uv, Color3f{ 0, 0, 1 });
+		Vector3f normal = sampleTexture(normalTexture, intr.uv, Color3f{ 0, 0, 1 });
 		normal			= rgbToNormal(normal);
 
-		sd.frame.N =
-			normalize(sd.frame.T * normal[0] + sd.frame.B * normal[1] + sd.frame.N * normal[2]);
-		sd.frame.T = normalize(sd.frame.T - sd.frame.N * dot(sd.frame.T, sd.frame.N));
-		sd.frame.B = normalize(cross(sd.frame.N, sd.frame.T));
+		intr.n =
+			normalize(intr.tangent * normal[0] + intr.bitangent * normal[1] + intr.n * normal[2]);
+		intr.tangent = normalize(intr.tangent - intr.n * dot(intr.tangent, intr.n));
+		intr.bitangent = normalize(cross(intr.n, intr.tangent));
 	}
 
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// [SPECULAR] G - Roughness; B - Metallic
-		sd.diffuse	 = lerp(baseColor, Color3f::Zero(), spec[2]);
-		sd.specular	 = lerp(Color3f::Zero(), baseColor, spec[2]);
-		sd.metallic	 = spec[2];
-		sd.roughness = spec[1];
+		intr.sd.diffuse	  = lerp(baseColor, Color3f::Zero(), spec[2]);
+		intr.sd.specular  = lerp(Color3f::Zero(), baseColor, spec[2]);
+		intr.sd.metallic  = spec[2];
+		intr.sd.roughness = spec[1];
 	} else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		// [SPECULAR] RGB - Specular Color; A - Glossiness
-		sd.diffuse	 = baseColor;
-		sd.specular	 = (Color3f) spec; // specular reflectance
-		sd.roughness = 1.f - spec[3];	//
-		sd.metallic	 = getMetallic(sd.diffuse, sd.specular);
+		intr.sd.diffuse	  = baseColor;
+		intr.sd.specular  = (Color3f) spec; // specular reflectance
+		intr.sd.roughness = 1.f - spec[3];	//
+		intr.sd.metallic  = getMetallic(intr.sd.diffuse, intr.sd.specular);
 	} else assert(false);
 	
 	// transform local interaction to world space 
 	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
-	sd.pos	   = hitInfo.instance->getTransform() * sd.pos;
-	sd.frame.N = hitInfo.instance->getTransposedInverseTransform() * sd.frame.N;
-	sd.frame.T = hitInfo.instance->getTransposedInverseTransform() * sd.frame.T;
-	sd.frame.B = hitInfo.instance->getTransposedInverseTransform() * sd.frame.B;
+	intr.p		   = hitInfo.instance->getTransform() * intr.p;
+	intr.n		   = hitInfo.instance->getTransposedInverseTransform() * intr.n;
+	intr.tangent   = hitInfo.instance->getTransposedInverseTransform() * intr.tangent;
+	intr.bitangent = hitInfo.instance->getTransposedInverseTransform() * intr.bitangent;
 }
 
 KRR_NAMESPACE_END

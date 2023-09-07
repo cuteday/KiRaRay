@@ -144,37 +144,37 @@ void PPGPathTracer::handleIntersections() {
 		if (sampler.get1D() >= probRR) return;
 		w.thp /= probRR;
 		
-		const ShadingData& sd = w.sd;
-		BSDFType bsdfType = sd.getBsdfType();
-		Vector3f woLocal = sd.frame.toLocal(sd.wo);
+		const SurfaceInteraction& intr = w.intr;
+		BSDFType bsdfType = intr.getBsdfType();
+		Vector3f woLocal = intr.toLocal(intr.wo);
 
 		/* Statistics for mixed bsdf-guided sampling */
 		float bsdfPdf, dTreePdf;
-		DTreeWrapper* dTree = m_sdTree->dTreeWrapper(sd.pos);
+		DTreeWrapper* dTree = m_sdTree->dTreeWrapper(intr.p);
 
 		if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
 			SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 			Light light = sampledLight.light;
-			LightSample ls = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
-			Ray shadowRay = sd.getInteraction().spawnRay(ls.intr);
+			LightSample ls = light.sampleLi(sampler.get2D(), { intr.p, intr.n });
+			Ray shadowRay = intr.spawnRay(ls.intr);
 			Vector3f wiWorld = normalize(shadowRay.dir);
-			Vector3f wiLocal = sd.frame.toLocal(wiWorld);
+			Vector3f wiLocal = intr.toLocal(wiWorld);
 
 			float lightPdf = sampledLight.pdf * ls.pdf;
 			float misWeight{1};
-			Color bsdfVal = BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType);
+			Color bsdfVal = BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 			if (enableMIS) {
 				float scatterPdf = PPGPathTracer::evalPdf(bsdfPdf, dTreePdf, w.depth, 
-					sd, wiLocal, m_bsdfSamplingFraction, dTree, bsdfType);
+					intr, wiLocal, m_bsdfSamplingFraction, dTree, bsdfType);
 				misWeight = evalMIS(lightPdf, scatterPdf);
 			}
 			if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
 				ShadowRayWorkItem sw = {};
 				sw.ray				 = shadowRay;
 				sw.Li				 = ls.L;
-				sw.a = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
-				sw.pixelId = w.pixelId;
-				sw.tMax	   = 1;
+				sw.a				 = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
+				sw.pixelId			 = w.pixelId;
+				sw.tMax				 = 1;
 				if (sw.a.any()) shadowRayQueue->push(sw);
 			}
 		}
@@ -189,25 +189,25 @@ void PPGPathTracer::generateScatterRays() {
 	ForAllQueued(guidedRayQueue, maxQueueSize, 
 		KRR_DEVICE_LAMBDA(const GuidedRayWorkItem &id) {
 			const ScatterRayWorkItem w = scatterRayQueue->operator[](id.itemId);
-			Sampler sampler			   = &pixelState->sampler[w.pixelId];
-			const ShadingData &sd	   = w.sd;
-			const BSDFType bsdfType	   = sd.getBsdfType();
-			Vector3f woLocal		   = sd.frame.toLocal(sd.wo);
+			Sampler sampler				   = &pixelState->sampler[w.pixelId];
+			const SurfaceInteraction &intr = w.intr;
+			const BSDFType bsdfType		   = intr.getBsdfType();
+			Vector3f woLocal			   = intr.toLocal(intr.wo);
 
 			float bsdfPdf, dTreePdf;
 			Vector3f dTreeVoxelSize{};
-			DTreeWrapper *dTree = m_sdTree->dTreeWrapper(sd.pos, dTreeVoxelSize);
+			DTreeWrapper *dTree = m_sdTree->dTreeWrapper(intr.p, dTreeVoxelSize);
 
-			BSDFSample sample = PPGPathTracer::sample(sampler, sd, bsdfPdf, dTreePdf, w.depth,
+			BSDFSample sample = PPGPathTracer::sample(sampler, intr, bsdfPdf, dTreePdf, w.depth,
 													  m_bsdfSamplingFraction, dTree, bsdfType);
 			if (sample.pdf > 0 && sample.f.any()) {
-				Vector3f wiWorld = sd.frame.toWorld(sample.wi);
+				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};
-				Vector3f p		 = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
+				Vector3f p		 = offsetRayOrigin(intr.p, intr.n, wiWorld);
 				r.bsdfType		 = sample.flags;
 				r.pdf			 = sample.pdf;
 				r.ray			 = { p, wiWorld };
-				r.ctx			 = { sd.pos, sd.frame.N };
+				r.ctx			 = { intr.p, intr.n };
 				r.pixelId		 = w.pixelId;
 				r.depth			 = w.depth + 1;
 				r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf;
@@ -413,54 +413,54 @@ void PPGPathTracer::finalize() {
 }
 
 KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler, 
-	const ShadingData& sd, float& bsdfPdf, float& dTreePdf, int depth,
+	const SurfaceInteraction& intr, float& bsdfPdf, float& dTreePdf, int depth,
 	float bsdfSamplingFraction, const DTreeWrapper* dTree, BSDFType bsdfType) const {
 	BSDFSample sample = {};
-	Vector3f woLocal = sd.frame.toLocal(sd.wo);
+	Vector3f woLocal = intr.toLocal(intr.wo);
 
 	if (!m_isBuilt || !dTree || !enableGuiding || (bsdfType & BSDF_SPECULAR)
 		|| bsdfSamplingFraction == 1 || depth >= MAX_GUIDED_DEPTH) {
-		sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
+		sample = BxDF::sample(intr, woLocal, sampler, (int)intr.sd.bsdfType);
 		bsdfPdf = sample.pdf;
 		dTreePdf = 0;
 		return sample;
 	}
 
 	if (bsdfSamplingFraction > 0 && sampler.get1D() < bsdfSamplingFraction) {
-		sample = BxDF::sample(sd, woLocal, sampler, (int)sd.bsdfType);
+		sample = BxDF::sample(intr, woLocal, sampler, (int)intr.sd.bsdfType);
 		bsdfPdf = sample.pdf;
-		dTreePdf = dTree->pdf(sd.frame.toWorld(sample.wi));
+		dTreePdf = dTree->pdf(intr.toWorld(sample.wi));
 		sample.pdf = bsdfSamplingFraction * bsdfPdf + (1 - bsdfSamplingFraction) * dTreePdf;
 		return sample;
 	}
 	else {
-		sample.wi = sd.frame.toLocal(dTree->sample(sampler));
-		sample.f = BxDF::f(sd, woLocal, sample.wi, (int)sd.bsdfType);
+		sample.wi = intr.toLocal(dTree->sample(sampler));
+		sample.f = BxDF::f(intr, woLocal, sample.wi, (int)intr.sd.bsdfType);
 		sample.flags = BSDF_GLOSSY | (SameHemisphere(sample.wi, woLocal) ?
 			BSDF_REFLECTION : BSDF_TRANSMISSION);
-		sample.pdf = evalPdf(bsdfPdf, dTreePdf, depth, sd, sample.wi,
+		sample.pdf = evalPdf(bsdfPdf, dTreePdf, depth, intr, sample.wi,
 			bsdfSamplingFraction, dTree, sample.flags /*The bsdf lobe type is needed (in case for delta lobes)*/);
 		return sample;
 	}
 }
 
 KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int depth,
-	const ShadingData& sd, Vector3f wiLocal, float alpha, const DTreeWrapper* dTree, BSDFType bsdfType) const {
-	Vector3f woLocal = sd.frame.toLocal(sd.wo);
+	const SurfaceInteraction& intr, Vector3f wiLocal, float alpha, const DTreeWrapper* dTree, BSDFType bsdfType) const {
+	Vector3f woLocal = intr.toLocal(intr.wo);
 	
 	bsdfPdf = dTreePdf = 0;
 	if (!m_isBuilt || !dTree || !enableGuiding || (bsdfType & BSDF_SPECULAR)
 		|| alpha == 1 || depth >= MAX_GUIDED_DEPTH) {
-		return bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
+		return bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int)intr.sd.bsdfType);
 	}
 	if (alpha > 0) {
-		bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int)sd.bsdfType);
+		bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int)intr.sd.bsdfType);
 		if (isinf(bsdfPdf) || isnan(bsdfPdf)) {
 			return bsdfPdf = dTreePdf = 0;
 		}
 	}
 	if (alpha < 1) {
-		dTreePdf = dTree->pdf(sd.frame.toWorld(wiLocal));
+		dTreePdf = dTree->pdf(intr.toWorld(wiLocal));
 	}
 	return alpha * bsdfPdf + (1 - alpha) * dTreePdf;
 }

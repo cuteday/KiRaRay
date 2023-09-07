@@ -160,11 +160,11 @@ public:
 
 		if (wo[2] == 0) return Color::Zero();
 
-		float alpha2 = gloss * gloss;
+		float alpha2   = gloss * gloss;
 		float cosTheta = sqrt(max(float(0), (1 - pow(alpha2, 1 - u[0])) / (1 - alpha2)));
-		float sinTheta = sqrt(max((float)0, 1 - cosTheta * cosTheta));
-		float phi = 2 * M_PI * u[1];
-		Vector3f wh = sphericalToCartesian(sinTheta, cosTheta, phi);
+		float sinTheta = sqrt(max((float) 0, 1 - cosTheta * cosTheta));
+		float phi	   = 2 * M_PI * u[1];
+		Vector3f wh	   = sphericalToCartesian(sinTheta, cosTheta, phi);
 		if (!SameHemisphere(wo, wh)) wh = -wh;
 
 		*wi = Reflect(wo, wh);
@@ -207,14 +207,14 @@ public:
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(DisneyBsdf);
 
-	KRR_CALLABLE void setup(const ShadingData& sd) {
+	KRR_CALLABLE void setup(const SurfaceInteraction& intr) {
 
-		Color c				 = sd.diffuse;
-		float metallicWeight = sd.metallic;
-		float e				 = sd.IoR;
-		float strans		 = sd.specularTransmission;
+		Color c				 = intr.sd.diffuse;
+		float metallicWeight = intr.sd.metallic;
+		float e				 = intr.sd.IoR;
+		float strans		 = intr.sd.specularTransmission;
 		float diffuseWeight	 = (1 - metallicWeight) * (1 - strans);
-		float roughness		 = sd.roughness;
+		float roughness		 = intr.sd.roughness;
 		float lum			 = luminance(c);
 		// normalize lum. to isolate hue+sat
 		Color Ctint = Color::Ones();
@@ -243,14 +243,14 @@ public:
 
 		// Create the microfacet distribution for metallic and/or specular
 		// transmission.
-		float aspect = sqrt(1 - sd.anisotropic * .9f);
+		float aspect = sqrt(1 - intr.sd.anisotropic * .9f);
 		float ax	 = max(.001f, pow2(roughness) / aspect);
 		float ay	 = max(.001f, pow2(roughness) * aspect);
 
 		// Specular is Trowbridge-Reitz with a modified Fresnel function.
 		float specTint = 1;		// [unused] this is manually set to 1...
-		Color Cspec0   = sd.specular;
-		if (!any(sd.specular)) 
+		Color Cspec0   = intr.sd.specular;
+		if (!any(intr.sd.specular)) 
 			Cspec0 = lerp(SchlickR0FromEta(e) * lerp(Color::Ones(), Ctint, specTint), c, metallicWeight);
 
 		microfacetBrdf = MicrofacetBrdf(Color(1), e, ax, ay);
@@ -274,17 +274,17 @@ public:
 
 		// calculate sampling weights
 		float approxFresnel =
-			luminance(DisneyFresnel(Cspec0, metallicWeight, e, AbsCosTheta(sd.wo)));
+			luminance(DisneyFresnel(Cspec0, metallicWeight, e, AbsCosTheta(intr.wo)));
 		pDiffuse	  = components & (DISNEY_DIFFUSE | DISNEY_RETRO)
-							? sd.diffuse.mean() * (1 - metallicWeight) *
-													  (1 - sd.specularTransmission)
+							? intr.sd.diffuse.mean() * (1 - metallicWeight) *
+													  (1 - intr.sd.specularTransmission)
 												: 0;
 		pSpecRefl	  = components & DISNEY_SPEC_REFLECTION
-								? lerp(sd.specular, Color::Ones(), approxFresnel).mean() *
-							(1 - sd.specularTransmission * (1 - metallicWeight))
+								? lerp(intr.sd.specular, Color::Ones(), approxFresnel).mean() *
+							(1 - intr.sd.specularTransmission * (1 - metallicWeight))
 								: 0;
 		pSpecTrans	  = components & DISNEY_SPEC_TRANSMISSION
-							? (1 - approxFresnel) * (1 - metallicWeight) * sd.specularTransmission
+							? (1 - approxFresnel) * (1 - metallicWeight) * intr.sd.specularTransmission
 							: 0;
 		float totalWt = pDiffuse + pSpecRefl + pSpecTrans;
 		if (totalWt > 0) pDiffuse /= totalWt, pSpecRefl /= totalWt, pSpecTrans /= totalWt;

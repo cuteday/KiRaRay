@@ -3,19 +3,7 @@
 #include "common.h"
 #include <Eigen/Dense>
 
-KRR_NAMESPACE_BEGIN
-
-// template parameters are not allowed (since they contain comma) 
-#define KRR_INHERIT_EIGEN(name, parent)																\
-		using Eigen::parent::parent;																\
-		KRR_CALLABLE name(void) : Eigen::parent() {}												\
-		template <typename OtherDerived>															\
-		KRR_CALLABLE name(const Eigen::MatrixBase<OtherDerived> &other) : Eigen::parent(other) {}	\
-		template <typename OtherDerived>															\
-		KRR_CALLABLE name &operator=(const Eigen::MatrixBase<OtherDerived> &other) {				\
-			this->Eigen::parent::operator=(other);													\
-			return *this;																			\
-		}																					
+KRR_NAMESPACE_BEGIN																				
 
 template <typename T, int Size>
 class Vector : public Eigen::Vector<T, Size> {
@@ -136,6 +124,13 @@ public:
 		this->operator[](1) = y;
 		this->operator[](2) = z;
 	}
+
+	template <typename OT> 
+	KRR_CALLABLE explicit Vector3(const OT &x, const OT &y, const OT &z) {
+		this->operator[](0) = static_cast<T>(x);
+		this->operator[](1) = static_cast<T>(y);
+		this->operator[](2) = static_cast<T>(z);
+	}
 	
 #ifdef __CUDACC__
 
@@ -196,6 +191,14 @@ public:
 		this->operator[](1) = y;
 		this->operator[](2) = z;
 		this->operator[](3) = w;
+	}
+
+	template <typename OT>
+	KRR_CALLABLE Vector4(const OT &x, const OT &y, const OT &z, const OT &w) {
+		this->operator[](0) = static_cast<T>(x);
+		this->operator[](1) = static_cast<T>(y);
+		this->operator[](2) = static_cast<T>(z);
+		this->operator[](3) = static_cast<T>(w);
 	}
 
 #ifdef __CUDACC__

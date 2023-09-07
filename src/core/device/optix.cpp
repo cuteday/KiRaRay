@@ -362,7 +362,6 @@ void OptixScene::update() {
 		updateAccelStructure();
 		lastUpdatedFrame = lastUpdates.frameIndex;
 	}
-	scene.lock()->getSceneRT()->updateSceneData();
 }
 
 OptixScene::OptixScene(Scene::SharedPtr _scene) {

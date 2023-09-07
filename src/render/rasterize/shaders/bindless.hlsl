@@ -301,7 +301,5 @@ void ps_main(
 	
 	/* combine together */
 	o_color.rgb = diffuseTerm + specularTerm;
-	//o_color.rgb = materialSample.diffuse;
-	//o_color.rgb = (materialSample.normal + 1) / 2;
 	o_color.a = 1;
 }

@@ -110,23 +110,23 @@ void WavefrontPathTracer::generateScatterRays() {
 			if (sampler.get1D() >= probRR)
 				return;
 			w.thp /= probRR;
-			const ShadingData &sd = w.sd;
-			Vector3f woLocal	  = sd.frame.toLocal(sd.wo);
-			BSDFType bsdfType	  = sd.getBsdfType();
+			const SurfaceInteraction &intr = w.intr;
+			Vector3f woLocal	  = intr.toLocal(intr.wo);
+			BSDFType bsdfType	  = intr.getBsdfType();
 			/* sample direct lighting */
 			if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
-				LightSample ls			  = light.sampleLi(sampler.get2D(), { sd.pos, sd.frame.N });
-				Ray shadowRay			  = sd.getInteraction().spawnRay(ls.intr);
+				LightSample ls			  = light.sampleLi(sampler.get2D(), { intr.p, intr.n });
+				Ray shadowRay			  = intr.spawnRay(ls.intr);
 				Vector3f wiWorld		  = normalize(shadowRay.dir);
-				Vector3f wiLocal		  = sd.frame.toLocal(wiWorld);
+				Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
 				float lightPdf	= sampledLight.pdf * ls.pdf;
 				float misWeight{1};
-				Color bsdfVal	= BxDF::f(sd, woLocal, wiLocal, (int) sd.bsdfType);
+				Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 				if (enableMIS) {
-					float bsdfPdf = BxDF::pdf(sd, woLocal, wiLocal, (int) sd.bsdfType);
+					float bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 					misWeight	  = evalMIS(lightPdf, bsdfPdf);
 				}
 				if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
@@ -141,15 +141,15 @@ void WavefrontPathTracer::generateScatterRays() {
 			}
 
 			/* sample BSDF */
-			BSDFSample sample = BxDF::sample(sd, woLocal, sampler, (int) sd.bsdfType);
+			BSDFSample sample = BxDF::sample(intr, woLocal, sampler, (int) intr.sd.bsdfType);
 			if (sample.pdf != 0 && sample.f.any()) {
-				Vector3f wiWorld = sd.frame.toWorld(sample.wi);
+				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};
-				Vector3f p		 = offsetRayOrigin(sd.pos, sd.frame.N, wiWorld);
+				Vector3f p		 = offsetRayOrigin(intr.p, intr.n, wiWorld);
 				r.bsdfType		 = sample.flags;
 				r.pdf			 = sample.pdf;
 				r.ray			 = { p, wiWorld };
-				r.ctx			 = { sd.pos, sd.frame.N };
+				r.ctx			 = { intr.p, intr.n };
 				r.pixelId		 = w.pixelId;
 				r.depth			 = w.depth + 1;
 				r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf;

@@ -15,6 +15,8 @@ fs::path File::outputDir() { return m_output_dir; }
 fs::path File::projectDir() { return cwd(); }
 fs::path File::dataDir() { return fs::weakly_canonical(cwd() / "common"); }
 fs::path File::codeDir() { return fs::weakly_canonical(cwd() / "src"); }
+fs::path File::assetDir() { return fs::weakly_canonical(dataDir() / "assets"); }
+fs::path File::textureDir() { return fs::weakly_canonical(assetDir() / "textures"); }
 
 fs::path File::resolve(const fs::path &name) { 
 	return name.is_absolute() ? name : fs::weakly_canonical(File::cwd() / name);

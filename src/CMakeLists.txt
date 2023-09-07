@@ -34,6 +34,7 @@ SET ( KRR_CORE_SOURCE
 	core/file.cpp
 	core/renderpass.cpp
 	core/texture.cpp
+	render/media.cpp
 	core/device/context.cpp
 	core/device/optix.cpp
 )
@@ -73,6 +74,9 @@ SET (KRR_SOURCE_VULKAN
 )
 
 SET_SOURCE_FILES_PROPERTIES (
+	# some files are set to be compiled by nvcc so cuda can resolve 
+	# the symbols that are defined within these .cpp files.
+	render/media.cpp
 	render/wavefront/integrator.cpp
 	render/passes/denoise/denoise.cpp
 	util/tables.cpp

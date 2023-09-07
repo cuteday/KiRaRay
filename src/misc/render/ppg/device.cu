@@ -44,17 +44,17 @@ KRR_DEVICE_FUNCTION ShadowRayWorkItem getShadowRayWorkItem() {
 
 extern "C" __global__ void KRR_RT_CH(Closest)() {
 	HitInfo hitInfo = getHitInfo();
-	ShadingData& sd = *getPRD<ShadingData>();
+	SurfaceInteraction& intr = *getPRD<SurfaceInteraction>();
 	RayWorkItem r = getRayWorkItem();
-	prepareShadingData(sd, hitInfo);
-	if (sd.light) {		// push to hit ray queue if mesh has light
+	prepareSurfaceInteraction(intr, hitInfo);
+	if (intr.light) {		// push to hit ray queue if mesh has light
 		HitLightWorkItem w = {};
-		w.light			   = sd.light;
+		w.light			   = intr.light;
 		w.ctx			   = r.ctx;
-		w.p				   = sd.pos;
-		w.n				   = sd.frame.N;
-		w.wo			   = sd.wo;
-		w.uv			   = sd.uv;
+		w.p				   = intr.p;
+		w.n				   = intr.n;
+		w.wo			   = intr.wo;
+		w.uv			   = intr.uv;
 		w.depth			   = r.depth;
 		w.pixelId		   = r.pixelId;
 		w.thp			   = r.thp;
@@ -67,7 +67,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 		ScatterRayWorkItem w = {};
 		w.pixelId			 = r.pixelId;
 		w.thp				 = r.thp;
-		w.sd				 = sd;
+		w.intr				 = intr;
 		w.depth				 = r.depth;
 		launchParams.scatterRayQueue->push(w);
 	}
@@ -86,9 +86,9 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 	uint rayIndex(optixGetLaunchIndex().x);
 	if (rayIndex >= launchParams.currentRayQueue->size()) return;
 	RayWorkItem r = getRayWorkItem();
-	ShadingData sd = {};
+	SurfaceInteraction intr = {};
 	traceRay(launchParams.traversable, r.ray, KRR_RAY_TMAX,
-		0, OPTIX_RAY_FLAG_NONE, (void*)&sd);
+		0, OPTIX_RAY_FLAG_NONE, (void*)&intr);
 }
 
 extern "C" __global__ void KRR_RT_AH(Shadow)() { 

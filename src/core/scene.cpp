@@ -37,7 +37,8 @@ void Scene::renderUI() {
 		ui::Text("Materials: %d", getMaterials().size());
 		ui::Text("Instances: %d", getMeshInstances().size());
 		ui::Text("Animations: %d", getAnimations().size());
-		ui::Text("Environment lights: %d", environments.size());
+		ui::Text("Media: %d", getMedia().size());
+		ui::Text("Lights: %d", getLights().size());
 		ui::TreePop();
 	}
 	if (mCamera && ui::TreeNode("Camera")) {
@@ -53,8 +54,8 @@ void Scene::renderUI() {
 	}
 	if (mGraph && ui::TreeNode("Meshes")) {
 		for (auto &mesh : getMeshes()) {
-			if (ui::TreeNode(formatString("%d %s", mesh->getMeshId(),
-										  mesh->getName().c_str()).c_str())) {
+			if (ui::TreeNode(
+					formatString("%d %s", mesh->getMeshId(), mesh->getName().c_str()).c_str())) {
 				ui::PushID(mesh->getMeshId());
 				mesh->renderUI();
 				ui::PopID();
@@ -65,8 +66,9 @@ void Scene::renderUI() {
 	}
 	if (mGraph && ui::TreeNode("Materials")) {
 		for (auto &material : getMaterials()) {
-			if (ui::TreeNode(formatString("%d %s", material->getMaterialId(),
-										  material->getName().c_str()).c_str())) {
+			if (ui::TreeNode(
+					formatString("%d %s", material->getMaterialId(), material->getName().c_str())
+						.c_str())) {
 				ui::PushID(material->getMaterialId());
 				material->renderUI();
 				ui::PopID();
@@ -101,9 +103,23 @@ void Scene::renderUI() {
 	if (mGraph && getLights().size() && ui::TreeNode("Lights")) {
 		for (int i = 0; i < getLights().size(); i++) {
 			auto light = getLights()[i];
-			if (ui::TreeNode(light->getName().c_str())) {
+			if (ui::TreeNode(light->getName().empty() ? std::to_string(i).c_str()
+													  : light->getName().c_str())) {
 				ui::PushID(i);
-				getLights()[i]->renderUI();
+				light->renderUI();
+				ui::PopID();
+				ui::TreePop();
+			}
+		}
+		ui::TreePop();
+	}
+	if (mGraph && getMedia().size() && ui::TreeNode("Media")) {
+		for (int i = 0; i < getMedia().size(); i++) {
+			auto medium = getMedia()[i];
+			if (ui::TreeNode(medium->getName().empty() ? std::to_string(i).c_str()
+													   : medium->getName().c_str())) {
+				ui::PushID(i);
+				medium->renderUI();
 				ui::PopID();
 				ui::TreePop();
 			}
@@ -146,15 +162,18 @@ void Scene::initializeSceneRT() {
 RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {}
 
 void RTScene::uploadSceneData() {
-	/* Upload texture and material data to device... */
-	auto& materials = mScene.lock()->getMaterials();
-	mMaterials.resize(materials.size());
-	for (size_t idx = 0; idx < materials.size(); idx++) {
-		const auto &material = materials[idx];
-		mMaterials[idx].initializeFromHost(material);
-	}
-	mMaterialsBuffer.alloc_and_copy_from_host(mMaterials);
+	// The order of upload is unchangeable since some of them are dependent to others.
+	uploadSceneMaterialData();
+	uploadSceneMediumData();
+	uploadSceneMeshData();
+	uploadSceneInstanceData();
+	uploadSceneLightData();
 
+	CUDA_SYNC_CHECK();
+	mOptixScene = std::make_shared<OptixScene>(mScene.lock());
+}
+
+void RTScene::uploadSceneMeshData() {
 	/* Upload mesh data to device... */
 	auto &meshes = mScene.lock()->getMeshes();
 	mMeshes.resize(meshes.size());
@@ -164,31 +183,44 @@ void RTScene::uploadSceneData() {
 		mMeshes[idx].normals.alloc_and_copy_from_host(mesh->normals);
 		mMeshes[idx].texcoords.alloc_and_copy_from_host(mesh->texcoords);
 		mMeshes[idx].tangents.alloc_and_copy_from_host(mesh->tangents);
-		mMeshes[idx].indices.alloc_and_copy_from_host(mesh->indices);	
+		mMeshes[idx].indices.alloc_and_copy_from_host(mesh->indices);
 		mMeshes[idx].material = &mMaterialsBuffer[mesh->getMaterial()->getMaterialId()];
+		if (mesh->inside) 
+			mMeshes[idx].mediumInterface.inside = mMedium[mesh->inside->getMediumId()];
+		if (mesh->outside)
+			mMeshes[idx].mediumInterface.outside = mMedium[mesh->outside->getMediumId()];
 	}
 	mMeshesBuffer.alloc_and_copy_from_host(mMeshes);
+}
 
+void RTScene::uploadSceneInstanceData() {
 	/* Upload instance data to device... */
 	auto &instances = mScene.lock()->getMeshInstances();
 	mInstances.resize(instances.size());
 	for (size_t idx = 0; idx < instances.size(); idx++) {
-		const auto &instance	 = instances[idx];
-		auto &instanceData		 = mInstances[idx];
-		Affine3f transform		 = instance->getNode()->getGlobalTransform();
-		instanceData.transform	 = transform;
+		const auto &instance   = instances[idx];
+		auto &instanceData	   = mInstances[idx];
+		Affine3f transform	   = instance->getNode()->getGlobalTransform();
+		instanceData.transform = transform;
 		instanceData.transposedInverseTransform =
 			transform.matrix().inverse().transpose().block<3, 3>(0, 0);
-		instanceData.mesh		 = &mMeshesBuffer[instance->getMesh()->getMeshId()];
+		instanceData.mesh = &mMeshesBuffer[instance->getMesh()->getMeshId()];
 	}
 	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
-	processLights();
-	mInstancesBuffer.copy_from_host(mInstances.data(), mInstances.size());
-	CUDA_SYNC_CHECK();
-	mOptixScene = std::make_shared<OptixScene>(mScene.lock());
 }
 
-void RTScene::processLights() {
+void RTScene::uploadSceneMaterialData() {
+	/* Upload texture and material data to device... */
+	auto &materials = mScene.lock()->getMaterials();
+	mMaterials.resize(materials.size());
+	for (size_t idx = 0; idx < materials.size(); idx++) {
+		const auto &material = materials[idx];
+		mMaterials[idx].initializeFromHost(material);
+	}
+	mMaterialsBuffer.alloc_and_copy_from_host(mMaterials);
+}
+
+void RTScene::uploadSceneLightData() {
 	mLights.clear();
 
 	auto createTrianglePrimitives = [](Mesh::SharedPtr mesh, rt::InstanceData* instance) 
@@ -237,7 +269,7 @@ void RTScene::processLights() {
 		if (auto infiniteLight = std::dynamic_pointer_cast<InfiniteLight>(light)) {
 			rt::TextureData textureData;
 			textureData.initializeFromHost(infiniteLight->getTexture());
-			mInfiniteLights.push_back(rt::InfiniteLight(transform, textureData, 1));
+			mInfiniteLights.push_back(rt::InfiniteLight(transform.rotation(), textureData, 1));
 		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
 			Log(Warning, "Point light is not yet implemented in ray tracing, skipping...");
 		} else if (auto directionalLight = std::dynamic_pointer_cast<DirectionalLight>(light)) {
@@ -261,6 +293,24 @@ void RTScene::processLights() {
 	CUDA_SYNC_CHECK();
 }
 
+void RTScene::uploadSceneMediumData() {
+	// For a medium, its index in mediumBuffer is the same as medium->getMediumId();
+	for (auto medium : mScene.lock()->getMedia()) {
+		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) {
+			HomogeneousMedium gMedium(m->sigma_a, m->sigma_s, m->Le, m->g);
+			mHomogeneousMedium.push_back(gMedium);
+		}
+	}
+	mHomogeneousMediumBuffer.alloc_and_copy_from_host(mHomogeneousMedium);
+
+	size_t homogeneousId = 0;
+	for (auto medium : mScene.lock()->getMedia()) {
+		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) 
+			mMedium.push_back(Medium(&mHomogeneousMediumBuffer[homogeneousId++]));
+	}
+	mMediumBuffer.alloc_and_copy_from_host(mMedium);
+}
+
 rt::SceneData RTScene::getSceneData() const {
 	rt::SceneData sceneData {};
 	sceneData.meshes		 = mMeshesBuffer;
@@ -275,11 +325,8 @@ rt::SceneData RTScene::getSceneData() const {
 void RTScene::update() { 
 	static size_t lastUpdatedFrame = 0;
 	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
-	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform) !=
-			SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
-		mOptixScene->update();
-		updateSceneData();
-	}
+	mOptixScene->update();
+	updateSceneData();
 }
 
 // This routine should only be called by OptixBackend...

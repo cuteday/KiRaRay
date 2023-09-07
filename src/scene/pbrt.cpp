@@ -65,10 +65,11 @@ Material::SharedPtr PbrtImporter::loadMaterial(pbrt::Material::SP mat) {
 	if (auto m = std::dynamic_pointer_cast<pbrt::DisneyMaterial>(mat)) {
 		Log(Debug, "Encountered disney material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
-		matParams.diffuse	  = Vector4f(m->color.x, m->color.y, m->color.z, 1);
-		matParams.IoR		  = m->eta;
-		matParams.specular[2] = m->metallic;
-		matParams.specular[1] = m->roughness;
+		matParams.diffuse	    = Vector4f(m->color.x, m->color.y, m->color.z, 1);
+		matParams.IoR				   = m->eta;
+		matParams.specular[2]		   = m->metallic;
+		matParams.specular[1]		   = m->roughness;
+		matParams.specularTransmission = m->specTrans;
 	} else if (auto m = std::dynamic_pointer_cast<pbrt::PlasticMaterial>(mat)) {
 		Log(Debug, "Encountered plastic material: %s", mat->name.c_str());
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
@@ -216,12 +217,8 @@ Material::SharedPtr PbrtImporter::loadMaterial(pbrt::Material::SP mat) {
 		material->mShadingModel = Material::ShadingModel::MetallicRoughness;
 		material->mBsdfType		= MaterialType::Dielectric;
 		matParams.specularTransmission = luminance(cast(m->kt));
-		/* For unknown reasons/bugs, the glass looks unreasonably dark in
-		 * dielectric materials. */
-		/* So we manually scale its BSDF value by 1.5x as a temporary
-		 * workaround.  */
-		matParams.diffuse  = Vector4f(1.2 * cast(m->kt), 1);
-		matParams.specular = Vector4f{0, 0, 0.2, 0};
+		matParams.diffuse  = Vector4f(cast(m->kt), 1);
+		matParams.specular = Vector4f{0, 0, 0, 0};
 		matParams.IoR	   = m->index == 1 ? 1.01 : m->index;
 	} else {
 		Log(Warning, "Encountered unsupported %s material: %s",
@@ -271,15 +268,54 @@ Mesh::SharedPtr PbrtImporter::loadMesh(pbrt::TriangleMesh::SP pbrtMesh) {
 		mesh->positions.push_back(cast(pbrtMesh->vertex[i]));
 	}
 	for (int i = 0; i < n_faces; i++) mesh->indices.push_back(cast(pbrtMesh->index[i]));
-	//mesh->computeBoundingBox();
 	mesh->aabb = cast(pbrtMesh->getBounds());
 	if (pbrtMesh->material) mesh->material = loadMaterial(pbrtMesh->material);
 	else mesh->material = mScene->getMaterials()[0];
 	if (pbrtMesh->areaLight) createAreaLight(mesh, pbrtMesh->areaLight);
+	if (pbrtMesh->mediumInterface) {
+		mesh->inside = loadMedium(pbrtMesh->mediumInterface->inside);
+		mesh->outside = loadMedium(pbrtMesh->mediumInterface->outside);
+	}
+
 	mesh->setName(pbrtMesh->toString());
 	loadedMeshes[pbrtMesh] = mesh;
 	mScene->addMesh(mesh);
 	return mesh;
+}
+
+Volume::SharedPtr PbrtImporter::loadMedium(pbrt::Medium::SP pbrtMedium) {
+	static std::map<pbrt::Medium::SP, Volume::SharedPtr> loadedMedia;
+	static SceneGraphNode::SharedPtr mediaContainer = nullptr;
+
+	if (!pbrtMedium) return nullptr;
+
+	auto sceneGraph = mScene->getSceneGraph();
+	if (!mediaContainer) {
+		mediaContainer = std::make_shared<SceneGraphNode>();
+		mediaContainer->setName("Media Container");
+		sceneGraph->attach(sceneGraph->getRoot(), mediaContainer);
+	}
+	if (loadedMedia.count(pbrtMedium)) return loadedMedia[pbrtMedium];
+
+	Volume::SharedPtr result = nullptr;
+	if (auto m = std::dynamic_pointer_cast<pbrt::HomogeneousMedium>(pbrtMedium)) {
+		auto medium = std::make_shared<HomogeneousVolume>();
+		medium->sigma_a = cast(m->sigmaScale * m->sigma_a);
+		medium->sigma_s = cast(m->sigmaScale * m->sigma_s);
+		medium->Le		= cast(m->LeScale * m->Le);
+		medium->g		= m->g;
+		result = medium;
+	} else {
+		Log(Warning, "Encountered unsupported medium: %s", pbrtMedium->toString().c_str());
+		return nullptr;
+	}
+	
+	auto mediaNode = std::make_shared<SceneGraphNode>();
+	mediaNode->setLeaf(result);
+	mediaNode->setName(pbrtMedium->name);
+	sceneGraph->attach(mediaContainer, mediaNode);
+	loadedMedia[pbrtMedium] = result;
+	return result;
 }
 
 bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {

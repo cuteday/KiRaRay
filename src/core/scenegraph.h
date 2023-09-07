@@ -105,6 +105,7 @@ public:
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual Type getType() const override { return Type::DirectionalLight; }
+	virtual void renderUI() override;
 };
 
 class InfiniteLight : public SceneLight {
@@ -122,6 +123,43 @@ public:
 
 protected:
 	Texture::SharedPtr texture;
+};
+
+class Volume : public SceneGraphLeaf {
+public:
+	using SharedPtr = std::shared_ptr<Volume>;
+	Volume()		= default;
+
+	int getMediumId() const { return mediumId; }
+	void setMediumId(int id) { mediumId = id; }
+
+protected:
+	friend class SceneGraph;
+	int mediumId{-1};
+};
+
+class HomogeneousVolume : public Volume {
+public:
+	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
+
+	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+	virtual void renderUI() override;
+
+	bool isEmissive() const { return !Le.isZero(); }
+
+	Color sigma_a;
+	Color sigma_s;
+	Color Le;
+	float g;
+};
+
+class VDBVolume : public Volume {
+public:
+	using SharedPtr = std::shared_ptr<VDBVolume>;
+
+	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+protected:
+
 };
 
 class SceneGraphNode final : public std::enable_shared_from_this<SceneGraphNode> {
@@ -285,6 +323,7 @@ public:
 	std::vector<Material::SharedPtr> &getMaterials() { return mMaterials; }
 	std::vector<SceneAnimation::SharedPtr> &getAnimations() { return mAnimations; }
 	std::vector<SceneLight::SharedPtr> &getLights() { return mLights; }
+	std::vector<Volume::SharedPtr> &getMedia() { return mMedia; }
 	UpdateRecord getLastUpdateRecord() const { return mLastUpdateRecord; };
 	void addMesh(Mesh::SharedPtr mesh);
 	void addMaterial(Material::SharedPtr material);
@@ -316,6 +355,7 @@ private:
 	std::vector<MeshInstance::SharedPtr> mMeshInstances;
 	std::vector<SceneAnimation::SharedPtr> mAnimations;
 	std::vector<SceneLight::SharedPtr> mLights;
+	std::vector<Volume::SharedPtr> mMedia;
 	UpdateRecord mLastUpdateRecord;
 };
 

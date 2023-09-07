@@ -21,8 +21,8 @@ public:
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(DiffuseBrdf);
 
-	KRR_CALLABLE void setup(const ShadingData& sd) {
-		diffuse = sd.diffuse;
+	KRR_CALLABLE void setup(const SurfaceInteraction& intr) {
+		diffuse = intr.sd.diffuse;
 	}
 
 	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
@@ -61,10 +61,10 @@ public:
 
 	DiffuseBsdf() = default;
 
-	KRR_CALLABLE void setup(const ShadingData& sd) {
+	KRR_CALLABLE void setup(const SurfaceInteraction& intr) {
 		// luminance as weight to sample different components?
-		reflection = (1 - sd.specularTransmission) * sd.diffuse;
-		transmission = sd.specularTransmission * sd.diffuse;
+		reflection = (1 - intr.sd.specularTransmission) * intr.sd.diffuse;
+		transmission = intr.sd.specularTransmission * intr.sd.diffuse;
 		if (any(reflection) || any(transmission)) {
 			pR = luminance(reflection) / luminance(reflection) + luminance(transmission);
 			pT = luminance(transmission) / luminance(reflection) + luminance(transmission);

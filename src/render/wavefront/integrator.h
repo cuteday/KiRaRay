@@ -19,7 +19,7 @@ public:
 	KRR_REGISTER_PASS_DEC(WavefrontPathTracer);
 
 	WavefrontPathTracer() = default;
-	~WavefrontPathTracer() = default;
+	virtual ~WavefrontPathTracer() = default;
 
 	void resize(const Vector2i& size) override;
 	void setScene(Scene::SharedPtr scene) override;

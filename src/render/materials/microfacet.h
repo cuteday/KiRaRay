@@ -195,10 +195,10 @@ public:
 		distribution = { alpha_x, alpha_y };
 	}
 
-	KRR_CALLABLE void setup(const ShadingData &sd) {
-		R			 = sd.specular;
-		float alpha	 = pow2(sd.roughness);
-		eta			 = sd.IoR;
+	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
+		R			 = intr.sd.specular;
+		float alpha	 = pow2(intr.sd.roughness);
+		eta			 = intr.sd.IoR;
 		distribution = { alpha, alpha };
 	}
 
@@ -226,7 +226,7 @@ public:
 
 		if (wo[2] == 0) return sample;     
 		if (distribution.isSpecular()) {
-			return BSDFSample(Fr(wo, { 0, 0, 1 }) / AbsCosTheta(wo), 
+			return BSDFSample(Fr(wo, Vector3f{ 0, 0, 1 }) / AbsCosTheta(wo), 
 				{ -wo[0], -wo[1], wo[2] }, 
 				1 /* delta pdf */, BSDF_SPECULAR_REFLECTION /* bsdf type */);
 		}
@@ -292,11 +292,11 @@ public:
 		etaT		 = max(1.01f, etaT);
 	}
 
-	KRR_CALLABLE void setup(const ShadingData& sd) {
-		T = sd.diffuse * sd.specularTransmission;
-		float alpha = pow2(sd.roughness);
+	KRR_CALLABLE void setup(const SurfaceInteraction& intr) {
+		T = intr.sd.diffuse * intr.sd.specularTransmission;
+		float alpha = pow2(intr.sd.roughness);
 		// TODO: ETA=1 causes NaN, should switch to delta scattering
-		etaT = max(1.01f, sd.IoR);
+		etaT = max(1.01f, intr.sd.IoR);
 		distribution = { alpha, alpha };
 	}
 

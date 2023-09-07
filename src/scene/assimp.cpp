@@ -220,10 +220,6 @@ void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial,
 								 bool flip) {
 	assert(pMaterial);
 	bool srgb = mUseSrgb && pMaterial->determineSrgb(filename, type);
-	if (!fs::exists(filename)) {
-		logError("Can't find texture image file '" + filename + "'");
-		return;
-	}
 	TextureKey textureKey{filename, srgb};
 	if (!mTextureCache.count(textureKey)) {
 		mTextureCache[textureKey] =

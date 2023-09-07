@@ -22,9 +22,20 @@ void Mesh::renderUI() {
 	ui::Text(("Min: " + aabb.min().string()).c_str());
 	ui::Text(("Max: " + aabb.max().string()).c_str());
 	if (material) {
-		ui::Text("Material:");
+		ui::BulletText("Material:");
 		if (ui::TreeNode(material->getName().c_str())) {
 			material->renderUI();
+			ui::TreePop();
+		}
+	}
+	if (inside || outside) {
+		ui::BulletText("Medium Interface:");
+		if (inside && ui::TreeNode(("Inside: " + inside->getName()).c_str())) {
+			inside->renderUI();
+			ui::TreePop();
+		}
+		if (outside && ui::TreeNode(("Outside: " + outside->getName()).c_str())) {
+			outside->renderUI();
 			ui::TreePop();
 		}
 	}

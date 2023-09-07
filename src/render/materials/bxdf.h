@@ -40,7 +40,6 @@ struct BSDFSample {
 	Vector3f wi;
 	float pdf = 0;
 	BSDFType flags;
-	bool valid = true;
 
 	KRR_CALLABLE BSDFSample() = default;
 	KRR_CALLABLE BSDFSample(Color f, Vector3f wi, float pdf, BSDFType flags)
