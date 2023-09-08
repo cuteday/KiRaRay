@@ -72,6 +72,7 @@ struct MediumSampleWorkItem {
 	Color thp;
 	float tMax;
 	SurfaceInteraction intr;	// has hit a surface as well...
+	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
 };

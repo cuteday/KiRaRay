@@ -47,6 +47,17 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	SurfaceInteraction& intr = *getPRD<SurfaceInteraction>();
 	RayWorkItem r = getRayWorkItem();
 	prepareSurfaceInteraction(intr, hitInfo);
+	if (launchParams.mediumSampleQueue && r.ray.medium) {
+		MediumSampleWorkItem w = {};
+		w.depth				   = r.depth;
+		w.ray				   = r.ray;
+		w.thp				   = r.thp;
+		w.pixelId			   = r.pixelId;
+		w.intr				   = intr;
+		w.tMax				   = optixGetRayTmax();
+		launchParams.mediumSampleQueue->push(w);
+		return;
+	}
 	if (intr.light) {		// push to hit ray queue if mesh has light
 		HitLightWorkItem w = {};
 		w.light			   = intr.light;
@@ -78,7 +89,10 @@ extern "C" __global__ void KRR_RT_AH(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_MS(Closest)() {
-	launchParams.missRayQueue->push(getRayWorkItem());
+	const RayWorkItem &r = getRayWorkItem();
+	if (launchParams.mediumSampleQueue && r.ray.medium)
+		launchParams.mediumSampleQueue->push(r); 
+	else launchParams.missRayQueue->push(r);
 }
 
 extern "C" __global__ void KRR_RT_RG(Closest)() {

@@ -46,6 +46,7 @@ void WavefrontPathTracer::initialize() {
 
 void WavefrontPathTracer::traceClosest(int depth) {
 	PROFILE("Trace intersect rays");
+	// Telling whether volume rendering is enabled by mediumSampleQueue is null?
 	static LaunchParams params = {};
 	params.traversable		   = backend->getRootTraversable();
 	params.sceneData		   = backend->getSceneData();
@@ -125,7 +126,7 @@ void WavefrontPathTracer::generateScatterRays() {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
 				LightSample ls			  = light.sampleLi(sampler.get2D(), { intr.p, intr.n });
-				Ray shadowRay			  = intr.spawnRay(ls.intr);
+				Ray shadowRay			  = intr.spawnRayTo(ls.intr);
 				Vector3f wiWorld		  = normalize(shadowRay.dir);
 				Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
@@ -152,10 +153,9 @@ void WavefrontPathTracer::generateScatterRays() {
 			if (sample.pdf != 0 && sample.f.any()) {
 				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};
-				Vector3f p		 = offsetRayOrigin(intr.p, intr.n, wiWorld);
 				r.bsdfType		 = sample.flags;
 				r.pdf			 = sample.pdf;
-				r.ray			 = { p, wiWorld };
+				r.ray			 = intr.spawnRayTowards(wiWorld);
 				r.ctx			 = { intr.p, intr.n };
 				r.pixelId		 = w.pixelId;
 				r.depth			 = w.depth + 1;

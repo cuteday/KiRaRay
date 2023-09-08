@@ -26,6 +26,26 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			// sample corresponding majorant... 
 			RayMajorant iter = medium.sampleRay(ray, tMax);
 			Color T_maj		 = iter.sigma_maj;
+
+			// Either absorped or scattered after several null collisions
+
+			// Return if scattered or no throughput or max depth reached
+
+			// The ray escaped from our sight...
+			if (w.tMax == M_FLOAT_MAX) {
+				MissRayWorkItem r;
+				r.bsdfType = w.bsdfType;
+				missRayQueue->push(r);
+			}
+
+			// We finally reached the surface...!
+			if (w.intr.light) {
+				// Account for light hit
+			}
+
+			// Next surface scattering event...!
+
+
 	}, gpContext->cudaStream);
 }
 
@@ -36,24 +56,29 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			return;
 			const Vector3f& wo = w.wo;
 			Sampler sampler	   = &pixelState->sampler[w.pixelId];
-			// [PART-A] Sample direct lighting with ShadowRayTr
 			LightSampleContext ctx{w.p, Vector3f::Zero()};
-			SampledLight sampledLight = lightSampler.sample(sampler.get1D());
-			if (sampledLight) {
+			// [PART-A] Sample direct lighting with ShadowRayTr
+			if (enableNEE) {
+				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light	   = sampledLight.light;
 				LightSample ls = light.sampleLi(sampler.get1D(), ctx);
 			}
 			// [PART-C] Sample indirect lighting with scattering function
 			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get1D());
+			Color thp			   = w.thp * ps.p / ps.pdf;
 			// Russian roulette
+			float rrProb = min(thp.mean(), 1.f);
+			if (sampler.get1D() > rrProb) return;
+			thp /= rrProb;
 
 			Ray ray{w.p, ps.wi, w.time, w.medium};
 			RayWorkItem r{};
-			r.ray	  = ray;
-			r.ctx	  = ctx;
-			r.thp	  = w.thp * ps.p / ps.pdf;
-			r.depth	  = w.depth + 1;
-			r.pixelId = w.pixelId;
+			r.ray	   = ray;
+			r.ctx	   = ctx;
+			r.thp	   = thp;
+			r.depth	   = w.depth + 1;
+			r.pixelId  = w.pixelId;
+			r.bsdfType = BSDF_GLOSSY;
 			if (r.thp.any()) nextRayQueue(depth)->push(r);
 	}, gpContext->cudaStream);
 }

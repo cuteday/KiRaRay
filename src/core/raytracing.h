@@ -108,16 +108,22 @@ struct Interaction{
 		return Interaction::offsetRayOrigin(wo);
 	}
 
-	// spawn a ray from and to 2 slightly offseted points, length of direction is the distance
-	KRR_CALLABLE Ray spawnRay(const Vector3f& to) const {
+	/* spawn a ray towards a given direction, which is usually normalized. */
+	KRR_CALLABLE Ray spawnRayTowards(const Vector3f& dir) const {
+		return {offsetRayOrigin(dir), dir, time, getMedium(dir)};
+	}
+
+	/* spawn a ray from and to 2 slightly offseted points,
+		length of direction is the distance, useful for shadow rays. */
+	KRR_CALLABLE Ray spawnRayTo(const Vector3f& to) const {
 		Vector3f p_o = offsetRayOrigin(to - p);
 		Vector3f d = to - p_o;
 		return {p_o, d, time, getMedium(d)};
 	}
 
-	KRR_CALLABLE Ray spawnRay(const Interaction& intr) const{
+	KRR_CALLABLE Ray spawnRayTo(const Interaction& intr) const{
 		Vector3f to = intr.offsetRayOrigin(p - intr.p);
-		return spawnRay(to);
+		return spawnRayTo(to);
 	}
 
 	KRR_CALLABLE Medium getMedium(Vector3f w) const {

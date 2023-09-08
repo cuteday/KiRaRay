@@ -149,6 +149,16 @@ class MediumSampleQueue : public WorkQueue<MediumSampleWorkItem> {
 public:
     using WorkQueue::WorkQueue;
 	using WorkQueue::push;
+
+    KRR_CALLABLE int push(const RayWorkItem& r, float tMax = std::numeric_limits<float>::max()) {
+		MediumSampleWorkItem w;
+		w.tMax	  = tMax;
+		w.ray	  = r.ray;
+        w.thp	  = r.thp;
+		w.depth	  = r.depth;
+		w.pixelId = r.pixelId;
+        return push(w);
+	}
 };
 
 class MediumScatterQueue : public WorkQueue<MediumScatterWorkItem> {
