@@ -34,7 +34,6 @@ SET ( KRR_CORE_SOURCE
 	core/file.cpp
 	core/renderpass.cpp
 	core/texture.cpp
-	render/media.cpp
 	core/device/context.cpp
 	core/device/optix.cpp
 )
@@ -57,6 +56,7 @@ SET (KRR_SOURCE
 	render/rasterize/bindless.cpp
 	render/profiler/profiler.cpp
 	render/profiler/ui.cpp
+	render/media.cpp
 	scene/assimp.cpp
 	scene/pbrt.cpp
 	main/renderer.cpp

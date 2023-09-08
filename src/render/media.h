@@ -21,19 +21,14 @@ struct MediumProperties {
 	Color Le;
 };
 
-struct RayMajorantSegment {
-	float tMin, tMax;
-	Color sigma_maj;
-};
-
-class RayMajorantIterator {
+class RayMajorant {
 public:
-	KRR_CALLABLE RayMajorantIterator() = default;
+	KRR_CALLABLE RayMajorant() = default;
 
-	KRR_CALLABLE RayMajorantIterator(float tMin, float tMax, const Color &sigma_maj) :
-		tMin(tMin), tMax(tMax), sigma_maj(sigma_maj) {}
-
-	KRR_CALLABLE RayMajorantSegment next() { return {tMin, tMax, sigma_maj}; }
+	KRR_CALLABLE RayMajorant(const Color &sigma_maj, 
+		float tMin = std::numeric_limits<float>::min(), 
+		float tMax = std::numeric_limits<float>::max()) :
+		sigma_maj(sigma_maj), tMin(tMin), tMax(tMax) {}
 
 	float tMin, tMax;
 	Color sigma_maj;
@@ -54,8 +49,8 @@ public:
 		return {sigma_a, sigma_s, &phase, L_e};
 	}
 
-	KRR_CALLABLE RayMajorantIterator sampleRay(const Ray &ray, float tMax) {
-		return {0, tMax, sigma_a + sigma_s};
+	KRR_CALLABLE RayMajorant sampleRay(const Ray &ray, float tMax) {
+		return {sigma_a + sigma_s};
 	}
 
 	Color sigma_a, sigma_s, L_e;
@@ -89,7 +84,7 @@ public:
 		return {sigma_a * d, sigma_s * d, &phase, Le(p)};
 	}
 
-	KRR_CALLABLE RayMajorantIterator sampleRay(const Ray &ray, float raytMax);
+	KRR_HOST_DEVICE RayMajorant sampleRay(const Ray &ray, float raytMax);
 
 	AABB3f bounds;
 	Affine3f transform, inverseTransform;

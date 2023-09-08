@@ -62,18 +62,18 @@ KRR_CALLABLE MediumProperties Medium::samplePoint(Vector3f p) const {
 	return dispatch(sample);
 }
 
-KRR_CALLABLE RayMajorantIterator Medium::sampleRay(const Ray &ray, float tMax) {
-	auto sample = [&](auto ptr) -> RayMajorantIterator { return ptr->sampleRay(ray, tMax); };
+KRR_CALLABLE RayMajorant Medium::sampleRay(const Ray &ray, float tMax) {
+	auto sample = [&](auto ptr) -> RayMajorant { return ptr->sampleRay(ray, tMax); };
 	return dispatch(sample);
 }
 
-KRR_CALLABLE RayMajorantIterator NanoVDBMedium::sampleRay(const Ray &ray, float raytMax) {
+KRR_CALLABLE RayMajorant NanoVDBMedium::sampleRay(const Ray &ray, float raytMax) {
 	// [TODO] currently we use a coarse majorant for the whole volume
 	// but it seems that nanovdb has a built-in hierachical DDA on gpu?
 	float tMin, tMax;
 	Ray r = inverseTransform * ray;
 	if (!bounds.intersect(r.origin, r.dir, raytMax, &tMin, &tMax)) return {};
-	return {tMin, tMax, sigma_maj};
+	return {sigma_maj};
 }
 
 KRR_NAMESPACE_END

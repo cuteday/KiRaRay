@@ -69,6 +69,7 @@ struct ScatterRayWorkItem {
 
 struct MediumSampleWorkItem {
 	Ray ray;
+	Color thp;
 	float tMax;
 	SurfaceInteraction intr;	// has hit a surface as well...
 	uint depth;
@@ -77,6 +78,8 @@ struct MediumSampleWorkItem {
 
 struct MediumScatterWorkItem {
 	Vector3f p;
+	Color thp;
+	Vector3f wo;
 	float time;
 	Medium medium;
 	PhaseFunction phase;

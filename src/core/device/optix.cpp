@@ -396,7 +396,9 @@ void OptixScene::updateAccelStructure() {
 
 void OptixBackend::buildShaderBindingTable() {
 	size_t nRayTypes = optixParameters.rayTypes.size();
-	if (OPTIX_MAX_RAY_TYPES > 2) Log(Fatal, "Currently supports no more than %zd ray types only,"
+	if (OPTIX_MAX_RAY_TYPES < nRayTypes)
+		Log(Fatal,
+			"Currently supports no more than %zd ray types only,"
 		"but there are %zd ray types", OPTIX_MAX_RAY_TYPES, nRayTypes);
 	else if (nRayTypes == 0) Log(Fatal, "No ray types has been specified!");
 

@@ -111,7 +111,8 @@ struct Interaction{
 	// spawn a ray from and to 2 slightly offseted points, length of direction is the distance
 	KRR_CALLABLE Ray spawnRay(const Vector3f& to) const {
 		Vector3f p_o = offsetRayOrigin(to - p);
-		return { p_o, to - p_o };
+		Vector3f d = to - p_o;
+		return {p_o, d, time, getMedium(d)};
 	}
 
 	KRR_CALLABLE Ray spawnRay(const Interaction& intr) const{
@@ -145,7 +146,7 @@ class SampledChannel {
 public:
 	KRR_CALLABLE SampledChannel() = default;
 
-	KRR_CALLABLE SampledChannel(float u) : channel(u * Color3f::dim){}
+	KRR_CALLABLE SampledChannel(float u) : channel(int(u * Color3f::dim) % 3){}
 
 	KRR_CALLABLE static SampledChannel sampleUniform(float u) { return SampledChannel(u); }
 

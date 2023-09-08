@@ -33,7 +33,7 @@ void WavefrontPathTracer::initialize() {
 	else scatterRayQueue = alloc.new_object<ScatterRayQueue>(maxQueueSize, alloc);
 	if (pixelState) pixelState->resize(maxQueueSize, alloc);
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
-	if (haveMedium) {
+	if (enableMedium) {
 		if (mediumSampleQueue) mediumSampleQueue->resize(maxQueueSize, alloc);
 		else mediumSampleQueue = alloc.new_object<MediumSampleQueue>(maxQueueSize, alloc);
 		if (mediumScatterQueue) mediumScatterQueue->resize(maxQueueSize, alloc);
@@ -54,6 +54,7 @@ void WavefrontPathTracer::traceClosest(int depth) {
 	params.hitLightRayQueue	   = hitLightRayQueue;
 	params.scatterRayQueue	   = scatterRayQueue;
 	params.nextRayQueue		   = nextRayQueue(depth);
+	params.mediumSampleQueue   = enableMedium ? mediumSampleQueue : nullptr;
 	backend->launch(params, "Closest", maxQueueSize, 1, 1);
 }
 
@@ -190,13 +191,15 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 						  .setPTX(WAVEFRONT_PTX)
 						  .addRaygenEntry("Closest")
 						  .addRaygenEntry("Shadow")
+						  .addRaygenEntry("ShadowTr")
 						  .addRayType("Closest", true, true, false)
-						  .addRayType("Shadow", false, true, false);
+						  .addRayType("Shadow", false, true, false)
+						  .addRayType("ShadowTr", false, true, false);
 		backend->initialize(params);
 	}
 	backend->setScene(scene);
 	lightSampler = backend->getSceneData().lightSampler;
-	haveMedium	 = scene->getMedia().size() != 0;
+	enableMedium = scene->getMedia().size() != 0;
 	initialize();
 }
 
@@ -232,11 +235,15 @@ void WavefrontPathTracer::render(RenderContext *context) {
 				missRayQueue->reset();
 				shadowRayQueue->reset();
 				scatterRayQueue->reset();
+				if (enableMedium) {
+					mediumSampleQueue->reset();
+					mediumScatterQueue->reset();
+				}
 			}, gpContext->cudaStream);
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);
 			// [STEP#2.2] sample medium interaction, and optionally sample in-volume scattering events
-			if (haveMedium) {
+			if (enableMedium) {
 				sampleMediumInteraction(depth);
 				sampleMediumScattering(depth);
 			}
@@ -272,6 +279,7 @@ void WavefrontPathTracer::renderUI() {
 	// If MIS is disabled while NEE is enabled,
 	// The paths that hits the lights will not contribute.
 	if (enableNEE) ui::Checkbox("Enable MIS", &enableMIS);
+	if (mScene->getMedia().size()) ui::Checkbox("Enable medium", &enableMedium);
 	ui::Text("Debugging");
 	ui::Checkbox("Debug output", &debugOutput);
 	if (debugOutput)

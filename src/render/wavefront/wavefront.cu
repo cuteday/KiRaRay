@@ -107,4 +107,15 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	if (visible) launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
 }
 
+extern "C" __global__ void KRR_RT_AH(ShadowTr)() {
+	if (alphaKilled()) optixIgnoreIntersection();
+}
+
+extern "C" __global__ void KRR_RT_MS(ShadowTr)() { optixSetPayload_2(1); }
+
+extern "C" __global__ void KRR_RT_RG(ShadowTr)() {
+	uint rayIndex(optixGetLaunchIndex().x);
+	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
+}
+
 KRR_NAMESPACE_END

@@ -11,6 +11,8 @@ KRR_NAMESPACE_BEGIN
 struct SampledLight {
 	rt::Light light;
 	float pdf;
+
+	KRR_CALLABLE operator bool() const { return (bool)light; }
 };
 
 class UniformLightSampler {

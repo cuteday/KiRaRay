@@ -20,6 +20,7 @@ typedef struct {
 	MissRayQueue* missRayQueue;
 	HitLightRayQueue* hitLightRayQueue;
 	ScatterRayQueue* scatterRayQueue;
+	MediumSampleQueue* mediumSampleQueue;
 	
 	PixelStateBuffer* pixelState;
 	rt::SceneData sceneData;

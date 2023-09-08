@@ -114,6 +114,7 @@ struct MediumSampleWorkItem {
 
 struct MediumScatterWorkItem {
 	Vector3f p;
+	Vector3f wo;
 	float time;
 	Medium medium;
 	PhaseFunction phase;
