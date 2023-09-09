@@ -106,14 +106,17 @@ struct ScatterRayWorkItem {
 
 struct MediumSampleWorkItem {
 	Ray ray;
+	Color thp;
 	float tMax;
-	SurfaceInteraction intr;	
+	SurfaceInteraction intr;
+	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
 };
 
 struct MediumScatterWorkItem {
 	Vector3f p;
+	Color thp;
 	Vector3f wo;
 	float time;
 	Medium medium;

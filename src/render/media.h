@@ -26,8 +26,7 @@ public:
 	KRR_CALLABLE RayMajorant() = default;
 
 	KRR_CALLABLE RayMajorant(const Color &sigma_maj, 
-		float tMin = std::numeric_limits<float>::min(), 
-		float tMax = std::numeric_limits<float>::max()) :
+		float tMin = 0, float tMax = M_FLOAT_MAX) :
 		sigma_maj(sigma_maj), tMin(tMin), tMax(tMax) {}
 
 	float tMin, tMax;

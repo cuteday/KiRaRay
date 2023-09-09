@@ -18,6 +18,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			Color L(0);
 			Ray ray			= w.ray;
 			float tMax		= w.tMax;
+			Color thp		= w.thp;
 			Sampler sampler = &pixelState->sampler[w.pixelId];
 			Medium medium	= ray.medium;
 
@@ -40,7 +41,8 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 
 			// We finally reached the surface...!
 			if (w.intr.light) {
-				// Account for light hit
+				// Handle contribution for light hit
+
 			}
 
 			// Next surface scattering event...!
@@ -58,12 +60,12 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			Sampler sampler	   = &pixelState->sampler[w.pixelId];
 			LightSampleContext ctx{w.p, Vector3f::Zero()};
 			// [PART-A] Sample direct lighting with ShadowRayTr
-			if (enableNEE) {
+			if (enableNEE) { /* TODO */
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light	   = sampledLight.light;
 				LightSample ls = light.sampleLi(sampler.get1D(), ctx);
 			}
-			// [PART-C] Sample indirect lighting with scattering function
+			// [PART-B] Sample indirect lighting with scattering function
 			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get1D());
 			Color thp			   = w.thp * ps.p / ps.pdf;
 			// Russian roulette
@@ -72,14 +74,8 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			thp /= rrProb;
 
 			Ray ray{w.p, ps.wi, w.time, w.medium};
-			RayWorkItem r{};
-			r.ray	   = ray;
-			r.ctx	   = ctx;
-			r.thp	   = thp;
-			r.depth	   = w.depth + 1;
-			r.pixelId  = w.pixelId;
-			r.bsdfType = BSDF_GLOSSY;
-			if (r.thp.any()) nextRayQueue(depth)->push(r);
+			if (!thp.isZero())
+				nextRayQueue(depth)->push(ray, ctx, thp, 1, w.depth + 1, w.pixelId, BSDF_GLOSSY);
 	}, gpContext->cudaStream);
 }
 
