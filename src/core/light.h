@@ -19,6 +19,13 @@ struct LightSampleContext {
 	Vector3f n;
 };
 
+enum class LightType {
+	DeltaPosition,
+	DeltaDirection,
+	Area,
+	Infinite,
+};
+
 class PointLight {
 public:
 	PointLight() = default;
@@ -38,6 +45,10 @@ public:
 	}
 
 	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const { return 0; }
+
+	KRR_DEVICE LightType type() const { return LightType::DeltaPosition; }
+
+	KRR_DEVICE bool isDeltaLight() const { return true; }
 
 private:
 	Color I;
@@ -63,6 +74,10 @@ public:
 	}
 
 	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const { return 0; }
+
+	KRR_DEVICE LightType type() const { return LightType::DeltaDirection; }
+
+	KRR_DEVICE bool isDeltaLight() const { return true; }
 
 private:
 	Color I;
@@ -109,6 +124,10 @@ public:
 		return shape.pdf(p, shapeCtx);
 	}
 
+	KRR_DEVICE LightType type() const { return LightType::Area; }
+
+	KRR_DEVICE bool isDeltaLight() const { return true; }
+
 private:
 	Shape shape;
 	rt::TextureData texture{}; // emissive image texture
@@ -153,6 +172,10 @@ public:
 		return L;
 	}
 
+	KRR_DEVICE LightType type() const { return LightType::Infinite; }
+
+	KRR_DEVICE bool isDeltaLight() const { return true; }
+
 private:
 	Color tint{1};
 	float scale{1};
@@ -179,6 +202,16 @@ public:
 	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
 		auto pdf = [&](auto ptr) -> float { return ptr->pdfLi(p, ctx); };
 		return dispatch(pdf);
+	}
+
+	KRR_DEVICE LightType type() const { 
+		auto type = [&](auto ptr) -> LightType { return ptr->type(); };
+		return dispatch(type); 
+	}
+
+	KRR_DEVICE bool isDeltaLight() const {
+		auto delta = [&](auto ptr) -> bool { return ptr->isDeltaLight(); };
+		return dispatch(delta);
 	}
 };
 
