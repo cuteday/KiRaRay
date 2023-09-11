@@ -35,6 +35,8 @@ public:
 	void handleMiss();
 	void generateScatterRays();
 	void generateCameraRays(int sampleId);
+	void sampleMediumInteraction(int depth);
+	void sampleMediumScattering(int depth);
 	void traceClosest(int depth);
 	void traceShadow();
 
@@ -54,7 +56,9 @@ public:
 	HitLightRayQueue* hitLightRayQueue{ };
 	ShadowRayQueue* shadowRayQueue{ };
 	ScatterRayQueue* scatterRayQueue{ };
-	PixelStateBuffer* pixelState;
+	MediumSampleQueue* mediumSampleQueue{ };
+	MediumScatterQueue* mediumScatterQueue{ };
+	PixelStateBuffer *pixelState{ };
 
 	// path tracing parameters
 	int maxQueueSize;
@@ -62,16 +66,16 @@ public:
 	int maxDepth{ 10 };
 	float probRR{ 0.8 };
 	bool enableNEE{ };
-	bool enableMIS{true};
+	bool enableMedium{true};
 	bool debugOutput{ };
-	bool enableClamp{false};
+	bool enableClamp{ };
 	uint debugPixel{ };
 	float clampMax{ 1e3f };
 
 	friend void to_json(json &j, const WavefrontPathTracer &p) { 
 		j = json{ 
 			{ "nee", p.enableNEE }, 
-			{ "mis", p.enableMIS },
+			{ "enable_medium", p.enableMedium },
 			{ "max_depth", p.maxDepth },
 			{ "rr", p.probRR },
 			{ "enable_clamp", p.enableClamp },
@@ -80,12 +84,12 @@ public:
 	}
 
 	friend void from_json(const json &j, WavefrontPathTracer &p) {
-		p.enableNEE	  = j.value("nee", true);
-		p.enableMIS	  = j.value("mis", true);
-		p.maxDepth	  = j.value("max_depth", 10);
-		p.probRR	  = j.value("rr", 0.8);
-		p.enableClamp = j.value("enable_clamp", false);
-		p.clampMax	  = j.value("clamp_max", 1e3f);
+		p.enableNEE	   = j.value("nee", true);
+		p.enableMedium = j.value("enable_medium", true);
+		p.maxDepth	   = j.value("max_depth", 10);
+		p.probRR	   = j.value("rr", 0.8);
+		p.enableClamp  = j.value("enable_clamp", false);
+		p.clampMax	   = j.value("clamp_max", 1e3f);
 	}
 };
 

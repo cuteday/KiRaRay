@@ -3,11 +3,11 @@
 #include "common.h"
 
 #include "util/math_utils.h"
+#include "interop.h"
 
 #define MIS_POWER_HEURISTIC 1 // 0 for balance heuristic
 
 KRR_NAMESPACE_BEGIN
-
 
 using namespace utils;
 
@@ -83,5 +83,28 @@ KRR_CALLABLE Vector3f uniformSampleTriangle(const Vector2f &u) {
 	}
 	return { b0, b1, 1 - b0 - b1 };
 }
+
+KRR_CALLABLE float sampleExponential(float u, float a) { 
+	DCHECK_GT(a, 0); 
+	return -std::log(1 - u) / a;
+}
+
+KRR_CALLABLE int sampleDiscrete(inter::span<const float> weights, float u, float *pmf = nullptr) {
+	float sumWeights = 0;
+	for (float w : weights) sumWeights += w;
+
+	float up = u * sumWeights;
+	if (up == sumWeights) up = nextFloatDown(up);
+
+	int offset = 0;
+	float sum  = 0;
+	while (sum + weights[offset] <= up) {
+		sum += weights[offset++];
+		DCHECK_LT(offset, weights.size());
+	}
+	if (pmf) *pmf = weights[offset] / sumWeights;
+	return offset;
+}
+
 
 KRR_NAMESPACE_END

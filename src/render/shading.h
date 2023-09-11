@@ -50,7 +50,6 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	hitInfo.primitiveId		 = optixGetPrimitiveIndex();
 	hitInfo.instance		 = hitData->instance;
 	hitInfo.wo				 = -normalize((Vector3f) optixGetWorldRayDirection());
-	hitInfo.hitKind			 = optixGetHitKind();
 	hitInfo.barycentric = { 1 - barycentric[0] - barycentric[1], barycentric[0], barycentric[1] };
 	return hitInfo;
 }
@@ -164,6 +163,9 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 		intr.sd.roughness = 1.f - spec[3];	//
 		intr.sd.metallic  = getMetallic(intr.sd.diffuse, intr.sd.specular);
 	} else assert(false);
+
+	if (mesh.mediumInterface.isTransition()) 
+		intr.mediumInterface = &mesh.mediumInterface;	
 	
 	// transform local interaction to world space 
 	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]

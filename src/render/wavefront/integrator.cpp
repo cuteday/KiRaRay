@@ -33,6 +33,12 @@ void WavefrontPathTracer::initialize() {
 	else scatterRayQueue = alloc.new_object<ScatterRayQueue>(maxQueueSize, alloc);
 	if (pixelState) pixelState->resize(maxQueueSize, alloc);
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
+	if (enableMedium) {
+		if (mediumSampleQueue) mediumSampleQueue->resize(maxQueueSize, alloc);
+		else mediumSampleQueue = alloc.new_object<MediumSampleQueue>(maxQueueSize, alloc);
+		if (mediumScatterQueue) mediumScatterQueue->resize(maxQueueSize, alloc);
+		else mediumScatterQueue = alloc.new_object<MediumScatterQueue>(maxQueueSize, alloc);
+	}
 	cudaDeviceSynchronize();
 	if (!camera) camera = alloc.new_object<Camera::CameraData>();
 	CUDA_SYNC_CHECK();
@@ -40,6 +46,7 @@ void WavefrontPathTracer::initialize() {
 
 void WavefrontPathTracer::traceClosest(int depth) {
 	PROFILE("Trace intersect rays");
+	// Telling whether volume rendering is enabled by mediumSampleQueue is null?
 	static LaunchParams params = {};
 	params.traversable		   = backend->getRootTraversable();
 	params.sceneData		   = backend->getSceneData();
@@ -48,6 +55,7 @@ void WavefrontPathTracer::traceClosest(int depth) {
 	params.hitLightRayQueue	   = hitLightRayQueue;
 	params.scatterRayQueue	   = scatterRayQueue;
 	params.nextRayQueue		   = nextRayQueue(depth);
+	params.mediumSampleQueue   = enableMedium ? mediumSampleQueue : nullptr;
 	backend->launch(params, "Closest", maxQueueSize, 1, 1);
 }
 
@@ -58,25 +66,23 @@ void WavefrontPathTracer::traceShadow() {
 	params.sceneData		   = backend->getSceneData();
 	params.shadowRayQueue	   = shadowRayQueue;
 	params.pixelState		   = pixelState;
-	backend->launch(params, "Shadow", maxQueueSize, 1, 1);
+	if(enableMedium) backend->launch(params, "ShadowTr", maxQueueSize, 1, 1);
+	else backend->launch(params, "Shadow", maxQueueSize, 1, 1);
 }
 
 void WavefrontPathTracer::handleHit() {
 	PROFILE("Process intersected rays");
 	ForAllQueued(
 		hitLightRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const HitLightWorkItem &w) {
-			Color Le		= w.light.L(w.p, w.n, w.uv, w.wo);
-			float misWeight = 1;
+			Color Le = w.light.L(w.p, w.n, w.uv, w.wo) * w.thp;
 			// Simple understanding: if the sampled component is a delta func, then
 			// it has infinite values and has 1 MIS weights.
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
-				Light light = w.light;
 				Interaction intr(w.p, w.wo, w.n, w.uv);
-				float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(light);
-				float bsdfPdf  = w.pdf;
-				misWeight	   = evalMIS(bsdfPdf, lightPdf);
-			}
-			pixelState->addRadiance(w.pixelId, Le * w.thp * misWeight);
+				Color pl	   = w.pl * w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
+				Le /= (pl + w.pu).mean();
+			} else Le /= w.pu.mean();
+			pixelState->addRadiance(w.pixelId, Le);
 		});
 }
 
@@ -89,12 +95,11 @@ void WavefrontPathTracer::handleMiss() {
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
 				float misWeight = 1;
+				Color Ld		= light.Li(w.ray.dir);
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
-					float bsdfPdf  = w.pdf;
 					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
-					misWeight	   = evalMIS(bsdfPdf, lightPdf);
-				}
-				L += light.Li(w.ray.dir) * misWeight;
+					L += Ld / (w.pu + w.pl * lightPdf).mean();
+				} else L += light.Li(w.ray.dir) / w.pu.mean();	
 			}
 			pixelState->addRadiance(w.pixelId, w.thp * L);
 		});
@@ -118,25 +123,24 @@ void WavefrontPathTracer::generateScatterRays() {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
 				LightSample ls			  = light.sampleLi(sampler.get2D(), { intr.p, intr.n });
-				Ray shadowRay			  = intr.spawnRay(ls.intr);
+				Ray shadowRay			  = intr.spawnRayTo(ls.intr);
 				Vector3f wiWorld		  = normalize(shadowRay.dir);
 				Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
 				float lightPdf	= sampledLight.pdf * ls.pdf;
-				float misWeight{1};
 				Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-				if (enableMIS) {
-					float bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-					misWeight	  = evalMIS(lightPdf, bsdfPdf);
-				}
+				float bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+				float misWeight = evalMIS(lightPdf, bsdfPdf);
+				
 				if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
-					sw.Li				 = ls.L;
+					sw.Ld				 = ls.L * w.thp * bsdfVal * fabs(wiLocal[2]);
+					sw.pu				 = lightPdf;
+					sw.pl				 = bsdfPdf;
 					sw.pixelId			 = w.pixelId;
 					sw.tMax				 = 1;
-					sw.a = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
-					if (sw.a.any()) shadowRayQueue->push(sw);
+					if (sw.Ld.any()) shadowRayQueue->push(sw);
 				}
 			}
 
@@ -145,10 +149,10 @@ void WavefrontPathTracer::generateScatterRays() {
 			if (sample.pdf != 0 && sample.f.any()) {
 				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};
-				Vector3f p		 = offsetRayOrigin(intr.p, intr.n, wiWorld);
 				r.bsdfType		 = sample.flags;
-				r.pdf			 = sample.pdf;
-				r.ray			 = { p, wiWorld };
+				r.pu			 = 1;
+				r.pl			 = 1 / sample.pdf;
+				r.ray			 = intr.spawnRayTowards(wiWorld);
 				r.ctx			 = { intr.p, intr.n };
 				r.pixelId		 = w.pixelId;
 				r.depth			 = w.depth + 1;
@@ -177,7 +181,6 @@ void WavefrontPathTracer::resize(const Vector2i &size) {
 }
 
 void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
-	initialize();
 	mScene = scene;
 	if (!backend) {
 		backend		= new OptixBackend();
@@ -185,12 +188,16 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 						  .setPTX(WAVEFRONT_PTX)
 						  .addRaygenEntry("Closest")
 						  .addRaygenEntry("Shadow")
+						  .addRaygenEntry("ShadowTr")
 						  .addRayType("Closest", true, true, false)
-						  .addRayType("Shadow", false, true, false);
+						  .addRayType("Shadow", false, true, false)
+						  .addRayType("ShadowTr", false, true, false);
 		backend->initialize(params);
 	}
 	backend->setScene(scene);
 	lightSampler = backend->getSceneData().lightSampler;
+	enableMedium = enableMedium && scene->getMedia().size();
+	initialize();
 }
 
 void WavefrontPathTracer::beginFrame(RenderContext* context) {
@@ -206,6 +213,8 @@ void WavefrontPathTracer::beginFrame(RenderContext* context) {
 			pixelState->L[pixelId] = 0;
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
+			pixelState->channel[pixelId] =
+				SampledChannel::sampleUniform(pixelState->sampler[pixelId].get1D());
 		}, gpContext->cudaStream);
 }
 
@@ -225,19 +234,26 @@ void WavefrontPathTracer::render(RenderContext *context) {
 				missRayQueue->reset();
 				shadowRayQueue->reset();
 				scatterRayQueue->reset();
+				if (enableMedium) {
+					mediumSampleQueue->reset();
+					mediumScatterQueue->reset();
+				}
 			}, gpContext->cudaStream);
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);
-			// [STEP#2.2] handle hit and missed rays, contribute to pixels
-			if (!depth || !enableNEE || enableMIS) {
-				handleHit();
-				handleMiss();
+			// [STEP#2.2] sample medium interaction, and optionally sample in-volume scattering events
+			if (enableMedium) {
+				sampleMediumInteraction(depth);
+				sampleMediumScattering(depth);
 			}
+			// [STEP#2.3] handle hit and missed rays, contribute to pixels
+			handleHit();
+			handleMiss();
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
-			// [STEP#2.3] evaluate materials & bsdfs, and generate shadow rays
+			// [STEP#2.4] evaluate materials & bsdfs, and generate shadow rays
 			generateScatterRays();
-			// [STEP#2.4] trace shadow rays (next event estimation)
+			// [STEP#2.5] trace shadow rays (next event estimation)
 			if (enableNEE) traceShadow();
 		}
 	}
@@ -259,7 +275,8 @@ void WavefrontPathTracer::renderUI() {
 	ui::Checkbox("Enable NEE", &enableNEE);
 	// If MIS is disabled while NEE is enabled,
 	// The paths that hits the lights will not contribute.
-	if (enableNEE) ui::Checkbox("Enable MIS", &enableMIS);
+	if (mScene->getMedia().size())
+		if (ui::Checkbox("Enable medium", &enableMedium)) initialize();
 	ui::Text("Debugging");
 	ui::Checkbox("Debug output", &debugOutput);
 	if (debugOutput)

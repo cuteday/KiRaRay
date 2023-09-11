@@ -108,15 +108,22 @@ struct Interaction{
 		return Interaction::offsetRayOrigin(wo);
 	}
 
-	// spawn a ray from and to 2 slightly offseted points, length of direction is the distance
-	KRR_CALLABLE Ray spawnRay(const Vector3f& to) const {
-		Vector3f p_o = offsetRayOrigin(to - p);
-		return { p_o, to - p_o };
+	/* spawn a ray towards a given direction, which is usually normalized. */
+	KRR_CALLABLE Ray spawnRayTowards(const Vector3f& dir) const {
+		return {offsetRayOrigin(dir), dir, time, getMedium(dir)};
 	}
 
-	KRR_CALLABLE Ray spawnRay(const Interaction& intr) const{
+	/* spawn a ray from and to 2 slightly offseted points,
+		length of direction is the distance, useful for shadow rays. */
+	KRR_CALLABLE Ray spawnRayTo(const Vector3f& to) const {
+		Vector3f p_o = offsetRayOrigin(to - p);
+		Vector3f d = to - p_o;
+		return {p_o, d, time, getMedium(d)};
+	}
+
+	KRR_CALLABLE Ray spawnRayTo(const Interaction& intr) const{
 		Vector3f to = intr.offsetRayOrigin(p - intr.p);
-		return spawnRay(to);
+		return spawnRayTo(to);
 	}
 
 	KRR_CALLABLE Medium getMedium(Vector3f w) const {
@@ -137,6 +144,21 @@ struct Interaction{
 	float time{0};
 	const MediumInterface *mediumInterface{nullptr};
 	Medium medium{nullptr};
+};
+
+static constexpr int nSpectrumSamples = 4;
+
+class SampledChannel {
+public:
+	KRR_CALLABLE SampledChannel() = default;
+
+	KRR_CALLABLE SampledChannel(float u) : channel(int(u * Color3f::dim) % 3){}
+
+	KRR_CALLABLE static SampledChannel sampleUniform(float u) { return SampledChannel(u); }
+
+	KRR_CALLABLE operator int() const { return channel; }
+
+	int channel;
 };
 
 KRR_NAMESPACE_END

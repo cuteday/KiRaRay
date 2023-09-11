@@ -47,30 +47,14 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	SurfaceInteraction& intr = *getPRD<SurfaceInteraction>();
 	RayWorkItem r = getRayWorkItem();
 	prepareSurfaceInteraction(intr, hitInfo);
-	if (intr.light) {		// push to hit ray queue if mesh has light
-		HitLightWorkItem w = {};
-		w.light			   = intr.light;
-		w.ctx			   = r.ctx;
-		w.p				   = intr.p;
-		w.n				   = intr.n;
-		w.wo			   = intr.wo;
-		w.uv			   = intr.uv;
-		w.depth			   = r.depth;
-		w.pixelId		   = r.pixelId;
-		w.thp			   = r.thp;
-		w.pdf			   = r.pdf;
-		w.bsdfType		   = r.bsdfType;
-		launchParams.hitLightRayQueue->push(w);
+	if (launchParams.mediumSampleQueue && r.ray.medium) {
+		launchParams.mediumSampleQueue->push(r, intr, optixGetRayTmax());
+		return;
 	}
-	// process material and push to material evaluation queue (if eligible)
-	if (any(r.thp)) {
-		ScatterRayWorkItem w = {};
-		w.pixelId			 = r.pixelId;
-		w.thp				 = r.thp;
-		w.intr				 = intr;
-		w.depth				 = r.depth;
-		launchParams.scatterRayQueue->push(w);
-	}
+	if (intr.light) 	// push to hit ray queue if mesh has light
+		launchParams.hitLightRayQueue->push(r, intr);
+	if (any(r.thp)) 	// process material and push to material evaluation queue
+		launchParams.scatterRayQueue->push(intr, r.thp, r.depth, r.pixelId);
 }
 
 extern "C" __global__ void KRR_RT_AH(Closest)() { 
@@ -78,7 +62,10 @@ extern "C" __global__ void KRR_RT_AH(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_MS(Closest)() {
-	launchParams.missRayQueue->push(getRayWorkItem());
+	const RayWorkItem &r = getRayWorkItem();
+	if (launchParams.mediumSampleQueue && r.ray.medium)
+		launchParams.mediumSampleQueue->push(r, M_FLOAT_INF); 
+	else launchParams.missRayQueue->push(r);
 }
 
 extern "C" __global__ void KRR_RT_RG(Closest)() {
@@ -104,7 +91,19 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	traceRay(launchParams.traversable, r.ray, r.tMax, 1,
 			 OptixRayFlags( OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
 		visible);
-	if (visible) launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
+	if (visible) launchParams.pixelState->addRadiance(r.pixelId, r.Ld / (r.pl + r.pu).mean());
+}
+
+extern "C" __global__ void KRR_RT_AH(ShadowTr)() {
+	if (alphaKilled()) optixIgnoreIntersection();
+}
+
+extern "C" __global__ void KRR_RT_MS(ShadowTr)() { optixSetPayload_2(1); }
+
+extern "C" __global__ void KRR_RT_RG(ShadowTr)() {
+	uint rayIndex(optixGetLaunchIndex().x);
+	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
+	/* TODO: NEE for volumetric PT */
 }
 
 KRR_NAMESPACE_END

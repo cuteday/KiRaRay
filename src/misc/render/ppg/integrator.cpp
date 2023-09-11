@@ -156,18 +156,16 @@ void PPGPathTracer::handleIntersections() {
 			SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 			Light light = sampledLight.light;
 			LightSample ls = light.sampleLi(sampler.get2D(), { intr.p, intr.n });
-			Ray shadowRay = intr.spawnRay(ls.intr);
+			Ray shadowRay = intr.spawnRayTo(ls.intr);
 			Vector3f wiWorld = normalize(shadowRay.dir);
 			Vector3f wiLocal = intr.toLocal(wiWorld);
 
 			float lightPdf = sampledLight.pdf * ls.pdf;
 			float misWeight{1};
 			Color bsdfVal = BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-			if (enableMIS) {
-				float scatterPdf = PPGPathTracer::evalPdf(bsdfPdf, dTreePdf, w.depth, 
-					intr, wiLocal, m_bsdfSamplingFraction, dTree, bsdfType);
-				misWeight = evalMIS(lightPdf, scatterPdf);
-			}
+			float scatterPdf = PPGPathTracer::evalPdf(bsdfPdf, dTreePdf, w.depth, 
+				intr, wiLocal, m_bsdfSamplingFraction, dTree, bsdfType);
+			misWeight = evalMIS(lightPdf, scatterPdf);
 			if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
 				ShadowRayWorkItem sw = {};
 				sw.ray				 = shadowRay;
@@ -203,10 +201,9 @@ void PPGPathTracer::generateScatterRays() {
 			if (sample.pdf > 0 && sample.f.any()) {
 				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};
-				Vector3f p		 = offsetRayOrigin(intr.p, intr.n, wiWorld);
 				r.bsdfType		 = sample.flags;
 				r.pdf			 = sample.pdf;
-				r.ray			 = { p, wiWorld };
+				r.ray			 = intr.spawnRayTowards(wiWorld);
 				r.ctx			 = { intr.p, intr.n };
 				r.pixelId		 = w.pixelId;
 				r.depth			 = w.depth + 1;
@@ -244,10 +241,8 @@ void PPGPathTracer::render(RenderContext *context) {
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
-			if (!depth || !enableNEE || enableMIS) {
-				handleHit();
-				handleMiss();
-			}
+			handleHit();
+			handleMiss();
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
 			// [STEP#2.3] handle intersections and shadow rays
@@ -313,7 +308,6 @@ void PPGPathTracer::renderUI() {
 	ui::InputInt("Max bounces", &maxDepth, 1);
 	ui::SliderFloat("Russian roulette", &probRR, 0, 1);
 	ui::Checkbox("Enable NEE", &enableNEE);
-	if (enableNEE) ui::Checkbox("Enable MIS", &enableMIS);
 
 	ui::Text("Path guiding");
 	ui::Text("Target distribution mode: %s", distribution_names[(int)m_distribution]);

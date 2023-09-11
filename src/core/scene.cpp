@@ -255,7 +255,7 @@ void RTScene::uploadSceneLightData() {
 			std::vector<rt::DiffuseAreaLight> lights(n_primitives);
 			for (size_t triId = 0; triId < n_primitives; triId++) {
 				lights[triId] =
-					rt::DiffuseAreaLight(Shape(&instanceData.primitives[triId]), textureData, Le, true);
+					rt::DiffuseAreaLight(Shape(&instanceData.primitives[triId]), textureData, Le);
 			}
 			instanceData.lights.alloc_and_copy_from_host(lights);
 			for (size_t triId = 0; triId < n_primitives; triId++) 
@@ -290,6 +290,8 @@ void RTScene::uploadSceneLightData() {
 			"Image will be dark, and may even cause crash...");
 	mLightSampler = UniformLightSampler(mLightsBuffer);
 	mLightSamplerBuffer.alloc_and_copy_from_host(&mLightSampler, 1);
+	// [Workaround] Since the area light hit depends on light buffer pointed from instance...
+	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
 	CUDA_SYNC_CHECK();
 }
 

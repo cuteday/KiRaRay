@@ -35,7 +35,6 @@ struct HitInfo {
 	Vector3f barycentric;
 	rt::InstanceData *instance;
 	Vector3f wo;
-	uint hitKind;
 };
 
 struct BSDFData {

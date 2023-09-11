@@ -105,7 +105,7 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const SurfaceInteraction& intr, PathD
 	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any())
 		return;
 
-	Ray shadowRay = intr.spawnRay(ls.intr);
+	Ray shadowRay = intr.spawnRayTo(ls.intr);
 	if (traceShadowRay(launchParams.traversable, shadowRay, 1))
 		path.L +=
 			path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
@@ -126,9 +126,8 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const SurfaceInteraction& intr, Path
 	if (sample.pdf == 0 || !any(sample.f)) return false;
 
 	Vector3f wiWorld = intr.toWorld(sample.wi);
-	Vector3f po		 = offsetRayOrigin(intr.p, intr.n, wiWorld);
 	path.bsdfType	 = sample.flags;
-	path.ray		 = { po, wiWorld };
+	path.ray		 = intr.spawnRayTowards(wiWorld);
 	path.ctx		 = { intr.p, intr.n };
 	path.pdf		 = sample.pdf;
 	path.throughput *= sample.f * fabs(sample.wi[2]) / sample.pdf;

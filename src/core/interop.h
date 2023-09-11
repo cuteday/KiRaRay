@@ -139,7 +139,140 @@ namespace inter {
 		return !(a == b);
 	}
 
-	// new namespace begin end
+	namespace span_internal {
+
+	// Wrappers for access to container data pointers.
+	template <typename C>
+	KRR_CALLABLE constexpr auto GetDataImpl(C &c, char) noexcept -> decltype(c.data()) {
+		return c.data();
+	}
+
+	template <typename C>
+	KRR_CALLABLE constexpr auto GetData(C &c) noexcept -> decltype(GetDataImpl(c, 0)) {
+		return GetDataImpl(c, 0);
+	}
+
+	// Detection idioms for size() and data().
+	template <typename C>
+	using HasSize = std::is_integral<typename std::decay_t<decltype(std::declval<C &>().size())>>;
+
+	// We want to enable conversion from vector<T*> to span<const T* const> but
+	// disable conversion from vector<Derived> to span<Base>. Here we use
+	// the fact that U** is convertible to Q* const* if and only if Q is the same
+	// type or a more cv-qualified version of U.  We also decay the result type of
+	// data() to avoid problems with classes which have a member function data()
+	// which returns a reference.
+	template <typename T, typename C>
+	using HasData =
+		std::is_convertible<typename std::decay_t<decltype(GetData(std::declval<C &>()))> *,
+							T *const *>;
+
+	} // namespace span_internal
+
+	inline constexpr std::size_t dynamic_extent = -1;
+
+	template <typename T> class span {
+	public:
+		// Used to determine whether a Span can be constructed from a container of
+		// type C.
+		template <typename C>
+		using EnableIfConvertibleFrom =
+			typename std::enable_if_t<span_internal::HasData<T, C>::value &&
+									  span_internal::HasSize<C>::value>;
+
+		// Used to SFINAE-enable a function when the slice elements are const.
+		template <typename U>
+		using EnableIfConstView = typename std::enable_if_t<std::is_const_v<T>, U>;
+
+		// Used to SFINAE-enable a function when the slice elements are mutable.
+		template <typename U>
+		using EnableIfMutableView = typename std::enable_if_t<!std::is_const_v<T>, U>;
+
+		using value_type	 = typename std::remove_cv_t<T>;
+		using iterator		 = T *;
+		using const_iterator = const T *;
+
+		KRR_CALLABLE
+		span() : ptr(nullptr), n(0) {}
+		KRR_CALLABLE
+		span(T *ptr, size_t n) : ptr(ptr), n(n) {}
+		template <size_t N> KRR_CALLABLE span(T (&a)[N]) : span(a, N) {}
+		KRR_CALLABLE
+		span(std::initializer_list<value_type> v) : span(v.begin(), v.size()) {}
+
+		// Explicit reference constructor for a mutable `span<T>` type. Can be
+		// replaced with MakeSpan() to infer the type parameter.
+		template <typename V, typename X = EnableIfConvertibleFrom<V>,
+				  typename Y = EnableIfMutableView<V>>
+		KRR_CALLABLE explicit span(V &v) noexcept : span(v.data(), v.size()) {}
+
+		// Hack: explicit constructors for std::vector to work around warnings
+		// about calling a host function (e.g. vector::size()) form a
+		// host+device function (the regular span constructor.)
+		template <typename V> span(std::vector<V> &v) noexcept : span(v.data(), v.size()) {}
+		template <typename V> span(const std::vector<V> &v) noexcept : span(v.data(), v.size()) {}
+
+		// Implicit reference constructor for a read-only `span<const T>` type
+		template <typename V, typename X = EnableIfConvertibleFrom<V>,
+				  typename Y = EnableIfConstView<V>>
+		KRR_CALLABLE constexpr span(const V &v) noexcept : span(v.data(), v.size()) {}
+
+		KRR_CALLABLE
+		iterator begin() { return ptr; }
+		KRR_CALLABLE
+		iterator end() { return ptr + n; }
+		KRR_CALLABLE
+		const_iterator begin() const { return ptr; }
+		KRR_CALLABLE
+		const_iterator end() const { return ptr + n; }
+
+		KRR_CALLABLE
+		T &operator[](size_t i) {
+			DCHECK_LT(i, size());
+			return ptr[i];
+		}
+		KRR_CALLABLE
+		const T &operator[](size_t i) const {
+			DCHECK_LT(i, size());
+			return ptr[i];
+		}
+
+		KRR_CALLABLE
+		size_t size() const { return n; };
+		KRR_CALLABLE
+		bool empty() const { return size() == 0; }
+		KRR_CALLABLE
+		T *data() { return ptr; }
+		KRR_CALLABLE
+		const T *data() const { return ptr; }
+
+		KRR_CALLABLE
+		T front() const { return ptr[0]; }
+		KRR_CALLABLE
+		T back() const { return ptr[n - 1]; }
+
+		KRR_CALLABLE
+		void remove_prefix(size_t count) {
+			// assert(size() >= count);
+			ptr += count;
+			n -= count;
+		}
+		KRR_CALLABLE
+		void remove_suffix(size_t count) {
+			// assert(size() > = count);
+			n -= count;
+		}
+
+		KRR_CALLABLE
+		span subspan(size_t pos, size_t count = dynamic_extent) {
+			size_t np = count < (size() - pos) ? count : (size() - pos);
+			return span(ptr + pos, np);
+		}
+
+	private:
+		T *ptr;
+		size_t n;
+	};
 
 	template <typename T, class Allocator = polymorphic_allocator<T>>
 	class vector {
@@ -406,6 +539,62 @@ namespace inter {
 		T* ptr = nullptr;
 		size_t nAlloc = 0, nStored = 0;
 	};
+
+	template <typename... Ts> struct tuple;
+	template <> struct tuple<> {
+		template <size_t> using type = void;
+	};
+
+	template <typename T, typename... Ts> struct tuple<T, Ts...> : tuple<Ts...> {
+		using Base = tuple<Ts...>;
+
+		tuple()							= default;
+		tuple(const tuple &)			= default;
+		tuple(tuple &&)					= default;
+		tuple &operator=(tuple &&)		= default;
+		tuple &operator=(const tuple &) = default;
+
+		tuple(const T &value, const Ts &...values) : Base(values...), value(value) {}
+
+		tuple(T &&value, Ts &&...values) : Base(std::move(values)...), value(std::move(value)) {}
+
+		T value;
+	};
+
+
+	template <typename... Ts> tuple(Ts &&...) -> tuple<std::decay_t<Ts>...>;
+
+	template <size_t I, typename T, typename... Ts> 
+	KRR_CALLABLE auto &get(tuple<T, Ts...> &t) {
+		if constexpr (I == 0)
+			return t.value;
+		else
+			return get<I - 1>((tuple<Ts...> &) t);
+	}
+
+	template <size_t I, typename T, typename... Ts>
+	KRR_CALLABLE const auto &get(const tuple<T, Ts...> &t) {
+		if constexpr (I == 0)
+			return t.value;
+		else
+			return get<I - 1>((const tuple<Ts...> &) t);
+	}
+
+	template <typename Req, typename T, typename... Ts> 
+	KRR_CALLABLE auto &get(tuple<T, Ts...> &t) {
+		if constexpr (std::is_same_v<Req, T>)
+			return t.value;
+		else
+			return get<Req>((tuple<Ts...> &) t);
+	}
+
+	template <typename Req, typename T, typename... Ts>
+	KRR_CALLABLE const auto &get(const tuple<T, Ts...> &t) {
+		if constexpr (std::is_same_v<Req, T>)
+			return t.value;
+		else
+			return get<Req>((const tuple<Ts...> &) t);
+	}
 
 } // namespace inter end
 KRR_NAMESPACE_END

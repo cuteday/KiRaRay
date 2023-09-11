@@ -34,7 +34,6 @@ SET ( KRR_CORE_SOURCE
 	core/file.cpp
 	core/renderpass.cpp
 	core/texture.cpp
-	render/media.cpp
 	core/device/context.cpp
 	core/device/optix.cpp
 )
@@ -53,9 +52,11 @@ SET (KRR_SOURCE
 	render/path/pathtracer.cpp
 	render/bdpt/integrator.cpp
 	render/wavefront/integrator.cpp
+	render/wavefront/medium.cpp
 	render/rasterize/bindless.cpp
 	render/profiler/profiler.cpp
 	render/profiler/ui.cpp
+	render/media.cpp
 	scene/assimp.cpp
 	scene/pbrt.cpp
 	main/renderer.cpp
@@ -76,8 +77,10 @@ SET (KRR_SOURCE_VULKAN
 SET_SOURCE_FILES_PROPERTIES (
 	# some files are set to be compiled by nvcc so cuda can resolve 
 	# the symbols that are defined within these .cpp files.
+	core/light.cpp
 	render/media.cpp
 	render/wavefront/integrator.cpp
+	render/wavefront/medium.cpp
 	render/passes/denoise/denoise.cpp
 	util/tables.cpp
 	PROPERTIES LANGUAGE CUDA
