@@ -163,11 +163,9 @@ void PPGPathTracer::handleIntersections() {
 			float lightPdf = sampledLight.pdf * ls.pdf;
 			float misWeight{1};
 			Color bsdfVal = BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-			if (enableMIS) {
-				float scatterPdf = PPGPathTracer::evalPdf(bsdfPdf, dTreePdf, w.depth, 
-					intr, wiLocal, m_bsdfSamplingFraction, dTree, bsdfType);
-				misWeight = evalMIS(lightPdf, scatterPdf);
-			}
+			float scatterPdf = PPGPathTracer::evalPdf(bsdfPdf, dTreePdf, w.depth, 
+				intr, wiLocal, m_bsdfSamplingFraction, dTree, bsdfType);
+			misWeight = evalMIS(lightPdf, scatterPdf);
 			if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
 				ShadowRayWorkItem sw = {};
 				sw.ray				 = shadowRay;
@@ -243,10 +241,8 @@ void PPGPathTracer::render(RenderContext *context) {
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
-			if (!depth || !enableNEE || enableMIS) {
-				handleHit();
-				handleMiss();
-			}
+			handleHit();
+			handleMiss();
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
 			// [STEP#2.3] handle intersections and shadow rays
@@ -312,7 +308,6 @@ void PPGPathTracer::renderUI() {
 	ui::InputInt("Max bounces", &maxDepth, 1);
 	ui::SliderFloat("Russian roulette", &probRR, 0, 1);
 	ui::Checkbox("Enable NEE", &enableNEE);
-	if (enableNEE) ui::Checkbox("Enable MIS", &enableMIS);
 
 	ui::Text("Path guiding");
 	ui::Text("Target distribution mode: %s", distribution_names[(int)m_distribution]);

@@ -131,16 +131,16 @@ void WavefrontPathTracer::generateScatterRays() {
 				Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
 				float lightPdf	= sampledLight.pdf * ls.pdf;
-				float misWeight{1};
 				Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-				if (enableMIS) {
-					float bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-					misWeight	  = evalMIS(lightPdf, bsdfPdf);
-				}
+				float bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+				float misWeight = evalMIS(lightPdf, bsdfPdf);
+				
 				if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
 					sw.Li				 = ls.L;
+					sw.pu				 = lightPdf;
+					sw.pl				 = bsdfPdf;
 					sw.pixelId			 = w.pixelId;
 					sw.tMax				 = 1;
 					sw.a = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
@@ -155,6 +155,7 @@ void WavefrontPathTracer::generateScatterRays() {
 				RayWorkItem r	 = {};
 				r.bsdfType		 = sample.flags;
 				r.pdf			 = sample.pdf;
+				r.pu			 = sample.pdf;
 				r.ray			 = intr.spawnRayTowards(wiWorld);
 				r.ctx			 = { intr.p, intr.n };
 				r.pixelId		 = w.pixelId;
@@ -248,10 +249,8 @@ void WavefrontPathTracer::render(RenderContext *context) {
 				sampleMediumScattering(depth);
 			}
 			// [STEP#2.3] handle hit and missed rays, contribute to pixels
-			if (!depth || !enableNEE || enableMIS) {
-				handleHit();
-				handleMiss();
-			}
+			handleHit();
+			handleMiss();
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
 			// [STEP#2.4] evaluate materials & bsdfs, and generate shadow rays
@@ -278,7 +277,6 @@ void WavefrontPathTracer::renderUI() {
 	ui::Checkbox("Enable NEE", &enableNEE);
 	// If MIS is disabled while NEE is enabled,
 	// The paths that hits the lights will not contribute.
-	if (enableNEE) ui::Checkbox("Enable MIS", &enableMIS);
 	if (mScene->getMedia().size()) ui::Checkbox("Enable medium", &enableMedium);
 	ui::Text("Debugging");
 	ui::Checkbox("Debug output", &debugOutput);

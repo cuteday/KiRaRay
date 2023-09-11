@@ -67,7 +67,6 @@ public:
 	int maxDepth{ 10 };
 	float probRR{ 0.8 };
 	bool enableNEE{ };
-	bool enableMIS{true};
 	bool debugOutput{ };
 	bool enableClamp{false};
 	uint debugPixel{ };
@@ -76,7 +75,6 @@ public:
 	friend void to_json(json &j, const WavefrontPathTracer &p) { 
 		j = json{ 
 			{ "nee", p.enableNEE }, 
-			{ "mis", p.enableMIS },
 			{ "max_depth", p.maxDepth },
 			{ "rr", p.probRR },
 			{ "enable_clamp", p.enableClamp },
@@ -86,7 +84,6 @@ public:
 
 	friend void from_json(const json &j, WavefrontPathTracer &p) {
 		p.enableNEE	  = j.value("nee", true);
-		p.enableMIS	  = j.value("mis", true);
 		p.maxDepth	  = j.value("max_depth", 10);
 		p.probRR	  = j.value("rr", 0.8);
 		p.enableClamp = j.value("enable_clamp", false);

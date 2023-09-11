@@ -23,6 +23,7 @@ struct RayWorkItem {
 	LightSampleContext ctx;
 	float pdf;
 	Color thp;
+	Color pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -33,6 +34,7 @@ struct MissRayWorkItem {
 	LightSampleContext ctx;
 	float pdf;
 	Color thp;
+	Color pu;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -47,6 +49,7 @@ struct HitLightWorkItem {
 	Vector3f n;
 	Vector2f uv;
 	Color thp;
+	Color pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -57,11 +60,13 @@ struct ShadowRayWorkItem {
 	float tMax;
 	Color Li;
 	Color a;
+	Color pu, pl;
 	uint pixelId;
 };
 
 struct ScatterRayWorkItem {
 	Color thp;
+	Color pu;
 	SurfaceInteraction intr;
 	uint depth;
 	uint pixelId;
@@ -70,6 +75,7 @@ struct ScatterRayWorkItem {
 struct MediumSampleWorkItem {
 	Ray ray;
 	Color thp;
+	Color pu, pl;
 	float tMax;
 	SurfaceInteraction intr;	// has hit a surface as well...
 	BSDFType bsdfType;
@@ -80,6 +86,7 @@ struct MediumSampleWorkItem {
 struct MediumScatterWorkItem {
 	Vector3f p;
 	Color thp;
+	Color pu, pl;
 	Vector3f wo;
 	float time;
 	Medium medium;

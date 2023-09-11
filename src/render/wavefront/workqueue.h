@@ -109,10 +109,12 @@ public:
 
 	KRR_CALLABLE int pushCameraRay(Ray ray, uint pixelId) {
 		int index = allocateEntry();
-		this->depth[index] = 0;
+		this->depth[index]	 = 0;
 		this->thp[index]	 = Color::Ones();
+		this->pu[index]		 = Color::Ones();
+		this->pl[index]		 = Color::Ones();
 		this->pixelId[index] = pixelId;
-		this->ray[index] = ray;
+		this->ray[index]	 = ray;
 		return index;
 	}
 
@@ -136,7 +138,16 @@ public:
 	using WorkQueue::push;
 
 	KRR_CALLABLE int push(const RayWorkItem &w) {
-		return push(MissRayWorkItem{ w.ray, w.ctx, w.pdf, w.thp, w.bsdfType, w.depth, w.pixelId });
+		int index = allocateEntry();
+		this->ray[index]	  = w.ray;
+		this->ctx[index]	  = w.ctx;
+		this->pdf[index]	  = w.pdf;
+		this->thp[index]	  = w.thp;
+		this->pu[index]		  = w.pu;
+		this->bsdfType[index] = w.bsdfType;
+		this->depth[index]	  = w.depth;
+		this->pixelId[index]  = w.pixelId;
+		return index;
 	}
 };
 

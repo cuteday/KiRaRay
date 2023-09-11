@@ -29,6 +29,12 @@ KRR_CALLABLE float evalMIS(float n0, float p0, float n1, float p1) {
 #endif
 }
 
+template <int Size>
+KRR_CALLABLE Array<float, Size> evalMIS(const Array<float, Size> &p0,
+										const Array<float, Size> &p1) {
+	return p0 / (p0 + p1).mean();
+}
+
 KRR_CALLABLE Vector3f uniformSampleSphere(const Vector2f &u) {
 	float z	  = 1.0f - 2.0f * u[0];
 	float r	  = sqrt(max(0.0f, 1.0f - z * z));
