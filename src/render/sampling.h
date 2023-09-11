@@ -29,12 +29,6 @@ KRR_CALLABLE float evalMIS(float n0, float p0, float n1, float p1) {
 #endif
 }
 
-template <int Size>
-KRR_CALLABLE Array<float, Size> evalMIS(const Array<float, Size> &p0,
-										const Array<float, Size> &p1) {
-	return p0 / (p0 + p1).mean();
-}
-
 KRR_CALLABLE Vector3f uniformSampleSphere(const Vector2f &u) {
 	float z	  = 1.0f - 2.0f * u[0];
 	float r	  = sqrt(max(0.0f, 1.0f - z * z));
@@ -90,7 +84,30 @@ KRR_CALLABLE Vector3f uniformSampleTriangle(const Vector2f &u) {
 	return { b0, b1, 1 - b0 - b1 };
 }
 
-KRR_CALLABLE int sampleDiscrete(inter::span<float> weights, float u, float *pmf) {
+KRR_CALLABLE float sampleExponential(float u, float a) { 
+	DCHECK_GT(a, 0); 
+	return -std::log(1 - u) / a;
+}
+
+KRR_CALLABLE int sampleDiscrete(float* weights, size_t n, float u, float *pmf = nullptr) {
+	float sumWeights = 0;
+	for (int i = 0; i < n; i++) 
+		sumWeights += weights[i];
+
+	float up = u * sumWeights;
+	if (up == sumWeights) up = nextFloatDown(up);
+
+	int offset = 0;
+	float sum  = 0;
+	while (sum + weights[offset] <= up) {
+		sum += weights[offset++];
+		DCHECK_LT(offset, n);
+	}
+	if (pmf) *pmf = weights[offset] / sumWeights;
+	return offset;
+}
+
+KRR_CALLABLE int sampleDiscrete(inter::span<const float> weights, float u, float *pmf = nullptr) {
 	float sumWeights = 0;
 	for (float w : weights) sumWeights += w;
 
@@ -103,9 +120,9 @@ KRR_CALLABLE int sampleDiscrete(inter::span<float> weights, float u, float *pmf)
 		sum += weights[offset++];
 		DCHECK_LT(offset, weights.size());
 	}
-
 	if (pmf) *pmf = weights[offset] / sumWeights;
 	return offset;
 }
+
 
 KRR_NAMESPACE_END

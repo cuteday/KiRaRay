@@ -17,19 +17,80 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			/* Each ray is either absorped or scattered after some null collisions... */
 			Color L(0);
 			Ray ray	   = w.ray;
-			float tMax = w.tMax;
-			Color thp  = w.thp;
+			float tMax = w.tMax * ray.dir.norm();
+			ray.dir.normalize();
+			Color thp = w.thp;
 			Color pu = w.pu, pl = w.pl;
-			Sampler sampler = &pixelState->sampler[w.pixelId];
-			Medium medium	= ray.medium;
-
+			Sampler sampler		   = &pixelState->sampler[w.pixelId];
+			SampledChannel channel = pixelState->channel[w.pixelId];
+			Medium medium		   = ray.medium;
+			
 			// sample corresponding majorant...
-			Color T_maj = medium.sampleRay(ray, tMax).sigma_maj;
+			RayMajorant majorant = medium.sampleRay(ray, tMax);
+			Color sigma_maj		 = majorant.sigma_maj;
+			Color T_maj(1);
 			bool scattered{false};
+			float tMin = majorant.tMin;
 
 			// [LOOP] Either absorped or scattered after several null collisions
-			while (false) {
+			while (true) {
+				float t = tMin + sampleExponential(sampler.get1D(), sigma_maj[channel]);
+				if (t < majorant.tMax) {
+					/* Sampled interaction is within the medium... */
+					T_maj *= (-(t - tMin) * sigma_maj).exp();
+					MediumProperties mp = medium.samplePoint(ray(t));
+					/* [Rock paper scissors!] Absorp, real scattering, or null-collision? */
+					/* [STEP.1] Account for medium emission */
+					if (w.depth < maxDepth && mp.Le.any()) {
+						float pr = sigma_maj[channel] * T_maj[channel];
+						Color pe = pu * sigma_maj * T_maj / pr;
+						if (pe.any()) L += thp * mp.sigma_a * T_maj * mp.Le / (pr * pe.mean());
+					}
+					/* [STEP.2] Sample a type of the three scattering events */
+					float pAbsorb	= mp.sigma_a[channel] * sigma_maj[channel];
+					float pScatter	= mp.sigma_s[channel] * sigma_maj[channel];
+					float pNull		= max(0.f, 1.f - pAbsorb - pScatter);
+					float pModes[3] = {pAbsorb, pScatter, pNull};
+					//int mode		= sampleDiscrete(pModes, 3, sampler.get1D());
+					int mode = sampleDiscrete({pAbsorb, pScatter, pNull}, sampler.get1D());
+					if (mode == 0) {		// Absorbed (goodbye)
+						thp = 0;			// Will not continue
+						break;
+					} else if (mode == 1) {	// Real scattering
+						float pr = T_maj[channel] * mp.sigma_s[channel];
+						thp *= T_maj * mp.sigma_s / pr;
+						pu *= T_maj * mp.sigma_s / pr;
+						if (thp.any() && pu.any()) 
+							mediumScatterQueue->push(ray(t), thp, -ray.dir, ray.time, ray.medium,
+													 mp.phase, w.depth, w.pixelId);
+						scattered = true;	// Continue on another direction
+						break;
+					} else {				// Null-collision
+						Color sigma_n = (sigma_maj - mp.sigma_a - mp.sigma_s).cwiseMax(0);
+						float pr = T_maj[channel] * sigma_n[channel];
+						thp *= T_maj * sigma_n / pr;
+						if (pr == 0) thp = 0;
+						pu *= T_maj * sigma_n / pr;
+						pl *= T_maj * sigma_n / pr;
+					}
+					T_maj = Color::Ones();
+					tMin  = t;
+				} else {
+					/* Sampled interaction is outside the medium (either escaped or on surface.) */
+					float dt = majorant.tMax - tMin;
+					if (isinf(dt)) dt = M_FLOAT_MAX;
+					T_maj *= (-dt * majorant.sigma_maj).exp();
+					break;
+				}
+			}
+			// Add any contribution along this volumetric path...
+			if (L.any()) pixelState->addRadiance(w.pixelId, L);
 
+			if (!scattered && thp.any()) {
+				/* Update statistics... */
+				thp *= T_maj / T_maj[channel];
+				pu *= T_maj / T_maj[channel];
+				pl *= T_maj / T_maj[channel];
 			}
 
 			// Return if scattered or no throughput or max depth reached
@@ -37,7 +98,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 
 			// [Grand Survival] There are three cases needed to handle...
 			// [I an free...] The ray escaped from our sight...
-			if (w.tMax == M_FLOAT_MAX) {
+			if (w.tMax == M_FLOAT_INF) {
 				/* [CHECK] Is it correct to use w.bsdfType here? */
 				missRayQueue->push(ray, w.ctx, thp, pu, pl, w.bsdfType, w.depth, w.pixelId);
 				return;

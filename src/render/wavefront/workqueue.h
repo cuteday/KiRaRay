@@ -234,7 +234,7 @@ public:
 	using WorkQueue::push;
 	using WorkQueue::WorkQueue;
 
-	KRR_CALLABLE int push(const RayWorkItem &r, float tMax = M_FLOAT_MAX) {
+	KRR_CALLABLE int push(const RayWorkItem &r, float tMax = M_FLOAT_INF) {
 		int index			 = allocateEntry();
 		this->tMax[index]	 = tMax;
 		this->ray[index]	 = r.ray;
@@ -248,7 +248,7 @@ public:
 	}
 
 	KRR_CALLABLE int push(const RayWorkItem &r, const SurfaceInteraction &intr,
-						  float tMax = M_FLOAT_MAX) {
+						  float tMax = M_FLOAT_INF) {
 		int index			 = allocateEntry();
 		this->intr[index]	 = intr;
 		this->tMax[index]	 = tMax;

@@ -64,7 +64,7 @@ extern "C" __global__ void KRR_RT_AH(Closest)() {
 extern "C" __global__ void KRR_RT_MS(Closest)() {
 	const RayWorkItem &r = getRayWorkItem();
 	if (launchParams.mediumSampleQueue && r.ray.medium)
-		launchParams.mediumSampleQueue->push(r); 
+		launchParams.mediumSampleQueue->push(r, M_FLOAT_INF); 
 	else launchParams.missRayQueue->push(r);
 }
 

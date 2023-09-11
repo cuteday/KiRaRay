@@ -26,7 +26,7 @@ public:
 	KRR_CALLABLE RayMajorant() = default;
 
 	KRR_CALLABLE RayMajorant(const Color &sigma_maj, 
-		float tMin = 0, float tMax = M_FLOAT_MAX) :
+		float tMin = 0, float tMax = M_FLOAT_INF) :
 		sigma_maj(sigma_maj), tMin(tMin), tMax(tMax) {}
 
 	float tMin, tMax;
@@ -49,7 +49,7 @@ public:
 	}
 
 	KRR_CALLABLE RayMajorant sampleRay(const Ray &ray, float tMax) {
-		return {sigma_a + sigma_s};
+		return {sigma_a + sigma_s, 0, tMax};
 	}
 
 	Color sigma_a, sigma_s, L_e;

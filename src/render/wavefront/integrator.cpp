@@ -212,6 +212,8 @@ void WavefrontPathTracer::beginFrame(RenderContext* context) {
 			pixelState->L[pixelId] = 0;
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
+			pixelState->channel[pixelId] =
+				SampledChannel::sampleUniform(pixelState->sampler[pixelId].get1D());
 		}, gpContext->cudaStream);
 }
 
@@ -272,7 +274,8 @@ void WavefrontPathTracer::renderUI() {
 	ui::Checkbox("Enable NEE", &enableNEE);
 	// If MIS is disabled while NEE is enabled,
 	// The paths that hits the lights will not contribute.
-	if (mScene->getMedia().size()) ui::Checkbox("Enable medium", &enableMedium);
+	if (mScene->getMedia().size())
+		if (ui::Checkbox("Enable medium", &enableMedium)) initialize();
 	ui::Text("Debugging");
 	ui::Checkbox("Debug output", &debugOutput);
 	if (debugOutput)
