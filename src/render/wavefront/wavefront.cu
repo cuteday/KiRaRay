@@ -91,7 +91,7 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	traceRay(launchParams.traversable, r.ray, r.tMax, 1,
 			 OptixRayFlags( OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
 		visible);
-	if (visible) launchParams.pixelState->addRadiance(r.pixelId, r.Li * r.a);
+	if (visible) launchParams.pixelState->addRadiance(r.pixelId, r.Ld / (r.pl + r.pu).mean());
 }
 
 extern "C" __global__ void KRR_RT_AH(ShadowTr)() {

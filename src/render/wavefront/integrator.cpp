@@ -73,17 +73,15 @@ void WavefrontPathTracer::handleHit() {
 	PROFILE("Process intersected rays");
 	ForAllQueued(
 		hitLightRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const HitLightWorkItem &w) {
-			Color Le		= w.light.L(w.p, w.n, w.uv, w.wo);
-			float misWeight = 1;
+			Color Le = w.light.L(w.p, w.n, w.uv, w.wo) * w.thp;
 			// Simple understanding: if the sampled component is a delta func, then
 			// it has infinite values and has 1 MIS weights.
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
-				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
-				float bsdfPdf  = w.pdf;
-				misWeight	   = evalMIS(bsdfPdf, lightPdf);
-			}
-			pixelState->addRadiance(w.pixelId, Le * w.thp * misWeight);
+				Color pl	   = w.pl * w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
+				Le /= (pl + w.pu).mean();
+			} else Le /= w.pu.mean();
+			pixelState->addRadiance(w.pixelId, Le);
 		});
 }
 
@@ -96,12 +94,11 @@ void WavefrontPathTracer::handleMiss() {
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
 				float misWeight = 1;
+				Color Ld		= light.Li(w.ray.dir);
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
-					float bsdfPdf  = w.pdf;
 					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
-					misWeight	   = evalMIS(bsdfPdf, lightPdf);
-				}
-				L += light.Li(w.ray.dir) * misWeight;
+					L += Ld / (w.pu + w.pl * lightPdf).mean();
+				} else L += light.Li(w.ray.dir) / w.pu.mean();	
 			}
 			pixelState->addRadiance(w.pixelId, w.thp * L);
 		});
@@ -137,13 +134,12 @@ void WavefrontPathTracer::generateScatterRays() {
 				if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
-					sw.Li				 = ls.L;
+					sw.Ld				 = ls.L * w.thp * bsdfVal * fabs(wiLocal[2]);
 					sw.pu				 = lightPdf;
 					sw.pl				 = bsdfPdf;
 					sw.pixelId			 = w.pixelId;
 					sw.tMax				 = 1;
-					sw.a = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
-					if (sw.a.any()) shadowRayQueue->push(sw);
+					if (sw.Ld.any()) shadowRayQueue->push(sw);
 				}
 			}
 
@@ -153,8 +149,8 @@ void WavefrontPathTracer::generateScatterRays() {
 				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};
 				r.bsdfType		 = sample.flags;
-				r.pdf			 = sample.pdf;
-				r.pu			 = sample.pdf;
+				r.pu			 = 1;
+				r.pl			 = 1 / sample.pdf;
 				r.ray			 = intr.spawnRayTowards(wiWorld);
 				r.ctx			 = { intr.p, intr.n };
 				r.pixelId		 = w.pixelId;

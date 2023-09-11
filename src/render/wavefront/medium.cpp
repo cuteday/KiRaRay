@@ -75,7 +75,7 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 
 			Ray ray{w.p, ps.wi, w.time, w.medium};
 			if (!thp.isZero())
-				nextRayQueue(depth)->push(ray, ctx, thp, 1, w.depth + 1, w.pixelId, BSDF_GLOSSY);
+				nextRayQueue(depth)->push(ray, ctx, thp, 1, 1, w.depth + 1, w.pixelId, BSDF_GLOSSY);
 	}, gpContext->cudaStream);
 }
 

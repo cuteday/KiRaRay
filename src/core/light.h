@@ -126,7 +126,7 @@ public:
 
 	KRR_DEVICE LightType type() const { return LightType::Area; }
 
-	KRR_DEVICE bool isDeltaLight() const { return true; }
+	KRR_DEVICE bool isDeltaLight() const { return false; }
 
 private:
 	Shape shape;
@@ -174,7 +174,7 @@ public:
 
 	KRR_DEVICE LightType type() const { return LightType::Infinite; }
 
-	KRR_DEVICE bool isDeltaLight() const { return true; }
+	KRR_DEVICE bool isDeltaLight() const { return false; }
 
 private:
 	Color tint{1};

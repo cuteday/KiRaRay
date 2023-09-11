@@ -3,7 +3,7 @@
 I tried to implement some algorithms designed for path tracing. 
 Turn the CMake option `KRR_BUILD_STARLIGHT` on if one wants to build these additional algorithm implementations. Note that these code may not be maintained as the main repository.
 
-### Path Guiding
+### Path Guiding (Currently deprecated)
 
 This implements [Practical Path Guiding (PPG)](https://github.com/Tom94/practical-path-guiding), which is a path guiding algorithm targeted for CPU offline rendering. What I did is largely to simply move the original implementation from CPU to GPU. The performance is not quite satisfying for real-time purposes on GPUs. 
 

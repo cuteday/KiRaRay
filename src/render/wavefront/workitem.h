@@ -21,9 +21,10 @@ struct PixelState {
 struct RayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	float pdf;
+	//float pdf;
 	Color thp;
-	Color pu, pl;
+	float pu, pl;
+	//Color pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -32,9 +33,9 @@ struct RayWorkItem {
 struct MissRayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	float pdf;
+	//float pdf;
 	Color thp;
-	Color pu;
+	Color pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -43,7 +44,7 @@ struct MissRayWorkItem {
 struct HitLightWorkItem {
 	Light light;
 	LightSampleContext ctx;
-	float pdf;
+	//float pdf;
 	Vector3f p;
 	Vector3f wo;
 	Vector3f n;
@@ -58,15 +59,14 @@ struct HitLightWorkItem {
 struct ShadowRayWorkItem {
 	Ray ray;
 	float tMax;
-	Color Li;
-	Color a;
+	Color Ld;
 	Color pu, pl;
 	uint pixelId;
 };
 
 struct ScatterRayWorkItem {
 	Color thp;
-	Color pu;
+	//Color pu;
 	SurfaceInteraction intr;
 	uint depth;
 	uint pixelId;
@@ -86,7 +86,7 @@ struct MediumSampleWorkItem {
 struct MediumScatterWorkItem {
 	Vector3f p;
 	Color thp;
-	Color pu, pl;
+	//Color pu, pl;
 	Vector3f wo;
 	float time;
 	Medium medium;

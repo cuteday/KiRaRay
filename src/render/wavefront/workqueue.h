@@ -111,21 +111,22 @@ public:
 		int index = allocateEntry();
 		this->depth[index]	 = 0;
 		this->thp[index]	 = Color::Ones();
-		this->pu[index]		 = Color::Ones();
-		this->pl[index]		 = Color::Ones();
+		this->pu[index]		 = 1;
+		this->pl[index]		 = 1;
 		this->pixelId[index] = pixelId;
 		this->ray[index]	 = ray;
 		return index;
 	}
 
 	KRR_CALLABLE int push(const Ray& ray, const LightSampleContext& ctx, Color thp, 
-						  float pdf, uint depth, uint pixelId, BSDFType bsdfType) {
+						  float pu, float pl, uint depth, uint pixelId, BSDFType bsdfType) {
 		int index = allocateEntry();
 		this->ray[index]	  = ray;
 		this->depth[index]	  = depth;
 		this->thp[index]	  = thp;
 		this->ctx[index]	  = ctx;
-		this->pdf[index]	  = pdf;
+		this->pu[index]		  = pu;
+		this->pl[index]		  = pl;
 		this->pixelId[index]  = pixelId;
 		this->bsdfType[index] = bsdfType;
 		return index;
@@ -141,12 +142,27 @@ public:
 		int index = allocateEntry();
 		this->ray[index]	  = w.ray;
 		this->ctx[index]	  = w.ctx;
-		this->pdf[index]	  = w.pdf;
+		//this->pdf[index]	  = w.pdf;
 		this->thp[index]	  = w.thp;
 		this->pu[index]		  = w.pu;
+		this->pl[index]		  = Color::Ones();
 		this->bsdfType[index] = w.bsdfType;
 		this->depth[index]	  = w.depth;
 		this->pixelId[index]  = w.pixelId;
+		return index;
+	}
+
+	KRR_CALLABLE int push(const Ray& ray, const LightSampleContext& ctx, Color thp, Color pu, 
+		Color pl, BSDFType bsdfType, uint depth, uint pixelId) {
+		int index			  = allocateEntry();
+		this->ray[index]	  = ray;
+		this->ctx[index]	  = ctx;
+		this->thp[index]	  = thp;
+		this->pu[index]		  = pu;
+		this->pl[index]		  = pl;
+		this->bsdfType[index] = bsdfType;
+		this->depth[index]	  = depth;
+		this->pixelId[index]  = pixelId;
 		return index;
 	}
 };
@@ -162,8 +178,9 @@ public:
 		this->thp[index]	  = r.thp;
 		this->ctx[index]	  = r.ctx;
 		this->pixelId[index]  = r.pixelId;
-		this->thp[index]	  = r.thp;
-		this->pdf[index]	  = r.pdf;
+		//this->pdf[index]	  = r.pdf;
+		this->pu[index]		  = r.pu;
+		this->pl[index]		  = r.pl;
 		this->bsdfType[index] = r.bsdfType;
 		this->light[index]	  = intr.light;
 		this->p[index]		  = intr.p;
