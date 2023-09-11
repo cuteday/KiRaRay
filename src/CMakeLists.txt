@@ -77,6 +77,7 @@ SET (KRR_SOURCE_VULKAN
 SET_SOURCE_FILES_PROPERTIES (
 	# some files are set to be compiled by nvcc so cuda can resolve 
 	# the symbols that are defined within these .cpp files.
+	core/light.cpp
 	render/media.cpp
 	render/wavefront/integrator.cpp
 	render/wavefront/medium.cpp

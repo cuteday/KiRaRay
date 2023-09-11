@@ -195,7 +195,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	}
 	backend->setScene(scene);
 	lightSampler = backend->getSceneData().lightSampler;
-	enableMedium = scene->getMedia().size() != 0;
+	enableMedium = false;
 	initialize();
 }
 

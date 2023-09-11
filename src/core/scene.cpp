@@ -255,7 +255,7 @@ void RTScene::uploadSceneLightData() {
 			std::vector<rt::DiffuseAreaLight> lights(n_primitives);
 			for (size_t triId = 0; triId < n_primitives; triId++) {
 				lights[triId] =
-					rt::DiffuseAreaLight(Shape(&instanceData.primitives[triId]), textureData, Le, true);
+					rt::DiffuseAreaLight(Shape(&instanceData.primitives[triId]), textureData, Le);
 			}
 			instanceData.lights.alloc_and_copy_from_host(lights);
 			for (size_t triId = 0; triId < n_primitives; triId++) 

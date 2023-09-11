@@ -142,7 +142,6 @@ public:
 		int index = allocateEntry();
 		this->ray[index]	  = w.ray;
 		this->ctx[index]	  = w.ctx;
-		//this->pdf[index]	  = w.pdf;
 		this->thp[index]	  = w.thp;
 		this->pu[index]		  = w.pu;
 		this->pl[index]		  = Color::Ones();
@@ -178,10 +177,28 @@ public:
 		this->thp[index]	  = r.thp;
 		this->ctx[index]	  = r.ctx;
 		this->pixelId[index]  = r.pixelId;
-		//this->pdf[index]	  = r.pdf;
 		this->pu[index]		  = r.pu;
 		this->pl[index]		  = r.pl;
 		this->bsdfType[index] = r.bsdfType;
+		this->light[index]	  = intr.light;
+		this->p[index]		  = intr.p;
+		this->wo[index]		  = intr.wo;
+		this->n[index]		  = intr.n;
+		this->uv[index]		  = intr.uv;
+		return index;
+	}
+	
+	KRR_CALLABLE int push(const SurfaceInteraction& intr, const LightSampleContext& prevCtx,
+		BSDFType bsdfType, uint depth, uint pixelId, Color thp, Color pu,
+		Color pl) {
+		int index			  = allocateEntry();
+		this->depth[index]	  = depth;
+		this->thp[index]	  = thp;
+		this->ctx[index]	  = prevCtx;
+		this->pixelId[index]  = pixelId;
+		this->pu[index]		  = pu;
+		this->pl[index]		  = pl;
+		this->bsdfType[index] = bsdfType;
 		this->light[index]	  = intr.light;
 		this->p[index]		  = intr.p;
 		this->wo[index]		  = intr.wo;
@@ -204,9 +221,9 @@ public:
 
 	KRR_CALLABLE int push(const SurfaceInteraction& intr, Color thp, uint depth, uint pixelId) {
 		int index = allocateEntry();
-		this->intr[index] = intr;
-		this->thp[index] = thp;
-		this->depth[index] = depth;
+		this->intr[index]	 = intr;
+		this->thp[index]	 = thp;
+		this->depth[index]	 = depth;
 		this->pixelId[index] = pixelId;
 		return index;
 	}
@@ -221,7 +238,10 @@ public:
 		int index			 = allocateEntry();
 		this->tMax[index]	 = tMax;
 		this->ray[index]	 = r.ray;
+		this->ctx[index]	 = r.ctx;
 		this->thp[index]	 = r.thp;
+		this->pu[index]		 = r.pu;
+		this->pl[index]		 = r.pl;
 		this->depth[index]	 = r.depth;
 		this->pixelId[index] = r.pixelId;
 		return index;
@@ -234,6 +254,8 @@ public:
 		this->tMax[index]	 = tMax;
 		this->ray[index]	 = r.ray;
 		this->thp[index]	 = r.thp;
+		this->pu[index]		 = r.pu;
+		this->pl[index]		 = r.pl;
 		this->depth[index]	 = r.depth;
 		this->pixelId[index] = r.pixelId;
 		return index;
@@ -244,6 +266,18 @@ class MediumScatterQueue : public WorkQueue<MediumScatterWorkItem> {
 public:
 	using WorkQueue::push;
 	using WorkQueue::WorkQueue;
+
+	KRR_CALLABLE int push(Vector3f p, Color thp, Vector3f wo, float time, Medium medium,
+		PhaseFunction phase, uint depth, uint pixelId) {
+		int index = allocateEntry();
+		this->p[index]		 = p;
+		this->wo[index]		 = wo;
+		this->time[index]	 = time;
+		this->medium[index]	 = medium;
+		this->thp[index]	 = thp;
+		this->depth[index]	 = depth;
+		this->pixelId[index] = pixelId;
+	}
 };
 
 
