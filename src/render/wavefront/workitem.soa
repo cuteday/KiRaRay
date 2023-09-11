@@ -7,6 +7,7 @@ flat double;
 
 flat Light;
 flat Medium;
+flat MediumInterface;
 flat PhaseFunction;
 flat MaterialType;
 flat LCGSampler;
@@ -49,6 +50,9 @@ struct SurfaceInteraction {
 	Vector3f wo;
 	Vector3f n;
 	Vector2f uv;
+	float time;
+	const MediumInterface* mediumInterface;
+	Medium medium;
 	Vector3f tangent;
 	Vector3f bitangent;
 	Light light;

@@ -66,7 +66,8 @@ void WavefrontPathTracer::traceShadow() {
 	params.sceneData		   = backend->getSceneData();
 	params.shadowRayQueue	   = shadowRayQueue;
 	params.pixelState		   = pixelState;
-	backend->launch(params, "Shadow", maxQueueSize, 1, 1);
+	if(enableMedium) backend->launch(params, "ShadowTr", maxQueueSize, 1, 1);
+	else backend->launch(params, "Shadow", maxQueueSize, 1, 1);
 }
 
 void WavefrontPathTracer::handleHit() {
@@ -195,7 +196,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	}
 	backend->setScene(scene);
 	lightSampler = backend->getSceneData().lightSampler;
-	enableMedium = false;
+	enableMedium = enableMedium && scene->getMedia().size();
 	initialize();
 }
 

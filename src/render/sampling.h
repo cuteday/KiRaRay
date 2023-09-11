@@ -89,24 +89,6 @@ KRR_CALLABLE float sampleExponential(float u, float a) {
 	return -std::log(1 - u) / a;
 }
 
-KRR_CALLABLE int sampleDiscrete(float* weights, size_t n, float u, float *pmf = nullptr) {
-	float sumWeights = 0;
-	for (int i = 0; i < n; i++) 
-		sumWeights += weights[i];
-
-	float up = u * sumWeights;
-	if (up == sumWeights) up = nextFloatDown(up);
-
-	int offset = 0;
-	float sum  = 0;
-	while (sum + weights[offset] <= up) {
-		sum += weights[offset++];
-		DCHECK_LT(offset, n);
-	}
-	if (pmf) *pmf = weights[offset] / sumWeights;
-	return offset;
-}
-
 KRR_CALLABLE int sampleDiscrete(inter::span<const float> weights, float u, float *pmf = nullptr) {
 	float sumWeights = 0;
 	for (float w : weights) sumWeights += w;

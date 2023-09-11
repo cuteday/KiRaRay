@@ -164,8 +164,8 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 		intr.sd.metallic  = getMetallic(intr.sd.diffuse, intr.sd.specular);
 	} else assert(false);
 
-	if (mesh.mediumInterface.isTransition())
-		intr.mediumInterface = &mesh.mediumInterface;
+	if (mesh.mediumInterface.isTransition()) 
+		intr.mediumInterface = &mesh.mediumInterface;	
 	
 	// transform local interaction to world space 
 	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]

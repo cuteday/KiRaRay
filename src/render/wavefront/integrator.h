@@ -58,7 +58,7 @@ public:
 	ScatterRayQueue* scatterRayQueue{ };
 	MediumSampleQueue* mediumSampleQueue{ };
 	MediumScatterQueue* mediumScatterQueue{ };
-	PixelStateBuffer* pixelState;
+	PixelStateBuffer *pixelState{ };
 
 	// path tracing parameters
 	int maxQueueSize;

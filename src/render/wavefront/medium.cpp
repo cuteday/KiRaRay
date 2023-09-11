@@ -50,8 +50,6 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 					float pAbsorb	= mp.sigma_a[channel] * sigma_maj[channel];
 					float pScatter	= mp.sigma_s[channel] * sigma_maj[channel];
 					float pNull		= max(0.f, 1.f - pAbsorb - pScatter);
-					float pModes[3] = {pAbsorb, pScatter, pNull};
-					//int mode		= sampleDiscrete(pModes, 3, sampler.get1D());
 					int mode = sampleDiscrete({pAbsorb, pScatter, pNull}, sampler.get1D());
 					if (mode == 0) {		// Absorbed (goodbye)
 						thp = 0;			// Will not continue
