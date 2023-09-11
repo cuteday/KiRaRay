@@ -78,9 +78,8 @@ void WavefrontPathTracer::handleHit() {
 			// Simple understanding: if the sampled component is a delta func, then
 			// it has infinite values and has 1 MIS weights.
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
-				Light light = w.light;
 				Interaction intr(w.p, w.wo, w.n, w.uv);
-				float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(light);
+				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
 				float bsdfPdf  = w.pdf;
 				misWeight	   = evalMIS(bsdfPdf, lightPdf);
 			}

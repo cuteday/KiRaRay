@@ -290,6 +290,8 @@ void RTScene::uploadSceneLightData() {
 			"Image will be dark, and may even cause crash...");
 	mLightSampler = UniformLightSampler(mLightsBuffer);
 	mLightSamplerBuffer.alloc_and_copy_from_host(&mLightSampler, 1);
+	// [Workaround] Since the area light hit depends on light buffer pointed from instance...
+	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
 	CUDA_SYNC_CHECK();
 }
 
