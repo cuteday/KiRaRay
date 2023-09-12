@@ -35,7 +35,7 @@ public:
 
 	KRR_HOST_DEVICE MediumProperties samplePoint(Vector3f p) const;
 
-	KRR_HOST_DEVICE RayMajorant sampleRay(const Ray &ray, float tMax);
+	KRR_HOST_DEVICE RayMajorant sampleRay(const Ray &ray, float tMax) const;
 };
 
 class MediumInterface {

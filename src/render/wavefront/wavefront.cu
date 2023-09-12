@@ -99,6 +99,12 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 	if (visible) launchParams.pixelState->addRadiance(r.pixelId, r.Ld / (r.pl + r.pu).mean());
 }
 
+extern "C" __global__ void KRR_RT_CH(ShadowTr)() {
+	HitInfo hitInfo			 = getHitInfo();
+	SurfaceInteraction &intr = *getPRD<SurfaceInteraction>();
+	prepareSurfaceInteraction(intr, hitInfo);
+}
+
 extern "C" __global__ void KRR_RT_AH(ShadowTr)() {
 	if (alphaKilled()) optixIgnoreIntersection();
 }
@@ -108,7 +114,15 @@ extern "C" __global__ void KRR_RT_MS(ShadowTr)() { optixSetPayload_2(1); }
 extern "C" __global__ void KRR_RT_RG(ShadowTr)() {
 	uint rayIndex(optixGetLaunchIndex().x);
 	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
-	/* TODO: NEE for volumetric PT */
+	ShadowRayWorkItem r = getShadowRayWorkItem();
+	SurfaceInteraction intr = {};
+	traceTransmittance(r, intr, launchParams.pixelState, [&](Ray ray, float tMax) -> bool {
+		uint u0, u1;
+		packPointer(&intr, u0, u1);
+		uint32_t visible{0};
+		traceRay(launchParams.traversable, ray, tMax, 2, OPTIX_RAY_FLAG_NONE, u0, u1, visible);
+		return visible;
+	});
 }
 
 KRR_NAMESPACE_END

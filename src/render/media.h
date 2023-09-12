@@ -3,6 +3,7 @@
 #include "taggedptr.h"
 #include "render/phase.h"
 #include "medium.h"
+#include "raytracing.h"
 
 #include <nanovdb/NanoVDB.h>
 #define NANOVDB_USE_ZIP 1
@@ -12,8 +13,6 @@
 #include <nanovdb/util/CudaDeviceBuffer.h>
 
 KRR_NAMESPACE_BEGIN
-
-class Ray;
 
 struct MediumProperties {
 	Color sigma_a, sigma_s;
@@ -48,7 +47,7 @@ public:
 		return {sigma_a, sigma_s, &phase, L_e};
 	}
 
-	KRR_CALLABLE RayMajorant sampleRay(const Ray &ray, float tMax) {
+	KRR_CALLABLE RayMajorant sampleRay(const Ray &ray, float tMax) const {
 		return {sigma_a + sigma_s, 0, tMax};
 	}
 
@@ -83,7 +82,14 @@ public:
 		return {sigma_a * d, sigma_s * d, &phase, Le(p)};
 	}
 
-	KRR_HOST_DEVICE RayMajorant sampleRay(const Ray &ray, float raytMax);
+	KRR_HOST_DEVICE RayMajorant sampleRay(const Ray &ray, float raytMax) const {
+		// [TODO] currently we use a coarse majorant for the whole volume
+		// but it seems that nanovdb has a built-in hierachical DDA on gpu?
+		float tMin, tMax;
+		Ray r = inverseTransform * ray;
+		if (!bounds.intersect(r.origin, r.dir, raytMax, &tMin, &tMax)) return {};
+		return {sigma_maj};
+	}
 
 	AABB3f bounds;
 	Affine3f transform, inverseTransform;
@@ -93,5 +99,23 @@ public:
 	Color sigma_a, sigma_s, sigma_maj;
 	Color L_e;
 };
+
+/* Put these definitions here since the optix kernel will need them... */
+
+KRR_CALLABLE bool Medium::isEmissive() const {
+	auto emissive = [&](auto ptr) -> bool { return ptr->isEmissive(); };
+	return dispatch(emissive);
+}
+
+KRR_CALLABLE MediumProperties Medium::samplePoint(Vector3f p) const {
+	auto sample = [&](auto ptr) -> MediumProperties { return ptr->samplePoint(p); };
+	return dispatch(sample);
+}
+
+KRR_CALLABLE RayMajorant Medium::sampleRay(const Ray &ray, float tMax) const {
+	auto sample = [&](auto ptr) -> RayMajorant { return ptr->sampleRay(ray, tMax); };
+	return dispatch(sample);
+}
+
 
 KRR_NAMESPACE_END

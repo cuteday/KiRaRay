@@ -53,28 +53,5 @@ KRR_HOST_DEVICE float PhaseFunction::p(const Vector3f &wo, const Vector3f &wi) c
 	return dispatch(p);
 }
 
-KRR_HOST_DEVICE bool Medium::isEmissive() const {
-	auto emissive = [&](auto ptr) -> bool { return ptr->isEmissive(); };
-	return dispatch(emissive);
-}
-
-KRR_HOST_DEVICE MediumProperties Medium::samplePoint(Vector3f p) const {
-	auto sample = [&](auto ptr) -> MediumProperties { return ptr->samplePoint(p); };
-	return dispatch(sample);
-}
-
-KRR_HOST_DEVICE RayMajorant Medium::sampleRay(const Ray &ray, float tMax) {
-	auto sample = [&](auto ptr) -> RayMajorant { return ptr->sampleRay(ray, tMax); };
-	return dispatch(sample);
-}
-
-KRR_HOST_DEVICE RayMajorant NanoVDBMedium::sampleRay(const Ray &ray, float raytMax) {
-	// [TODO] currently we use a coarse majorant for the whole volume
-	// but it seems that nanovdb has a built-in hierachical DDA on gpu?
-	float tMin, tMax;
-	Ray r = inverseTransform * ray;
-	if (!bounds.intersect(r.origin, r.dir, raytMax, &tMin, &tMax)) return {};
-	return {sigma_maj};
-}
 
 KRR_NAMESPACE_END
