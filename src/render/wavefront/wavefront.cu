@@ -51,6 +51,11 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 		launchParams.mediumSampleQueue->push(r, intr, optixGetRayTmax());
 		return;
 	}
+	if (intr.material == nullptr) {
+		launchParams.nextRayQueue->push(intr.spawnRayTowards(r.ray.dir), r.ctx, r.thp, r.pu, r.pl,
+										r.depth, r.pixelId, r.bsdfType);
+		return;
+	}
 	if (intr.light) 	// push to hit ray queue if mesh has light
 		launchParams.hitLightRayQueue->push(r, intr);
 	if (any(r.thp)) 	// process material and push to material evaluation queue

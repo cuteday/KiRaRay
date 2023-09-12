@@ -52,6 +52,7 @@ struct SurfaceInteraction {
 	Vector2f uv;
 	float time;
 	const MediumInterface* mediumInterface;
+	const MaterialData* material;
 	Medium medium;
 	Vector3f tangent;
 	Vector3f bitangent;
@@ -63,7 +64,7 @@ struct RayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
 	Color thp;
-	float pu, pl;
+	Color pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;

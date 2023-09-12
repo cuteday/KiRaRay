@@ -56,6 +56,7 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 
 KRR_DEVICE_FUNCTION bool alphaKilled() {
 	HitInfo hitInfo			   = getHitInfo();
+	if (hitInfo.instance->mesh->material == nullptr) return false;
 	const rt::MaterialData &material = hitInfo.getMaterial();
 	const rt::TextureData &opaticyTexture =
 		material.mTextures[(uint) Material::TextureType::Transmission];
@@ -87,7 +88,6 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 
 	const rt::InstanceData &instance = hitInfo.getInstance();
 	const rt::MeshData &mesh		 = hitInfo.getMesh();
-	const rt::MaterialData &material = instance.getMaterial();
 	Vector3f b						 = hitInfo.barycentric;
 	Vector3i v						 = mesh.indices[hitInfo.primitiveId];
 	
@@ -123,6 +123,10 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 		intr.light = &instance.lights[hitInfo.primitiveId];
 	else intr.light = nullptr;
 
+	intr.material = hitInfo.instance->mesh->material;
+	if (intr.material == nullptr) return;
+
+	const rt::MaterialData &material			   = instance.getMaterial();
 	const Material::MaterialParams &materialParams = material.mMaterialParams;
 
 	intr.sd.IoR					 = materialParams.IoR;
@@ -143,7 +147,7 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	if (normalTexture.isValid() && mesh.texcoords.size()) { // be cautious if we have TBN info
 		Vector3f normal = sampleTexture(normalTexture, intr.uv, Color3f{ 0, 0, 1 });
 		normal			= rgbToNormal(normal);
-
+		
 		intr.n =
 			normalize(intr.tangent * normal[0] + intr.bitangent * normal[1] + intr.n * normal[2]);
 		intr.tangent = normalize(intr.tangent - intr.n * dot(intr.tangent, intr.n));

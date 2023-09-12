@@ -119,7 +119,7 @@ public:
 	}
 
 	KRR_CALLABLE int push(const Ray& ray, const LightSampleContext& ctx, Color thp, 
-						  float pu, float pl, uint depth, uint pixelId, BSDFType bsdfType) {
+						  Color pu, Color pl, uint depth, uint pixelId, BSDFType bsdfType) {
 		int index = allocateEntry();
 		this->ray[index]	  = ray;
 		this->depth[index]	  = depth;

@@ -184,7 +184,8 @@ void RTScene::uploadSceneMeshData() {
 		mMeshes[idx].texcoords.alloc_and_copy_from_host(mesh->texcoords);
 		mMeshes[idx].tangents.alloc_and_copy_from_host(mesh->tangents);
 		mMeshes[idx].indices.alloc_and_copy_from_host(mesh->indices);
-		mMeshes[idx].material = &mMaterialsBuffer[mesh->getMaterial()->getMaterialId()];
+		mMeshes[idx].material =
+			mesh->getMaterial() ? &mMaterialsBuffer[mesh->getMaterial()->getMaterialId()] : nullptr;
 		if (mesh->inside) 
 			mMeshes[idx].mediumInterface.inside = mMedium[mesh->inside->getMediumId()];
 		if (mesh->outside)
@@ -241,7 +242,7 @@ void RTScene::uploadSceneLightData() {
 		const auto &material		   = mesh->getMaterial();
 		rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
 		rt::MeshData &meshData		   = mMeshes[mesh->getMeshId()];
-		if (material->hasEmission() || mesh->Le.any()) {
+		if ((material && material->hasEmission()) || mesh->Le.any()) {
 			rt::TextureData &textureData = materialData.getTexture(Material::TextureType::Emissive);
 			rt::InstanceData &instanceData = mInstances[instance->getInstanceId()];
 			Color3f Le = material->hasEmission()

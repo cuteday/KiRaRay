@@ -92,6 +92,7 @@ public:
 	Vector3f bitangent{0};
 
 	Light light{nullptr};
+	const MaterialData *material{nullptr};
 	BSDFData sd;
 };
 

@@ -95,10 +95,20 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			if (scattered || thp.isZero() || w.depth == maxDepth) return;
 
 			// [Grand Survival] There are three cases needed to handle...
-			// [I an free...] The ray escaped from our sight...
+			// [I am free...] The ray escaped from our sight...
 			if (w.tMax == M_FLOAT_INF) {
 				/* [CHECK] Is it correct to use w.bsdfType here? */
 				missRayQueue->push(ray, w.ctx, thp, pu, pl, w.bsdfType, w.depth, w.pixelId);
+				return;
+			}
+
+			// [You can not see me] The surface do not pocess a material (usually an interface?)
+			if (!w.intr.material) {	
+				/* Just let it go */
+				// [CHECK] The pupl (1, 1) may be incorrect here...
+				Ray newRay = w.intr.spawnRayTowards(ray.dir);
+				nextRayQueue(w.depth)->push(newRay, w.ctx, thp, pu, pl, w.depth, w.pixelId,
+											w.bsdfType);
 				return;
 			}
 
@@ -112,7 +122,6 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 
 			// [Tomorrow is another day] Next surface scattering event...!
 			scatterRayQueue->push(w.intr, thp, w.depth, w.pixelId);
-
 	}, gpContext->cudaStream);
 }
 

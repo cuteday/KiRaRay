@@ -22,7 +22,7 @@ struct RayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
 	Color thp;
-	float pu, pl;
+	Color pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
