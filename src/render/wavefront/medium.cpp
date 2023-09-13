@@ -47,8 +47,8 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 						if (pe.any()) L += thp * mp.sigma_a * T_maj * mp.Le / (pr * pe.mean());
 					}
 					/* [STEP.2] Sample a type of the three scattering events */
-					float pAbsorb	= mp.sigma_a[channel] * sigma_maj[channel];
-					float pScatter	= mp.sigma_s[channel] * sigma_maj[channel];
+					float pAbsorb	= mp.sigma_a[channel] / sigma_maj[channel];
+					float pScatter	= mp.sigma_s[channel] / sigma_maj[channel];
 					float pNull		= max(0.f, 1.f - pAbsorb - pScatter);
 					int mode = sampleDiscrete({pAbsorb, pScatter, pNull}, sampler.get1D());
 					if (mode == 0) {		// Absorbed (goodbye)
@@ -69,7 +69,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 						thp *= T_maj * sigma_n / pr;
 						if (pr == 0) thp = 0;
 						pu *= T_maj * sigma_n / pr;
-						pl *= T_maj * sigma_n / pr;
+						pl *= T_maj * sigma_maj / pr;
 					}
 					T_maj = Color::Ones();
 					tMin  = t;
@@ -105,7 +105,6 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			// [You can not see me] The surface do not pocess a material (usually an interface?)
 			if (!w.intr.material) {	
 				/* Just let it go */
-				// [CHECK] The pupl (1, 1) may be incorrect here...
 				Ray newRay = w.intr.spawnRayTowards(ray.dir);
 				nextRayQueue(w.depth)->push(newRay, w.ctx, thp, pu, pl, w.depth, w.pixelId,
 											w.bsdfType);
@@ -159,8 +158,8 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get1D());
 			Color thp			   = w.thp * ps.p / ps.pdf;
 			// Russian roulette
-			float rrProb = min(thp.mean(), 1.f);
-			if (sampler.get1D() > rrProb) return;
+			float rrProb = min(thp.maxCoeff(), 1.f);
+			if (w.depth >= 1 && sampler.get1D() > rrProb) return;
 			thp /= rrProb;
 
 			Ray ray{w.p, ps.wi, w.time, w.medium};

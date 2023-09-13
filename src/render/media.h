@@ -101,7 +101,7 @@ public:
 };
 
 /* Put these definitions here since the optix kernel will need them... */
-
+/* Definitions of inline functions should be put into header files. */
 KRR_CALLABLE bool Medium::isEmissive() const {
 	auto emissive = [&](auto ptr) -> bool { return ptr->isEmissive(); };
 	return dispatch(emissive);
