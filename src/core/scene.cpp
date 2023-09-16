@@ -302,14 +302,21 @@ void RTScene::uploadSceneMediumData() {
 		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) {
 			HomogeneousMedium gMedium(m->sigma_a, m->sigma_s, m->Le, m->g);
 			mHomogeneousMedium.push_back(gMedium);
+		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
+
 		}
 	}
 	mHomogeneousMediumBuffer.alloc_and_copy_from_host(mHomogeneousMedium);
+	mNanoVDBMediumBuffer.alloc_and_copy_from_host(mNanoVDBMedium);
 
 	size_t homogeneousId = 0;
+	size_t nanoVDBId	 = 0;
 	for (auto medium : mScene.lock()->getMedia()) {
 		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) 
 			mMedium.push_back(Medium(&mHomogeneousMediumBuffer[homogeneousId++]));
+		else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium))
+			mMedium.push_back(Medium(&mNanoVDBMediumBuffer[nanoVDBId++]));
+		else Log(Error, "Unknown medium type not uploaded to device memory.");
 	}
 	mMediumBuffer.alloc_and_copy_from_host(mMedium);
 }

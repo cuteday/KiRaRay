@@ -36,7 +36,7 @@ class HomogeneousMedium {
 public:
 	HomogeneousMedium() = default;
 
-	KRR_CALLABLE HomogeneousMedium(Color sigma_a, Color sigma_s, Color L_e, float g) :
+	HomogeneousMedium(Color sigma_a, Color sigma_s, Color L_e, float g) :
 		sigma_a(sigma_a), sigma_s(sigma_s), L_e(L_e), phase(g) {}
 
 	KRR_CALLABLE bool isEmissive() const { return !L_e.isZero(); }
@@ -82,7 +82,7 @@ public:
 		return {sigma_a * d, sigma_s * d, &phase, Le(p)};
 	}
 
-	KRR_HOST_DEVICE RayMajorant sampleRay(const Ray &ray, float raytMax) const {
+	KRR_CALLABLE RayMajorant sampleRay(const Ray &ray, float raytMax) const {
 		// [TODO] currently we use a coarse majorant for the whole volume
 		// but it seems that nanovdb has a built-in hierachical DDA on gpu?
 		float tMin, tMax;
