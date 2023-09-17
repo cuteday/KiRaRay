@@ -36,6 +36,7 @@ SET ( KRR_CORE_SOURCE
 	core/texture.cpp
 	core/device/context.cpp
 	core/device/optix.cpp
+	core/device/scene.cpp
 )
 
 SET (KRR_RENDER_PASSES

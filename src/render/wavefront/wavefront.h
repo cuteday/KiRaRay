@@ -1,8 +1,9 @@
 #pragma once
+#include <optix.h>
+#include <optix_stubs.h>
 
 #include "sampler.h"
-#include "scene.h"
-#include "device/optix.h"
+#include "device/scene.h"
 #include "render/lightsampler.h"
 #include "render/bsdf.h"
 #include "render/media.h"

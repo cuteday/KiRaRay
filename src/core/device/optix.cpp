@@ -9,6 +9,14 @@
 
 KRR_NAMESPACE_BEGIN
 
+rt::SceneData OptixScene::getSceneData() const { return scene.lock()->getSceneRT()->getSceneData(); }
+
+rt::SceneData OptixBackend::getSceneData() const { return scene->getSceneRT()->getSceneData(); }
+
+OptixTraversableHandle OptixBackend::getRootTraversable() const {
+	return scene->getSceneRT()->getOptixScene()->getRootTraversable();
+}
+
 OptixPipelineCompileOptions OptixBackend::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
 	// [TODO] check this: currently we want single-level instancing only.

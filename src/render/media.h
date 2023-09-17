@@ -32,6 +32,16 @@ public:
 	Color sigma_maj;
 };
 
+class NanoVDBGrid {
+public:
+
+private:
+	AABB3f bounds;
+	nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle;
+	nanovdb::FloatGrid *densityGrid{nullptr};
+	float maxDensity{0};
+};
+
 class HomogeneousMedium {
 public:
 	HomogeneousMedium() = default;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "scene.h"
+#include "device/scene.h"
 #include "device/optix.h"
 
 KRR_NAMESPACE_BEGIN

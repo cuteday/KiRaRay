@@ -2,7 +2,7 @@
 #include <device/cuda.h>
 
 #include "sampler.h"
-#include "scene.h"
+#include "device/scene.h"
 #include "render/lightsampler.h"
 #include "render/bsdf.h"
 

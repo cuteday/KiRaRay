@@ -30,7 +30,7 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 class OptixScene {
 public:
 	using SharedPtr = std::shared_ptr<OptixScene>;
-	OptixScene(Scene::SharedPtr _scene);
+	OptixScene(std::shared_ptr<Scene> _scene);
 
 	static OptixTraversableHandle buildASFromInputs(OptixDeviceContext optixContext, 
 		CUstream cudaStream, const std::vector<OptixBuildInput> &buildInputs, 
@@ -40,9 +40,9 @@ public:
 													   const rt::MeshData &mesh,
 													   CUDABuffer &accelBuffer);
 
-	Scene::SharedPtr getScene() const { return scene.lock(); }
+	std::shared_ptr<Scene> getScene() const;
 	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
-	rt::SceneData getSceneData() const { return scene.lock()->getSceneRT()->getSceneData(); }
+	rt::SceneData getSceneData() const;
 	
 	void update();
 
@@ -89,7 +89,7 @@ public:
 	~OptixBackend() = default;
 
 	void initialize(const OptixInitializeParameters& params);
-	void setScene(Scene::SharedPtr _scene);
+	void setScene(std::shared_ptr<Scene> _scene);
 	template <typename T>
 	void launch(const T& parameters, string entryPoint, int width,
 		int height, int depth = 1) {
@@ -103,13 +103,11 @@ public:
 			sizeof(T), &SBT[entryPoints[entryPoint]], width, height, depth));
 	}
 
-	Scene::SharedPtr getScene() const { return scene; }
-	rt::SceneData getSceneData() const { return scene->getSceneRT()->getSceneData(); }
+	std::shared_ptr<Scene> getScene() const { return scene; }
+	rt::SceneData getSceneData() const;
 	std::vector<string> getRayTypes() const { return optixParameters.rayTypes; }
 	std::vector<string> getRaygenEntries() const { return optixParameters.raygenEntries; }
-	OptixTraversableHandle getRootTraversable() const {
-		return scene->getSceneRT()->getOptixScene()->getRootTraversable();
-	}
+	OptixTraversableHandle getRootTraversable() const;
 
 protected:
 	void buildShaderBindingTable();
@@ -134,7 +132,7 @@ protected:
 	std::map<string, int> entryPoints;
 	std::vector<OptixShaderBindingTable> SBT;
 	
-	Scene::SharedPtr scene;
+	std::shared_ptr<Scene> scene;
 	OptixInitializeParameters optixParameters;
 
 public:
