@@ -3,7 +3,7 @@
 
 #include "util/math_utils.h"
 #include "raytracing.h"
-#include "scene.h"
+#include "device/scene.h"
 
 #define KRR_RT_RG(name) __raygen__##name
 #define KRR_RT_MS(name) __miss__##name

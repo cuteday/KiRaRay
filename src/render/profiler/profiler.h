@@ -7,7 +7,6 @@
 
 #include "common.h"
 #include "device/timer.h"
-#include "device/timer.h"
 
 KRR_NAMESPACE_BEGIN
 

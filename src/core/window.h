@@ -9,9 +9,6 @@
 
 #include "imgui.h"
 #include "input.h"
-#include "device/buffer.h"
-
-#include <cuda_runtime.h>
 
 #include <nvrhi/vulkan.h>
 #include "vulkan/binding.h"

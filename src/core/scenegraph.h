@@ -1,4 +1,5 @@
 #pragma once
+
 #include "common.h"
 #include "logger.h"
 #include "mesh.h"
@@ -151,15 +152,28 @@ public:
 	Color sigma_s;
 	Color Le;
 	float g;
+
+private:
+	friend class SceneGraph;
 };
 
 class VDBVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<VDBVolume>;
 
-	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
-protected:
+	VDBVolume(Color sigma_a, Color sigma_s, float g, fs::path density) :
+		sigma_a(sigma_a), sigma_s(sigma_s), g(g), densityFile(density) {}
 
+	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+	virtual void renderUI() override;
+
+	Color sigma_a;
+	Color sigma_s;
+	float g;
+	fs::path densityFile;
+
+protected:
+	friend class SceneGraph;
 };
 
 class SceneGraphNode final : public std::enable_shared_from_this<SceneGraphNode> {
