@@ -60,6 +60,7 @@ SET (KRR_SOURCE
 	render/media.cpp
 	scene/assimp.cpp
 	scene/pbrt.cpp
+	scene/volume.cpp
 	main/renderer.cpp
 	util/tables.cpp
 	util/image.cpp
@@ -135,7 +136,9 @@ ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 ###############################################################################
 # linking and executables
 ###############################################################################
-SET(KRR_LIBS_ALL
+# Link openvdb in a standalone library to avoid cuda-openvdb type intersect and dll-wholearchive contracdict
+
+SET(KRR_SECONDARY_LIBS_ALL
 	cuda 
 	cublas
 	krr_ext
@@ -159,25 +162,38 @@ ADD_LIBRARY ( krr_lib STATIC
 	${BDPT_PTX}
 )
 
+SET(KRR_LIBRARIES krr_lib )
 ADD_DEPENDENCIES (krr_lib krr_soa_generated)
 SET_PROPERTY(TARGET krr_lib PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 SET_PROPERTY(TARGET krr_lib PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 TARGET_COMPILE_DEFINITIONS (krr_lib PUBLIC ${KRR_DEFINITIONS})
 TARGET_INCLUDE_DIRECTORIES (krr_lib SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE})
-TARGET_LINK_LIBRARIES(krr_lib PUBLIC ${KRR_LIBS_ALL})
+TARGET_LINK_LIBRARIES(krr_lib PUBLIC ${KRR_SECONDARY_LIBS_ALL})
+TARGET_LINK_OPTIONS(krr_lib PUBLIC "LINKER:/NODEFAULTLIB:LIBCMT")
 
+macro(copy_post_build target dll)
+ add_custom_command(TARGET ${target} POST_BUILD  
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different  
+    ${dll}
+    $<TARGET_FILE_DIR:${target}>)                 
+endmacro()
+
+copy_post_build(krr_lib
+      "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvdb/openvdb/bin/$<IF:$<CONFIG:Debug>,openvdb_d,openvdb>.dll")
+copy_post_build(krr_lib
+      "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvdb/tbb/lib/$<IF:$<CONFIG:Debug>,debug/tbb_debug.dll,tbb.dll>")
+copy_post_build(krr_lib "$<TARGET_FILE:IlmBase::Half>")
 ADD_SUBDIRECTORY (misc)
 
 IF (KRR_ENABLE_PYTHON)
 	ADD_LIBRARY(pykrr SHARED core/python/py.cpp)
 	TARGET_INCLUDE_DIRECTORIES(pykrr SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${pybind11_INCLUDE_DIR} ${PYTHON_INCLUDE_DIRS})
-	TARGET_LINK_LIBRARIES(pykrr PUBLIC krr_lib ${PYTHON_LIBRARIES} pybind11::module -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
+	TARGET_LINK_LIBRARIES(pykrr PUBLIC ${KRR_LIBRARIES} ${PYTHON_LIBRARIES} pybind11::module -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
 	pybind11_extension(pykrr)
 ENDIF()
 
 ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
-
-#TARGET_LINK_OPTIONS (kiraray PUBLIC "/IGNORE:4006")
 # -WHOLEARCHIVE assures that static variables are instantiated before main(), by linking all object files
-TARGET_LINK_LIBRARIES (kiraray PUBLIC krr_lib -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
+TARGET_LINK_LIBRARIES (kiraray PUBLIC ${KRR_LIBRARIES} -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
 SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE)
+SET (KRR_LIBRARIES ${KRR_LIBRARIES} PARENT_SCOPE)

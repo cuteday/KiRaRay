@@ -20,4 +20,4 @@
 	url = https://github.com/cuteday/nvrhi.git
 [submodule "src/ext/openvdb"]
 	path = src/ext/openvdb
-	url = https://github.com/AcademySoftwareFoundation/openvdb.git
+	url = https://github.com/cuteday/openvdb_win.git

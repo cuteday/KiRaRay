@@ -2,6 +2,7 @@
 #include "device/optix.h"
 #include "render/profiler/profiler.h"
 #include "../scene.h"
+#include "scene/volume.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -151,7 +152,9 @@ void RTScene::uploadSceneMediumData() {
 			HomogeneousMedium gMedium(m->sigma_a, m->sigma_s, m->Le, m->g);
 			mHomogeneousMedium.push_back(gMedium);
 		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
-
+			auto densityGridHandle = loadNanoVDB(m->densityFile);
+			mNanoVDBMedium.emplace_back(m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s,
+										0, m->g, std::move(densityGridHandle));
 		}
 	}
 	mHomogeneousMediumBuffer.alloc_and_copy_from_host(mHomogeneousMedium);

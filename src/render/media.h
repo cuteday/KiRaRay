@@ -70,8 +70,8 @@ public:
 	using VDBSampler = nanovdb::SampleFromVoxels<nanovdb::FloatGrid::TreeType, 1, false>;
 
 	NanoVDBMedium(const Affine3f& transform, Color sigma_a, Color sigma_s, Color sigma_maj,
-		Color Le, float g, nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle) :
-		transform(transform), phase(g), L_e(Le), densityHandle(std::move(densityHandle)), 
+		 float g, nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle) :
+		transform(transform), phase(g), densityHandle(std::move(densityHandle)), 
 		sigma_a(sigma_a), sigma_s(sigma_s), sigma_maj(sigma_maj) {
 
 		inverseTransform				   = transform.inverse();
@@ -81,9 +81,9 @@ public:
 			Vector3f{bbox.max()[0], bbox.max()[1], bbox.max()[2]}};
 	}
 
-	KRR_CALLABLE bool isEmissive() const { return !L_e.isZero(); }
+	KRR_CALLABLE bool isEmissive() const { return false; }
 
-	KRR_CALLABLE Color Le(Vector3f p) const { return L_e; }
+	KRR_CALLABLE Color Le(Vector3f p) const { return 0; }
 
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p) const { 
 		p = inverseTransform * p;
@@ -107,7 +107,6 @@ public:
 	nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle;
 	nanovdb::FloatGrid *densityGrid;
 	Color sigma_a, sigma_s, sigma_maj;
-	Color L_e;
 };
 
 /* Put these definitions here since the optix kernel will need them... */

@@ -48,7 +48,7 @@ SceneGraphLeaf::SharedPtr HomogeneousVolume::clone() {
 }
 
 SceneGraphLeaf::SharedPtr VDBVolume::clone() {
-	return std::make_shared<VDBVolume>();
+	return std::make_shared<VDBVolume>(sigma_a, sigma_s, g, densityFile);
 }
 
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
@@ -465,7 +465,7 @@ void SceneGraph::update(size_t frameIndex) {
 					parent->mUpdateFlags |=
 						current->getUpdateFlags() & SceneGraphNode::UpdateFlags::SubgraphUpdates;
 				}
-
+				
 				context = stack.back();
 				stack.pop_back();
 			}
@@ -609,6 +609,13 @@ void HomogeneousVolume::renderUI() {
 	ui::Text(("Sigma_s: " + sigma_s.string()).c_str());
 	ui::Text("g: %f", g);
 	if (isEmissive()) ui::Text("Le: %s", Le.string().c_str());
+}
+
+void VDBVolume::renderUI() {
+	ui::Text("VDB volume"); 
+	ui::Text(("Sigma_a: " + sigma_a.string()).c_str());
+	ui::Text(("Sigma_s: " + sigma_s.string()).c_str());
+	ui::Text("g: %f", g);
 }
 
 void SceneGraphNode::renderUI() { 
