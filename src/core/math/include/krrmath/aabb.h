@@ -42,20 +42,19 @@ public:
 		return p.cwiseMin(this->m_max).cwiseMax(this->m_min);
 	}
 
-	KRR_CALLABLE bool intersect(Vector3f o, Vector3f d, 
-		float tMax = std::numeric_limits<float>::max(), 
-		float* tHit0 = nullptr, float* tHit1 = nullptr) const {
-		float t0 = 0, t1 = tMax;
-		for (int i = 0; i < 3; ++i) {
+	KRR_CALLABLE bool intersect(Vector<T, Size> o, Vector<T, Size> d, 
+		T tMax = std::numeric_limits<T>::max(), 
+		T *tHit0 = nullptr, T *tHit1 = nullptr) const {
+		T t0 = 0, t1 = tMax;
+		for (int i = 0; i < Size; ++i) {
 			// Update interval for _i_th bounding box slab
-			float invRayDir = 1 / d[i];
-			float tNear		= (min()[i] - o[i]) * invRayDir;
-			float tFar		= (max()[i] - o[i]) * invRayDir;
+			T invRayDir = 1 / d[i];
+			T tNear		= (min()[i] - o[i]) * invRayDir;
+			T tFar		= (max()[i] - o[i]) * invRayDir;
 			// Update parametric interval from slab intersection $t$ values
 			if (tNear > tFar) std::swap(tNear, tFar);
 			// Update _tFar_ to ensure robust ray--bounds intersection
 			tFar *= 1 + 2 * gamma(3);
-
 			t0 = tNear > t0 ? tNear : t0;
 			t1 = tFar < t1 ? tFar : t1;
 			if (t0 > t1) return false;
@@ -65,7 +64,7 @@ public:
 		return true;
 	}
 };
-	
+
 using AABB3f = AxisAligned<float, 3>;
 
 KRR_NAMESPACE_END

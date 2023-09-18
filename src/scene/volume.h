@@ -6,4 +6,4 @@
 #include <nanovdb/util/GridHandle.h>
 #include <nanovdb/util/CudaDeviceBuffer.h>
 
-nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> loadNanoVDB(std::filesystem::path path);
+nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> loadNanoVDB(std::filesystem::path path, float* maxDensity = nullptr);

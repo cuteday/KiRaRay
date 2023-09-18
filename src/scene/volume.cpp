@@ -13,7 +13,7 @@
 #pragma comment(lib, "tbb.lib")
 #endif
 
-nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> loadNanoVDB(std::filesystem::path path) {
+nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> loadNanoVDB(std::filesystem::path path, float* maxDensity) {
 	std::ifstream is(path, std::ios_base::binary);
 	if (!is.good()) throw std::runtime_error("failed to open file");
 	
@@ -24,5 +24,9 @@ nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> loadNanoVDB(std::filesystem::path
 	
 	if (metadata->gridType() != nanovdb::GridType::Float) 
 		throw std::runtime_error("only support float grid");
+
+	float minValue, maxValue;
+	grid->evalMinMax(minValue, maxValue);
+	if (maxDensity != nullptr) *maxDensity = maxValue;
 	return handle;
 }

@@ -34,6 +34,25 @@ public:
 
 class NanoVDBGrid {
 public:
+	using VDBSampler = nanovdb::SampleFromVoxels<nanovdb::FloatGrid::TreeType, 1, false>;
+
+	NanoVDBGrid(nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle,
+		float maxDensity) : densityHandle(std::move(densityHandle)), maxDensity(maxDensity) {
+		densityGrid						   = densityHandle.grid<float>();
+		nanovdb::BBox<nanovdb::Vec3R> bbox = densityGrid->worldBBox();
+		bounds = AABB3f{Vector3f{bbox.min()[0], bbox.min()[1], bbox.min()[2]},
+						Vector3f{bbox.max()[0], bbox.max()[1], bbox.max()[2]}};
+	}
+
+	AABB3f getBounds() const { return bounds; }
+
+	float getDensity(const Vector3f& p) const {
+		nanovdb::Vec3<float> pIndex =
+			densityGrid->worldToIndexF(nanovdb::Vec3<float>(p.x(), p.y(), p.z()));
+		return VDBSampler(densityGrid->tree())(pIndex);
+	}
+
+	float getMaxDensity() const { return maxDensity; }
 
 private:
 	AABB3f bounds;
@@ -69,16 +88,9 @@ class NanoVDBMedium {
 public:
 	using VDBSampler = nanovdb::SampleFromVoxels<nanovdb::FloatGrid::TreeType, 1, false>;
 
-	NanoVDBMedium(const Affine3f& transform, Color sigma_a, Color sigma_s, Color sigma_maj,
-		 float g, nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle) :
-		transform(transform), phase(g), densityHandle(std::move(densityHandle)), 
-		sigma_a(sigma_a), sigma_s(sigma_s), sigma_maj(sigma_maj) {
-
+	NanoVDBMedium(const Affine3f& transform, Color sigma_a, Color sigma_s, float g, NanoVDBGrid density) :
+		transform(transform), phase(g), sigma_a(sigma_a), sigma_s(sigma_s), densityGrid(std::move(density)) {
 		inverseTransform				   = transform.inverse();
-		densityGrid						   = densityHandle.grid<float>();
-		nanovdb::BBox<nanovdb::Vec3R> bbox = densityGrid->worldBBox();
-		bounds = AABB3f{Vector3f{bbox.min()[0], bbox.min()[1], bbox.min()[2]}, 
-			Vector3f{bbox.max()[0], bbox.max()[1], bbox.max()[2]}};
 	}
 
 	KRR_CALLABLE bool isEmissive() const { return false; }
@@ -87,8 +99,7 @@ public:
 
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p) const { 
 		p = inverseTransform * p;
-		nanovdb::Vec3<float> pIndex = densityGrid->worldToIndexF(nanovdb::Vec3<float>(p.x(), p.y(), p.z()));
-		float d = VDBSampler(densityGrid->tree())(pIndex);
+		float d = densityGrid.getDensity(p);
 		return {sigma_a * d, sigma_s * d, &phase, Le(p)};
 	}
 
@@ -97,16 +108,14 @@ public:
 		// but it seems that nanovdb has a built-in hierachical DDA on gpu?
 		float tMin, tMax;
 		Ray r = inverseTransform * ray;
-		if (!bounds.intersect(r.origin, r.dir, raytMax, &tMin, &tMax)) return {};
-		return {sigma_maj};
+		if (!densityGrid.getBounds().intersect(r.origin, r.dir, raytMax, &tMin, &tMax)) return {};
+		return {densityGrid.getMaxDensity() * (sigma_a + sigma_s), tMin, tMax};
 	}
 
-	AABB3f bounds;
+	NanoVDBGrid densityGrid;
 	Affine3f transform, inverseTransform;
 	HGPhaseFunction phase;
-	nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle;
-	nanovdb::FloatGrid *densityGrid;
-	Color sigma_a, sigma_s, sigma_maj;
+	Color sigma_a, sigma_s;
 };
 
 /* Put these definitions here since the optix kernel will need them... */
