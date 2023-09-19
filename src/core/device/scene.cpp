@@ -2,7 +2,7 @@
 #include "device/optix.h"
 #include "render/profiler/profiler.h"
 #include "../scene.h"
-#include "scene/volume.h"
+#include "util/volume.h"
 
 KRR_NAMESPACE_BEGIN
 

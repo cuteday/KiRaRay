@@ -13,18 +13,22 @@
 #pragma comment(lib, "tbb.lib")
 #endif
 
+#include "logger.h"
+
+using namespace krr;
+
 nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> loadNanoVDB(std::filesystem::path path, float* maxDensity) {
 	std::ifstream is(path, std::ios_base::binary);
-	if (!is.good()) throw std::runtime_error("failed to open file");
+	if (!is.good()) Log(Fatal, "failed to open file");
 	
 	auto grids = openvdb::io::Stream(is).getGrids();
+	openvdb::MetaMap::Ptr metaData = openvdb::io::Stream(is).getMetadata();
 	auto grid  = openvdb::GridBase::grid<openvdb::FloatGrid>(grids->at(0));
 	auto handle							  = nanovdb::openToNanoVDB<nanovdb::CudaDeviceBuffer>(grid);
 	const nanovdb::GridMetaData *metadata = handle.gridMetaData();
+	Log(Info, "Find a vdb grid: %s", metadata->gridName());
+	if (metadata->gridType() != nanovdb::GridType::Float) Log(Fatal, "only support float grid!");
 	
-	if (metadata->gridType() != nanovdb::GridType::Float) 
-		throw std::runtime_error("only support float grid");
-
 	float minValue, maxValue;
 	grid->evalMinMax(minValue, maxValue);
 	if (maxDensity != nullptr) *maxDensity = maxValue;

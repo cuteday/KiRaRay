@@ -60,9 +60,10 @@ SET (KRR_SOURCE
 	render/media.cpp
 	scene/assimp.cpp
 	scene/pbrt.cpp
-	scene/volume.cpp
+	scene/openvdb.cpp
 	main/renderer.cpp
 	util/tables.cpp
+	util/volume.cpp
 	util/image.cpp
 )
 

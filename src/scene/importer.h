@@ -62,7 +62,7 @@ public:
 	bool import(const fs::path filepath, Scene::SharedPtr scene);
 
 private:
-	PbrtImporter(const PbrtImporter &) = delete;
+	PbrtImporter(const PbrtImporter &)	 = delete;
 	void operator=(const PbrtImporter &) = delete;
 
 	Mesh::SharedPtr loadMesh(pbrt::TriangleMesh::SP pbrtMesh);
@@ -76,6 +76,20 @@ private:
 	Scene::SharedPtr mScene;
 };
 
+class OpenVDBImporter {
+public:
+	OpenVDBImporter() = default;
+
+	bool import(const fs::path filepath, Scene::SharedPtr scene);
+
+private:
+	OpenVDBImporter(const OpenVDBImporter &) = delete;
+	void operator=(const OpenVDBImporter &)	 = delete;
+
+	string mFilepath;
+	Scene::SharedPtr mScene;
+};
+
 inline bool loadScene(const fs::path filepath, Scene::SharedPtr pScene) {
 	bool success{};
 	string format = filepath.extension().string();
@@ -83,13 +97,15 @@ inline bool loadScene(const fs::path filepath, Scene::SharedPtr pScene) {
 		success = AssimpImporter().import(filepath, pScene);
 	} else if (format == ".pbrt") {
 		success = PbrtImporter().import(filepath, pScene);
+	} else if (format == ".vdb" || format == ".nvdb") {
+		success = OpenVDBImporter().import(filepath, pScene);
 	} else {
 		Log(Fatal, "Unsupported file format: %s...", format.c_str());
 		return false;
 	}
 	if (!success)
-		Log(Fatal, "Failed to load scene file from %ls...", filepath.c_str());
-	return false;
+		Log(Error, "Failed to load scene file from %ls...", filepath.c_str());
+	return success;
 }
 
 } // namespace importer
