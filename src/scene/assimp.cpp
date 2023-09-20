@@ -290,11 +290,11 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 
 	auto root = std::make_shared<SceneGraphNode>();
 	mScene->getSceneGraph()->setRoot(root);
+	root->setName(filepath.filename().string());
 	loadMaterials(modelFolder);
 	loadMeshes();
-	traverseNode(mAiScene->mRootNode, root);
+	traverseNode(mAiScene->mRootNode, mScene->getSceneGraph()->getRoot());
 	loadAnimations();
-	root->setName(filepath.filename().string());
 	Assimp::DefaultLogger::kill();
 	return true;
 }

@@ -6,6 +6,7 @@
 #include "animation.h"
 #include "texture.h"
 #include "krrmath/math.h"
+#include "util/volume.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -162,7 +163,12 @@ public:
 	using SharedPtr = std::shared_ptr<VDBVolume>;
 
 	VDBVolume(Color sigma_a, Color sigma_s, float g, fs::path density) :
-		sigma_a(sigma_a), sigma_s(sigma_s), g(g), densityFile(density) {}
+		sigma_a(sigma_a), sigma_s(sigma_s), g(g) {
+		densityGrid = loadNanoVDB(density);
+	}
+
+	VDBVolume(Color sigma_a, Color sigma_s, float g, NanoVDBGrid::SharedPtr density) :
+		sigma_a(sigma_a), sigma_s(sigma_s), g(g), densityGrid(density) {}
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual void renderUI() override;
@@ -170,7 +176,7 @@ public:
 	Color sigma_a;
 	Color sigma_s;
 	float g;
-	fs::path densityFile;
+	NanoVDBGrid::SharedPtr densityGrid;
 
 protected:
 	friend class SceneGraph;

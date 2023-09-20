@@ -153,10 +153,9 @@ void RTScene::uploadSceneMediumData() {
 			mHomogeneousMedium.push_back(gMedium);
 		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
 			float maxDensity{0};
-			auto densityGridHandle = loadNanoVDB(m->densityFile, &maxDensity);
-			densityGridHandle.deviceUpload();
-			mNanoVDBMedium.emplace_back(m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s, m->g, 
-				NanoVDBGrid(std::move(densityGridHandle), maxDensity));
+			mNanoVDBMedium.emplace_back(m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s,
+										m->g, std::move(*m->densityGrid));
+			mNanoVDBMedium.back().densityGrid.toDevice();
 		}
 	}
 	mHomogeneousMediumBuffer.alloc_and_copy_from_host(mHomogeneousMedium);
