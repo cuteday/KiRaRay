@@ -89,9 +89,9 @@ void RTScene::uploadSceneLightData() {
 	for (const auto &instance : mScene.lock()->getMeshInstances()) {
 		const auto &mesh			   = instance->getMesh();
 		const auto &material		   = mesh->getMaterial();
-		rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
-		rt::MeshData &meshData		   = mMeshes[mesh->getMeshId()];
 		if ((material && material->hasEmission()) || mesh->Le.any()) {
+			rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
+			rt::MeshData &meshData		   = mMeshes[mesh->getMeshId()];
 			rt::TextureData &textureData = materialData.getTexture(Material::TextureType::Emissive);
 			rt::InstanceData &instanceData = mInstances[instance->getInstanceId()];
 			Color3f Le = material->hasEmission()

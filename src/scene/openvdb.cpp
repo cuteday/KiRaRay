@@ -11,7 +11,7 @@ bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene) {
 	
 	if (!scene->getSceneGraph()->getRoot())
 		scene->getSceneGraph()->setRoot(std::make_shared<SceneGraphNode>());
-	
+
 	auto mesh	  = std::make_shared<Mesh>();
 	auto instance = std::make_shared<MeshInstance>(mesh);
 	auto root	  = scene->getSceneGraph()->getRoot();
@@ -37,6 +37,7 @@ bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene) {
 	mesh->setMedium(volume, nullptr);
 	mesh->computeBoundingBox();
 
+	scene->addMesh(mesh);
 	scene->getSceneGraph()->attachLeaf(root, instance);
 	scene->getSceneGraph()->attachLeaf(root, volume);
 	return true; 

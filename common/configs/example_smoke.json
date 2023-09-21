@@ -1,0 +1,73 @@
+{
+    "environment": "$sky.exr",
+    "model": "common/assets/scenes/smoke/smoke.vdb",
+    "passes": [
+        {
+            "enable": true,
+            "name": "WavefrontPathTracer",
+			"params": {
+				"nee": false,
+                "enable_medium": true,
+				"rr": 0.8,
+				"max_depth": 30
+			}
+        },
+        {
+            "enable": true,
+            "name": "AccumulatePass"
+        },
+        {
+            "enable": false,
+            "name": "DenoisePass"
+        },
+        {
+            "enable": true,
+            "name": "ToneMappingPass",
+			"params": {
+				"exposure": 0.5,
+				"operator": "aces"
+			}
+        }
+    ],
+    "resolution": [
+        950,
+        750
+    ],
+    "scene": {
+        "camera": {
+            "mData": {
+                "aspectRatio": 1.26,
+                "focalDistance": 10.0,
+                "focalLength": 21.0,
+                "lensRadius": 0.0,
+				"pos": [
+                    6.541068077087402,
+                    7.617559432983398,
+                    1.5377273559570313
+                ],
+                "target": [
+                    -0.9100480079650879,
+                    1.5893590450286865,
+                    0.1300247311592102
+                ],
+                "up": [
+                    0.0,
+                    1.0,
+                    0.0
+                ]
+            }
+        },
+        "cameraController": {
+            "mData": {
+                "pitch": -0.6716665029525757,
+                "radius": 9.687102317810059,
+                "target": [
+                    -0.9100480079650879,
+                    1.5893590450286865,
+                    0.1300247311592102
+                ],
+                "yaw": 1.3840720653533936
+            }
+        }
+    }
+}

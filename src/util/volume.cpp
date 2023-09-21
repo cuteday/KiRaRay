@@ -18,13 +18,15 @@
 KRR_NAMESPACE_BEGIN
 
 NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path) {
-	std::ifstream is(path, std::ios_base::binary);
-	if (!is.good()) Log(Fatal, "failed to open file");
+	openvdb::initialize();
 	Log(Info, "Loading openvdb file from %s", path.string().c_str());
-	openvdb::GridPtrVecPtr grids = openvdb::io::Stream(is).getGrids();
-	openvdb::MetaMap::Ptr metaData = openvdb::io::Stream(is).getMetadata();
-	Log(Info, "Loading VDB data with %zd grids...", grids->size());
-	auto grid  = openvdb::GridBase::grid<openvdb::FloatGrid>(grids->at(0));
+	openvdb::io::File file(path.generic_string());
+	if (!file.open())
+		Log(Fatal, "Failed to open vdb file %s", path.string().c_str());
+	if(!file.hasGrid("density"))
+		Log(Fatal, "VDB file do not pocess a density grid");
+	openvdb::GridBase::Ptr baseGrid = file.readGrid("density");
+	auto grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
 	auto transform = grid->transform();
 
 	auto handle							  = nanovdb::openToNanoVDB<nanovdb::CudaDeviceBuffer>(grid);
