@@ -45,6 +45,9 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 			case io::KeyboardEvent::Key::F2:
 				captureFrame();
 				return true;
+			case io::KeyboardEvent::Key::Escape:
+				gpContext->requestExit();
+				return true;
 		}
 	}
 	if (mpUIRenderer->onKeyEvent(keyEvent)) return true;
