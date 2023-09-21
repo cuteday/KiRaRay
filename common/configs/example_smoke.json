@@ -9,7 +9,7 @@
 				"nee": false,
                 "enable_medium": true,
 				"rr": 0.8,
-				"max_depth": 30
+				"max_depth": 15
 			}
         },
         {

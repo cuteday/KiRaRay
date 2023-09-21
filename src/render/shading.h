@@ -125,6 +125,18 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	else intr.light = nullptr;
 
 	intr.material = hitInfo.instance->mesh->material;
+
+	if (mesh.mediumInterface.isTransition()) 
+		intr.mediumInterface = &mesh.mediumInterface;
+
+	// transform local interaction to world space
+	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
+	intr.p		   = hitInfo.instance->getTransform() * intr.p;
+	intr.n		   = hitInfo.instance->getTransposedInverseTransform() * intr.n;
+	intr.tangent   = hitInfo.instance->getTransposedInverseTransform() * intr.tangent;
+	intr.bitangent = hitInfo.instance->getTransposedInverseTransform() * intr.bitangent;
+	
+	/* Safely return here since below are all material-related operations. */
 	if (intr.material == nullptr) return;
 
 	const rt::MaterialData &material			   = instance.getMaterial();
@@ -168,16 +180,6 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 		intr.sd.roughness = 1.f - spec[3];	//
 		intr.sd.metallic  = getMetallic(intr.sd.diffuse, intr.sd.specular);
 	} else assert(false);
-
-	if (mesh.mediumInterface.isTransition()) 
-		intr.mediumInterface = &mesh.mediumInterface;	
-	
-	// transform local interaction to world space 
-	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
-	intr.p		   = hitInfo.instance->getTransform() * intr.p;
-	intr.n		   = hitInfo.instance->getTransposedInverseTransform() * intr.n;
-	intr.tangent   = hitInfo.instance->getTransposedInverseTransform() * intr.tangent;
-	intr.bitangent = hitInfo.instance->getTransposedInverseTransform() * intr.bitangent;
 }
 
 KRR_NAMESPACE_END
