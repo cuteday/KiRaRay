@@ -274,6 +274,7 @@ public:
 		this->wo[index]		 = wo;
 		this->time[index]	 = time;
 		this->medium[index]	 = medium;
+		this->phase[index]	 = phase;
 		this->thp[index]	 = thp;
 		this->depth[index]	 = depth;
 		this->pixelId[index] = pixelId;

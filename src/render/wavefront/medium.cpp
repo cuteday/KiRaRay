@@ -106,7 +106,6 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 	PROFILE("Sample medium scattering");
 	ForAllQueued(mediumScatterQueue, maxQueueSize,
 				 KRR_DEVICE_LAMBDA(const MediumScatterWorkItem &w){
-			return;
 			const Vector3f& wo = w.wo;
 			Sampler sampler	   = &pixelState->sampler[w.pixelId];
 			LightSampleContext ctx{w.p, Vector3f::Zero()};
@@ -132,6 +131,7 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 					shadowRayQueue->push(sw);
 				}
 			}
+			
 			// [PART-B] Sample indirect lighting with scattering function
 			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get1D());
 			Color thp			   = w.thp * ps.p / ps.pdf;

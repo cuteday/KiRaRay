@@ -129,7 +129,7 @@ void WavefrontPathTracer::generateScatterRays() {
 
 				float lightPdf	= sampledLight.pdf * ls.pdf;
 				Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-				float bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+				float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 				float misWeight = evalMIS(lightPdf, bsdfPdf);
 				
 				if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
