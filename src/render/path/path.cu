@@ -160,7 +160,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	SurfaceInteraction intr = {};
 
 	for (int &depth = path.depth; true; depth++) {
-		if(!traceRay(launchParams.traversable, path.ray, KRR_RAY_TMAX, RADIANCE_RAY_TYPE,
+		if(!traceRay(launchParams.traversable, path.ray, M_FLOAT_INF, RADIANCE_RAY_TYPE,
 					  OPTIX_RAY_FLAG_NONE, (void *) &intr)) {
 			handleMiss(intr, path);
 			break;

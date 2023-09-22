@@ -7,7 +7,6 @@
 #include "taggedptr.h"
 #include "medium.h"
 
-#define KRR_RAY_TMAX	(1e20f)
 #define KRR_RAY_EPS		(1e-5f)
 
 KRR_NAMESPACE_BEGIN
@@ -73,8 +72,7 @@ KRR_CALLABLE Vector3f
 offsetRayOrigin(const Vector3f &p, const Vector3f &n, const Vector3f &w) {
 	Vector3f offset = n * KRR_RAY_EPS;
 	if (dot(n, w) < 0.f) offset = -offset;
-	Vector3f po = p + offset;
-	return po;
+	return p + offset;
 }
 
 KRR_CALLABLE Ray operator*(const Affine3f& transform, const Ray& ray) {

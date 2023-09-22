@@ -15,7 +15,7 @@ bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene) {
 	auto mesh	  = std::make_shared<Mesh>();
 	auto instance = std::make_shared<MeshInstance>(mesh);
 	auto root	  = scene->getSceneGraph()->getRoot();
-	auto volume	  = std::make_shared<VDBVolume>(0.1, 0.1, 0, filepath);
+	auto volume	  = std::make_shared<VDBVolume>(10, 10, 0, filepath);
 
 	/* initialize a intersection bounding box for this volume */
 	auto aabb	  = volume->densityGrid->getBounds();

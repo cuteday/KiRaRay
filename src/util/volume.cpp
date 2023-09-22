@@ -23,12 +23,17 @@ NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path) {
 	openvdb::io::File file(path.generic_string());
 	if (!file.open())
 		Log(Fatal, "Failed to open vdb file %s", path.string().c_str());
-	if(!file.hasGrid("density"))
-		Log(Fatal, "VDB file do not pocess a density grid");
-	openvdb::GridBase::Ptr baseGrid = file.readGrid("density");
-	auto grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
-	auto transform = grid->transform();
+	
+	openvdb::GridBase::Ptr baseGrid;
+	if(file.hasGrid("density"))
+		baseGrid = file.readGrid("density");
+	else {
+		baseGrid = file.getGrids()->at(0);
+		Log(Warning, "VDB file do not pocess a density grid, loading the first by default.");
+	}
 
+	auto grid							  = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+	auto transform						  = grid->transform();
 	auto handle							  = nanovdb::openToNanoVDB<nanovdb::CudaDeviceBuffer>(grid);
 	const nanovdb::GridMetaData *metadata = handle.gridMetaData();
 	Log(Info, "Find a vdb grid: %s", metadata->gridName());

@@ -112,8 +112,7 @@ void WavefrontPathTracer::generateScatterRays() {
 			Sampler sampler = &pixelState->sampler[w.pixelId];
 			/*  Russian Roulette: If the path is terminated by this vertex,
 				then NEE should not be evaluated */
-			if (sampler.get1D() >= probRR)
-				return;
+			if (sampler.get1D() >= probRR) return;
 			w.thp /= probRR;
 			const SurfaceInteraction &intr = w.intr;
 			Vector3f woLocal	  = intr.toLocal(intr.wo);

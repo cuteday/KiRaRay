@@ -70,7 +70,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			}
 
 			// Return if scattered or no throughput or max depth reached
-			if (scattered || thp.isZero() || w.depth == maxDepth) return;
+			if (scattered || thp.isZero() || thp.hasNaN() || w.depth == maxDepth) return;
 
 			// [Grand Survival] There are three cases needed to handle...
 			// [I am free...] The ray escaped from our sight...
@@ -82,10 +82,9 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 
 			// [You can not see me] The surface do not pocess a material (usually an interface?)
 			if (!w.intr.material) {	
-				/* Just let it go */
-				Ray newRay = w.intr.spawnRayTowards(ray.dir);
-				nextRayQueue(w.depth)->push(newRay, w.ctx, thp, pu, pl, w.depth, w.pixelId,
-											w.bsdfType);
+				/* Just let it go (use *argument* _depth_ here (not w.depth). ) */
+				nextRayQueue(depth)->push(w.intr.spawnRayTowards(ray.dir), w.ctx, thp, pu, pl,
+										  w.depth, w.pixelId, w.bsdfType);
 				return;
 			}
 
@@ -93,7 +92,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			if (w.intr.light) {
 				// Handle contribution for light hit
 				/* The light is sampled from the last vertex on surface, so use its context! */
-				hitLightRayQueue->push(w.intr, w.ctx, BSDF_SMOOTH, w.depth, w.pixelId, thp,
+				hitLightRayQueue->push(w.intr, w.ctx, w.bsdfType, w.depth, w.pixelId, thp,
 									   pu, pl);
 			}
 

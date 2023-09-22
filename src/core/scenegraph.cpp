@@ -616,6 +616,7 @@ void VDBVolume::renderUI() {
 	ui::Text(("Sigma_a: " + sigma_a.string()).c_str());
 	ui::Text(("Sigma_s: " + sigma_s.string()).c_str());
 	ui::Text("g: %f", g);
+	ui::Text("Max density: %f", densityGrid->getMaxDensity());
 }
 
 void SceneGraphNode::renderUI() { 

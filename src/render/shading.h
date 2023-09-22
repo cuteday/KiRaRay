@@ -100,9 +100,8 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	intr.p = b[0] * p0 + b[1] * p1  + b[2] * p2;
 
 	if (mesh.normals.size())
-		intr.n = normalize(b[0] * mesh.normals[v[0]] +
-							   b[1] * mesh.normals[v[1]] +
-							   b[2] * mesh.normals[v[2]]);
+		intr.n = normalize(b[0] * mesh.normals[v[0]] + b[1] * mesh.normals[v[1]] +
+						   b[2] * mesh.normals[v[2]]);
 	else  // if the model does not contain normal...
 		intr.n = normalize(cross(p1 - p0, p2 - p0));
 
@@ -114,11 +113,9 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	} else intr.tangent = getPerpendicular(intr.n);
 	intr.bitangent = normalize(cross(intr.n, intr.tangent));
 
-	if (mesh.texcoords.size()) {
-		Vector2f uv[3] = {mesh.texcoords[v[0]], mesh.texcoords[v[1]],
-						  mesh.texcoords[v[2]]};
-		intr.uv		   = b[0] * uv[0] + b[1] * uv[1] + b[2] * uv[2];
-	}
+	if (mesh.texcoords.size())
+		intr.uv =
+			b[0] * mesh.texcoords[v[0]] + b[1] * mesh.texcoords[v[1]] + b[2] * mesh.texcoords[v[2]];
 
 	if (instance.lights.size())
 		intr.light = &instance.lights[hitInfo.primitiveId];

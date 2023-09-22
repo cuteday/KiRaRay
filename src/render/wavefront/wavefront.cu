@@ -18,7 +18,7 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 		0.f, tMax, 0.f,						/* ray time val min max */
 		OptixVisibilityMask(255),			/* all visible */
 		flags,
-		rayType, 2,							/* ray type and number of types */
+		rayType, 3,							/* ray type and number of types */
 		rayType,							/* miss SBT index */
 		std::forward<Args>(payload)...);	/* (unpacked pointers to) payloads */
 }
@@ -78,7 +78,7 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 	if (rayIndex >= launchParams.currentRayQueue->size()) return;
 	RayWorkItem r = getRayWorkItem();
 	SurfaceInteraction intr = {};
-	traceRay(launchParams.traversable, r.ray, KRR_RAY_TMAX,
+	traceRay(launchParams.traversable, r.ray, M_FLOAT_INF,
 		0, OPTIX_RAY_FLAG_NONE, (void*)&intr);
 }
 
