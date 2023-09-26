@@ -95,7 +95,7 @@ void WavefrontPathTracer::handleMiss() {
 					L += Ld / (w.pu + w.pl * lightPdf).mean();
 				} else L += light.Li(w.ray.dir) / w.pu.mean();	
 			}
-			debugPrint(w.pixelId, "Miss ray: CH %d, THP = %f %f %f; L = %f %f %f\n", 
+			DEBUG_PRINT(w.pixelId, "Miss ray: CH %d, THP = %f %f %f; L = %f %f %f\n", 
 				(int)pixelState->channel[w.pixelId], w.thp[0], w.thp[1], w.thp[2], L[0], L[1], L[2]);
 			pixelState->addRadiance(w.pixelId, w.thp * L);
 		});

@@ -8,25 +8,6 @@
 
 KRR_NAMESPACE_BEGIN
 
-struct MediumProperties {
-	Color sigma_a, sigma_s;
-	PhaseFunction phase;
-	Color Le;
-};
-
-class RayMajorant {
-public:
-	KRR_CALLABLE RayMajorant() = default;
-
-	KRR_CALLABLE RayMajorant(const Color &sigma_maj, 
-		float tMin = 0, float tMax = M_FLOAT_INF) :
-		sigma_maj(sigma_maj), tMin(tMin), tMax(tMax) {}
-
-	Color sigma_maj;
-	float tMin, tMax;
-};
-
-
 class HomogeneousMedium {
 public:
 	HomogeneousMedium() = default;
@@ -72,10 +53,12 @@ public:
 	KRR_CALLABLE RayMajorant sampleRay(const Ray &ray, float raytMax) const {
 		// [TODO] currently we use a coarse majorant for the whole volume
 		// but it seems that nanovdb has a built-in hierachical DDA on gpu?
-		float tMin, tMax;
-		Ray r = inverseTransform * ray;
-		if (!densityGrid.getBounds().intersect(r.origin, r.dir, raytMax, &tMin, &tMax)) return {};
-		return {densityGrid.getMaxDensity() * (sigma_a + sigma_s), tMin, tMax};
+		//float tMin, tMax;
+		//printf("sigma_a = %f %f %f; sigma_s = %f %f %f; max density: %f\n", sigma_a[0], sigma_a[1],
+		//	   sigma_a[2], sigma_s[0], sigma_s[1], sigma_s[2], densityGrid.getMaxDensity());
+		//AABB3f box = densityGrid.getBounds().transformed(transform);
+		//if (!box.intersect(ray.origin, ray.dir, raytMax, &tMin, &tMax)) return {};
+		return {densityGrid.getMaxDensity() * (sigma_a + sigma_s), 0, raytMax};
 	}
 
 	NanoVDBGrid densityGrid;
@@ -86,17 +69,22 @@ public:
 
 /* Put these definitions here since the optix kernel will need them... */
 /* Definitions of inline functions should be put into header files. */
-KRR_CALLABLE bool Medium::isEmissive() const {
+inline Color Medium::Le(Vector3f p) const {
+	auto Le = [&](auto ptr) -> Color { return ptr->Le(p); };
+	return dispatch(Le);
+}
+
+inline bool Medium::isEmissive() const {
 	auto emissive = [&](auto ptr) -> bool { return ptr->isEmissive(); };
 	return dispatch(emissive);
 }
 
-KRR_CALLABLE MediumProperties Medium::samplePoint(Vector3f p) const {
+inline MediumProperties Medium::samplePoint(Vector3f p) const {
 	auto sample = [&](auto ptr) -> MediumProperties { return ptr->samplePoint(p); };
 	return dispatch(sample);
 }
 
-KRR_CALLABLE RayMajorant Medium::sampleRay(const Ray &ray, float tMax) const {
+inline RayMajorant Medium::sampleRay(const Ray &ray, float tMax) const {
 	auto sample = [&](auto ptr) -> RayMajorant { return ptr->sampleRay(ray, tMax); };
 	return dispatch(sample);
 }

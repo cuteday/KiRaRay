@@ -24,13 +24,13 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			Medium medium		   = ray.medium;
 			bool scattered{false};
 
-			debugPrint(w.pixelId,
+			DEBUG_PRINT(w.pixelId,
 					   "Sample medium interaction start, THP = %f %f %f;"
 					   "pu = %f %f %f; pl = %f %f %f\n",
 					   thp[0], thp[1], thp[2], pu[0], pu[1], pu[2], pl[0], pl[1], pl[2]);
 
 			Color T_maj = sampleT_maj(ray, w.tMax, sampler, channel, 
-				[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) {
+				[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) -> bool {
 					if (w.depth < maxDepth && mp.Le.any()) {
 						float pr = sigma_maj[channel] * T_maj[channel];
 						Color pe = pu * sigma_maj * T_maj / pr;
@@ -48,7 +48,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 						float pr = T_maj[channel] * mp.sigma_s[channel];
 						thp *= T_maj * mp.sigma_s / pr;
 						pu *= T_maj * mp.sigma_s / pr;
-						if (thp.any() && pu.any()) 
+						if (thp.any() && pu.any())
 							mediumScatterQueue->push(p, thp, -ray.dir, ray.time, ray.medium,
 													 mp.phase, w.depth, w.pixelId);
 						scattered = true;	// Continue on another direction
@@ -60,6 +60,11 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 						if (pr == 0) thp = 0;
 						pu *= T_maj * sigma_n / pr;
 						pl *= T_maj * sigma_maj / pr;
+						DEBUG_PRINT(w.pixelId, "Null-collision: sigma_n = %f %f %f; sigma_maj = %f %f %f;"
+								   "sigma_a = %f %f %f; sigma_s = %f %f %f thp = %f %f %f\n",
+								   sigma_n[0], sigma_n[1], sigma_n[2], sigma_maj[0], sigma_maj[1],
+								   sigma_maj[2], mp.sigma_a[0], mp.sigma_a[1], mp.sigma_a[2],
+								   mp.sigma_s[0], mp.sigma_s[1], mp.sigma_s[2], thp[0], thp[1], thp[2]);
 						return thp.any() && pu.any();
 					} 
 				});
@@ -90,7 +95,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 				/* Just let it go (use *argument* _depth_ here (not w.depth). ) */
 				nextRayQueue(depth)->push(w.intr.spawnRayTowards(ray.dir), w.ctx, thp, pu, pl,
 										  w.depth, w.pixelId, w.bsdfType);
-				debugPrint(w.pixelId,
+				DEBUG_PRINT(w.pixelId,
 						   "Ray escaped from medium, THP = %f %f %f;"
 						   "pu = %f %f %f; pl = %f %f %f\n",
 						   thp[0], thp[1], thp[2], pu[0], pu[1], pu[2], pl[0], pl[1], pl[2]);
@@ -141,7 +146,7 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			}
 			
 			// [PART-B] Sample indirect lighting with scattering function
-			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get1D());
+			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get2D());
 			Color thp			   = w.thp * ps.p / ps.pdf;
 			// Russian roulette
 			if (w.depth >= 1 && thp.maxCoeff() < 1) {

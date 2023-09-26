@@ -39,6 +39,7 @@ KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChan
 	RayMajorant majorant = ray.medium.sampleRay(ray, tMax);
 	Color sigma_maj		 = majorant.sigma_maj;
 	float tMin			 = majorant.tMin;
+	if (majorant.tMax == majorant.tMin) return; /* no intersection */
 	while (true) {
 		// keep calling the callback function until it requests termination by returning false
 		float t = tMin + sampleExponential(sampler.get1D(), sigma_maj[channel]);
