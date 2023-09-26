@@ -89,10 +89,9 @@ void WavefrontPathTracer::handleMiss() {
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
 				float misWeight = 1;
-				Color Ld		= light.Li(w.ray.dir);
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
-					L += Ld / (w.pu + w.pl * lightPdf).mean();
+					L += light.Li(w.ray.dir) / (w.pu + w.pl * lightPdf).mean();
 				} else L += light.Li(w.ray.dir) / w.pu.mean();	
 			}
 			DEBUG_PRINT(w.pixelId, "Miss ray: CH %d, THP = %f %f %f; L = %f %f %f\n", 

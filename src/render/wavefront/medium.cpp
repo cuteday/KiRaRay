@@ -128,11 +128,12 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 				Light light				  = sampledLight.light;
 				LightSample ls			  = light.sampleLi(sampler.get1D(), ctx);
 				Ray shadowRay			  = Interaction(ls.intr.p, w.time, w.medium).spawnRayTo(ls.intr);
-				Vector3f wi				  = shadowRay.dir.normalized(); 
+				Vector3f wi				  = shadowRay.dir.normalized();
+				Color thp				  = w.thp * w.phase.p(wo, wi);
 				float lightPdf			  = sampledLight.pdf * ls.pdf;
 				float phasePdf			  = light.isDeltaLight() ? 0 : w.phase.pdf(wo, wi);
 				
-				Color Ld = w.thp * ls.L;
+				Color Ld = thp * ls.L;
 				if (Ld.any() && ls.pdf > 0) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
@@ -151,12 +152,12 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			// Russian roulette
 			if (w.depth >= 1 && thp.maxCoeff() < 1) {
 				float rrProb = thp.maxCoeff();
-				if (w.depth >= 1 && sampler.get1D() > rrProb) return;
+				if (w.depth >= 1 && sampler.get1D() >= rrProb) return;
 				thp /= rrProb;
 			}
 			
 			Ray ray{w.p, ps.wi, w.time, w.medium};
-			if (!thp.isZero())
+			if (!thp.isZero() && !thp.hasNaN())
 				nextRayQueue(depth)->push(ray, ctx, thp, 1, 1 / ps.pdf, w.depth + 1, w.pixelId, BSDF_SMOOTH);
 	}, gpContext->cudaStream);
 }
