@@ -29,7 +29,8 @@ NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path) {
 		baseGrid = file.readGrid("density");
 	else {
 		baseGrid = file.getGrids()->at(0);
-		Log(Warning, "VDB file do not pocess a density grid, loading the first by default.");
+		Log(Warning, "VDB file do not pocess a density grid, loading the first grid [%s].", 
+			baseGrid->getName().c_str());
 	}
 
 	auto grid							  = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);

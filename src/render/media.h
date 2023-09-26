@@ -22,8 +22,8 @@ public:
 		float tMin = 0, float tMax = M_FLOAT_INF) :
 		sigma_maj(sigma_maj), tMin(tMin), tMax(tMax) {}
 
-	float tMin, tMax;
 	Color sigma_maj;
+	float tMin, tMax;
 };
 
 

@@ -33,7 +33,7 @@ template <typename F>
 KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChannel channel,
 							   F callback) {
 	tMax *= ray.dir.norm();
-	ray.dir.normalized();
+	ray.dir.normalize();
 
 	Color T_maj(1);
 	RayMajorant majorant = ray.medium.sampleRay(ray, tMax);

@@ -111,8 +111,8 @@ public:
 		int index = allocateEntry();
 		this->depth[index]	 = 0;
 		this->thp[index]	 = Color::Ones();
-		this->pu[index]		 = 1;
-		this->pl[index]		 = 1;
+		this->pu[index]		 = Color::Ones();
+		this->pl[index]		 = Color::Ones();
 		this->pixelId[index] = pixelId;
 		this->ray[index]	 = ray;
 		return index;

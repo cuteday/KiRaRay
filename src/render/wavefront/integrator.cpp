@@ -10,12 +10,6 @@
 KRR_NAMESPACE_BEGIN
 extern "C" char WAVEFRONT_PTX[];
 
-template <typename... Args>
-KRR_DEVICE_FUNCTION void WavefrontPathTracer::debugPrint(uint pixelId, const char *fmt,
-														 Args &&...args) {
-	if (pixelId == debugPixel) printf(fmt, std::forward<Args>(args)...);
-}
-
 void WavefrontPathTracer::initialize() {
 	Allocator &alloc = *gpContext->alloc;
 	maxQueueSize	 = getFrameSize()[0] * getFrameSize()[1];
@@ -101,6 +95,8 @@ void WavefrontPathTracer::handleMiss() {
 					L += Ld / (w.pu + w.pl * lightPdf).mean();
 				} else L += light.Li(w.ray.dir) / w.pu.mean();	
 			}
+			debugPrint(w.pixelId, "Miss ray: CH %d, THP = %f %f %f; L = %f %f %f\n", 
+				(int)pixelState->channel[w.pixelId], w.thp[0], w.thp[1], w.thp[2], L[0], L[1], L[2]);
 			pixelState->addRadiance(w.pixelId, w.thp * L);
 		});
 }
@@ -212,8 +208,7 @@ void WavefrontPathTracer::beginFrame(RenderContext* context) {
 			pixelState->L[pixelId] = 0;
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
-			pixelState->channel[pixelId] =
-				SampledChannel::sampleUniform(pixelState->sampler[pixelId].get1D());
+			pixelState->channel[pixelId] = SampledChannel::sampleUniform(pixelState->sampler[pixelId].get1D());
 		}, gpContext->cudaStream);
 }
 

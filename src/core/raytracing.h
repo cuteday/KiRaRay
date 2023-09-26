@@ -144,13 +144,13 @@ struct Interaction{
 	Medium medium{nullptr};
 };
 
-static constexpr int nSpectrumSamples = 4;
+static constexpr int nSpectrumSamples = Color::dim;
 
 class SampledChannel {
 public:
 	KRR_CALLABLE SampledChannel() = default;
 
-	KRR_CALLABLE SampledChannel(float u) : channel(int(u * Color3f::dim) % 3){}
+	KRR_CALLABLE SampledChannel(float u) : channel(int(u * Color::dim) % Color::dim) {}
 
 	KRR_CALLABLE static SampledChannel sampleUniform(float u) { return SampledChannel(u); }
 

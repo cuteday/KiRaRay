@@ -24,6 +24,11 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			Medium medium		   = ray.medium;
 			bool scattered{false};
 
+			debugPrint(w.pixelId,
+					   "Sample medium interaction start, THP = %f %f %f;"
+					   "pu = %f %f %f; pl = %f %f %f\n",
+					   thp[0], thp[1], thp[2], pu[0], pu[1], pu[2], pl[0], pl[1], pl[2]);
+
 			Color T_maj = sampleT_maj(ray, w.tMax, sampler, channel, 
 				[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) {
 					if (w.depth < maxDepth && mp.Le.any()) {
@@ -85,6 +90,10 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 				/* Just let it go (use *argument* _depth_ here (not w.depth). ) */
 				nextRayQueue(depth)->push(w.intr.spawnRayTowards(ray.dir), w.ctx, thp, pu, pl,
 										  w.depth, w.pixelId, w.bsdfType);
+				debugPrint(w.pixelId,
+						   "Ray escaped from medium, THP = %f %f %f;"
+						   "pu = %f %f %f; pl = %f %f %f\n",
+						   thp[0], thp[1], thp[2], pu[0], pu[1], pu[2], pl[0], pl[1], pl[2]);
 				return;
 			}
 
@@ -135,13 +144,15 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get1D());
 			Color thp			   = w.thp * ps.p / ps.pdf;
 			// Russian roulette
-			float rrProb = min(thp.maxCoeff(), 1.f);
-			if (w.depth >= 1 && sampler.get1D() > rrProb) return;
-			thp /= rrProb;
-
+			if (w.depth >= 1 && thp.maxCoeff() < 1) {
+				float rrProb = thp.maxCoeff();
+				if (w.depth >= 1 && sampler.get1D() > rrProb) return;
+				thp /= rrProb;
+			}
+			
 			Ray ray{w.p, ps.wi, w.time, w.medium};
 			if (!thp.isZero())
-				nextRayQueue(depth)->push(ray, ctx, thp, 1, 1 / ps.pdf, w.depth + 1, w.pixelId, BSDF_GLOSSY);
+				nextRayQueue(depth)->push(ray, ctx, thp, 1, 1 / ps.pdf, w.depth + 1, w.pixelId, BSDF_SMOOTH);
 	}, gpContext->cudaStream);
 }
 
