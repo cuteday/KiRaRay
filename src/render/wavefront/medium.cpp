@@ -80,7 +80,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			}
 
 			// Return if scattered or no throughput or max depth reached
-			if (scattered || thp.isZero() || thp.hasNaN() || w.depth == maxDepth) return;
+			if (scattered || thp.isZero() || w.depth == maxDepth) return;
 
 			// [Grand Survival] There are three cases needed to handle...
 			// [I am free...] The ray escaped from our sight...

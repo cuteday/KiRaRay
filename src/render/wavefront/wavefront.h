@@ -39,8 +39,9 @@ KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChan
 	RayMajorant majorant = ray.medium.sampleRay(ray, tMax);
 	Color sigma_maj		 = majorant.sigma_maj;
 	float tMin			 = majorant.tMin;
+	size_t nLoop		 = 0;
 	if (majorant.tMax == majorant.tMin) return; /* no intersection */
-	while (true) {
+	while (++nLoop < 50000) {
 		// keep calling the callback function until it requests termination by returning false
 		float t = tMin + sampleExponential(sampler.get1D(), sigma_maj[channel]);
 		if (t < majorant.tMax) {
@@ -79,13 +80,12 @@ KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction &i
 			T_ray = 0;
 			break;
 		}
-		return;
 		if (ray.medium) {
 			float tEnd = visible ? tMax : (intr.p - ray.origin).norm() / ray.dir.norm();
 			Color T_maj =
 				sampleT_maj(ray, tEnd, sampler, channel,
 					[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) {
-						Color sigma_n = (sigma_maj - mp.sigma_s - mp.sigma_s).cwiseMax(0);
+						Color sigma_n = (sigma_maj - mp.sigma_a - mp.sigma_s).cwiseMax(0);
 
 						// ratio-tracking
 						float pr = T_maj[channel] * sigma_maj[channel];
@@ -103,7 +103,7 @@ KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction &i
 						}
 						/* This callback returns false for termination in the sampleT_maj
 							* loop. */
-						return T_ray.any() ? true : false;
+						return T_ray.any();
 					});
 
 			T_ray *= T_maj / T_maj[channel];
