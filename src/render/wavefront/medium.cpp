@@ -49,7 +49,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 						thp *= T_maj * mp.sigma_s / pr;
 						pu *= T_maj * mp.sigma_s / pr;
 						if (thp.any() && pu.any())
-							mediumScatterQueue->push(p, thp, -ray.dir, ray.time, ray.medium,
+							mediumScatterQueue->push(p, thp, pu, -ray.dir, ray.time, ray.medium,
 													 mp.phase, w.depth, w.pixelId);
 						scattered = true;	// Continue on another direction
 						return false;
@@ -111,7 +111,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			}
 
 			// [Tomorrow is another day] Next surface scattering event...!
-			scatterRayQueue->push(w.intr, thp, w.depth, w.pixelId);
+			scatterRayQueue->push(w.intr, thp, pu, w.depth, w.pixelId);
 	}, gpContext->cudaStream);
 }
 
@@ -137,8 +137,8 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 				if (Ld.any() && ls.pdf > 0) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
-					sw.pl				 = lightPdf;
-					sw.pu				 = phasePdf;
+					sw.pl				 = w.pu * lightPdf;
+					sw.pu				 = w.pu * phasePdf;
 					sw.Ld				 = Ld;
 					sw.pixelId			 = w.pixelId;
 					sw.tMax				 = 1;
@@ -150,15 +150,17 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get2D());
 			Color thp			   = w.thp * ps.p / ps.pdf;
 			// Russian roulette
-			if (w.depth >= 1 && thp.maxCoeff() < 1) {
-				float rrProb = thp.maxCoeff();
+			float rrProb = (thp / w.pu.mean()).maxCoeff();
+			if (w.depth >= 1 && rrProb < 1) {
 				if (w.depth >= 1 && sampler.get1D() >= rrProb) return;
 				thp /= rrProb;
 			}
 			
 			Ray ray{w.p, ps.wi, w.time, w.medium};
-			if (!thp.isZero() && !thp.hasNaN())
-				nextRayQueue(depth)->push(ray, ctx, thp, 1, 1 / ps.pdf, w.depth + 1, w.pixelId, BSDF_SMOOTH);
+			if (!thp.isZero() && !thp.hasNaN()) 
+				/* [NOTE] We need to multiply P_path by w.pu. While the PDF of P_light and P_bsdf is 
+					the same until this vertex, the channel-wise PDF may be different. */
+				nextRayQueue(depth)->push(ray, ctx, thp, w.pu, w.pu / ps.pdf, w.depth + 1, w.pixelId, BSDF_SMOOTH);
 	}, gpContext->cudaStream);
 }
 

@@ -104,6 +104,7 @@ struct ShadowRayWorkItem {
 
 struct ScatterRayWorkItem {
 	Color thp;
+	Color pu;
 	SurfaceInteraction intr;
 	uint depth;
 	uint pixelId;
@@ -124,6 +125,7 @@ struct MediumSampleWorkItem {
 struct MediumScatterWorkItem {
 	Vector3f p;
 	Color thp;
+	Color pu;
 	Vector3f wo;
 	float time;
 	Medium medium;

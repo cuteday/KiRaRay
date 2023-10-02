@@ -130,8 +130,8 @@ void WavefrontPathTracer::generateScatterRays() {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
 					sw.Ld				 = ls.L * w.thp * bsdfVal * fabs(wiLocal[2]);
-					sw.pu				 = lightPdf;
-					sw.pl				 = bsdfPdf;
+					sw.pu				 = w.pu * bsdfPdf;
+					sw.pl				 = w.pu * lightPdf;
 					sw.pixelId			 = w.pixelId;
 					sw.tMax				 = 1;
 					if (sw.Ld.any()) shadowRayQueue->push(sw);
@@ -144,8 +144,8 @@ void WavefrontPathTracer::generateScatterRays() {
 				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};
 				r.bsdfType		 = sample.flags;
-				r.pu			 = 1;
-				r.pl			 = 1 / sample.pdf;
+				r.pu			 = w.pu;
+				r.pl			 = w.pu / sample.pdf;
 				r.ray			 = intr.spawnRayTowards(wiWorld);
 				r.ctx			 = { intr.p, intr.n };
 				r.pixelId		 = w.pixelId;

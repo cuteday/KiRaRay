@@ -219,10 +219,11 @@ public:
 	using WorkQueue::WorkQueue;
 	using WorkQueue::push;
 
-	KRR_CALLABLE int push(const SurfaceInteraction& intr, Color thp, uint depth, uint pixelId) {
+	KRR_CALLABLE int push(const SurfaceInteraction& intr, Color thp, Color pu, uint depth, uint pixelId) {
 		int index = allocateEntry();
 		this->intr[index]	 = intr;
 		this->thp[index]	 = thp;
+		this->pu[index]		 = pu;
 		this->depth[index]	 = depth;
 		this->pixelId[index] = pixelId;
 		return index;
@@ -267,7 +268,7 @@ public:
 	using WorkQueue::push;
 	using WorkQueue::WorkQueue;
 
-	KRR_CALLABLE int push(Vector3f p, Color thp, Vector3f wo, float time, Medium medium,
+	KRR_CALLABLE int push(Vector3f p, Color thp, Color pu, Vector3f wo, float time, Medium medium,
 		PhaseFunction phase, uint depth, uint pixelId) {
 		int index = allocateEntry();
 		this->p[index]		 = p;
@@ -276,6 +277,7 @@ public:
 		this->medium[index]	 = medium;
 		this->phase[index]	 = phase;
 		this->thp[index]	 = thp;
+		this->pu[index]		 = pu;
 		this->depth[index]	 = depth;
 		this->pixelId[index] = pixelId;
 	}

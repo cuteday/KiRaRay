@@ -59,7 +59,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	if (intr.light) 	// push to hit ray queue if mesh has light
 		launchParams.hitLightRayQueue->push(r, intr);
 	if (r.thp.any()) 	// process material and push to material evaluation queue
-		launchParams.scatterRayQueue->push(intr, r.thp, r.depth, r.pixelId);
+		launchParams.scatterRayQueue->push(intr, r.thp, r.pu, r.depth, r.pixelId);
 }
 
 extern "C" __global__ void KRR_RT_AH(Closest)() { 
