@@ -69,8 +69,6 @@ void WavefrontPathTracer::handleHit() {
 	ForAllQueued(
 		hitLightRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const HitLightWorkItem &w) {
 			Color Le = w.light.L(w.p, w.n, w.uv, w.wo) * w.thp;
-			// Simple understanding: if the sampled component is a delta func, then
-			// it has infinite values and has 1 MIS weights.
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
 				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
@@ -88,14 +86,11 @@ void WavefrontPathTracer::handleMiss() {
 			Color L = {};
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
-				float misWeight = 1;
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
 					L += light.Li(w.ray.dir) / (w.pu + w.pl * lightPdf).mean();
 				} else L += light.Li(w.ray.dir) / w.pu.mean();	
 			}
-			DEBUG_PRINT(w.pixelId, "Miss ray: CH %d, THP = %f %f %f; L = %f %f %f\n", 
-				(int)pixelState->channel[w.pixelId], w.thp[0], w.thp[1], w.thp[2], L[0], L[1], L[2]);
 			pixelState->addRadiance(w.pixelId, w.thp * L);
 		});
 }
@@ -124,9 +119,7 @@ void WavefrontPathTracer::generateScatterRays() {
 				float lightPdf	= sampledLight.pdf * ls.pdf;
 				Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 				float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-				float misWeight = evalMIS(lightPdf, bsdfPdf);
-				
-				if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
+				if (lightPdf > 0 && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
 					sw.Ld				 = ls.L * w.thp * bsdfVal * fabs(wiLocal[2]);

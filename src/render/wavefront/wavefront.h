@@ -32,6 +32,8 @@ typedef struct {
 template <typename F>
 KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChannel channel,
 							   F callback) {
+	/* This function returns the [remaining](not told callback before hitting surface) 
+		part of the transmittance. */
 	tMax *= ray.dir.norm();
 	ray.dir.normalize();
 
@@ -47,7 +49,7 @@ KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChan
 		if (t < majorant.tMax) {
 			T_maj *= (-(t - tMin) * sigma_maj).exp();
 			MediumProperties mp = ray.medium.samplePoint(ray(t));
-			if (!callback(ray(t), mp, sigma_maj, T_maj)) break;
+			if (!callback(ray(t), mp, sigma_maj, T_maj)) return 1;
 			T_maj = 1;
 			tMin  = t;
 		} else {
@@ -62,7 +64,7 @@ KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChan
 }
 
 template <typename TraceFunc>
-KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction &intr,
+KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction *intr,
 									 PixelStateBuffer *pixelState, TraceFunc trace) {
 	SampledChannel channel = pixelState->channel[sr.pixelId];
 	Sampler sampler		   = &pixelState->sampler[sr.pixelId];
@@ -75,13 +77,13 @@ KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction &i
 
 	while (ray.dir.any()) {
 		bool visible = trace(ray, tMax);
-		if (!visible && intr.material != nullptr) {
+		if (!visible && intr->material != nullptr) {
 			/* Hit opaque surface, goodbye... */
 			T_ray = 0;
 			break;
 		}
 		if (ray.medium) {
-			float tEnd = visible ? tMax : (intr.p - ray.origin).norm() / ray.dir.norm();
+			float tEnd = visible ? tMax : (intr->p - ray.origin).norm() / ray.dir.norm();
 			Color T_maj =
 				sampleT_maj(ray, tEnd, sampler, channel,
 					[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) {
@@ -114,7 +116,7 @@ KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction &i
 		// Light is visible or throughput is zero...
 		if (visible || T_ray.isZero()) break;
 		// Across a surface with null-material, continuing
-		ray = intr.spawnRayTo(pLight);
+		ray = intr->spawnRayTo(pLight);
 	}
 
 	if (T_ray.any()) 
