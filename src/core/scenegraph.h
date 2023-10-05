@@ -171,6 +171,7 @@ public:
 		sigma_a(sigma_a), sigma_s(sigma_s), g(g), densityGrid(density) {}
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+	virtual AABB getLocalBoundingBox() const override { return densityGrid->getBounds(); }
 	virtual void renderUI() override;
 
 	Color sigma_a;

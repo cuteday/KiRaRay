@@ -144,7 +144,7 @@ public:
 		this->ctx[index]	  = w.ctx;
 		this->thp[index]	  = w.thp;
 		this->pu[index]		  = w.pu;
-		this->pl[index]		  = Color::Ones();
+		this->pl[index]		  = w.pl;
 		this->bsdfType[index] = w.bsdfType;
 		this->depth[index]	  = w.depth;
 		this->pixelId[index]  = w.pixelId;

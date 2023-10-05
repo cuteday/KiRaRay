@@ -159,7 +159,7 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			Ray ray{w.p, ps.wi, w.time, w.medium};
 			if (!thp.isZero() && !thp.hasNaN()) 
 				/* [NOTE] We need to multiply P_path by w.pu. While the PDF of P_light and P_bsdf is 
-					the same until this vertex, the channel-wise PDF may be different. */
+					the same until this vertex, the channel-wise PDF along the path may be different. */
 				nextRayQueue(depth)->push(ray, ctx, thp, w.pu, w.pu / ps.pdf, w.depth + 1, w.pixelId, BSDF_SMOOTH);
 	}, gpContext->cudaStream);
 }

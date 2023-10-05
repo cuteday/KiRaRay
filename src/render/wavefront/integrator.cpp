@@ -73,8 +73,8 @@ void WavefrontPathTracer::handleHit() {
 			// it has infinite values and has 1 MIS weights.
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
-				Color pl	   = w.pl * w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
-				Le /= (pl + w.pu).mean();
+				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
+				Le /= (w.pl * lightPdf + w.pu).mean();
 			} else Le /= w.pu.mean();
 			pixelState->addRadiance(w.pixelId, Le);
 		});

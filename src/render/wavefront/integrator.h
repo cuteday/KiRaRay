@@ -15,9 +15,7 @@ KRR_NAMESPACE_BEGIN
 
 #ifdef KRR_DEBUG_BUILD 
 #define DEBUG_PRINT(pixel, fmt, ...)                              \
-do {															  \
-	debugPrint(pixel, fmt, ##__VA_ARGS__);						  \
-} while (0)														  
+do { debugPrint(pixel, fmt, ##__VA_ARGS__); } while (0)														  
 #else															  
 #define DEBUG_PRINT(pixel, fmt, ...) 
 #endif

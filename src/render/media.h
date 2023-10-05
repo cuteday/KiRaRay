@@ -52,13 +52,11 @@ public:
 
 	KRR_CALLABLE RayMajorant sampleRay(const Ray &ray, float raytMax) const {
 		// [TODO] currently we use a coarse majorant for the whole volume
-		// but it seems that nanovdb has a built-in hierachical DDA on gpu?
-		//float tMin, tMax;
-		//printf("sigma_a = %f %f %f; sigma_s = %f %f %f; max density: %f\n", sigma_a[0], sigma_a[1],
-		//	   sigma_a[2], sigma_s[0], sigma_s[1], sigma_s[2], densityGrid.getMaxDensity());
-		//AABB3f box = densityGrid.getBounds().transformed(transform);
-		//if (!box.intersect(ray.origin, ray.dir, raytMax, &tMin, &tMax)) return {};
-		return {densityGrid.getMaxDensity() * (sigma_a + sigma_s), 0, raytMax};
+		// but it seems that nanovdb has a built-in hierachical DDA on gpu? (no
+		float tMin, tMax;
+		AABB3f box = densityGrid.getBounds().transformed(transform);
+		box.intersect(ray.origin, ray.dir, raytMax, &tMin, &tMax);
+		return {densityGrid.getMaxDensity() * (sigma_a + sigma_s), tMin, tMax};
 	}
 
 	NanoVDBGrid densityGrid;
