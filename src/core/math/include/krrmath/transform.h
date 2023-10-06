@@ -13,6 +13,7 @@ template <typename T, int Dim, int Mode, int Options = Eigen::RowMajor>
 class Transform : public Eigen::Transform<T, Dim, Mode, Options> {
 public:
 	using Eigen::Transform<T, Dim, Mode, Options>::Transform;
+	typedef Eigen::Transform<T, Dim, Mode, Options> NativeType;
 	typedef Vector<T, Dim> ScalingVectorType;
 	typedef Matrix<T, Dim, Dim, Options> LinearMatrixType;
 	typedef Matrix<T, Dim, Dim, Options> RotationMatrixType;
@@ -38,6 +39,11 @@ public:
 		LinearMatrixType result;
 		this->computeRotationScaling((LinearMatrixType *) nullptr, &result);
 		return ScalingVectorType(result.diagonal());
+	}
+
+	KRR_CALLABLE Matrix<T, NativeType::MatrixType::RowsAtCompileTime,
+						NativeType::MatrixType::ColsAtCompileTime, Options> matrix() const { 
+		return NativeType::matrix();
 	}
 };
 

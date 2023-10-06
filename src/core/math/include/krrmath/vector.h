@@ -9,6 +9,7 @@ template <typename T, int Size>
 class Vector : public Eigen::Vector<T, Size> {
 public:
 	enum {dim = Size};
+	using NativeType = Eigen::Vector<T, Size>;
 
 	KRR_CALLABLE Vector(void) : Eigen::Vector<T, Size>(Eigen::Vector<T, Size>::Zero()) {}
 

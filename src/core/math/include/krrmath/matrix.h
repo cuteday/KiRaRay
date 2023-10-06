@@ -29,6 +29,12 @@ public:
 		this->Eigen::Matrix<T, Rows, Cols, Options>::operator=(other);
 		return *this;
 	}
+
+	std::string string() const { 
+		std::stringstream ss;
+		ss << *this;
+		return ss.str();
+	}
 };
 
 /* About storage order: 

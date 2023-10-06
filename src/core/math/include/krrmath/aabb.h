@@ -12,6 +12,7 @@ template <typename T, int Size>
 class AxisAligned : public Eigen::AlignedBox<T, Size> {
 public:
 	using VectorType = Vector<T, Size>;
+	using NativeType = Eigen::AlignedBox<T, Size>;
 	using Eigen::AlignedBox<T, Size>::AlignedBox;
 	
 	KRR_CALLABLE AxisAligned() : Eigen::AlignedBox<T, Size>() {}
@@ -42,9 +43,8 @@ public:
 		return p.cwiseMin(this->m_max).cwiseMax(this->m_min);
 	}
 
-	KRR_CALLABLE bool intersect(Vector<T, Size> o, Vector<T, Size> d, 
-		T tMax = std::numeric_limits<T>::max(), 
-		T *tHit0 = nullptr, T *tHit1 = nullptr) const {
+	KRR_CALLABLE bool intersect(const VectorType& o, const VectorType& d, 
+		T tMax = std::numeric_limits<T>::max(), T *tHit0 = nullptr, T *tHit1 = nullptr) const {
 		T t0 = 0, t1 = tMax;
 		for (int i = 0; i < Size; ++i) {
 			// Update interval for _i_th bounding box slab
@@ -57,11 +57,15 @@ public:
 			tFar *= 1 + 2 * gamma(3);
 			t0 = tNear > t0 ? tNear : t0;
 			t1 = tFar < t1 ? tFar : t1;
-			if (t0 > t1) return false;
+			//if (t0 > t1) return false;
 		}
 		if (tHit0) *tHit0 = t0;
 		if (tHit1) *tHit1 = t1;
-		return true;
+		return t0 < t1;
+	}
+
+	std::string string() const { 
+		return min().string() + "~" + max().string();
 	}
 };
 

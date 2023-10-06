@@ -10,6 +10,7 @@ template <typename T, int Size>
 class Array : public Eigen::Array<T, Size, 1> {
 public:
 	enum {dim = Size};
+	using NativeType = Eigen::Array<T, Size, 1>;
 
 	KRR_CALLABLE Array(void) : Eigen::Array<T, Size, 1>(Eigen::Array<T, Size, 1>::Zero()) {}
 
