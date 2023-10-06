@@ -116,10 +116,10 @@ extern "C" __global__ void KRR_RT_RG(ShadowTr)() {
 	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
 	ShadowRayWorkItem r = getShadowRayWorkItem();
 	SurfaceInteraction intr = {};
-	traceTransmittance(r, &intr, launchParams.pixelState, [&](Ray ray, float tMax) -> bool {
-		uint u0, u1;
-		packPointer(&intr, u0, u1);
-		uint32_t visible{0};
+	uint u0, u1;
+	packPointer(&intr, u0, u1);
+	traceTransmittance(r, intr, launchParams.pixelState, [&](Ray ray, float tMax) -> bool {
+		uint32_t visible = 0;
 		traceRay(launchParams.traversable, ray, tMax, 2, OPTIX_RAY_FLAG_NONE, u0, u1, visible);
 		return visible;
 	});

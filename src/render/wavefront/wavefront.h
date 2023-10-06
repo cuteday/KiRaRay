@@ -62,7 +62,7 @@ KRR_HOST_DEVICE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledC
 }
 
 template <typename TraceFunc>
-KRR_HOST_DEVICE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction *intr,
+KRR_HOST_DEVICE void traceTransmittance(ShadowRayWorkItem sr, const SurfaceInteraction& intr,
 									 PixelStateBuffer *pixelState, TraceFunc trace) {
 	SampledChannel channel = pixelState->channel[sr.pixelId];
 	Sampler sampler		   = &pixelState->sampler[sr.pixelId];
@@ -75,13 +75,13 @@ KRR_HOST_DEVICE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction
 
 	while (ray.dir.any()) {
 		bool visible = trace(ray, tMax);
-		if (!visible && intr->material != nullptr) {
+		if (!visible && intr.material != nullptr) {
 			/* Hit opaque surface, goodbye... */
 			T_ray = 0;
 			break;
 		}
 		if (ray.medium) {
-			float tEnd = visible ? tMax : (intr->p - ray.origin).norm() / ray.dir.norm();
+			float tEnd = visible ? tMax : (intr.p - ray.origin).norm() / ray.dir.norm();
 			Color T_maj =
 				sampleT_maj(ray, tEnd, sampler, channel,
 					[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) {
@@ -114,9 +114,8 @@ KRR_HOST_DEVICE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction
 		// Light is visible or throughput is zero...
 		if (visible || T_ray.isZero()) break;
 		// Across a surface with null-material, continuing
-		ray = intr->spawnRayTo(pLight);
+		ray = intr.spawnRayTo(pLight);
 	}
-
 	if (T_ray.any()) 
 		pixelState->addRadiance(sr.pixelId, sr.Ld * T_ray / (sr.pu * pu + sr.pl * pl).mean());
 }

@@ -60,12 +60,14 @@ class DirectionalLight {
 public:
 	DirectionalLight() = default;
 
-	DirectionalLight(const Matrix3f &rotation, const Color &I, float scale = 1) :
-		rotation(rotation), I(I), scale(scale) {}
+	DirectionalLight(const Matrix3f &rotation, const Color &I, float scale = 1, float sceneRadius = 1e5) :
+		rotation(rotation), I(I), scale(scale), sceneRadius(sceneRadius) {}
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
+		/* [NOTE] For shadow rays, if the ray direction is too large, optix trace will have precision problems! 
+		(e.g. the ray will self-intersect on the original surface, even if the ray origin has offset) */
 		Vector3f wi = rotation * Vector3f{0, 0, 1};
-		Vector3f p	= ctx.p + wi * 1e7f;
+		Vector3f p	= ctx.p + wi * 2 * sceneRadius;
 		return LightSample{Interaction{p}, scale * I, 1};
 	}
 
@@ -82,6 +84,7 @@ public:
 private:
 	Color I;
 	float scale;
+	float sceneRadius{1e5};
 	Matrix3f rotation;
 };
 
@@ -128,17 +131,18 @@ class InfiniteLight {
 public:
 	InfiniteLight() = default;
 
-	InfiniteLight(const Matrix3f &rotation, Color tint, float scale = 1) :
-		tint(tint), scale(scale), rotation(rotation) {}
+	InfiniteLight(const Matrix3f &rotation, Color tint, float scale = 1, float sceneRadius = 1e5f) :
+		tint(tint), scale(scale), rotation(rotation), sceneRadius(sceneRadius) {}
 
-	InfiniteLight(const Matrix3f &rotation, const rt::TextureData &image, float scale = 1) :
-		image(image), tint(Color::Ones()), scale(scale), rotation(rotation) {}
+	InfiniteLight(const Matrix3f &rotation, const rt::TextureData &image, float scale = 1,
+				  float sceneRadius = 1e5f) :
+		image(image), tint(Color::Ones()), scale(scale), rotation(rotation), sceneRadius(sceneRadius) {}
 
 	KRR_DEVICE inline LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
 		// [TODO] use intensity importance sampling here.
 		LightSample ls = {};
 		Vector3f wi	   = uniformSampleSphere(u);
-		ls.intr		   = Interaction(ctx.p + wi * 1e7f);
+		ls.intr		   = Interaction(ctx.p + wi * 2 * sceneRadius);
 		ls.L		   = Li(wi);
 		ls.pdf		   = M_INV_4PI;
 		return ls;
@@ -167,6 +171,7 @@ public:
 private:
 	Color tint{1};
 	float scale{1};
+	float sceneRadius{1e5};
 	Matrix3f rotation;
 	rt::TextureData image{};
 };

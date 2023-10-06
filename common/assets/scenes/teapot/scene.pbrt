@@ -6,7 +6,7 @@ Film "image" "integer xresolution" [ 1280 ] "integer yresolution" [ 720 ] "strin
 Camera "perspective" "float fov" [ 20.114292 ] 
 WorldBegin
 	Texture "Texture01" "spectrum" "imagemap" "string filename" [ "$checker.png" ] "bool trilinear" [ "true" ] 
-	MakeNamedMedium "Tea" "string type" [ "homogeneous" ] "rgb sigma_s" [ 0.050000 0.100000 0.100000 ] "rgb sigma_a" [ 0.148600 0.321000 0.736000 ] "float scale" [ 1.000000 ] "float g" [0.2]
+	MakeNamedMedium "Tea" "string type" [ "homogeneous" ] "rgb sigma_s" [ 5.382e-05 0 0 ] "rgb sigma_a" [ 0.10404 0.23958 0.29325 ] "float scale" [ 4.000000 ] "float g" [0]
 	MakeNamedMaterial "Floor" "string type" [ "matte" ] "texture Kd" [ "Texture01" ] 
 	NamedMaterial "Floor" 
 	Shape "trianglemesh" "integer indices" [ 0 1 2 0 2 3 ] "point P" [ -2.13123 0 70.0611 -71.502 -8.75425e-006 -2.15457 0.713687 0 -71.5254 70.0845 8.75425e-006 0.690351 ] "normal N" [ 1.2361e-007 -1 2.4837e-009 1.2361e-007 -1 2.4837e-009 1.2361e-007 -1 2.4837e-009 1.2361e-007 -1 2.4837e-009 ] "float uv" [ 0 0 1 0 1 1 0 1 ] 

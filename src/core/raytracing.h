@@ -7,7 +7,7 @@
 #include "taggedptr.h"
 #include "medium.h"
 
-#define KRR_RAY_EPS		(1e-5f)
+#define KRR_RAY_EPS		(1e-4f)
 
 KRR_NAMESPACE_BEGIN
 
