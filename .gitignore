@@ -51,6 +51,7 @@ CMakeSettings.json
 
 # Assets and resource data
 temp
+tmp
 enc_temp_folder
 /common/outputs
 /common/configs/test*

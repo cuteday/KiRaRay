@@ -43,7 +43,7 @@ public:
 	KRR_CALLABLE bool isEmissive() const { return false; }
 
 	KRR_CALLABLE Color Le(Vector3f p) const { return 0; }
-
+	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p) const { 
 		p = inverseTransform * p;
 		float d = densityGrid.getDensity(p);
@@ -51,11 +51,10 @@ public:
 	}
 
 	KRR_CALLABLE RayMajorant sampleRay(const Ray &ray, float raytMax) const {
-		// [TODO] currently we use a coarse majorant for the whole volume
-		// but it seems that nanovdb has a built-in hierachical DDA on gpu? (no
-		float tMin, tMax;
-		AABB3f box = densityGrid.getBounds().transformed(transform);
-		box.intersect(ray.origin, ray.dir, raytMax, &tMin, &tMax);
+		float tMin = 0, tMax = raytMax;
+		AABB3f box	 = densityGrid.getBounds();
+		Ray localRay = inverseTransform * ray;
+		if(!box.intersect(localRay.origin, localRay.dir, raytMax, &tMin, &tMax)) return {};
 		return {densityGrid.getMaxDensity() * (sigma_a + sigma_s), tMin, tMax};
 	}
 

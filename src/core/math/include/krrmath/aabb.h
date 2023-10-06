@@ -52,16 +52,15 @@ public:
 			T tNear		= (min()[i] - o[i]) * invRayDir;
 			T tFar		= (max()[i] - o[i]) * invRayDir;
 			// Update parametric interval from slab intersection $t$ values
-			if (tNear > tFar) std::swap(tNear, tFar);
-			// Update _tFar_ to ensure robust ray--bounds intersection
-			tFar *= 1 + 2 * gamma(3);
+			// [NOTE] Do not use std::swap since it has no effect on device code!!!
+			if (tNear > tFar) swap(tNear, tFar);
 			t0 = tNear > t0 ? tNear : t0;
 			t1 = tFar < t1 ? tFar : t1;
-			//if (t0 > t1) return false;
+			if (t0 > t1) return false;
 		}
 		if (tHit0) *tHit0 = t0;
 		if (tHit1) *tHit1 = t1;
-		return t0 < t1;
+		return true;
 	}
 
 	std::string string() const { 

@@ -77,7 +77,7 @@ offsetRayOrigin(const Vector3f &p, const Vector3f &n, const Vector3f &w) {
 
 KRR_CALLABLE Ray operator*(const Affine3f& transform, const Ray& ray) {
 	Vector3f o = transform * ray.origin;
-	Vector3f d = transform.rotation() * ray.dir;
+	Vector3f d = transform.matrix().topLeftCorner(3, 3) * ray.dir;
 	return Ray{o, d, ray.time, ray.medium};
 }
 
@@ -150,13 +150,13 @@ class SampledChannel {
 public:
 	KRR_CALLABLE SampledChannel() = default;
 
-	KRR_CALLABLE SampledChannel(float u) : channel(int(u * Color::dim) % Color::dim) {}
+	KRR_CALLABLE SampledChannel(float u) : channel(uint(u * Color::dim) % Color::dim) {}
 
 	KRR_CALLABLE static SampledChannel sampleUniform(float u) { return SampledChannel(u); }
 
-	KRR_CALLABLE operator int() const { return channel; }
+	KRR_CALLABLE operator uint() const { return channel; }
 
-	int channel;
+	uint channel;
 };
 
 KRR_NAMESPACE_END

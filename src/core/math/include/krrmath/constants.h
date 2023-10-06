@@ -28,11 +28,8 @@ KRR_NAMESPACE_BEGIN
 
 #define M_FLOAT_MIN		std::numeric_limits<float>::min()
 #define M_FLOAT_MAX		std::numeric_limits<float>::max()
+#define M_FLOAT_EPS		std::numeric_limits<float>::epsilon()
 #define M_FLOAT_INF		std::numeric_limits<float>::infinity()
-
-KRR_CALLABLE constexpr float gamma(int n) {
-	return (n * M_EPSILON) / (1 - n * M_EPSILON);
-}
 
 KRR_NAMESPACE_END
 

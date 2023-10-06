@@ -30,7 +30,7 @@ typedef struct {
 } LaunchParams;
 
 template <typename F>
-KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChannel channel,
+KRR_HOST_DEVICE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChannel channel,
 							   F callback) {
 	/* This function returns the [remaining](not told callback before hitting surface) 
 		part of the transmittance. */
@@ -41,9 +41,7 @@ KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChan
 	RayMajorant majorant = ray.medium.sampleRay(ray, tMax);
 	Color sigma_maj		 = majorant.sigma_maj;
 	float tMin			 = majorant.tMin;
-	size_t nLoop		 = 0;
-	if (majorant.tMax == majorant.tMin) return; /* no intersection */
-	while (++nLoop < 50000) {
+	while (true) {
 		// keep calling the callback function until it requests termination by returning false
 		float t = tMin + sampleExponential(sampler.get1D(), sigma_maj[channel]);
 		if (t < majorant.tMax) {
@@ -64,7 +62,7 @@ KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChan
 }
 
 template <typename TraceFunc>
-KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction *intr,
+KRR_HOST_DEVICE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction *intr,
 									 PixelStateBuffer *pixelState, TraceFunc trace) {
 	SampledChannel channel = pixelState->channel[sr.pixelId];
 	Sampler sampler		   = &pixelState->sampler[sr.pixelId];
