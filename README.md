@@ -11,6 +11,7 @@
 > This toy renderer is purposed for learning and only with limited features.
 
 - [x] GPU path tracing (megakernel/wavefront).
+- [x] GPU volumetric rendering (wavefront).
 - [x] Post processing passes (e.g. denoising).
 - [x] Basic support for scene animation (glTF).
 
