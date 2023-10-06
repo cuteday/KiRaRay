@@ -13,6 +13,14 @@
 
 KRR_NAMESPACE_BEGIN
 
+#ifdef KRR_DEBUG_BUILD 
+#define DEBUG_PRINT(pixel, fmt, ...)                              \
+do { debugPrint(pixel, fmt, ##__VA_ARGS__); } while (0)														  
+#else															  
+#define DEBUG_PRINT(pixel, fmt, ...) 
+#endif
+
+
 class WavefrontPathTracer : public RenderPass {
 public:
 	using SharedPtr = std::shared_ptr<WavefrontPathTracer>;
@@ -44,7 +52,10 @@ public:
 	KRR_CALLABLE RayQueue* nextRayQueue(int depth) { return rayQueue[(depth & 1) ^ 1]; }
 
 	template <typename... Args>
-	KRR_DEVICE_FUNCTION void debugPrint(uint pixelId, const char *fmt, Args &&...args);
+	KRR_CALLABLE void debugPrint(uint pixelId, const char *fmt, Args &&...args) {
+		if (debugOutput && pixelId == debugPixel) printf(fmt, std::forward<Args>(args)...);
+	}
+
 	
 	OptixBackend *backend{ };
 	Camera::CameraData* camera{ };

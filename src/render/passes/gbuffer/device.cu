@@ -40,7 +40,7 @@ extern "C" __global__ void KRR_RT_RG(Primary)() {
 	Sampler sampler = &pcgSampler;
 	Ray ray = launchParams.cameraData.getRay(pixel, launchParams.frameSize, sampler);
 
-	traceRay(launchParams.traversable, ray, KRR_RAY_TMAX, 0, OPTIX_RAY_FLAG_DISABLE_ANYHIT);
+	traceRay(launchParams.traversable, ray, M_FLOAT_INF, 0, OPTIX_RAY_FLAG_DISABLE_ANYHIT);
 }
 
 KRR_NAMESPACE_END

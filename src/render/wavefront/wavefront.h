@@ -30,10 +30,12 @@ typedef struct {
 } LaunchParams;
 
 template <typename F>
-KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChannel channel,
+KRR_HOST_DEVICE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChannel channel,
 							   F callback) {
+	/* This function returns the [remaining](not told callback before hitting surface) 
+		part of the transmittance. */
 	tMax *= ray.dir.norm();
-	ray.dir.normalized();
+	ray.dir.normalize();
 
 	Color T_maj(1);
 	RayMajorant majorant = ray.medium.sampleRay(ray, tMax);
@@ -45,7 +47,7 @@ KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChan
 		if (t < majorant.tMax) {
 			T_maj *= (-(t - tMin) * sigma_maj).exp();
 			MediumProperties mp = ray.medium.samplePoint(ray(t));
-			if (!callback(ray(t), mp, sigma_maj, T_maj)) break;
+			if (!callback(ray(t), mp, sigma_maj, T_maj)) return 1;
 			T_maj = 1;
 			tMin  = t;
 		} else {
@@ -60,7 +62,7 @@ KRR_CALLABLE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChan
 }
 
 template <typename TraceFunc>
-KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction &intr,
+KRR_HOST_DEVICE void traceTransmittance(ShadowRayWorkItem sr, const SurfaceInteraction& intr,
 									 PixelStateBuffer *pixelState, TraceFunc trace) {
 	SampledChannel channel = pixelState->channel[sr.pixelId];
 	Sampler sampler		   = &pixelState->sampler[sr.pixelId];
@@ -78,13 +80,12 @@ KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction &i
 			T_ray = 0;
 			break;
 		}
-		return;
 		if (ray.medium) {
 			float tEnd = visible ? tMax : (intr.p - ray.origin).norm() / ray.dir.norm();
 			Color T_maj =
 				sampleT_maj(ray, tEnd, sampler, channel,
 					[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) {
-						Color sigma_n = (sigma_maj - mp.sigma_s - mp.sigma_s).cwiseMax(0);
+						Color sigma_n = (sigma_maj - mp.sigma_a - mp.sigma_s).cwiseMax(0);
 
 						// ratio-tracking
 						float pr = T_maj[channel] * sigma_maj[channel];
@@ -102,7 +103,7 @@ KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction &i
 						}
 						/* This callback returns false for termination in the sampleT_maj
 							* loop. */
-						return T_ray.any() ? true : false;
+						return T_ray.any();
 					});
 
 			T_ray *= T_maj / T_maj[channel];
@@ -115,7 +116,6 @@ KRR_CALLABLE void traceTransmittance(ShadowRayWorkItem sr, SurfaceInteraction &i
 		// Across a surface with null-material, continuing
 		ray = intr.spawnRayTo(pLight);
 	}
-
 	if (T_ray.any()) 
 		pixelState->addRadiance(sr.pixelId, sr.Ld * T_ray / (sr.pu * pu + sr.pl * pl).mean());
 }

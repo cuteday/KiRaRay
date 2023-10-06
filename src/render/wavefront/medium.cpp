@@ -25,7 +25,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			bool scattered{false};
 
 			Color T_maj = sampleT_maj(ray, w.tMax, sampler, channel, 
-				[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) {
+				[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) -> bool {
 					if (w.depth < maxDepth && mp.Le.any()) {
 						float pr = sigma_maj[channel] * T_maj[channel];
 						Color pe = pu * sigma_maj * T_maj / pr;
@@ -43,8 +43,8 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 						float pr = T_maj[channel] * mp.sigma_s[channel];
 						thp *= T_maj * mp.sigma_s / pr;
 						pu *= T_maj * mp.sigma_s / pr;
-						if (thp.any() && pu.any()) 
-							mediumScatterQueue->push(p, thp, -ray.dir, ray.time, ray.medium,
+						if (thp.any() && pu.any())
+							mediumScatterQueue->push(p, thp, pu, -ray.dir, ray.time, ray.medium,
 													 mp.phase, w.depth, w.pixelId);
 						scattered = true;	// Continue on another direction
 						return false;
@@ -70,7 +70,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			}
 
 			// Return if scattered or no throughput or max depth reached
-			if (scattered || thp.isZero() || w.depth == maxDepth) return;
+			if (scattered || !thp.any() || !pu.any() || w.depth == maxDepth) return;
 
 			// [Grand Survival] There are three cases needed to handle...
 			// [I am free...] The ray escaped from our sight...
@@ -82,10 +82,9 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 
 			// [You can not see me] The surface do not pocess a material (usually an interface?)
 			if (!w.intr.material) {	
-				/* Just let it go */
-				Ray newRay = w.intr.spawnRayTowards(ray.dir);
-				nextRayQueue(w.depth)->push(newRay, w.ctx, thp, pu, pl, w.depth, w.pixelId,
-											w.bsdfType);
+				/* Just let it go (use *argument* _depth_ here (not w.depth). ) */
+				nextRayQueue(depth)->push(w.intr.spawnRayTowards(ray.dir), w.ctx, thp, pu, pl,
+										  w.depth, w.pixelId, w.bsdfType);
 				return;
 			}
 
@@ -93,12 +92,12 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			if (w.intr.light) {
 				// Handle contribution for light hit
 				/* The light is sampled from the last vertex on surface, so use its context! */
-				hitLightRayQueue->push(w.intr, w.ctx, BSDF_SMOOTH, w.depth, w.pixelId, thp,
+				hitLightRayQueue->push(w.intr, w.ctx, w.bsdfType, w.depth, w.pixelId, thp,
 									   pu, pl);
 			}
 
 			// [Tomorrow is another day] Next surface scattering event...!
-			scatterRayQueue->push(w.intr, thp, w.depth, w.pixelId);
+			scatterRayQueue->push(w.intr, thp, pu, w.depth, w.pixelId);
 	}, gpContext->cudaStream);
 }
 
@@ -106,7 +105,6 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 	PROFILE("Sample medium scattering");
 	ForAllQueued(mediumScatterQueue, maxQueueSize,
 				 KRR_DEVICE_LAMBDA(const MediumScatterWorkItem &w){
-			return;
 			const Vector3f& wo = w.wo;
 			Sampler sampler	   = &pixelState->sampler[w.pixelId];
 			LightSampleContext ctx{w.p, Vector3f::Zero()};
@@ -115,34 +113,40 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
 				LightSample ls			  = light.sampleLi(sampler.get1D(), ctx);
-				Ray shadowRay			  = Interaction(ls.intr.p, w.time, w.medium).spawnRayTo(ls.intr);
-				Vector3f wi				  = shadowRay.dir.normalized(); 
+				Ray shadowRay			  = Interaction(w.p, w.time, w.medium).spawnRayTo(ls.intr);
+				Vector3f wi				  = shadowRay.dir.normalized();
+				Color thp				  = w.thp * w.phase.p(wo, wi);
 				float lightPdf			  = sampledLight.pdf * ls.pdf;
 				float phasePdf			  = light.isDeltaLight() ? 0 : w.phase.pdf(wo, wi);
 				
-				Color Ld = w.thp * ls.L;
+				Color Ld = thp * ls.L;
 				if (Ld.any() && ls.pdf > 0) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
-					sw.pl				 = lightPdf;
-					sw.pu				 = phasePdf;
+					sw.pl				 = w.pu * lightPdf;
+					sw.pu				 = w.pu * phasePdf;
 					sw.Ld				 = Ld;
 					sw.pixelId			 = w.pixelId;
 					sw.tMax				 = 1;
 					shadowRayQueue->push(sw);
 				}
 			}
+			
 			// [PART-B] Sample indirect lighting with scattering function
-			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get1D());
+			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get2D());
 			Color thp			   = w.thp * ps.p / ps.pdf;
 			// Russian roulette
-			float rrProb = min(thp.maxCoeff(), 1.f);
-			if (w.depth >= 1 && sampler.get1D() > rrProb) return;
-			thp /= rrProb;
-
+			float rrProb = (thp / w.pu.mean()).maxCoeff();
+			if (w.depth >= 1 && rrProb < 1) {
+				if (w.depth >= 1 && sampler.get1D() >= rrProb) return;
+				thp /= rrProb;
+			}
+			
 			Ray ray{w.p, ps.wi, w.time, w.medium};
-			if (!thp.isZero())
-				nextRayQueue(depth)->push(ray, ctx, thp, 1, 1 / ps.pdf, w.depth + 1, w.pixelId, BSDF_GLOSSY);
+			if (!thp.isZero() && !thp.hasNaN()) 
+				/* [NOTE] We need to multiply P_path by w.pu. While the PDF of P_light and P_bsdf is 
+					the same until this vertex, the channel-wise PDF along the path may be different. */
+				nextRayQueue(depth)->push(ray, ctx, thp, w.pu, w.pu / ps.pdf, w.depth + 1, w.pixelId, BSDF_SMOOTH);
 	}, gpContext->cudaStream);
 }
 

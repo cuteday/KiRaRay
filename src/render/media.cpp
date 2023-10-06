@@ -21,10 +21,9 @@ KRR_HOST_DEVICE PhaseFunctionSample HGPhaseFunction::sample(const Vector3f &wo,
 	// Compute direction _wi_ for Henyey-Greenstein sample
 	float sinTheta = safe_sqrt(1 - pow2(cosTheta));
 	float phi	   = M_2PI * u[1];
-	Frame wFrame(wo);
-	Vector3f wi = wFrame.toWorld(utils::sphericalToCartesian(sinTheta, cosTheta, phi));
+	Vector3f wi = Frame(wo.normalized()).toWorld(utils::sphericalToCartesian(sinTheta, cosTheta, phi));
 	
-	float pdf = this->pdf(wo, wi);
+	float pdf = this->pdf(wo.normalized(), wi);
 	return PhaseFunctionSample{wi, pdf, pdf};
 }
 

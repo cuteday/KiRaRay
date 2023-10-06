@@ -72,10 +72,8 @@ struct BSDFData {
 	}
 };
 
-class SurfaceInteraction : public Interaction {
-public:
+struct SurfaceInteraction : public Interaction {
 	using Interaction::Interaction;
-
 	SurfaceInteraction() = default;
 
 	KRR_CALLABLE Vector3f toWorld(const Vector3f &v) const {

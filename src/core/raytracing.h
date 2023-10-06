@@ -7,8 +7,7 @@
 #include "taggedptr.h"
 #include "medium.h"
 
-#define KRR_RAY_TMAX	(1e20f)
-#define KRR_RAY_EPS		(1e-5f)
+#define KRR_RAY_EPS		(1e-4f)
 
 KRR_NAMESPACE_BEGIN
 
@@ -73,13 +72,12 @@ KRR_CALLABLE Vector3f
 offsetRayOrigin(const Vector3f &p, const Vector3f &n, const Vector3f &w) {
 	Vector3f offset = n * KRR_RAY_EPS;
 	if (dot(n, w) < 0.f) offset = -offset;
-	Vector3f po = p + offset;
-	return po;
+	return p + offset;
 }
 
 KRR_CALLABLE Ray operator*(const Affine3f& transform, const Ray& ray) {
 	Vector3f o = transform * ray.origin;
-	Vector3f d = transform.rotation() * ray.dir;
+	Vector3f d = transform.matrix().topLeftCorner(3, 3) * ray.dir;
 	return Ray{o, d, ray.time, ray.medium};
 }
 
@@ -146,19 +144,19 @@ struct Interaction{
 	Medium medium{nullptr};
 };
 
-static constexpr int nSpectrumSamples = 4;
+static constexpr int nSpectrumSamples = Color::dim;
 
 class SampledChannel {
 public:
 	KRR_CALLABLE SampledChannel() = default;
 
-	KRR_CALLABLE SampledChannel(float u) : channel(int(u * Color3f::dim) % 3){}
+	KRR_CALLABLE SampledChannel(float u) : channel(uint(u * Color::dim) % Color::dim) {}
 
 	KRR_CALLABLE static SampledChannel sampleUniform(float u) { return SampledChannel(u); }
 
-	KRR_CALLABLE operator int() const { return channel; }
+	KRR_CALLABLE operator uint() const { return channel; }
 
-	int channel;
+	uint channel;
 };
 
 KRR_NAMESPACE_END

@@ -30,7 +30,7 @@ void Context::initialize() {
 	cudaGetDeviceCount(&numDevices);
 	if (numDevices == 0)
 		logFatal("No CUDA capable devices found!");
-	logInfo("Found " + to_string(numDevices) + " CUDA devices!");
+	logInfo("Found " + to_string(numDevices) + " CUDA device(s).");
 	OPTIX_CHECK(optixInit());
 
 	// set up context
@@ -40,7 +40,7 @@ void Context::initialize() {
 	cudaStream = 0;
 
 	cudaGetDeviceProperties(&deviceProps, deviceID);
-	Log(Success, "KiRaRay: running on device: " + string(deviceProps.name));
+	Log(Success, "KiRaRay is running on " + string(deviceProps.name));
 	if (!deviceProps.concurrentManagedAccess)
 		Log(Debug, "Concurrent access of managed memory is not supported.");
 

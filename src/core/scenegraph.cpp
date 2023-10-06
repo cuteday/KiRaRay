@@ -48,7 +48,7 @@ SceneGraphLeaf::SharedPtr HomogeneousVolume::clone() {
 }
 
 SceneGraphLeaf::SharedPtr VDBVolume::clone() {
-	return std::make_shared<VDBVolume>(sigma_a, sigma_s, g, densityFile);
+	return std::make_shared<VDBVolume>(sigma_a, sigma_s, g, densityGrid);
 }
 
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
@@ -616,6 +616,7 @@ void VDBVolume::renderUI() {
 	ui::Text(("Sigma_a: " + sigma_a.string()).c_str());
 	ui::Text(("Sigma_s: " + sigma_s.string()).c_str());
 	ui::Text("g: %f", g);
+	ui::Text("Max density: %f", densityGrid->getMaxDensity());
 }
 
 void SceneGraphNode::renderUI() { 

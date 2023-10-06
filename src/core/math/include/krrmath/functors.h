@@ -32,6 +32,12 @@ using ::sinh;
 using ::cosh;
 using ::tanh;
 
+template <typename T> KRR_CALLABLE void swap(T &a, T &b) {
+	T tmp = std::move(a);
+	a	  = std::move(b);
+	b	  = std::move(tmp);
+}
+
 template <typename T> KRR_CALLABLE auto clamp(T v, T lo, T hi) {
 	return std::max(std::min(v, hi), lo);
 }

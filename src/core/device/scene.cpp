@@ -2,7 +2,7 @@
 #include "device/optix.h"
 #include "render/profiler/profiler.h"
 #include "../scene.h"
-#include "scene/volume.h"
+#include "util/volume.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -89,9 +89,9 @@ void RTScene::uploadSceneLightData() {
 	for (const auto &instance : mScene.lock()->getMeshInstances()) {
 		const auto &mesh			   = instance->getMesh();
 		const auto &material		   = mesh->getMaterial();
-		rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
-		rt::MeshData &meshData		   = mMeshes[mesh->getMeshId()];
 		if ((material && material->hasEmission()) || mesh->Le.any()) {
+			rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
+			rt::MeshData &meshData		   = mMeshes[mesh->getMeshId()];
 			rt::TextureData &textureData = materialData.getTexture(Material::TextureType::Emissive);
 			rt::InstanceData &instanceData = mInstances[instance->getInstanceId()];
 			Color3f Le = material->hasEmission()
@@ -119,7 +119,9 @@ void RTScene::uploadSceneLightData() {
 		if (auto infiniteLight = std::dynamic_pointer_cast<InfiniteLight>(light)) {
 			rt::TextureData textureData;
 			textureData.initializeFromHost(infiniteLight->getTexture());
-			mInfiniteLights.push_back(rt::InfiniteLight(transform.rotation(), textureData, 1));
+			mInfiniteLights.push_back(
+				rt::InfiniteLight(transform.rotation(), textureData, 1,
+								  mScene.lock()->getBoundingBox().diagonal().norm()));
 		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
 			Log(Warning, "Point light is not yet implemented in ray tracing, skipping...");
 		} else if (auto directionalLight = std::dynamic_pointer_cast<DirectionalLight>(light)) {
@@ -153,10 +155,9 @@ void RTScene::uploadSceneMediumData() {
 			mHomogeneousMedium.push_back(gMedium);
 		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
 			float maxDensity{0};
-			auto densityGridHandle = loadNanoVDB(m->densityFile, &maxDensity);
-			densityGridHandle.deviceUpload();
-			mNanoVDBMedium.emplace_back(m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s, m->g, 
-				NanoVDBGrid(std::move(densityGridHandle), maxDensity));
+			mNanoVDBMedium.emplace_back(m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s,
+										m->g, std::move(*m->densityGrid));
+			mNanoVDBMedium.back().densityGrid.toDevice();
 		}
 	}
 	mHomogeneousMediumBuffer.alloc_and_copy_from_host(mHomogeneousMedium);

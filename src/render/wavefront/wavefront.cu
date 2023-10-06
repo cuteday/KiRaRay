@@ -18,7 +18,7 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 		0.f, tMax, 0.f,						/* ray time val min max */
 		OptixVisibilityMask(255),			/* all visible */
 		flags,
-		rayType, 2,							/* ray type and number of types */
+		rayType, 3,							/* ray type and number of types */
 		rayType,							/* miss SBT index */
 		std::forward<Args>(payload)...);	/* (unpacked pointers to) payloads */
 }
@@ -58,8 +58,8 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	}
 	if (intr.light) 	// push to hit ray queue if mesh has light
 		launchParams.hitLightRayQueue->push(r, intr);
-	if (any(r.thp)) 	// process material and push to material evaluation queue
-		launchParams.scatterRayQueue->push(intr, r.thp, r.depth, r.pixelId);
+	if (r.thp.any()) 	// process material and push to material evaluation queue
+		launchParams.scatterRayQueue->push(intr, r.thp, r.pu, r.depth, r.pixelId);
 }
 
 extern "C" __global__ void KRR_RT_AH(Closest)() { 
@@ -78,7 +78,7 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 	if (rayIndex >= launchParams.currentRayQueue->size()) return;
 	RayWorkItem r = getRayWorkItem();
 	SurfaceInteraction intr = {};
-	traceRay(launchParams.traversable, r.ray, KRR_RAY_TMAX,
+	traceRay(launchParams.traversable, r.ray, M_FLOAT_INF,
 		0, OPTIX_RAY_FLAG_NONE, (void*)&intr);
 }
 
@@ -116,10 +116,10 @@ extern "C" __global__ void KRR_RT_RG(ShadowTr)() {
 	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
 	ShadowRayWorkItem r = getShadowRayWorkItem();
 	SurfaceInteraction intr = {};
+	uint u0, u1;
+	packPointer(&intr, u0, u1);
 	traceTransmittance(r, intr, launchParams.pixelState, [&](Ray ray, float tMax) -> bool {
-		uint u0, u1;
-		packPointer(&intr, u0, u1);
-		uint32_t visible{0};
+		uint32_t visible = 0;
 		traceRay(launchParams.traversable, ray, tMax, 2, OPTIX_RAY_FLAG_NONE, u0, u1, visible);
 		return visible;
 	});

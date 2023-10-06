@@ -10,12 +10,6 @@
 KRR_NAMESPACE_BEGIN
 extern "C" char WAVEFRONT_PTX[];
 
-template <typename... Args>
-KRR_DEVICE_FUNCTION void WavefrontPathTracer::debugPrint(uint pixelId, const char *fmt,
-														 Args &&...args) {
-	if (pixelId == debugPixel) printf(fmt, std::forward<Args>(args)...);
-}
-
 void WavefrontPathTracer::initialize() {
 	Allocator &alloc = *gpContext->alloc;
 	maxQueueSize	 = getFrameSize()[0] * getFrameSize()[1];
@@ -75,12 +69,10 @@ void WavefrontPathTracer::handleHit() {
 	ForAllQueued(
 		hitLightRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const HitLightWorkItem &w) {
 			Color Le = w.light.L(w.p, w.n, w.uv, w.wo) * w.thp;
-			// Simple understanding: if the sampled component is a delta func, then
-			// it has infinite values and has 1 MIS weights.
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
-				Color pl	   = w.pl * w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
-				Le /= (pl + w.pu).mean();
+				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
+				Le /= (w.pl * lightPdf + w.pu).mean();
 			} else Le /= w.pu.mean();
 			pixelState->addRadiance(w.pixelId, Le);
 		});
@@ -94,11 +86,9 @@ void WavefrontPathTracer::handleMiss() {
 			Color L = {};
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
-				float misWeight = 1;
-				Color Ld		= light.Li(w.ray.dir);
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
-					L += Ld / (w.pu + w.pl * lightPdf).mean();
+					L += light.Li(w.ray.dir) / (w.pu + w.pl * lightPdf).mean();
 				} else L += light.Li(w.ray.dir) / w.pu.mean();	
 			}
 			pixelState->addRadiance(w.pixelId, w.thp * L);
@@ -112,8 +102,7 @@ void WavefrontPathTracer::generateScatterRays() {
 			Sampler sampler = &pixelState->sampler[w.pixelId];
 			/*  Russian Roulette: If the path is terminated by this vertex,
 				then NEE should not be evaluated */
-			if (sampler.get1D() >= probRR)
-				return;
+			if (sampler.get1D() >= probRR) return;
 			w.thp /= probRR;
 			const SurfaceInteraction &intr = w.intr;
 			Vector3f woLocal	  = intr.toLocal(intr.wo);
@@ -129,15 +118,13 @@ void WavefrontPathTracer::generateScatterRays() {
 
 				float lightPdf	= sampledLight.pdf * ls.pdf;
 				Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-				float bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-				float misWeight = evalMIS(lightPdf, bsdfPdf);
-				
-				if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
+				float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+				if (lightPdf > 0 && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
 					sw.Ld				 = ls.L * w.thp * bsdfVal * fabs(wiLocal[2]);
-					sw.pu				 = lightPdf;
-					sw.pl				 = bsdfPdf;
+					sw.pu				 = w.pu * bsdfPdf;
+					sw.pl				 = w.pu * lightPdf;
 					sw.pixelId			 = w.pixelId;
 					sw.tMax				 = 1;
 					if (sw.Ld.any()) shadowRayQueue->push(sw);
@@ -150,8 +137,8 @@ void WavefrontPathTracer::generateScatterRays() {
 				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};
 				r.bsdfType		 = sample.flags;
-				r.pu			 = 1;
-				r.pl			 = 1 / sample.pdf;
+				r.pu			 = w.pu;
+				r.pl			 = w.pu / sample.pdf;
 				r.ray			 = intr.spawnRayTowards(wiWorld);
 				r.ctx			 = { intr.p, intr.n };
 				r.pixelId		 = w.pixelId;
@@ -213,8 +200,7 @@ void WavefrontPathTracer::beginFrame(RenderContext* context) {
 			pixelState->L[pixelId] = 0;
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
-			pixelState->channel[pixelId] =
-				SampledChannel::sampleUniform(pixelState->sampler[pixelId].get1D());
+			pixelState->channel[pixelId] = SampledChannel::sampleUniform(pixelState->sampler[pixelId].get1D());
 		}, gpContext->cudaStream);
 }
 
