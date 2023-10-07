@@ -44,13 +44,13 @@ This project uses cmake to build, Make sure cuda is installed and added to PATH,
 
 #### Running
 
-Specify the json configuration file as command line argument to start the renderer, as the example below. Check the [example configuration](common/configs/example.json) for how to configure the renderer.
+Specify the json configuration file as command line argument to start the renderer, as the example below. Check the [example configurations](common/configs) for some test scenes, including volumetric rendering and animated scenes.
 
 ~~~bash
-build/src/kiraray.exe common/configs/example.json
+build/src/kiraray.exe common/configs/example_cbox.json
 ~~~
 
-> The two necessary entries in the configuration are `model` (specifying the relative path to the scene file) and `passes` (describing the render pipeline). Once compiled, directly run `kiraray` without specifying configuration (the example configuration will be used) to get a feel for this toy renderer.
+> The two necessary entries in the configuration are `model` (specifying the relative path to the scene file) and `passes` (describing the render pipeline). Once compiled, directly run `kiraray` without specifying configuration (this [example configuration](common/configs/example_cbox.json) will be used) to get a feel for this toy renderer.
 
 </details>
 
