@@ -112,7 +112,7 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			if (enableNEE) {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
-				LightSample ls			  = light.sampleLi(sampler.get1D(), ctx);
+				LightSample ls			  = light.sampleLi(sampler.get2D(), ctx);
 				Ray shadowRay			  = Interaction(w.p, w.time, w.medium).spawnRayTo(ls.intr);
 				Vector3f wi				  = shadowRay.dir.normalized();
 				Color thp				  = w.thp * w.phase.p(wo, wi);
@@ -120,7 +120,7 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 				float phasePdf			  = light.isDeltaLight() ? 0 : w.phase.pdf(wo, wi);
 				
 				Color Ld = thp * ls.L;
-				if (Ld.any() && ls.pdf > 0) {
+				if (Ld.any() && lightPdf > 0) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
 					sw.pl				 = w.pu * lightPdf;
