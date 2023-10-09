@@ -6,7 +6,7 @@
 #include <string>
 
 #include "common.h"
-#include "interop.h"
+#include "device/gpustd.h"
 #include "check.h"
 #include "tables.h"
 #include "util/math_utils.h"

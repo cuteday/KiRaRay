@@ -6,7 +6,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace inter;
+using namespace gpu;
 Context::SharedPtr gpContext;
 std::shared_ptr<RenderPassFactory::map_type> RenderPassFactory::map = nullptr;
 std::shared_ptr<RenderPassFactory::configured_map_type> RenderPassFactory::configured_map = nullptr;

@@ -5,7 +5,7 @@
 #include "device/memory.h"
 #include "nvrhi/vulkan.h"
 #include "nvrhi/vulkan/vulkan-backend.h"
-#include "interop.h"
+#include "device/gpustd.h"
 #include "renderpass.h"
 
 KRR_NAMESPACE_BEGIN

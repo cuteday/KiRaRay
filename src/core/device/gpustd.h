@@ -22,7 +22,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-namespace inter {
+namespace gpu {
 
 	class memory_resource {
 		static constexpr size_t max_align = alignof(std::max_align_t);
@@ -596,5 +596,97 @@ namespace inter {
 			return get<Req>((const tuple<Ts...> &) t);
 	}
 
-} // namespace inter end
+	template <typename T> class optional {
+	public:
+		using value_type = T;
+
+		optional() = default;
+		KRR_CALLABLE optional(const T &v) : set(true) { new (ptr()) T(v); }
+		KRR_CALLABLE optional(T &&v) : set(true) { new (ptr()) T(std::move(v)); }
+		KRR_CALLABLE optional(const optional &v) : set(v.has_value()) {
+			if (v.has_value()) new (ptr()) T(v.value());
+		}
+		KRR_CALLABLE optional(optional &&v) : set(v.has_value()) {
+			if (v.has_value()) {
+				new (ptr()) T(std::move(v.value()));
+				v.reset();
+			}
+		}
+
+		KRR_CALLABLE optional &operator=(const T &v) {
+			reset();
+			new (ptr()) T(v);
+			set = true;
+			return *this;
+		}
+		KRR_CALLABLE optional &operator=(T &&v) {
+			reset();
+			new (ptr()) T(std::move(v));
+			set = true;
+			return *this;
+		}
+		KRR_CALLABLE optional &operator=(const optional &v) {
+			reset();
+			if (v.has_value()) {
+				new (ptr()) T(v.value());
+				set = true;
+			}
+			return *this;
+		}
+		KRR_CALLABLE optional &operator=(optional &&v) {
+			reset();
+			if (v.has_value()) {
+				new (ptr()) T(std::move(v.value()));
+				set = true;
+				v.reset();
+			}
+			return *this;
+		}
+
+		KRR_CALLABLE ~optional() { reset(); }
+
+		KRR_CALLABLE explicit operator bool() const { return set; }
+
+		KRR_CALLABLE T value_or(const T &alt) const { return set ? value() : alt; }
+
+		KRR_CALLABLE T *operator->() { return &value(); }
+		KRR_CALLABLE const T *operator->() const { return &value(); }
+		KRR_CALLABLE T &operator*() { return value(); }
+		KRR_CALLABLE const T &operator*() const { return value(); }
+		KRR_CALLABLE T &value() {
+			CHECK(set);
+			return *ptr();
+		}
+		KRR_CALLABLE const T &value() const {
+			CHECK(set);
+			return *ptr();
+		}
+
+		KRR_CALLABLE void reset() {
+			if (set) {
+				value().~T();
+				set = false;
+			}
+		}
+
+		KRR_CALLABLE bool has_value() const { return set; }
+
+	private:
+#ifdef __NVCC__
+		// Work-around NVCC bug
+		KRR_CALLABLE
+		T *ptr() { return reinterpret_cast<T *>(&optionalValue); }
+		KRR_CALLABLE
+		const T *ptr() const { return reinterpret_cast<const T *>(&optionalValue); }
+#else
+		KRR_CALLABLE
+		T *ptr() { return std::launder(reinterpret_cast<T *>(&optionalValue)); }
+		KRR_CALLABLE
+		const T *ptr() const { return std::launder(reinterpret_cast<const T *>(&optionalValue)); }
+#endif
+
+		std::aligned_storage_t<sizeof(T), alignof(T)> optionalValue;
+		bool set = false;
+	};
+} // namespace gpu end
 KRR_NAMESPACE_END

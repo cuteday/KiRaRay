@@ -5,7 +5,7 @@
 #include "camera.h"
 #include "texture.h"
 #include "scenegraph.h"
-#include "interop.h"
+#include "device/gpustd.h"
 
 #include "device/buffer.h"
 #include "device/memory.h"

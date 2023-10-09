@@ -12,12 +12,12 @@
 #include <cuda.h>
 
 #include "common.h"
-#include "interop.h"
+#include "device/gpustd.h"
 #include "util/check.h"
 
 KRR_NAMESPACE_BEGIN
 
-class CUDAMemory : public inter::memory_resource {
+class CUDAMemory : public gpu::memory_resource {
 	void *do_allocate(size_t size, size_t alignment){
 		void *ptr;
 		CUDA_CHECK(cudaMallocManaged(&ptr, size));

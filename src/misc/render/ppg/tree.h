@@ -6,7 +6,7 @@
 #include "common.h"
 #include "sampler.h"
 #include "logger.h"
-#include "interop.h"
+#include "device/gpustd.h"
 #include "device/context.h"
 #include "device/cuda.h"
 #include "device/atomic.h"
