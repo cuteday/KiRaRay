@@ -38,27 +38,40 @@ KRR_HOST_DEVICE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledC
 	ray.dir.normalize();
 
 	Color T_maj(1);
-	RayMajorant majorant = ray.medium.sampleRay(ray, tMax);
-	Color sigma_maj		 = majorant.sigma_maj;
-	float tMin			 = majorant.tMin;
+	MajorantIterator iter = ray.medium.sampleRay(ray, tMax);
+
 	while (true) {
-		// keep calling the callback function until it requests termination by returning false
-		float t = tMin + sampleExponential(sampler.get1D(), sigma_maj[channel]);
-		if (t < majorant.tMax) {
-			T_maj *= (-(t - tMin) * sigma_maj).exp();
-			MediumProperties mp = ray.medium.samplePoint(ray(t));
-			if (!callback(ray(t), mp, sigma_maj, T_maj)) return 1;
-			T_maj = 1;
-			tMin  = t;
-		} else {
-			/* Sampled interaction is outside the medium */
-			float dt = majorant.tMax - tMin;
+		gpu::optional<MajorantSegment> seg = iter.next();
+		if (!seg) return T_maj;
+		// skipping empty space...
+		if (seg->sigma_maj[channel] == 0) {
+			float dt = seg->tMax - seg->tMin;
 			if (isinf(dt)) dt = M_FLOAT_MAX;
-			T_maj *= (-dt * majorant.sigma_maj).exp();
-			break;
+			T_maj *= (-dt * seg->sigma_maj).exp();
+			continue;
+		}
+
+		float tMin = seg->tMin;
+		while (true) {
+			// keep calling the callback function until it requests termination by returning false
+			// for example, several null-collision followed by a real scattering event...
+			float t = tMin + sampleExponential(sampler.get1D(), seg->sigma_maj[channel]);
+			if (t < seg->tMax) {
+				T_maj *= (-(t - tMin) * seg->sigma_maj).exp();
+				MediumProperties mp = ray.medium.samplePoint(ray(t));
+				if (!callback(ray(t), mp, seg->sigma_maj, T_maj)) return 1;
+				T_maj = 1;
+				tMin  = t;
+			} else {
+				/* Sampled interaction is outside the medium */
+				float dt = seg->tMax - tMin;
+				if (isinf(dt)) dt = M_FLOAT_MAX;
+				T_maj *= (-dt * seg->sigma_maj).exp();
+				break;
+			}
 		}
 	}
-	return T_maj;
+	return 1;
 }
 
 template <typename TraceFunc>

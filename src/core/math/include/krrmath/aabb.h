@@ -43,6 +43,10 @@ public:
 		return p.cwiseMin(this->m_max).cwiseMax(this->m_min);
 	}
 
+	KRR_CALLABLE VectorType offset(const VectorType& p) const {
+		return (p - this->m_min) / this->diagonal().unaryExpr([](T x) { return x == 0 ? 1 : x; });
+	}
+
 	KRR_CALLABLE bool intersect(const VectorType& o, const VectorType& d, 
 		T tMax = std::numeric_limits<T>::max(), T *tHit0 = nullptr, T *tHit1 = nullptr) const {
 		T t0 = 0, t1 = tMax;
