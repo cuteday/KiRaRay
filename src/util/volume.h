@@ -45,6 +45,8 @@ public:
 
 	KRR_CALLABLE float getMaxDensity() const { return maxDensity; }
 
+	KRR_CALLABLE nanovdb::FloatGrid *getFloatGrid() const { return densityGrid; }
+
 private:
 	AABB3f bounds;
 	nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle;

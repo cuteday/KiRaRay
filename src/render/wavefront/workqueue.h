@@ -65,10 +65,10 @@ class MultiWorkQueue<types::TypePack<Ts...>> {
 public:
 	template <typename T> 
 	KRR_CALLABLE WorkQueue<T>* get() {
-		return &inter::get<WorkQueue<T>>(m_queues);
+		return &gpu::get<WorkQueue<T>>(m_queues);
 	}
 
-	MultiWorkQueue(int n, Allocator alloc, inter::span<const bool> haveType) {
+	MultiWorkQueue(int n, Allocator alloc, gpu::span<const bool> haveType) {
 		int index = 0;
 		((*get<Ts>() = WorkQueue<Ts>(haveType[index++] ? n : 1, alloc)), ...);
 	}
@@ -88,7 +88,7 @@ public:
 	}
 
 private:
-	inter::tuple<WorkQueue<Ts>...> m_queues;
+	gpu::tuple<WorkQueue<Ts>...> m_queues;
 };
 
 // Helper functions and basic classes

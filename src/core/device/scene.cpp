@@ -157,7 +157,7 @@ void RTScene::uploadSceneMediumData() {
 			float maxDensity{0};
 			mNanoVDBMedium.emplace_back(m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s,
 										m->g, std::move(*m->densityGrid));
-			mNanoVDBMedium.back().densityGrid.toDevice();
+			mNanoVDBMedium.back().initializeFromHost();
 		}
 	}
 	mHomogeneousMediumBuffer.alloc_and_copy_from_host(mHomogeneousMedium);

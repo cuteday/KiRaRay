@@ -3,7 +3,7 @@
 #include "common.h"
 
 #include "util/math_utils.h"
-#include "interop.h"
+#include "device/gpustd.h"
 
 #define MIS_POWER_HEURISTIC 1 // 0 for balance heuristic
 
@@ -89,7 +89,7 @@ KRR_CALLABLE float sampleExponential(float u, float a) {
 	return -std::log(1 - u) / a;
 }
 
-KRR_CALLABLE int sampleDiscrete(inter::span<const float> weights, float u, float *pmf = nullptr) {
+KRR_CALLABLE int sampleDiscrete(gpu::span<const float> weights, float u, float *pmf = nullptr) {
 	float sumWeights = 0;
 	for (float w : weights) sumWeights += w;
 

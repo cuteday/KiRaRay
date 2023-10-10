@@ -51,7 +51,7 @@ protected:
 	void updateAccelStructure();
 
 	std::weak_ptr<Scene> scene;
-	inter::vector<OptixInstance> instancesIAS;
+	gpu::vector<OptixInstance> instancesIAS;
 
 	std::vector<CUDABuffer> accelBuffersGAS;
 	CUDABuffer accelBufferIAS{};
@@ -125,9 +125,9 @@ protected:
 	std::vector<OptixProgramGroup> raygenPGs;
 	std::vector<OptixProgramGroup> missPGs;
 	std::vector<OptixProgramGroup> hitgroupPGs; 
-	inter::vector<RaygenRecord> raygenRecords;
-	inter::vector<HitgroupRecord> hitgroupRecords;
-	inter::vector<MissRecord> missRecords;
+	gpu::vector<RaygenRecord> raygenRecords;
+	gpu::vector<HitgroupRecord> hitgroupRecords;
+	gpu::vector<MissRecord> missRecords;
 
 	std::map<string, int> entryPoints;
 	std::vector<OptixShaderBindingTable> SBT;

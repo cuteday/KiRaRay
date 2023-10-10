@@ -12,7 +12,7 @@ class PhaseFunctionSample;
 class HomogeneousMedium;
 class NanoVDBMedium;
 class MediumProperties;
-class RayMajorant;
+class MajorantIterator;
 
 class PhaseFunction : public TaggedPointer<HGPhaseFunction> {
 public:
@@ -31,17 +31,6 @@ struct MediumProperties {
 	Color Le;
 };
 
-class RayMajorant {
-public:
-	KRR_CALLABLE RayMajorant() = default;
-
-	KRR_CALLABLE RayMajorant(const Color &sigma_maj, float tMin = 0, float tMax = M_FLOAT_INF) :
-		sigma_maj(sigma_maj), tMin(tMin), tMax(tMax) {}
-
-	Color sigma_maj = 0;
-	float tMin = 0, tMax = 0;
-};
-
 class Medium : public TaggedPointer<HomogeneousMedium, NanoVDBMedium> {
 public:
 	using TaggedPointer::TaggedPointer;
@@ -52,7 +41,7 @@ public:
 
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p) const;
 
-	KRR_CALLABLE RayMajorant sampleRay(const Ray &ray, float tMax) const;
+	KRR_CALLABLE MajorantIterator sampleRay(const Ray &ray, float tMax) const;
 };
 
 class MediumInterface {

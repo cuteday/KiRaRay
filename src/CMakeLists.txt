@@ -28,12 +28,12 @@ SET ( KRR_CORE_SOURCE
 	core/camera.cpp
 	core/light.cpp
 	core/mesh.cpp
-	core/interop.cpp
 	core/window.cpp
 	core/logger.cpp
 	core/file.cpp
 	core/renderpass.cpp
 	core/texture.cpp
+	core/device/gpustd.cpp
 	core/device/context.cpp
 	core/device/optix.cpp
 	core/device/scene.cpp

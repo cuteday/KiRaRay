@@ -123,11 +123,11 @@ extern const dim3 blockDim, gridDim;
 
 KRR_NAMESPACE_BEGIN
 
-namespace inter {
+namespace gpu {
 	template <typename T>
 	class polymorphic_allocator;
 }
 // this allocator uses gpu memory by default.
-using Allocator = inter::polymorphic_allocator<std::byte>;
+using Allocator = gpu::polymorphic_allocator<std::byte>;
 
 KRR_NAMESPACE_END

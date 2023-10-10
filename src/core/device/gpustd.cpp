@@ -1,10 +1,10 @@
 // Code taken and modified from pbrt-v4,  
 // Originally licensed under the Apache License, Version 2.0.
-#include "interop.h"
+#include "gpustd.h"
 
 KRR_NAMESPACE_BEGIN
 
-namespace inter {
+namespace gpu {
 
 	class NewDeleteResource : public memory_resource {
 		void* do_allocate(size_t size, size_t alignment) {
