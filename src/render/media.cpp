@@ -2,10 +2,72 @@
 
 #include "medium.h"
 #include "raytracing.h"
+#include "device/cuda.h"
 #include "util/math_utils.h"
 
 KRR_NAMESPACE_BEGIN
 /* Note that the function qualifier (e.g. inline) should be consistent between declaration and definition. */
+
+void initializeMajorantGrid(MajorantGrid& majorantGrid,
+							nanovdb::FloatGrid *floatGrid) {
+	auto res = majorantGrid.res;
+	cudaDeviceSynchronize();
+	GPUParallelFor(res.x() * res.y() * res.z(),
+		[=] KRR_DEVICE(int index) mutable {
+			int x = index % majorantGrid.res.x();
+			int y = (index / majorantGrid.res.x()) % majorantGrid.res.y();
+			int z = index / (majorantGrid.res.x() * majorantGrid.res.y());
+			DCHECK_EQ(index, x + majorantGrid.res.x() * (y + majorantGrid.res.y() * z));
+
+			// World (aka medium) space bounds of this max grid cell
+			AABB3f wb(majorantGrid.bounds.lerp(Vector3f(float(x) / majorantGrid.res.x(),
+														float(y) / majorantGrid.res.y(),
+														float(z) / majorantGrid.res.z())),
+					  majorantGrid.bounds.lerp(Vector3f(float(x + 1) / majorantGrid.res.x(),
+														float(y + 1) / majorantGrid.res.y(),
+														float(z + 1) / majorantGrid.res.z())));
+
+			// Compute corresponding NanoVDB index-space bounds in floating-point.
+			nanovdb::Vec3R i0 = floatGrid->worldToIndexF(
+				nanovdb::Vec3R(wb.min().x(), wb.min().y(), wb.min().z()));
+			nanovdb::Vec3R i1 = floatGrid->worldToIndexF(
+				nanovdb::Vec3R(wb.max().x(), wb.max().y(), wb.max().z()));
+
+			// Now find integer index-space bounds, accounting for both
+			// filtering and the overall index bounding box.
+			auto bbox	= floatGrid->indexBBox();
+			float delta = 1.f; // Filter slop
+			int nx0		= max(int(i0[0] - delta), bbox.min()[0]);
+			int nx1		= min(int(i1[0] + delta), bbox.max()[0]);
+			int ny0		= max(int(i0[1] - delta), bbox.min()[1]);
+			int ny1		= min(int(i1[1] + delta), bbox.max()[1]);
+			int nz0		= max(int(i0[2] - delta), bbox.min()[2]);
+			int nz1		= min(int(i1[2] + delta), bbox.max()[2]);
+
+			float maxValue = 0;
+			auto accessor  = floatGrid->getAccessor();
+
+			for (int nz = nz0; nz <= nz1; ++nz)
+				for (int ny = ny0; ny <= ny1; ++ny)
+					for (int nx = nx0; nx <= nx1; ++nx)
+						maxValue = max(maxValue, accessor.getValue({nx, ny, nz}));
+
+			majorantGrid.set(x, y, z, maxValue);
+		}, 0);
+}
+
+NanoVDBMedium::NanoVDBMedium(const Affine3f &transform, Color sigma_a, Color sigma_s, float g,
+							 NanoVDBGrid density) :
+	transform(transform), phase(g), sigma_a(sigma_a), sigma_s(sigma_s), densityGrid(std::move(density)) {
+	inverseTransform = transform.inverse();
+	const Vector3f majorantGridRes{64, 64, 64};
+	majorantGrid	 = MajorantGrid(densityGrid.getBounds(), majorantGridRes);
+}
+
+void NanoVDBMedium::initializeFromHost() {
+	densityGrid.toDevice();
+	initializeMajorantGrid(majorantGrid, densityGrid.getFloatGrid());
+}
 
 KRR_HOST_DEVICE PhaseFunctionSample HGPhaseFunction::sample(const Vector3f &wo,
 														 const Vector2f &u) const {

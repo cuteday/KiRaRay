@@ -19,6 +19,11 @@ class MajorantGrid : public Grid<float, 3> {
 public:
 	MajorantGrid() = default;
 
+	MajorantGrid(AABB3f bounds, Vector3i res): 
+		bounds(bounds) { this->res = res;
+		this->voxels.resize(res.x() * res.y() * res.z());
+	}
+
 	KRR_CALLABLE float lookup(int x, int y, int z) const {
 		return voxels[x + res.x() * (y + res.y() * z)];
 	}
@@ -37,15 +42,13 @@ public:
 	KRR_CALLABLE MajorantIterator(Ray ray, float tMin, float tMax, Color sigma_t, const MajorantGrid *grid = nullptr) 
 		: tMin(tMin), tMax(tMax), sigma_t(sigma_t), grid(grid) {
 		if (!grid) return;	// acts like a homogeneous ray majorant iterator
-		Vector3f diag = grid->bounds.diagonal();
-		Ray rayGrid(Point3f(grid->bounds.offset(ray.origin)),
-					Vector3f(ray.dir.x() / diag.x(), ray.dir.y() / diag.y(), ray.dir.z() / diag.z()));
+		Ray rayGrid(grid->bounds.offset(ray.origin), ray.dir / grid->bounds.diagonal());
 		Point3f gridIntersect = rayGrid(tMin);
 		for (int axis = 0; axis < 3; ++axis) {
 			// Initialize ray stepping parameters for _axis_
 			// Compute current voxel for axis and handle negative zero direction
 			voxel[axis]	 = clamp(gridIntersect[axis] * grid->res[axis], 0.f, grid->res[axis] - 1.f);
-			deltaT[axis] = 1 / (std::abs(rayGrid.dir[axis]) * grid->res[axis]);
+			deltaT[axis] = 1.f / (fabs(rayGrid.dir[axis]) * grid->res[axis]);
 			if (rayGrid.dir[axis] == -0.f) rayGrid.dir[axis] = 0.f;
 			if (rayGrid.dir[axis] >= 0) {
 				// Handle ray with positive direction for voxel stepping
@@ -124,12 +127,10 @@ public:
 
 class NanoVDBMedium {
 public:
-	using VDBSampler = nanovdb::SampleFromVoxels<nanovdb::FloatGrid::TreeType, 1, false>;
+	NanoVDBMedium(const Affine3f &transform, Color sigma_a, Color sigma_s, float g,
+				  NanoVDBGrid density);
 
-	NanoVDBMedium(const Affine3f& transform, Color sigma_a, Color sigma_s, float g, NanoVDBGrid density) :
-		transform(transform), phase(g), sigma_a(sigma_a), sigma_s(sigma_s), densityGrid(std::move(density)) {
-		inverseTransform				   = transform.inverse();
-	}
+	KRR_HOST void initializeFromHost();
 
 	KRR_CALLABLE bool isEmissive() const { return false; }
 
@@ -146,8 +147,8 @@ public:
 		AABB3f box	 = densityGrid.getBounds();
 		Ray localRay = inverseTransform * ray;
 		if(!box.intersect(localRay.origin, localRay.dir, raytMax, &tMin, &tMax)) return {};
-		return MajorantIterator{ray, tMin, tMax, densityGrid.getMaxDensity() * (sigma_a + sigma_s),
-								nullptr};
+		//return MajorantIterator{localRay, tMin, tMax, densityGrid.getMaxDensity() * (sigma_a + sigma_s), nullptr};
+		return MajorantIterator{localRay, tMin, tMax, sigma_a + sigma_s, &majorantGrid};
 	}
 
 	NanoVDBGrid densityGrid;

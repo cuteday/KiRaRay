@@ -9,10 +9,8 @@ class Grid {
 public:
 	Grid() = default;
 	
-	TypedBufferView<T> voxels;
+	TypedBuffer<T> voxels;
 	Vector<int, Dim> res;
 };
-
-
 
 KRR_NAMESPACE_END

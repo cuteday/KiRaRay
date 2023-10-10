@@ -47,6 +47,10 @@ public:
 		return (p - this->m_min) / this->diagonal().unaryExpr([](T x) { return x == 0 ? 1 : x; });
 	}
 
+	KRR_CALLABLE VectorType lerp(const VectorType& t) const {
+		return this->m_min + t.cwiseProduct(this->diagonal());
+	}
+
 	KRR_CALLABLE bool intersect(const VectorType& o, const VectorType& d, 
 		T tMax = std::numeric_limits<T>::max(), T *tHit0 = nullptr, T *tHit1 = nullptr) const {
 		T t0 = 0, t1 = tMax;
