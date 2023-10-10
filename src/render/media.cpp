@@ -12,6 +12,8 @@ void initializeMajorantGrid(MajorantGrid& majorantGrid,
 							nanovdb::FloatGrid *floatGrid) {
 	auto res = majorantGrid.res;
 	cudaDeviceSynchronize();
+	// [TODO] This device memory is not properly freed
+	majorantGrid.voxels = TypedBuffer<float>(res.x() * res.y() * res.z());
 	GPUParallelFor(res.x() * res.y() * res.z(),
 		[=] KRR_DEVICE(int index) mutable {
 			int x = index % majorantGrid.res.x();

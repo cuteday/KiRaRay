@@ -9,7 +9,7 @@ class Grid {
 public:
 	Grid() = default;
 	
-	TypedBuffer<T> voxels;
+	TypedBufferView<T> voxels;
 	Vector<int, Dim> res;
 };
 

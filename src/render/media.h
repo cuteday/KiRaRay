@@ -20,9 +20,7 @@ public:
 	MajorantGrid() = default;
 
 	MajorantGrid(AABB3f bounds, Vector3i res): 
-		bounds(bounds) { this->res = res;
-		this->voxels.resize(res.x() * res.y() * res.z());
-	}
+		bounds(bounds) { this->res = res; }
 
 	KRR_CALLABLE float lookup(int x, int y, int z) const {
 		return voxels[x + res.x() * (y + res.y() * z)];
