@@ -368,39 +368,6 @@ KRR_HOST void STree::refine(size_t sTreeThreshold, int maxMB) {
 	CUDA_SYNC_CHECK();
 }
 
-/* [At the begining of each iteration]
-	Adaptively subdivide the S-Tree,
-	and resets the distribution within the (building) D-Tree.
-	The irradiance records within D-Tree is cleared after this. */
-void PPGPathTracer::resetSDTree() {
-	cudaDeviceSynchronize();
-	/* About 18k at the first iteration. */
-	float sTreeSplitThres = sqrt(pow(2, m_iter) * m_sppPerPass / 4) * m_sTreeThreshold;
-	Log(Info, "Adaptively subdividing the S-Tree. Current split threshould: %.2f", sTreeSplitThres);
-	m_sdTree->refine((size_t) sTreeSplitThres, m_sdTreeMaxMemory);
-	CUDA_SYNC_CHECK();
-	Log(Info, "Adaptively subdividing the D-Tree...");
-	float dTreeThres = this->m_dTreeThreshold;
-	m_sdTree->forEachDTreeWrapper([dTreeThres](DTreeWrapper *dTree) {
-		dTree->reset(20 /* max d-tree depth */, dTreeThres);
-		});
-	CUDA_SYNC_CHECK();
-}
-
-/* [At the end of each iteration] Build the sampling distribution with statistics, in the current iteration of the building tree, */
-/* Then use it, on the sampling tree, in the next iteration. */
-void PPGPathTracer::buildSDTree() {
-	CUDA_SYNC_CHECK();
-	// Build distributions
-	Log(Info, "Building distributions for each D-Tree node...");
-	EDistribution dist = m_distribution;
-	m_sdTree->forEachDTreeWrapper([dist](DTreeWrapper *dTree) {
-		dTree->build(dist);
-		});
-	m_isBuilt = true;
-	CUDA_SYNC_CHECK();
-}
-
 /* Collect the statistics for the sampling tree (not the building tree that get reset). */
 KRR_HOST void STree::gatherStatistics() const {
 	cudaDeviceSynchronize();

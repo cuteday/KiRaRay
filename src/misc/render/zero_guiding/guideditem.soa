@@ -1,0 +1,40 @@
+// pre-requirement: workitem.soa (need to include "workitem_soa.h" before this)
+flat int;
+flat uint;
+flat float;
+flat bool;
+flat double;
+flat Light;
+flat MaterialType;
+flat ShadingData;
+flat LCGSampler;
+flat HaltonSampler;
+flat DTreeWrapper;
+
+flat Vector3f;
+flat Color3f;
+flat Color;
+
+struct Ray;
+struct LightSampleContext;
+
+struct GuidedRayWorkItem {
+	uint itemId;
+};
+
+struct Vertex {
+	DTreeWrapper* dTree;
+	Vector3f dTreeVoxelSize;
+	Ray ray;
+	Color3f throughput;
+	Color3f bsdfVal;
+	Color3f radiance;
+	float wiPdf, bsdfPdf, dTreePdf;
+	float wiMisWeight;
+	bool isDelta;
+};
+
+struct GuidedPathState {
+	Vertex vertices[MAX_TRAIN_DEPTH];
+	uint n_vertices;
+};
