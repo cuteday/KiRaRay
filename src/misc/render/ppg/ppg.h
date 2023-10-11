@@ -11,6 +11,7 @@ typedef struct {
 	MissRayQueue* missRayQueue;
 	HitLightRayQueue* hitLightRayQueue;
 	ScatterRayQueue* scatterRayQueue;
+	MediumSampleQueue *mediumSampleQueue;
 
 	bool enableTraining;
 	PixelStateBuffer* pixelState;

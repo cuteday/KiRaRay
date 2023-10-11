@@ -35,8 +35,10 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 						  .setPTX(PPG_PTX)
 						  .addRaygenEntry("Closest")
 						  .addRaygenEntry("Shadow")
+						  .addRaygenEntry("ShadowTr")
 						  .addRayType("Closest", true, true, false)
-						  .addRayType("Shadow", false, true, false);
+						  .addRayType("Shadow", false, true, false)
+						  .addRayType("ShadowTr", true, true, false);
 		backend->initialize(params);
 	}
 	backend->setScene(scene);
@@ -45,10 +47,10 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 	Allocator& alloc = *gpContext->alloc;
 	if (m_sdTree) alloc.deallocate_object(m_sdTree);
 	m_sdTree = alloc.new_object<STree>(aabb, alloc);
-	CUDA_SYNC_CHECK();
+	initialize();
 }
 
-void PPGPathTracer::initialize(){
+void PPGPathTracer::initialize() {
 	Allocator& alloc = *gpContext->alloc;
 	WavefrontPathTracer::initialize();
 	// We need this since CUDA 12 seems to have reduced the default stack size,
@@ -81,6 +83,7 @@ void PPGPathTracer::traceClosest(int depth) {
 	params.hitLightRayQueue		  = hitLightRayQueue;
 	params.scatterRayQueue		  = scatterRayQueue;
 	params.nextRayQueue			  = nextRayQueue(depth);
+	params.mediumSampleQueue	  = enableMedium ? mediumSampleQueue : nullptr;
 	backend->launch(params, "Closest", maxQueueSize, 1, 1);
 }
 
@@ -93,47 +96,40 @@ void PPGPathTracer::traceShadow() {
 	params.pixelState			  = pixelState;
 	params.guidedState			  = guidedPathState;
 	params.enableTraining		  = enableLearning;
-	backend->launch(params, "Shadow", maxQueueSize, 1, 1);
+	if(enableMedium) backend->launch(params, "ShadowTr", maxQueueSize, 1, 1);
+	else backend->launch(params, "Shadow", maxQueueSize, 1, 1);
 }
 
 void PPGPathTracer::handleHit() {
 	PROFILE("Process intersected rays");
 	ForAllQueued(hitLightRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const HitLightWorkItem & w){
-		Color3f Le = w.light.L(w.p, w.n, w.uv, w.wo);
-		float misWeight = 1;
-		if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
-			Light light = w.light;
-			Interaction intr(w.p, w.wo, w.n, w.uv);
-			float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(light);
-			float bsdfPdf = w.pdf;
-			misWeight = evalMIS(bsdfPdf, lightPdf);
-		}
-		Color3f contrib = Le * w.thp * misWeight;
-		pixelState->addRadiance(w.pixelId, contrib);
-		guidedPathState->recordRadiance(w.pixelId, contrib);
+			Color Le = w.light.L(w.p, w.n, w.uv, w.wo) * w.thp;
+			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
+				Interaction intr(w.p, w.wo, w.n, w.uv);
+				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
+				Le /= (w.pl * lightPdf + w.pu).mean();
+			} else Le /= w.pu.mean();
+			pixelState->addRadiance(w.pixelId, Le);
+			guidedPathState->recordRadiance(w.pixelId, Le);
 	});
 }
 
 void PPGPathTracer::handleMiss() {
 	PROFILE("Process escaped rays");
 	const rt::SceneData& sceneData = mScene->mSceneRT->getSceneData();
-	ForAllQueued(missRayQueue, maxQueueSize,
-		KRR_DEVICE_LAMBDA(const MissRayWorkItem & w) {
-		Color3f L = {};
-		Interaction intr(w.ray.origin);
-		for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
-			float misWeight = 1;
-			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
-				float bsdfPdf = w.pdf;
-				float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
-				misWeight = evalMIS(bsdfPdf, lightPdf);
+	ForAllQueued(missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem & w) {
+			Color L = {};
+			Interaction intr(w.ray.origin);
+			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
+				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
+					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
+					L += light.Li(w.ray.dir) / (w.pu + w.pl * lightPdf).mean();
+				} else L += light.Li(w.ray.dir) / w.pu.mean();	
 			}
-			L += light.Li(w.ray.dir) * misWeight;
-		}
-		pixelState->addRadiance(w.pixelId, w.thp* L);
-		guidedPathState->recordRadiance(w.pixelId, w.thp * L);	// ppg
-	});
+			pixelState->addRadiance(w.pixelId, w.thp * L);
+			guidedPathState->recordRadiance(w.pixelId, w.thp * L);	// ppg
+		});
 }
 
 void PPGPathTracer::handleIntersections() {
@@ -154,26 +150,24 @@ void PPGPathTracer::handleIntersections() {
 
 		if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
 			SampledLight sampledLight = lightSampler.sample(sampler.get1D());
-			Light light = sampledLight.light;
-			LightSample ls = light.sampleLi(sampler.get2D(), { intr.p, intr.n });
-			Ray shadowRay = intr.spawnRayTo(ls.intr);
-			Vector3f wiWorld = normalize(shadowRay.dir);
-			Vector3f wiLocal = intr.toLocal(wiWorld);
+			Light light				  = sampledLight.light;
+			LightSample ls			  = light.sampleLi(sampler.get2D(), { intr.p, intr.n });
+			Ray shadowRay			  = intr.spawnRayTo(ls.intr);
+			Vector3f wiWorld		  = normalize(shadowRay.dir);
+			Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
-			float lightPdf = sampledLight.pdf * ls.pdf;
-			float misWeight{1};
-			Color bsdfVal = BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-			float scatterPdf = PPGPathTracer::evalPdf(bsdfPdf, dTreePdf, w.depth, 
-				intr, wiLocal, m_bsdfSamplingFraction, dTree, bsdfType);
-			misWeight = evalMIS(lightPdf, scatterPdf);
-			if (lightPdf > 0 && !isnan(misWeight) && !isinf(misWeight) && bsdfVal.any()) {
+			float lightPdf	= sampledLight.pdf * ls.pdf;
+			Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+			float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+			if (lightPdf > 0 && bsdfVal.any()) {
 				ShadowRayWorkItem sw = {};
 				sw.ray				 = shadowRay;
-				sw.Li				 = ls.L;
-				sw.a				 = w.thp * misWeight * bsdfVal * fabs(wiLocal[2]) / lightPdf;
+				sw.Ld				 = ls.L * w.thp * bsdfVal * fabs(wiLocal[2]);
+				sw.pu				 = w.pu * bsdfPdf;
+				sw.pl				 = w.pu * lightPdf;
 				sw.pixelId			 = w.pixelId;
 				sw.tMax				 = 1;
-				if (sw.a.any()) shadowRayQueue->push(sw);
+				if (sw.Ld.any()) shadowRayQueue->push(sw);
 			}
 		}
 
@@ -202,7 +196,8 @@ void PPGPathTracer::generateScatterRays() {
 				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};
 				r.bsdfType		 = sample.flags;
-				r.pdf			 = sample.pdf;
+				r.pu			 = w.pu;
+				r.pl			 = w.pu / sample.pdf;
 				r.ray			 = intr.spawnRayTowards(wiWorld);
 				r.ctx			 = { intr.p, intr.n };
 				r.pixelId		 = w.pixelId;
@@ -213,7 +208,7 @@ void PPGPathTracer::generateScatterRays() {
 					/* guidance... */
 					if (r.depth <= MAX_TRAIN_DEPTH) {
 						guidedPathState->incrementDepth(r.pixelId, r.ray, dTree, dTreeVoxelSize,
-														r.thp, sample.f, r.pdf, bsdfPdf, dTreePdf,
+														r.thp, sample.f, sample.pdf, bsdfPdf, dTreePdf,
 														sample.isSpecular());
 					}
 				}
@@ -237,9 +232,18 @@ void PPGPathTracer::render(RenderContext *context) {
 				shadowRayQueue->reset();
 				scatterRayQueue->reset();
 				guidedRayQueue->reset();
+				if (enableMedium) {
+					mediumSampleQueue->reset();
+					mediumScatterQueue->reset();
+				}
 			});
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);
+			// [STEP#2.2] sample medium interaction, and optionally sample in-volume scattering events
+			if (enableMedium) {
+				sampleMediumInteraction(depth);
+				sampleMediumScattering(depth);
+			}
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
 			handleHit();
 			handleMiss();
@@ -268,9 +272,13 @@ void PPGPathTracer::render(RenderContext *context) {
 void PPGPathTracer::beginFrame(RenderContext* context) {
 	if (!mScene || !maxQueueSize) return;
 	WavefrontPathTracer::beginFrame(context);
+	CUDA_SYNC_CHECK();
+	printf("Begin\n");
 	GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		guidedPathState->n_vertices[pixelId] = 0;
 	});
+	CUDA_SYNC_CHECK();
+	printf("End\n");
 	// [offline mode] always training when auto-train enabled
 	// but the last iteration (the render iteration) do not need training anymore.
 	enableLearning = (enableLearning || m_autoBuild) && !m_isFinalIter;	
@@ -308,6 +316,8 @@ void PPGPathTracer::renderUI() {
 	ui::InputInt("Max bounces", &maxDepth, 1);
 	ui::SliderFloat("Russian roulette", &probRR, 0, 1);
 	ui::Checkbox("Enable NEE", &enableNEE);
+	if (mScene->getMedia().size()) 
+		if (ui::Checkbox("Enable medium", &enableMedium)) initialize();
 
 	ui::Text("Path guiding");
 	ui::Text("Target distribution mode: %s", distribution_names[(int)m_distribution]);
@@ -341,8 +351,7 @@ void PPGPathTracer::renderUI() {
 		ui::InputInt2("Debug pixel:", (int*)&debugPixel);
 	}
 	ui::Checkbox("Clamping pixel value", &enableClamp);
-	if (enableClamp) 
-		ui::DragFloat("Max:", &clampMax, 1, 500);
+	if (enableClamp) ui::DragFloat("Max:", &clampMax, 1, 500);
 }
 
 void PPGPathTracer::resetGuiding() {
