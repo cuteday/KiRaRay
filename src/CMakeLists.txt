@@ -111,8 +111,6 @@ set (KRR_SOA_GENERATED
 	${CMAKE_CURRENT_BINARY_DIR}/include/render/bdpt/workitem_soa.h
 )
 
-add_custom_target (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
-
 ###############################################################################
 # generating PTX code from optix shader routines
 ###############################################################################
@@ -125,13 +123,66 @@ CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-path krr_soa_generated
 CUDA_COMPILE_EMBED(WAVEFRONT_PTX render/wavefront/wavefront.cu krr-wavefront krr_soa_generated)
 CUDA_COMPILE_EMBED(BDPT_PTX render/bdpt/device.cu krr-bdpt krr_soa_generated)
 
-ADD_LIBRARY (KRR_PTX STATIC
-	# PTX 
+SET(KRR_PTX_FILES
 	${PATHTRACER_PTX}
 	${WAVEFRONT_PTX}
 	${GBUFFER_PTX}
 	${BDPT_PTX}
 )
+###############################################################################
+# optional starlight contents
+###############################################################################
+
+IF(KRR_BUILD_STARLIGHT)
+SET(KRR_SOURCE
+	${KRR_SOURCE}
+	misc/render/ppg/integrator.cpp
+	misc/render/ppg/treemanip.cpp
+	misc/render/ppg/medium.cpp
+	misc/render/zero_guiding/integrator.cpp
+	misc/render/zero_guiding/medium.cpp
+)
+
+SET_SOURCE_FILES_PROPERTIES (
+	misc/render/ppg/integrator.cpp
+	misc/render/ppg/medium.cpp
+	misc/render/zero_guiding/integrator.cpp
+	misc/render/zero_guiding/medium.cpp
+	PROPERTIES LANGUAGE CUDA
+)
+
+add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/ppg/guideditem_soa.h
+    COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/misc/render/ppg/guideditem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/ppg/guideditem_soa.h
+    DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/misc/render/ppg/guideditem.soa)
+
+add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
+    COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/misc/render/zero_guiding/guideditem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
+    DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/misc/render/zero_guiding/guideditem.soa)
+
+set (KRR_SOA_GENERATED 
+	${KRR_SOA_GENERATED}
+	${CMAKE_CURRENT_BINARY_DIR}/include/ppg/guideditem_soa.h
+	${CMAKE_CURRENT_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
+)
+
+set(KRR_INCLUDE_ALL
+	${KRR_INCLUDE_ALL}
+	${CMAKE_CURRENT_SOURCE_DIR}/misc/render
+)
+
+# MISC
+CUDA_COMPILE_EMBED(PPG_PTX misc/render/ppg/device.cu krr-ppg krr_soa_generated)
+CUDA_COMPILE_EMBED(ZEROGUIDING_PTX misc/render/zero_guiding/device.cu krr-zeroguiding krr_soa_generated)
+
+SET(KRR_PTX_FILES # MISC
+	${KRR_PTX_FILES}
+	${PPG_PTX}
+	${ZEROGUIDING_PTX}
+)
+ENDIF()
+
+ADD_LIBRARY (KRR_PTX STATIC ${KRR_PTX_FILES})
+ADD_CUSTOM_TARGET (krr_soa_generated DEPENDS ${KRR_SOA_GENERATED})
 ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 
 ###############################################################################

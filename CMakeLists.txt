@@ -13,7 +13,7 @@ SET(KRR_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 OPTION (KRR_BUILD_STARLIGHT 
 	"Build some additional code implementation of fancy algorithms."
-	OFF
+	ON
 )
 
 OPTION (KRR_BUILD_EXAMPLES 

@@ -272,13 +272,9 @@ void PPGPathTracer::render(RenderContext *context) {
 void PPGPathTracer::beginFrame(RenderContext* context) {
 	if (!mScene || !maxQueueSize) return;
 	WavefrontPathTracer::beginFrame(context);
-	CUDA_SYNC_CHECK();
-	printf("Begin\n");
 	GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 		guidedPathState->n_vertices[pixelId] = 0;
 	});
-	CUDA_SYNC_CHECK();
-	printf("End\n");
 	// [offline mode] always training when auto-train enabled
 	// but the last iteration (the render iteration) do not need training anymore.
 	enableLearning = (enableLearning || m_autoBuild) && !m_isFinalIter;	
