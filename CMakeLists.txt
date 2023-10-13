@@ -5,7 +5,9 @@ PROJECT (KiRaRay
 	LANGUAGES C CXX CUDA
 )
 SET (CMAKE_EXPORT_COMPILE_COMMANDS ON)
-SET(KRR_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+SET(KRR_RENDER_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+SET(KRR_RENDER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+SET(KRR_RENDER_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
 
 ###############################################################################
 # Options
@@ -31,7 +33,7 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # check if submodules are recursively fetched.
-if (NOT IS_DIRECTORY "${KRR_PROJECT_ROOT}/src/ext/glfw")
+if (NOT IS_DIRECTORY "${KRR_RENDER_ROOT}/src/ext/glfw")
 	message(FATAL_ERROR
 		"Some external dependencies are missing. "
 		"It is most possible that the \"--recursive\" flag is forgotten when cloning this project, "
@@ -65,10 +67,6 @@ set(CUDA_LINK_LIBRARIES_KEYWORD PUBLIC)
 
 set(CUDA_VERBOSE_BUILD ON)
 
-if (MSVC)
-else()
-	set(CUDA_TOOLKIT_ROOT_DIR /opt/cuda/targets/x86_64-linux)
-endif()
 find_library(
 	CUDA_CUBLASLT_LIBRARY cublasLt
 	${CUDA_TOOLKIT_ROOT_DIR}/lib64

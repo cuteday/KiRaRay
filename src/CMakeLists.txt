@@ -1,20 +1,20 @@
-ADD_SUBDIRECTORY(ext)
-ADD_SUBDIRECTORY(core/math)
+ADD_SUBDIRECTORY(${KRR_RENDER_SOURCE_DIR}/ext)
+ADD_SUBDIRECTORY(${KRR_RENDER_SOURCE_DIR}/core/math)
 
 ###############################################################################
 # include files
 ###############################################################################
-MESSAGE ("Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
+MESSAGE ("Source directory: ${KRR_RENDER_SOURCE_DIR}")
 MESSAGE ("Build output directory: ${CMAKE_BINARY_DIR}")
 MESSAGE ("CUDA include directory: ${CUDA_INCLUDE_DIRS}")
 MESSAGE ("Optix include directory: ${OptiX_INCLUDE}")
 
-CONFIGURE_FILE (core/config.in.h ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
+CONFIGURE_FILE (${KRR_RENDER_SOURCE_DIR}/core/config.in.h ${KRR_RENDER_BINARY_DIR}/include/config.h)
 
 SET ( KRR_INCLUDE_ALL
-	${CMAKE_CURRENT_SOURCE_DIR}
-	${CMAKE_CURRENT_SOURCE_DIR}/core
-	${CMAKE_CURRENT_BINARY_DIR}/include
+	${KRR_RENDER_SOURCE_DIR}
+	${KRR_RENDER_SOURCE_DIR}/core
+	${KRR_RENDER_BINARY_DIR}/include
 	${KRR_MATH_INCLUDE_DIRS}
 	${KRR_EXT_INCLUDES}
 	${CUDA_INCLUDE_DIRS}
@@ -22,93 +22,93 @@ SET ( KRR_INCLUDE_ALL
 )
 
 SET ( KRR_CORE_SOURCE
-	core/scene.cpp
-	core/scenegraph.cpp
-	core/animation.cpp
-	core/camera.cpp
-	core/light.cpp
-	core/mesh.cpp
-	core/window.cpp
-	core/logger.cpp
-	core/file.cpp
-	core/renderpass.cpp
-	core/texture.cpp
-	core/device/gpustd.cpp
-	core/device/context.cpp
-	core/device/optix.cpp
-	core/device/scene.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/scene.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/scenegraph.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/animation.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/camera.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/light.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/mesh.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/window.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/logger.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/file.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/renderpass.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/texture.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/device/gpustd.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/device/context.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/device/optix.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/device/scene.cpp
 )
 
 SET (KRR_RENDER_PASSES
-	render/passes/accumulate/accumulate.cu
-	render/passes/denoise/denoise.cpp
-	render/passes/errormeasure/errormeasure.cpp
-	render/passes/errormeasure/metrics.cu
-	render/passes/tonemapping/tonemapping.cu
-	render/passes/gbuffer/gbuffer.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/passes/accumulate/accumulate.cu
+	${KRR_RENDER_SOURCE_DIR}/render/passes/denoise/denoise.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/passes/errormeasure/errormeasure.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/passes/errormeasure/metrics.cu
+	${KRR_RENDER_SOURCE_DIR}/render/passes/tonemapping/tonemapping.cu
+	${KRR_RENDER_SOURCE_DIR}/render/passes/gbuffer/gbuffer.cpp
 )
 
 SET (KRR_SOURCE
 	${KRR_RENDER_PASSES}
-	render/path/pathtracer.cpp
-	render/bdpt/integrator.cpp
-	render/wavefront/integrator.cpp
-	render/wavefront/medium.cpp
-	render/rasterize/bindless.cpp
-	render/profiler/profiler.cpp
-	render/profiler/ui.cpp
-	render/media.cpp
-	scene/assimp.cpp
-	scene/pbrt.cpp
-	scene/openvdb.cpp
-	main/renderer.cpp
-	util/tables.cpp
-	util/volume.cpp
-	util/image.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/path/pathtracer.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/bdpt/integrator.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/wavefront/integrator.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/wavefront/medium.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/rasterize/bindless.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/profiler/profiler.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/profiler/ui.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/media.cpp
+	${KRR_RENDER_SOURCE_DIR}/scene/assimp.cpp
+	${KRR_RENDER_SOURCE_DIR}/scene/pbrt.cpp
+	${KRR_RENDER_SOURCE_DIR}/scene/openvdb.cpp
+	${KRR_RENDER_SOURCE_DIR}/main/renderer.cpp
+	${KRR_RENDER_SOURCE_DIR}/util/tables.cpp
+	${KRR_RENDER_SOURCE_DIR}/util/volume.cpp
+	${KRR_RENDER_SOURCE_DIR}/util/image.cpp
 )
 
 SET (KRR_SOURCE_VULKAN
-	core/vulkan/binding.cpp
-	core/vulkan/cuvk.cpp
-	core/vulkan/descriptor.cpp
-	core/vulkan/scene.cpp
-	core/vulkan/helperpass.cpp
-	core/vulkan/uirender.cpp
-	core/vulkan/textureloader.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/vulkan/binding.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/vulkan/cuvk.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/vulkan/descriptor.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/vulkan/scene.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/vulkan/helperpass.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/vulkan/uirender.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/vulkan/textureloader.cpp
 )
 
 SET_SOURCE_FILES_PROPERTIES (
 	# some files are set to be compiled by nvcc so cuda can resolve 
 	# the symbols that are defined within these .cpp files.
-	core/light.cpp
-	render/media.cpp
-	render/wavefront/integrator.cpp
-	render/wavefront/medium.cpp
-	render/passes/denoise/denoise.cpp
-	util/tables.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/light.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/media.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/wavefront/integrator.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/wavefront/medium.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/passes/denoise/denoise.cpp
+	${KRR_RENDER_SOURCE_DIR}/util/tables.cpp
 	PROPERTIES LANGUAGE CUDA
 )
 
 ###############################################################################
 # automatically creating definitions of structure of arrays (soa)
 ###############################################################################
-add_executable(soac util/soac.cpp)
+add_executable(soac ${KRR_RENDER_SOURCE_DIR}/util/soac.cpp)
 add_executable (krr::soac ALIAS soac)
 
 target_compile_options(soac PUBLIC ${CMAKE_CXX_FLAGS})
 set_target_properties (soac PROPERTIES OUTPUT_NAME soac)
 
-add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/render/wavefront/workitem_soa.h
-    COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/render/wavefront/workitem_soa.h
-    DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/render/wavefront/workitem.soa)
+add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/render/wavefront/workitem_soa.h
+    COMMAND soac ${KRR_RENDER_SOURCE_DIR}/render/wavefront/workitem.soa > ${KRR_RENDER_BINARY_DIR}/include/render/wavefront/workitem_soa.h
+    DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/render/wavefront/workitem.soa)
 
-add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/render/bdpt/workitem_soa.h
-    COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/render/bdpt/workitem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/render/bdpt/workitem_soa.h
-    DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/render/bdpt/workitem.soa)
+add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/render/bdpt/workitem_soa.h
+    COMMAND soac ${KRR_RENDER_SOURCE_DIR}/render/bdpt/workitem.soa > ${KRR_RENDER_BINARY_DIR}/include/render/bdpt/workitem_soa.h
+    DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/render/bdpt/workitem.soa)
 
 set (KRR_SOA_GENERATED 
-	${CMAKE_CURRENT_BINARY_DIR}/include/render/wavefront/workitem_soa.h
-	${CMAKE_CURRENT_BINARY_DIR}/include/render/bdpt/workitem_soa.h
+	${KRR_RENDER_BINARY_DIR}/include/render/wavefront/workitem_soa.h
+	${KRR_RENDER_BINARY_DIR}/include/render/bdpt/workitem_soa.h
 )
 
 ###############################################################################
@@ -116,7 +116,7 @@ set (KRR_SOA_GENERATED
 ###############################################################################
 
 INCLUDE_DIRECTORIES (${KRR_INCLUDE_ALL})
-INCLUDE (${KRR_PROJECT_ROOT}/common/build/CompilePTX.cmake)
+INCLUDE (${KRR_RENDER_ROOT}/common/build/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code
 CUDA_COMPILE_EMBED(GBUFFER_PTX render/passes/gbuffer/device.cu krr-gbuffer krr_soa_generated) 
 CUDA_COMPILE_EMBED(PATHTRACER_PTX render/path/path.cu krr-path krr_soa_generated)
@@ -136,38 +136,38 @@ SET(KRR_PTX_FILES
 IF(KRR_BUILD_STARLIGHT)
 SET(KRR_SOURCE
 	${KRR_SOURCE}
-	misc/render/ppg/integrator.cpp
-	misc/render/ppg/treemanip.cpp
-	misc/render/ppg/medium.cpp
-	misc/render/zero_guiding/integrator.cpp
-	misc/render/zero_guiding/medium.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/integrator.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/treemanip.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/medium.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/integrator.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/medium.cpp
 )
 
 SET_SOURCE_FILES_PROPERTIES (
-	misc/render/ppg/integrator.cpp
-	misc/render/ppg/medium.cpp
-	misc/render/zero_guiding/integrator.cpp
-	misc/render/zero_guiding/medium.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/integrator.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/medium.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/integrator.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/medium.cpp
 	PROPERTIES LANGUAGE CUDA
 )
 
-add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/ppg/guideditem_soa.h
-    COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/misc/render/ppg/guideditem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/ppg/guideditem_soa.h
-    DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/misc/render/ppg/guideditem.soa)
+add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/ppg/guideditem_soa.h
+    COMMAND soac ${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/guideditem.soa > ${KRR_RENDER_BINARY_DIR}/include/ppg/guideditem_soa.h
+    DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/guideditem.soa)
 
-add_custom_command (OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
-    COMMAND soac ${CMAKE_CURRENT_SOURCE_DIR}/misc/render/zero_guiding/guideditem.soa > ${CMAKE_CURRENT_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
-    DEPENDS soac ${CMAKE_CURRENT_SOURCE_DIR}/misc/render/zero_guiding/guideditem.soa)
+add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
+    COMMAND soac ${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/guideditem.soa > ${KRR_RENDER_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
+    DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/guideditem.soa)
 
 set (KRR_SOA_GENERATED 
 	${KRR_SOA_GENERATED}
-	${CMAKE_CURRENT_BINARY_DIR}/include/ppg/guideditem_soa.h
-	${CMAKE_CURRENT_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
+	${KRR_RENDER_BINARY_DIR}/include/ppg/guideditem_soa.h
+	${KRR_RENDER_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
 )
 
 set(KRR_INCLUDE_ALL
 	${KRR_INCLUDE_ALL}
-	${CMAKE_CURRENT_SOURCE_DIR}/misc/render
+	${KRR_RENDER_SOURCE_DIR}/misc/render
 )
 
 # MISC
@@ -191,6 +191,7 @@ ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 # Link openvdb in a standalone library to avoid cuda-openvdb type intersect and dll-wholearchive contracdict
 
 SET(KRR_SECONDARY_LIBS_ALL
+	${KRR_SECONDARY_LIBS_ALL}
 	cuda 
 	cublas
 	krr_ext
@@ -231,20 +232,20 @@ macro(copy_post_build target dll)
 endmacro()
 
 copy_post_build(krr_lib
-      "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvdb/openvdb/bin/$<IF:$<CONFIG:Debug>,openvdb_d,openvdb>.dll")
+      "${KRR_RENDER_SOURCE_DIR}/ext/openvdb/openvdb/bin/$<IF:$<CONFIG:Debug>,openvdb_d,openvdb>.dll")
 copy_post_build(krr_lib
-      "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvdb/tbb/lib/$<IF:$<CONFIG:Debug>,debug/tbb_debug.dll,tbb.dll>")
+      "${KRR_RENDER_SOURCE_DIR}/ext/openvdb/tbb/lib/$<IF:$<CONFIG:Debug>,debug/tbb_debug.dll,tbb.dll>")
 copy_post_build(krr_lib "$<TARGET_FILE:IlmBase::Half>")
-ADD_SUBDIRECTORY (misc)
+ADD_SUBDIRECTORY (${KRR_RENDER_SOURCE_DIR}/misc)
 
 IF (KRR_ENABLE_PYTHON)
-	ADD_LIBRARY(pykrr SHARED core/python/py.cpp)
+	ADD_LIBRARY(pykrr SHARED ${KRR_RENDER_SOURCE_DIR}/core/python/py.cpp)
 	TARGET_INCLUDE_DIRECTORIES(pykrr SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${pybind11_INCLUDE_DIR} ${PYTHON_INCLUDE_DIRS})
 	TARGET_LINK_LIBRARIES(pykrr PUBLIC ${KRR_LIBRARIES} ${PYTHON_LIBRARIES} pybind11::module -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
 	pybind11_extension(pykrr)
 ENDIF()
 
-ADD_EXECUTABLE ( kiraray main/kiraray.cpp)
+ADD_EXECUTABLE ( kiraray ${CMAKE_CURRENT_SOURCE_DIR}/main/kiraray.cpp)
 # -WHOLEARCHIVE assures that static variables are instantiated before main(), by linking all object files
 TARGET_LINK_LIBRARIES (kiraray PUBLIC ${KRR_LIBRARIES} -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
 SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE)

@@ -1,7 +1,7 @@
 ###############################################################################
 # GAPI dependencies
 ###############################################################################
-INCLUDE (${KRR_PROJECT_ROOT}/common/build/FindOptiX.cmake)
+INCLUDE (${KRR_RENDER_ROOT}/common/build/FindOptiX.cmake)
 find_package(Vulkan REQUIRED)
 
 ###############################################################################
@@ -19,8 +19,8 @@ SET(NVRHI_INCLUDE_DIRS
 SET(NVRHI_INCLUDE_DIRS ${NVRHI_INCLUDE_DIRS} PARENT_SCOPE)
 
 # glfw3 (lib: glfw)
-ADD_SUBDIRECTORY(glfw EXCLUDE_FROM_ALL)
-INCLUDE_DIRECTORIES(glfw/include)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/glfw EXCLUDE_FROM_ALL)
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/glfw/include)
 SET(GLFW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/glfw/include)
 SET(GLFW_INCLUDE_DIRS ${GLFW_INCLUDE_DIRS} PARENT_SCOPE)
 

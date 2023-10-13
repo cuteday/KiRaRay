@@ -69,7 +69,7 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name dependencies)
 		"-DOBJECTS=$<TARGET_OBJECTS:${lib_name}>"
 		"-DVAR_NAME=${c_var_name}"
 		"-DOUTPUT=${embedded_file}"
-		-P ${KRR_PROJECT_ROOT}/common/build/bin2c_wrapper.cmake
+		-P ${KRR_RENDER_ROOT}/common/build/bin2c_wrapper.cmake
 	VERBATIM
 	DEPENDS "${lib_name}" $<TARGET_OBJECTS:${lib_name}>
 	COMMENT "Embedding PTX generated from ${cuda_file}"
