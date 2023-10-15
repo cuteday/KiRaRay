@@ -15,9 +15,9 @@ void ErrorMeasurePass::beginFrame(RenderContext* context) {
 }
 
 void ErrorMeasurePass::render(RenderContext *context) {
-	if (mNeedsEvaluate && mReferenceImage.isValid()) {
+	if (mNeedsEvaluate && mReferenceImage->isValid()) {
 		PROFILE("Metric calculation");
-		CHECK_LOG(mReferenceImage.getSize() == getFrameSize(),
+		CHECK_LOG(mReferenceImage->getSize() == getFrameSize(),
 				  "ErrorMeasure::Reference image size does not match frame size!");
 		size_t n_elememts = getFrameSize()[0] * getFrameSize()[1];
 		float result	  = calc_metric(context->getColorTexture()->getCudaRenderTarget(),
@@ -67,7 +67,7 @@ void ErrorMeasurePass::renderUI() {
 		if (ui::Button("Load")) {
 			loadReferenceImage(referencePath);
 		}
-		if (mReferenceImage.isValid()) {
+		if (mReferenceImage->isValid()) {
 			ui::Text("Reference image: %s", mReferenceImagePath.c_str());
 			ui::Checkbox("Continuous evaluate", &mContinuousEvaluate);
 			if (mContinuousEvaluate)
@@ -90,13 +90,14 @@ void ErrorMeasurePass::reset() {
 }
 
 bool ErrorMeasurePass::loadReferenceImage(const string &path) {
- 	bool success = mReferenceImage.loadImage(path, true, false);
+	mReferenceImage = std::make_shared<Image>();
+ 	bool success = mReferenceImage->loadImage(path, true, false);
 	if (success) {
 		// TODO: find out why saving an exr image yields this permutation on pixel format?
-		mReferenceImage.permuteChannels(Vector4i{ 3, 0, 1, 2});
-		mReferenceImageBuffer.resize(mReferenceImage.getSizeInBytes());
-		mReferenceImageBuffer.copy_from_host(reinterpret_cast<Color4f*>(mReferenceImage.data()), 
-			mReferenceImage.getSizeInBytes() / sizeof(Color4f));
+		mReferenceImage->permuteChannels(Vector4i{ 3, 0, 1, 2});
+		mReferenceImageBuffer.resize(mReferenceImage->getSizeInBytes());
+		mReferenceImageBuffer.copy_from_host(reinterpret_cast<Color4f*>(mReferenceImage->data()), 
+			mReferenceImage->getSizeInBytes() / sizeof(Color4f));
 		reset();
 		mReferenceImagePath = path;
 		Log(Info, "ErrorMeasure::Loaded reference image from %s.", path.c_str());

@@ -2,13 +2,13 @@
 #include "render/shading.h"
 #include "render/wavefront/workqueue.h"
 
-#include "ppg/ppg.h"
+#include "zero_guiding/zeroguiding.h"
 #include <optix_device.h>
 
 using namespace krr;
 KRR_NAMESPACE_BEGIN
 
-extern "C" __constant__ LaunchParamsPPG launchParams;
+extern "C" __constant__ LaunchParamsZero launchParams;
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,

@@ -18,6 +18,6 @@ typedef struct {
 	rt::SceneData sceneData;
 	GuidedPathStateBuffer* guidedState;
 	OptixTraversableHandle traversable;
-} LaunchParamsPPG;
+} LaunchParamsZero;
 
 KRR_NAMESPACE_END

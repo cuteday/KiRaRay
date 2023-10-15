@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "tree.h"
+#include "zeroguiding.h"
 #include "guideditem.h"
 #include "render/wavefront/integrator.h"
 #include "util/task.h"
@@ -10,14 +10,14 @@ KRR_NAMESPACE_BEGIN
 
 class Film;
 
-class PPGPathTracer : public WavefrontPathTracer{
+class ZeroGuidingPT : public WavefrontPathTracer{
 public:
-	using SharedPtr = std::shared_ptr<PPGPathTracer>;
-	KRR_REGISTER_PASS_DEC(PPGPathTracer);
+	using SharedPtr = std::shared_ptr<ZeroGuidingPT>;
+	KRR_REGISTER_PASS_DEC(ZeroGuidingPT);
 	enum class RenderMode { Interactive, Offline };
 
-	PPGPathTracer() = default;
-	virtual ~PPGPathTracer() = default;
+	ZeroGuidingPT() = default;
+	virtual ~ZeroGuidingPT() = default;
 	void initialize();
 
 	void resize(const Vector2i& size) override;
@@ -28,7 +28,7 @@ public:
 	void renderUI() override;
 	void finalize() override; /* Save the rendering (of the last iter) maybe more. */
 
-	string getName() const override { return "PPGPathTracer"; }
+	string getName() const override { return "ZeroGuidingPT"; }
 
 	void handleHit();
 	void handleMiss();
@@ -89,7 +89,7 @@ public:
 	bool enableGuiding{true};
 	GuidedPathStateBuffer* guidedPathState{};
 
-	friend void to_json(json &j, const PPGPathTracer &p) {
+	friend void to_json(json &j, const ZeroGuidingPT &p) {
 		to_json(j, static_cast<const WavefrontPathTracer&>(p));
 		j.update({ 
 			{ "mode", p.m_renderMode },
@@ -109,9 +109,9 @@ public:
 		});
 	}
 
-	friend void from_json(const json &j, PPGPathTracer &p) {
+	friend void from_json(const json &j, ZeroGuidingPT &p) {
 		from_json(j, static_cast<WavefrontPathTracer &>(p));
-		p.m_renderMode			 = j.value("mode", PPGPathTracer::RenderMode::Interactive);		
+		p.m_renderMode			 = j.value("mode", ZeroGuidingPT::RenderMode::Interactive);		
 		p.m_sppPerPass			 = j.value("spp_per_pass", 4);
 		p.m_sdTreeMaxMemory		 = j.value("max_memory", 16);
 		p.m_bsdfSamplingFraction = j.value("bsdf_fraction", 0.5);
@@ -129,9 +129,9 @@ public:
 	}
 };
 
-KRR_ENUM_DEFINE(PPGPathTracer::RenderMode, {
-	{ PPGPathTracer::RenderMode::Interactive, "interactive" },
-	{PPGPathTracer::RenderMode::Offline, "offline"},
+KRR_ENUM_DEFINE(ZeroGuidingPT::RenderMode, {
+	{ ZeroGuidingPT::RenderMode::Interactive, "interactive" },
+	{ZeroGuidingPT::RenderMode::Offline, "offline"},
 })
 
 KRR_NAMESPACE_END

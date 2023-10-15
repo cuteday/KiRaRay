@@ -5,13 +5,12 @@
 #include "util/check.h"
 #include "util/film.h"
 
-#include "ppg.h"
-#include "tree.h"
+#include "zeroguiding.h"
 #include "integrator.h"
 #include "render/profiler/profiler.h"
 
 KRR_NAMESPACE_BEGIN
-extern "C" char PPG_PTX[];
+extern "C" char ZEROGUIDING_PTX[];
 
 namespace {
 static size_t guiding_trained_frames		  = 0;
@@ -21,18 +20,18 @@ const static char *directional_filter_names[] = { "Nearest", "Box" };
 const static char *distribution_names[]		  = { "Radiance", "Partial", "Full" };
 }
 
-void PPGPathTracer::resize(const Vector2i& size) {
+void ZeroGuidingPT::resize(const Vector2i& size) {
 	RenderPass::resize(size);
 	initialize();		// need to resize the queues
 }
 
-void PPGPathTracer::setScene(Scene::SharedPtr scene) {
+void ZeroGuidingPT::setScene(Scene::SharedPtr scene) {
 	mScene = scene;
 	initialize();
 	if (!backend) {
 		backend		= new OptixBackend();
 		auto params = OptixInitializeParameters()
-						  .setPTX(PPG_PTX)
+						  .setPTX(ZEROGUIDING_PTX)
 						  .addRaygenEntry("Closest")
 						  .addRaygenEntry("Shadow")
 						  .addRaygenEntry("ShadowTr")
@@ -50,7 +49,7 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 	initialize();
 }
 
-void PPGPathTracer::initialize() {
+void ZeroGuidingPT::initialize() {
 	Allocator& alloc = *gpContext->alloc;
 	WavefrontPathTracer::initialize();
 	// We need this since CUDA 12 seems to have reduced the default stack size,
@@ -73,9 +72,9 @@ void PPGPathTracer::initialize() {
 	CUDA_SYNC_CHECK();
 }
 
-void PPGPathTracer::traceClosest(int depth) {
+void ZeroGuidingPT::traceClosest(int depth) {
 	PROFILE("Trace intersect rays");
-	static LaunchParamsPPG params = {};
+	static LaunchParamsZero params = {};
 	params.traversable			  = backend->getRootTraversable();
 	params.sceneData			  = backend->getSceneData();
 	params.currentRayQueue		  = currentRayQueue(depth);
@@ -87,9 +86,9 @@ void PPGPathTracer::traceClosest(int depth) {
 	backend->launch(params, "Closest", maxQueueSize, 1, 1);
 }
 
-void PPGPathTracer::traceShadow() {
+void ZeroGuidingPT::traceShadow() {
 	PROFILE("Trace shadow rays");
-	static LaunchParamsPPG params = {};
+	static LaunchParamsZero params = {};
 	params.traversable			  = backend->getRootTraversable();
 	params.sceneData			  = backend->getSceneData();
 	params.shadowRayQueue		  = shadowRayQueue;
@@ -100,7 +99,7 @@ void PPGPathTracer::traceShadow() {
 	else backend->launch(params, "Shadow", maxQueueSize, 1, 1);
 }
 
-void PPGPathTracer::handleHit() {
+void ZeroGuidingPT::handleHit() {
 	PROFILE("Process intersected rays");
 	ForAllQueued(hitLightRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const HitLightWorkItem & w){
@@ -115,7 +114,7 @@ void PPGPathTracer::handleHit() {
 	});
 }
 
-void PPGPathTracer::handleMiss() {
+void ZeroGuidingPT::handleMiss() {
 	PROFILE("Process escaped rays");
 	const rt::SceneData& sceneData = mScene->mSceneRT->getSceneData();
 	ForAllQueued(missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem & w) {
@@ -132,7 +131,7 @@ void PPGPathTracer::handleMiss() {
 		});
 }
 
-void PPGPathTracer::handleIntersections() {
+void ZeroGuidingPT::handleIntersections() {
 	PROFILE("Handle intersections");
 	ForAllQueued(scatterRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(ScatterRayWorkItem & w) {
@@ -176,7 +175,7 @@ void PPGPathTracer::handleIntersections() {
 	});
 }
 
-void PPGPathTracer::generateScatterRays() {
+void ZeroGuidingPT::generateScatterRays() {
 	PROFILE("Generate scatter rays");
 	ForAllQueued(guidedRayQueue, maxQueueSize, 
 		KRR_DEVICE_LAMBDA(const GuidedRayWorkItem &id) {
@@ -190,7 +189,7 @@ void PPGPathTracer::generateScatterRays() {
 			Vector3f dTreeVoxelSize{};
 			DTreeWrapper *dTree = m_sdTree->dTreeWrapper(intr.p, dTreeVoxelSize);
 
-			BSDFSample sample = PPGPathTracer::sample(sampler, intr, bsdfPdf, dTreePdf, w.depth,
+			BSDFSample sample = ZeroGuidingPT::sample(sampler, intr, bsdfPdf, dTreePdf, w.depth,
 													  m_bsdfSamplingFraction, dTree, bsdfType);
 			if (sample.pdf > 0 && sample.f.any()) {
 				Vector3f wiWorld = intr.toWorld(sample.wi);
@@ -216,7 +215,7 @@ void PPGPathTracer::generateScatterRays() {
 	});
 }
 
-void PPGPathTracer::render(RenderContext *context) {
+void ZeroGuidingPT::render(RenderContext *context) {
 	if (!mScene || !maxQueueSize) return;
 	PROFILE("PPG Path Tracer");
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
@@ -269,7 +268,7 @@ void PPGPathTracer::render(RenderContext *context) {
 	});
 }
 
-void PPGPathTracer::beginFrame(RenderContext* context) {
+void ZeroGuidingPT::beginFrame(RenderContext* context) {
 	if (!mScene || !maxQueueSize) return;
 	WavefrontPathTracer::beginFrame(context);
 	GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
@@ -281,7 +280,7 @@ void PPGPathTracer::beginFrame(RenderContext* context) {
 	train_frames_this_iteration = (1 << m_iter) * m_sppPerPass;
 }
 
-void PPGPathTracer::endFrame(RenderContext* context) {
+void ZeroGuidingPT::endFrame(RenderContext* context) {
 	if (enableLearning) {
 		PROFILE("Training SD-Tree");
 		GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
@@ -306,7 +305,7 @@ void PPGPathTracer::endFrame(RenderContext* context) {
 	CUDA_SYNC_CHECK();
 }
 
-void PPGPathTracer::renderUI() {
+void ZeroGuidingPT::renderUI() {
 	ui::Text("Render parameters");
 	ui::InputInt("Samples per pixel", &samplesPerPixel);
 	ui::InputInt("Max bounces", &maxDepth, 1);
@@ -350,7 +349,7 @@ void PPGPathTracer::renderUI() {
 	if (enableClamp) ui::DragFloat("Max:", &clampMax, 1, 500);
 }
 
-void PPGPathTracer::resetGuiding() {
+void ZeroGuidingPT::resetGuiding() {
 	cudaDeviceSynchronize();
 	m_sdTree->clear();
 	m_image->reset();
@@ -359,7 +358,7 @@ void PPGPathTracer::resetGuiding() {
 	CUDA_SYNC_CHECK();
 }
 
-void PPGPathTracer::nextIteration() {
+void ZeroGuidingPT::nextIteration() {
 	if (m_isFinalIter) {
 		Log(Warning, "Attempting to rebuild SD-Tree in the last iteration");
 		return;
@@ -399,7 +398,7 @@ void PPGPathTracer::nextIteration() {
 
 }
 
-void PPGPathTracer::finalize() { 
+void ZeroGuidingPT::finalize() { 
 	cudaDeviceSynchronize();
 	string output_name = gpContext->getGlobalConfig().contains("name") ? 
 		gpContext->getGlobalConfig()["name"] : "result";
@@ -411,7 +410,7 @@ void PPGPathTracer::finalize() {
 	CUDA_SYNC_CHECK();
 }
 
-KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler, 
+KRR_CALLABLE BSDFSample ZeroGuidingPT::sample(Sampler& sampler, 
 	const SurfaceInteraction& intr, float& bsdfPdf, float& dTreePdf, int depth,
 	float bsdfSamplingFraction, const DTreeWrapper* dTree, BSDFType bsdfType) const {
 	BSDFSample sample = {};
@@ -443,7 +442,7 @@ KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler,
 	}
 }
 
-KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int depth,
+KRR_CALLABLE float ZeroGuidingPT::evalPdf(float& bsdfPdf, float& dTreePdf, int depth,
 	const SurfaceInteraction& intr, Vector3f wiLocal, float alpha, const DTreeWrapper* dTree, BSDFType bsdfType) const {
 	Vector3f woLocal = intr.toLocal(intr.wo);
 	
@@ -468,7 +467,7 @@ KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int d
 	Adaptively subdivide the S-Tree,
 	and resets the distribution within the (building) D-Tree.
 	The irradiance records within D-Tree is cleared after this. */
-void PPGPathTracer::resetSDTree() {
+void ZeroGuidingPT::resetSDTree() {
 	cudaDeviceSynchronize();
 	/* About 18k at the first iteration. */
 	float sTreeSplitThres = sqrt(pow(2, m_iter) * m_sppPerPass / 4) * m_sTreeThreshold;
@@ -485,7 +484,7 @@ void PPGPathTracer::resetSDTree() {
 /* [At the end of each iteration] Build the sampling distribution with statistics, in the current
  * iteration of the building tree, */
 /* Then use it, on the sampling tree, in the next iteration. */
-void PPGPathTracer::buildSDTree() {
+void ZeroGuidingPT::buildSDTree() {
 	CUDA_SYNC_CHECK();
 	// Build distributions
 	Log(Info, "Building distributions for each D-Tree node...");
@@ -495,7 +494,7 @@ void PPGPathTracer::buildSDTree() {
 	CUDA_SYNC_CHECK();
 }
 
-void PPGPathTracer::filterFrame(Film *image) { 
+void ZeroGuidingPT::filterFrame(Film *image) { 
 	/* PixelData format: RGBAlphaWeight */
 	using PixelData = Film::WeightedPixel;
 	Vector2i size = image->size();
@@ -567,5 +566,5 @@ void PPGPathTracer::filterFrame(Film *image) {
 	image->getInternalBuffer().copy_from_host(reinterpret_cast<PixelData *>(data), n_pixels);
 }
 
-KRR_REGISTER_PASS_DEF(PPGPathTracer);
+KRR_REGISTER_PASS_DEF(ZeroGuidingPT);
 KRR_NAMESPACE_END
