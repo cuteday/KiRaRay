@@ -40,7 +40,7 @@ protected:
 	void reset();
 	bool loadReferenceImage(const string &path);
 	
-	Image mReferenceImage;
+	std::shared_ptr<Image> mReferenceImage;
 	TypedBuffer<Color4f> mReferenceImageBuffer;
 	ErrorMetric mMetric{ ErrorMetric::RelMSE };
 	json mLastResult;
