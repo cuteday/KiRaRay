@@ -140,17 +140,6 @@ else()
 	message("Do not find python, disable python binding")
 endif()
 
-###############################################################################
-# platform
-###############################################################################
-if(WIN32)
-	set(KRR_PLATFORM_WINDOWS 1)
-elseif(UNIX AND NOT APPLE)
-	set(KRR_PLATFORM_LINUX 1)
-else()
-	set(KRR_PLATFORM_KNOWN 1)
-endif()
-
 ADD_SUBDIRECTORY (src)
 if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 	SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_DIRS} PARENT_SCOPE)	# exporting KRR_INCLUDE_DIRS to parent scope
