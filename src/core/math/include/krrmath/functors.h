@@ -43,6 +43,13 @@ template <typename T> KRR_CALLABLE auto clamp(T v, T lo, T hi) {
 	return std::max(std::min(v, hi), lo);
 }
 
+template <typename T, typename U, typename V>
+KRR_CALLABLE constexpr std::enable_if_t<std::is_fundamental_v<T>, T> clamp(T val, U low, V high) {
+	if (val < low) return T(low);
+	else if (val > high) return T(high);
+	else return val;
+}
+
 template <typename DerivedV, typename DerivedB>
 KRR_CALLABLE auto clamp(const Eigen::MatrixBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
 	return v.cwiseMin(hi).cwiseMax(lo);
