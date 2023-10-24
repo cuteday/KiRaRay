@@ -11,6 +11,15 @@ namespace utils {
 /*******************************************************
  * Numerical
  ********************************************************/
+template <typename C>
+KRR_CALLABLE constexpr float evaluatePolynomial(float t, C c) {
+	return c;
+}
+
+template <typename C, typename ...Args>
+KRR_CALLABLE constexpr float evaluatePolynomial(float t, C c, Args... cRemaining) {
+	return fma(t, evaluatePolynomial(t, cRemaining...), c);
+}
 
 template <class To, class From>
 KRR_CALLABLE
@@ -118,10 +127,6 @@ template <typename T> KRR_CALLABLE T multiplicativeInverse(T a, T n) {
 	T x, y;
 	extendedGCD(a, n, &x, &y);
 	return x % n;
-}
-
-template <typename T> KRR_CALLABLE T lerp(T x, T y, float weight) {
-	return (1.f - weight) * x + weight * y;
 }
 
 /*******************************************************

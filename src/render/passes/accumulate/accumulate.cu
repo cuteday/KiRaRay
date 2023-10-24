@@ -32,7 +32,7 @@ void AccumulatePass::render(RenderContext *context) {
 		if (mAccumCount > 0) {
 			if (mMode == Mode::MovingAverage) // moving average mode
 				accumBuffer[i] =
-					utils::lerp(accumBuffer[i], currentPixel, currentWeight);
+					lerp(accumBuffer[i], currentPixel, currentWeight);
 			else if (!mMaxAccumCount || mAccumCount < mMaxAccumCount) // sum mode
 				accumBuffer[i] = accumBuffer[i] + currentPixel;
 		} else {
