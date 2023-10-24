@@ -109,7 +109,7 @@ KRR_CALLABLE Color linear2srgb(Color linearColor) {
 }
 
 /*******************************************************
- * numbers
+ * algorithms
  ********************************************************/
 template <typename T> KRR_CALLABLE void extendedGCD(T a, T b, T *x, T *y) {
 	if (b == 0) {
@@ -127,6 +127,20 @@ template <typename T> KRR_CALLABLE T multiplicativeInverse(T a, T n) {
 	T x, y;
 	extendedGCD(a, n, &x, &y);
 	return x % n;
+}
+
+template <typename Predicate>
+KRR_CALLABLE size_t findInterval(size_t sz, const Predicate &pred) {
+	using ssize_t = std::make_signed_t<size_t>;
+	ssize_t size = (ssize_t) sz - 2, first = 1;
+	while (size > 0) {
+		// Evaluate predicate at midpoint and update _first_ and _size_
+		size_t half = (size_t) size >> 1, middle = first + half;
+		bool predResult = pred(middle);
+		first			= predResult ? middle + 1 : first;
+		size			= predResult ? size - (half + 1) : half;
+	}
+	return (size_t) clamp((ssize_t) first - 1, 0, sz - 2);
 }
 
 /*******************************************************

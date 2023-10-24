@@ -58,6 +58,14 @@ SET (KRR_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/util/image.cpp
 )
 
+SET (KRR_SOURCE
+	${KRR_SOURCE}
+	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_srgb.cpp
+	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_aces.cpp
+	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_dci_p3.cpp
+	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_rec2020.cpp
+)
+
 SET (KRR_SOURCE_VULKAN
 	${KRR_RENDER_SOURCE_DIR}/core/vulkan/binding.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/vulkan/cuvk.cpp

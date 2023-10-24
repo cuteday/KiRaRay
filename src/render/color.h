@@ -46,4 +46,30 @@ private:
 	float c0, c1, c2;
 };
 
+class RGBToSpectrumTable {
+public:
+	// RGBToSpectrumTable Public Constants
+	static constexpr int res = 64;
+
+	using CoefficientArray = float[3][res][res][res][3];
+
+	// RGBToSpectrumTable Public Methods
+	KRR_CALLABLE RGBToSpectrumTable(const float *zNodes, const CoefficientArray *coeffs) :
+		zNodes(zNodes), coeffs(coeffs) {}
+
+	KRR_CALLABLE RGBSigmoidPolynomial operator()(RGB rgb) const;
+
+	static void init(Allocator alloc);
+
+	static const RGBToSpectrumTable *sRGB;
+	static const RGBToSpectrumTable *DCI_P3;
+	static const RGBToSpectrumTable *Rec2020;
+	static const RGBToSpectrumTable *ACES2065_1;
+
+private:
+	// RGBToSpectrumTable Private Members
+	const float *zNodes;
+	const CoefficientArray *coeffs;
+};
+
 KRR_NAMESPACE_END
