@@ -4,7 +4,7 @@
 #include "krrmath/vector.h"
 #include "krrmath/transform.h"
 #include "util/math_utils.h"
-#include "taggedptr.h"
+#include "device/taggedptr.h"
 #include "medium.h"
 
 #define KRR_RAY_EPS		(1e-4f)

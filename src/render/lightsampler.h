@@ -4,7 +4,7 @@
 #include "device/buffer.h"
 #include "device/memory.h"
 #include "light.h"
-#include "taggedptr.h"
+#include "device/taggedptr.h"
 
 KRR_NAMESPACE_BEGIN
 

@@ -4,7 +4,7 @@
 #include "util/math_utils.h"
 #include "render/sampling.h"
 #include "device/buffer.h"
-#include "taggedptr.h"
+#include "device/taggedptr.h"
 #include "raytracing.h"
 #include "mesh.h"
 

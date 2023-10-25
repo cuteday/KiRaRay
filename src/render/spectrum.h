@@ -3,6 +3,7 @@
 #include "common.h"
 #include "krrmath/math.h"
 #include "device/gpustd.h"
+#include "device/taggedptr.h"
 #include "util/check.h"
 #include "render/color.h"
 
@@ -93,5 +94,6 @@ private:
 	float scale;
 	RGBSigmoidPolynomial rsp;
 };
+
 
 KRR_NAMESPACE_END
