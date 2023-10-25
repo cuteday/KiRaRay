@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "taggedptr.h"
+#include "device/taggedptr.h"
 #include "shape.h"
 #include "texture.h"
 

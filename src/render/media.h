@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-#include "taggedptr.h"
+#include "device/taggedptr.h"
 #include "render/phase.h"
 #include "medium.h"
 #include "raytracing.h"
