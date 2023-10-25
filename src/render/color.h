@@ -6,17 +6,21 @@
 
 KRR_NAMESPACE_BEGIN
 
+#ifdef RGB
+#undef RGB
+#endif
+
 static constexpr int nSpectrumSamples = 4;
 constexpr float cLambdaMin = 360, cLambdaMax = 830;
 
-class RGB : public Array<float, 3> {
+class RGB : public Array3f {
 public:
-	using Array::Array;
+	using Array3f::Array3f;
 };
 
-class XYZ : public Array<float, 3> {
+class XYZ : public Array3f {
 public:
-	using Array::Array;
+	using Array3f::Array3f;
 };
 
 class RGBSigmoidPolynomial {
