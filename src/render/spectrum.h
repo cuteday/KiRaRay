@@ -95,5 +95,50 @@ private:
 	RGBSigmoidPolynomial rsp;
 };
 
+class Spectrum : public TaggedPointer<RGBBoundedSpectrum, RGBUnboundedSpectrum> {
+public:
+	using TaggedPointer::TaggedPointer;
+	KRR_CALLABLE float operator()(float lambda) const;
+	KRR_CALLABLE float maxValue() const;
+	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const;
+};
+
+class RGBColorSpace {
+public:
+	// RGBColorSpace Public Methods
+	RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectrum illuminant,
+				  const RGBToSpectrumTable *rgbToSpectrumTable, Allocator alloc);
+
+	KRR_CALLABLE RGBSigmoidPolynomial toRGBCoeffs(RGB rgb) const;
+
+	static void init(Allocator alloc);
+
+	// RGBColorSpace Public Members
+	Point2f r, g, b, w;
+	DenselySampledSpectrum illuminant;
+	Matrix3f XYZFromRGB, RGBFromXYZ;
+	static const RGBColorSpace *sRGB, *DCI_P3, *Rec2020, *ACES2065_1;
+
+	KRR_CALLABLE bool operator==(const RGBColorSpace &cs) const {
+		return (r == cs.r && g == cs.g && b == cs.b && w == cs.w &&
+				rgbToSpectrumTable == cs.rgbToSpectrumTable);
+	}
+	KRR_CALLABLE bool operator!=(const RGBColorSpace &cs) const {
+		return (r != cs.r || g != cs.g || b != cs.b || w != cs.w ||
+				rgbToSpectrumTable != cs.rgbToSpectrumTable);
+	}
+
+	KRR_CALLABLE RGB luminanceVector() const {
+		return RGB(XYZFromRGB(1, 0), XYZFromRGB(1, 1), XYZFromRGB(1, 2));
+	}
+
+	static const RGBColorSpace *getNamed(std::string name);
+	static const RGBColorSpace *lookup(Point2f r, Point2f g, Point2f b, Point2f w);
+
+private:
+	// RGBColorSpace Private Members
+	const RGBToSpectrumTable *rgbToSpectrumTable;
+};
+
 
 KRR_NAMESPACE_END

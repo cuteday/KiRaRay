@@ -64,6 +64,7 @@ SET (KRR_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_aces.cpp
 	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_dci_p3.cpp
 	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_rec2020.cpp
+	${KRR_RENDER_SOURCE_DIR}/data/named_spectrum.cpp
 )
 
 SET (KRR_SOURCE_VULKAN
