@@ -23,6 +23,11 @@ OPTION (KRR_BUILD_EXAMPLES
 	OFF
 )
 
+OPTION (KRR_RENDER_SPECTRAL 
+	"Build the spectral variant of the renderer (WIP)."
+	OFF
+)
+
 ###############################################################################
 # Build type and C++ compiler setup
 ###############################################################################

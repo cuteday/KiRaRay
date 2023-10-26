@@ -1,4 +1,5 @@
-#include "color.h"
+#include "render/color.h"
+#include "render/spectrum.h"
 #include "device/gpustd.h"
 #include "util/math_utils.h"
 
@@ -37,6 +38,21 @@ RGBSigmoidPolynomial RGBToSpectrumTable::operator()(RGB rgb) const {
 	}
 
 	return RGBSigmoidPolynomial(c[0], c[1], c[2]);
+}
+
+RGBColorSpace::RGBColorSpace(Array2f r, Array2f g, Array2f b, Spectrum illuminant,
+							 const RGBToSpectrumTable *rgbToSpec, Allocator alloc) :
+	r(r), g(g), b(b), illuminant(illuminant, alloc), rgbToSpectrumTable(rgbToSpec) {
+	// Compute whitepoint primaries and XYZ coordinates
+	XYZ W = spec::spectrumToXYZ(illuminant);
+	w	  = W.xy();
+	XYZ R = XYZ::fromxyY(r), G = XYZ::fromxyY(g), B = XYZ::fromxyY(b);
+
+	// Initialize XYZ color space conversion matrices
+	Matrix3f rgb{{R.x(), G.x(), B.x()}, {R.y(), G.y(), B.y()}, {R.z(), G.z(), B.z()}};
+	XYZ C	   = rgb.inverse() * Vector3f(W);
+	XYZFromRGB = rgb * Vector3f(C).asDiagonal().toDenseMatrix();
+	RGBFromXYZ = XYZFromRGB.inverse();
 }
 
 extern const int sRGBToSpectrumTable_Res;
