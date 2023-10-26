@@ -5,7 +5,7 @@
 #define KRR_BUILD_TYPE "${CMAKE_BUILD_TYPE}"
 
 #cmakedefine01	KRR_BUILD_STARLIGHT
-#
+#cmakedefine01	KRR_RENDER_SPECTRAL
 
 #define KRR_ENABLE_PROFILE	1
 

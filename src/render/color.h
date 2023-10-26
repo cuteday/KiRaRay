@@ -11,16 +11,27 @@ KRR_NAMESPACE_BEGIN
 #endif
 
 static constexpr int nSpectrumSamples = 4;
+static constexpr float CIE_Y_integral = 106.856895;
 constexpr float cLambdaMin = 360, cLambdaMax = 830;
 
 class RGB : public Array3f {
 public:
 	using Array3f::Array3f;
+	KRR_CALLABLE float r() const { return x(); }
+	KRR_CALLABLE float g() const { return y(); }
+	KRR_CALLABLE float b() const { return z(); }
 };
 
 class XYZ : public Array3f {
 public:
 	using Array3f::Array3f;
+
+	KRR_CALLABLE Array2f xy() const { return x() / sum(), y() / sum(); } 
+
+	KRR_CALLABLE static XYZ fromxyY(Array2f xy, float Y = 1) {
+		if (xy.y() == 0) return {0, 0, 0};
+		return {xy.x() * Y / xy.y(), Y, (1 - xy.x() - xy.y()) * Y / xy.y()};
+	}
 };
 
 class RGBSigmoidPolynomial {
@@ -61,7 +72,7 @@ public:
 	KRR_CALLABLE RGBToSpectrumTable(const float *zNodes, const CoefficientArray *coeffs) :
 		zNodes(zNodes), coeffs(coeffs) {}
 
-	KRR_CALLABLE RGBSigmoidPolynomial operator()(RGB rgb) const;
+	KRR_HOST_DEVICE RGBSigmoidPolynomial operator()(RGB rgb) const;
 
 	static void init(Allocator alloc);
 

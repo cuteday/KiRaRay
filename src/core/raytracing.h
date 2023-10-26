@@ -144,8 +144,6 @@ struct Interaction{
 	Medium medium{nullptr};
 };
 
-static constexpr int nSpectrumSamples = Color::dim;
-
 class SampledChannel {
 public:
 	KRR_CALLABLE SampledChannel() = default;
