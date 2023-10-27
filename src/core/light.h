@@ -99,13 +99,26 @@ public:
 					 bool twoSided = false, float scale = 1.f) :
 		shape(shape), texture(texture), Le(Le), twoSided(twoSided), scale(scale) {}
 
-	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const;
+	KRR_DEVICE LightSample DiffuseAreaLight::sampleLi(Vector2f u,
+													  const LightSampleContext &ctx) const {
+		LightSample ls				= {};
+		ShapeSampleContext shapeCtx = {ctx.p, ctx.n};
+		ShapeSample ss				= shape.sample(u, shapeCtx);
+		DCHECK(!isnan(ss.pdf));
+		Interaction &intr = ss.intr;
+		intr.wo			  = normalize(ctx.p - intr.p);
+
+		ls.intr = intr;
+		ls.pdf	= ss.pdf;
+		ls.L	= L(intr.p, intr.n, intr.uv, intr.wo);
+		return ls;
+	}
 
 	KRR_DEVICE inline Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
 		if (!twoSided && dot(n, w) < 0.f) return Color::Zero(); // hit backface
 
 		if (texture.isValid())
-			return scale * texture.tex(uv).head<3>();
+			return scale * texture.evaluate(uv).head<3>();
 		else
 			return scale * Le;
 	}
@@ -160,7 +173,7 @@ public:
 		Color L = tint * scale;
 		if (!image.isValid()) return L;
 		Vector2f uv = worldToLatLong(rotation.transpose() * wi);
-		L *= image.tex(uv).head<3>();
+		L *= image.evaluate(uv).head<3>();
 		return L;
 	}
 
