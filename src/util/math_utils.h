@@ -147,11 +147,6 @@ KRR_CALLABLE size_t findInterval(size_t sz, const Predicate &pred) {
  * vectors and coordinates
  ********************************************************/
 
-template <typename T> KRR_CALLABLE float squaredLength(T v) {
-	float l = length(v);
-	return l * l;
-}
-
 KRR_CALLABLE float sphericalTriangleArea(Vector3f a, Vector3f b, Vector3f c) {
 	return abs(2 * atan2(dot(a, cross(b, c)), 1 + dot(a, b) + dot(a, c) + dot(b, c)));
 }

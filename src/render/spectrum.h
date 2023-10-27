@@ -9,19 +9,11 @@
 
 KRR_NAMESPACE_BEGIN
 
-class SampledSpectrum: public Array<float, nSpectrumSamples> {
-public:
-	SampledSpectrum() = default;
-	KRR_CALLABLE explicit SampledSpectrum(float c) : Array(c) {}
-
-	KRR_CALLABLE SampledSpectrum(gpu::span<const float> v) {
-		DCHECK_EQ(v.size(), nSpectrumSamples);
-		for (int i=0; i<nSpectrumSamples; i++)
-			(*this)[i] = v[i];
-	}
-
-	KRR_CALLABLE explicit operator bool() const { return this->any(); }
-};
+class RGBColorSpace;
+class RGBBoundedSpectrum;
+class RGBUnboundedSpectrum;
+class DenselySampledSpectrum;
+class PiecewiseLinearSpectrum;
 
 class SampledWavelengths {
 public:
@@ -56,10 +48,23 @@ private:
 	Array<float, nSpectrumSamples> lambda, pdfs;
 };
 
-class RGBBoundedSpectrum;
-class RGBUnboundedSpectrum;
-class DenselySampledSpectrum;
-class PiecewiseLinearSpectrum;
+class SampledSpectrum : public Array<float, nSpectrumSamples> {
+public:
+	using Array::Array;
+	//SampledSpectrum() = default;
+	KRR_CALLABLE explicit SampledSpectrum(float c) : Array(c) {}
+
+	KRR_CALLABLE SampledSpectrum(gpu::span<const float> v) {
+		DCHECK_EQ(v.size(), nSpectrumSamples);
+		for (int i = 0; i < nSpectrumSamples; i++) (*this)[i] = v[i];
+	}
+
+	KRR_CALLABLE explicit operator bool() const { return this->any(); }
+
+	KRR_HOST_DEVICE float y(const SampledWavelengths &swl) const;
+	KRR_HOST_DEVICE XYZ toXYZ(const SampledWavelengths &swl) const;
+	KRR_HOST_DEVICE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
+};
 
 class Spectrum :
 	public TaggedPointer<RGBBoundedSpectrum, RGBUnboundedSpectrum, DenselySampledSpectrum,
@@ -77,7 +82,7 @@ public:
 
 	KRR_CALLABLE float maxValue() const { return rsp.maxValue(); }
 
-	KRR_CALLABLE RGBBoundedSpectrum(RGB rgb) {}
+	KRR_CALLABLE RGBBoundedSpectrum(RGB rgb, const RGBColorSpace &cs);
 
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths& lambda) const {
 		SampledSpectrum result;
@@ -97,17 +102,16 @@ public:
 	KRR_CALLABLE float maxValue() const { return scale * rsp.maxValue(); }
 
 	KRR_CALLABLE RGBUnboundedSpectrum(): rsp(0, 0, 0), scale(0) {}
-	KRR_CALLABLE RGBUnboundedSpectrum(RGB rgb) {}
+	KRR_CALLABLE RGBUnboundedSpectrum(RGB rgb, const RGBColorSpace &cs);
 
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
 		SampledSpectrum result;
 		for (int i = 0; i < nSpectrumSamples; i++) result[i] = scale * rsp(lambda[i]);
 		return result;
 	}
-
 private:
-	float scale;
 	RGBSigmoidPolynomial rsp;
+	float scale;
 };
 
 class PiecewiseLinearSpectrum {
@@ -167,9 +171,7 @@ public:
 		return s;
 	}
 
-	KRR_CALLABLE void scale(float s) {
-		for (float &v : values) v *= s;
-	}
+	KRR_CALLABLE void scale(float s) { for (float &v : values) v *= s; }
 
 	KRR_CALLABLE
 	float maxValue() const { return *std::max_element(values.begin(), values.end()); }

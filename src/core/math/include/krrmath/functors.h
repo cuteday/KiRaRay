@@ -60,6 +60,11 @@ KRR_CALLABLE auto clamp(const Eigen::ArrayBase<DerivedV> &v, DerivedB lo, Derive
 	return v.min(hi).max(lo);
 }
 
+template <typename T>
+KRR_CALLABLE auto safediv(const Eigen::EigenBase<T> &v, const Eigen::ArrayBase<T> &divisor) {
+	return v.binaryExpr(divisor, [](auto x, auto y) { return y == 0 ? 0 : x / y; });
+}
+
 template <typename DerivedV, typename DerivedB>
 KRR_CALLABLE auto clamp(const Eigen::EigenBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
 	return clamp(v.eval(), lo, hi);
@@ -83,10 +88,6 @@ template <typename DerivedV> KRR_CALLABLE auto abs(const Eigen::MatrixBase<Deriv
 
 template <typename DerivedV> KRR_CALLABLE auto length(const Eigen::MatrixBase<DerivedV> &v) {
 	return v.norm();
-}
-
-template <typename DerivedV> KRR_CALLABLE auto squaredLength(const Eigen::MatrixBase<DerivedV> &v) {
-	return v.SquaredNorm();
 }
 
 template <typename DerivedV> KRR_CALLABLE auto any(const Eigen::DenseBase<DerivedV> &v) {
