@@ -94,7 +94,15 @@ bool ErrorMeasurePass::loadReferenceImage(const string &path) {
  	bool success = mReferenceImage->loadImage(path, true, false);
 	if (success) {
 		// TODO: find out why saving an exr image yields this permutation on pixel format?
-		mReferenceImage->permuteChannels(Vector4i{ 3, 0, 1, 2});
+		// This should be deleted once new reference images are updated.
+		auto permute = [](auto pixel) {
+			Array4i p = { 3, 0, 1, 2 };
+			auto res  = pixel;
+			for (int c = 0; c < 4; c++) 
+				res[c] = pixel[p[c]];
+			return res;
+		};
+		mReferenceImage->process(permute);
 		mReferenceImageBuffer.resize(mReferenceImage->getSizeInBytes());
 		mReferenceImageBuffer.copy_from_host(reinterpret_cast<Color4f*>(mReferenceImage->data()), 
 			mReferenceImage->getSizeInBytes() / sizeof(Color4f));
