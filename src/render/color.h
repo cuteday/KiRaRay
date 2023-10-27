@@ -10,23 +10,23 @@ KRR_NAMESPACE_BEGIN
 #undef RGB
 #endif
 
+#define CIE_Y_integral	106.856895f
 static constexpr int nSpectrumSamples = 4;
-static constexpr float CIE_Y_integral = 106.856895;
 constexpr float cLambdaMin = 360, cLambdaMax = 830;
 
 class RGB : public Array3f {
 public:
 	using Array3f::Array3f;
-	KRR_CALLABLE float r() const { return x(); }
-	KRR_CALLABLE float g() const { return y(); }
-	KRR_CALLABLE float b() const { return z(); }
+	KRR_CALLABLE float r() const { return (*this)[0]; }
+	KRR_CALLABLE float g() const { return (*this)[1]; }
+	KRR_CALLABLE float b() const { return (*this)[2]; }
 };
 
 class XYZ : public Array3f {
 public:
 	using Array3f::Array3f;
 
-	KRR_CALLABLE Array2f xy() const { return x() / sum(), y() / sum(); } 
+	KRR_CALLABLE Array2f xy() const { return {x() / sum(), y() / sum()}; } 
 
 	KRR_CALLABLE static XYZ fromxyY(Array2f xy, float Y = 1) {
 		if (xy.y() == 0) return {0, 0, 0};

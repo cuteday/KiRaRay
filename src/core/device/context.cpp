@@ -63,6 +63,9 @@ void Context::initialize() {
 	// initialize spectral rendering resources
 #if KRR_RENDER_SPECTRAL
 	spec::init(*alloc);
+	RGBToSpectrumTable::init(*alloc);
+	RGBColorSpace::init(*alloc);
+	CUDA_SYNC_CHECK();
 #endif
 }
 

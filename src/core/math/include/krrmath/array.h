@@ -34,6 +34,9 @@ public:
 	}
 
 	KRR_CALLABLE bool hasInf() const { return this->isInf().any(); }
+	KRR_CALLABLE Array safeDiv(const Array &other) const {
+		return this->binaryExpr(other, [](auto x, auto y) { return y == 0 ? 0 : x / y; });
+	}
 	KRR_CALLABLE friend Array max(const Array &arr1, const Array &arr2) { return arr1.max(arr2); }
 	KRR_CALLABLE friend Array min(const Array &arr1, const Array &arr2) { return arr1.min(arr2); }
 	KRR_CALLABLE friend Array abs(const Array &arr) { return arr.abs(); }
