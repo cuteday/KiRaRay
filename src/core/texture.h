@@ -174,7 +174,7 @@ public:
 		return mCudaTexture;
 	}
 	KRR_CALLABLE Color4f getConstant() const { return mValue; }
-	KRR_DEVICE Color4f tex(Vector2f uv) const {
+	KRR_DEVICE Color4f evaluate(Vector2f uv) const {
 #ifdef __NVCC__
 		if (mCudaTexture) return tex2D<float4>(mCudaTexture, uv[0], uv[1]);
 #endif
