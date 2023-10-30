@@ -9,7 +9,7 @@
 KRR_NAMESPACE_BEGIN
 
 using namespace gpu;
-Context::SharedPtr gpContext;
+std::unique_ptr<Context> gpContext;
 std::shared_ptr<RenderPassFactory::map_type> RenderPassFactory::map = nullptr;
 std::shared_ptr<RenderPassFactory::configured_map_type> RenderPassFactory::configured_map = nullptr;
 CUDATrackedMemory CUDATrackedMemory::singleton;

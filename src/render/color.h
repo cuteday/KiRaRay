@@ -26,9 +26,9 @@ class XYZ : public Array3f {
 public:
 	using Array3f::Array3f;
 
-	KRR_CALLABLE Array2f xy() const { return {x() / sum(), y() / sum()}; } 
+	KRR_CALLABLE Point2f xy() const { return {x() / sum(), y() / sum()}; } 
 
-	KRR_CALLABLE static XYZ fromxyY(Array2f xy, float Y = 1) {
+	KRR_CALLABLE static XYZ fromxyY(Point2f xy, float Y = 1) {
 		if (xy.y() == 0) return {0, 0, 0};
 		return {xy.x() * Y / xy.y(), Y, (1 - xy.x() - xy.y()) * Y / xy.y()};
 	}
@@ -40,7 +40,7 @@ public:
 
 	KRR_CALLABLE RGBSigmoidPolynomial(float c0, float c1, float c2) : c0(c0), c1(c1), c2(c2) {}
 
-	float operator()(float lambda) const {
+	KRR_CALLABLE float operator()(float lambda) const {
 		return sigmoid(utils::evaluatePolynomial(lambda, c2, c1, c0));
 	}
 
@@ -52,13 +52,12 @@ public:
 		return result;
 	}
 
+	float c0, c1, c2;
 private:
 	KRR_CALLABLE static float sigmoid(float x) {
 		if (isinf(x)) return x > 0 ? 1 : 0;
 		return .5f + x / (2 * sqrt(1 + x * x));
 	}
-
-	float c0, c1, c2;
 };
 
 class RGBToSpectrumTable {

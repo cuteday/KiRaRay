@@ -40,6 +40,6 @@ public:
 	bool exit{};
 };
 
-extern Context::SharedPtr gpContext;
+extern std::unique_ptr<Context> gpContext;
 
 KRR_NAMESPACE_END

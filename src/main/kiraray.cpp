@@ -1,8 +1,11 @@
 #include "renderer.h"
+#include "render/spectrum.h"
+#include "device/cuda.h"
 
 KRR_NAMESPACE_BEGIN
 
 extern "C" int main(int argc, char *argv[]) {
+	gpContext = std::make_unique<Context>();
 	fs::current_path(File::cwd());
 	Log(Info, "Working directory: %s", KRR_PROJECT_DIR);
 	Log(Info, "Kiraray build type: %s", KRR_BUILD_TYPE);

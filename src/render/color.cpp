@@ -15,6 +15,7 @@ RGBSigmoidPolynomial RGBToSpectrumTable::operator()(RGB rgb) const {
 
 	// Find maximum component and compute remapped component values
 	int maxc = (rgb[0] > rgb[1]) ? ((rgb[0] > rgb[2]) ? 0 : 2) : ((rgb[1] > rgb[2]) ? 1 : 2);
+	//rgb.maxCoeff(&maxc);
 	float z	 = rgb[maxc];
 	float x	 = rgb[(maxc + 1) % 3] * (res - 1) / z;
 	float y	 = rgb[(maxc + 2) % 3] * (res - 1) / z;
@@ -40,7 +41,7 @@ RGBSigmoidPolynomial RGBToSpectrumTable::operator()(RGB rgb) const {
 	return RGBSigmoidPolynomial(c[0], c[1], c[2]);
 }
 
-RGBColorSpace::RGBColorSpace(Array2f r, Array2f g, Array2f b, Spectrum illuminant,
+RGBColorSpace::RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectrum illuminant,
 							 const RGBToSpectrumTable *rgbToSpec, Allocator alloc) :
 	r(r), g(g), b(b), illuminant(illuminant, alloc), rgbToSpectrumTable(rgbToSpec) {
 	// Compute whitepoint primaries and XYZ coordinates

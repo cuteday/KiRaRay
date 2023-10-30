@@ -12,7 +12,7 @@ static size_t sSaveFrameInterval = 2;
 }
 
 RenderApp::RenderApp() {
-	if (!gpContext) gpContext = std::make_shared<Context>();
+	if (!gpContext) gpContext = std::make_unique<Context>();
 }
 
 void RenderApp::backBufferResizing() { 

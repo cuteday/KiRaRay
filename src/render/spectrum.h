@@ -82,7 +82,7 @@ public:
 
 	KRR_CALLABLE float maxValue() const { return rsp.maxValue(); }
 
-	KRR_CALLABLE RGBBoundedSpectrum(RGB rgb, const RGBColorSpace &cs);
+	KRR_HOST_DEVICE RGBBoundedSpectrum(RGB rgb, const RGBColorSpace &cs);
 
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths& lambda) const {
 		SampledSpectrum result;
@@ -91,7 +91,6 @@ public:
 		return result;
 	}
 
-private:
 	RGBSigmoidPolynomial rsp;
 };
 
@@ -102,7 +101,7 @@ public:
 	KRR_CALLABLE float maxValue() const { return scale * rsp.maxValue(); }
 
 	KRR_CALLABLE RGBUnboundedSpectrum(): rsp(0, 0, 0), scale(0) {}
-	KRR_CALLABLE RGBUnboundedSpectrum(RGB rgb, const RGBColorSpace &cs);
+	KRR_HOST_DEVICE RGBUnboundedSpectrum(RGB rgb, const RGBColorSpace &cs);
 
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
 		SampledSpectrum result;
@@ -231,10 +230,10 @@ inline SampledSpectrum Spectrum::sample(const SampledWavelengths &lambda) const 
 class RGBColorSpace {
 public:
 	// RGBColorSpace Public Methods
-	RGBColorSpace(Array2f r, Array2f g, Array2f b, Spectrum illuminant,
+	RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectrum illuminant,
 				  const RGBToSpectrumTable *rgbToSpectrumTable, Allocator alloc);
 
-	KRR_CALLABLE RGBSigmoidPolynomial toRGBCoeffs(RGB rgb) const;
+	KRR_HOST_DEVICE RGBSigmoidPolynomial toRGBCoeffs(RGB rgb) const;
 
 	static void init(Allocator alloc);
 
@@ -258,7 +257,7 @@ public:
 	}
 
 	static const RGBColorSpace *getNamed(std::string name);
-	static const RGBColorSpace *lookup(Array2f r, Array2f g, Array2f b, Array2f w);
+	static const RGBColorSpace *lookup(Point2f r, Point2f g, Point2f b, Point2f w);
 
 	KRR_CALLABLE RGB toRGB(XYZ xyz) const { return RGBFromXYZ * xyz.matrix(); }
 	KRR_CALLABLE XYZ toXYZ(RGB rgb) const { return XYZFromRGB * rgb.matrix(); }

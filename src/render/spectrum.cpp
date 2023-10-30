@@ -106,8 +106,8 @@ const RGBColorSpace *RGBColorSpace::getNamed(std::string n) {
 	else return nullptr;
 }
 
-const RGBColorSpace *RGBColorSpace::lookup(Array2f r, Array2f g, Array2f b, Array2f w) {
-	auto closeEnough = [](const Array2f &a, const Array2f &b) {
+const RGBColorSpace *RGBColorSpace::lookup(Point2f r, Point2f g, Point2f b, Point2f w) {
+	auto closeEnough = [](const Point2f &a, const Point2f &b) {
 		return ((a.x() == b.x() || std::abs((a.x() - b.x()) / b.x()) < 1e-3) &&
 				(a.y() == b.y() || std::abs((a.y() - b.y()) / b.y()) < 1e-3));
 	};
@@ -122,17 +122,17 @@ const RGBColorSpace *RGBColorSpace::lookup(Array2f r, Array2f g, Array2f b, Arra
 void RGBColorSpace::init(Allocator alloc) {
 	using namespace spec;
 	// Rec. ITU-R BT.709.3
-	sRGB = alloc.new_object<RGBColorSpace>(Array2f(.64, .33), Array2f(.3, .6), Array2f(.15, .06),
+	sRGB = alloc.new_object<RGBColorSpace>(Point2f(.64, .33), Point2f(.3, .6), Point2f(.15, .06),
 										   getNamedSpectrum("stdillum-D65"),
 										   RGBToSpectrumTable::sRGB, alloc);
 	// P3-D65 (display)
-	DCI_P3 = alloc.new_object<RGBColorSpace>(Array2f(.68, .32), Array2f(.265, .690), Array2f(.15, .06),
+	DCI_P3 = alloc.new_object<RGBColorSpace>(Point2f(.68, .32), Point2f(.265, .690), Point2f(.15, .06),
 		getNamedSpectrum("stdillum-D65"), RGBToSpectrumTable::DCI_P3, alloc);
 	// ITU-R Rec BT.2020
-	Rec2020	   = alloc.new_object<RGBColorSpace>(Array2f(.708, .292), Array2f(.170, .797), Array2f(.131, .046),
+	Rec2020	   = alloc.new_object<RGBColorSpace>(Point2f(.708, .292), Point2f(.170, .797), Point2f(.131, .046),
 		getNamedSpectrum("stdillum-D65"), RGBToSpectrumTable::Rec2020, alloc);
 	ACES2065_1 = alloc.new_object<RGBColorSpace>(
-		Array2f(.7347, .2653), Array2f(0., 1.), Array2f(.0001, -.077),
+		Point2f(.7347, .2653), Point2f(0., 1.), Point2f(.0001, -.077),
 		getNamedSpectrum("illum-acesD60"), RGBToSpectrumTable::ACES2065_1, alloc);
 
 	CUDA_CHECK(cudaMemcpyToSymbol(RGBColorSpace_sRGB, &RGBColorSpace::sRGB,

@@ -13,7 +13,6 @@ extern "C" __constant__ LaunchParams launchParams;
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 	float tMax, int rayType, OptixRayFlags flags, Args &&... payload) {
-
 	optixTrace(traversable, ray.origin, ray.dir,
 		0.f, tMax, 0.f,						/* ray time val min max */
 		OptixVisibilityMask(255),			/* all visible */
