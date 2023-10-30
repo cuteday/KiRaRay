@@ -7,42 +7,6 @@ namespace {
 #include "data/named_spectrum.cpp"
 } // anonymous namespace
 
-XYZ SampledSpectrum::toXYZ(const SampledWavelengths &lambda) const {
-	// Sample the $X$, $Y$, and $Z$ matching curves at _lambda_
-	SampledSpectrum X = spec::X().sample(lambda);
-	SampledSpectrum Y = spec::Y().sample(lambda);
-	SampledSpectrum Z = spec::Z().sample(lambda);
-
-	// Evaluate estimator to compute $(x,y,z)$ coefficients
-	SampledSpectrum pdf = lambda.pdf();
-	return XYZ(SampledSpectrum(X * *this).safeDiv(pdf).mean(), 
-		SampledSpectrum(Y * *this).safeDiv(pdf).mean(), 
-		SampledSpectrum(Z * *this).safeDiv(pdf).mean()) /
-		   CIE_Y_integral;
-}
-
-float SampledSpectrum::y(const SampledWavelengths &lambda) const {
-	SampledSpectrum Ys	= spec::Y().sample(lambda);
-	SampledSpectrum pdf = lambda.pdf();
-	return SampledSpectrum(Ys * *this).safeDiv(pdf).mean() / CIE_Y_integral;
-}
-
-RGB SampledSpectrum::toRGB(const SampledWavelengths &lambda, const RGBColorSpace &cs) const {
-	XYZ xyz = toXYZ(lambda);
-	return cs.toRGB(xyz);
-}
-
-RGBBoundedSpectrum::RGBBoundedSpectrum(RGB rgb, const RGBColorSpace &cs) {
-	DCHECK_LE(rgb.maxCoeff(), 1);
-	DCHECK_GE(rgb.minCoeff(), 0);
-	rsp = cs.toRGBCoeffs(rgb);
-}
-
-RGBUnboundedSpectrum::RGBUnboundedSpectrum(RGB rgb, const RGBColorSpace &cs) {
-	scale	= 2 * rgb.maxCoeff();
-	rsp		= cs.toRGBCoeffs(scale ? rgb / scale : RGB(0, 0, 0));
-}
-
 float PiecewiseLinearSpectrum::operator()(float lambda) const {
 	// Handle _PiecewiseLinearSpectrum_ corner cases
 	if (lambdas.empty() || lambda < lambdas.front() || lambda > lambdas.back()) return 0;
@@ -89,11 +53,6 @@ PiecewiseLinearSpectrum *PiecewiseLinearSpectrum::fromInterleaved(gpu::span<cons
 		spec->scale(CIE_Y_integral / spec::innerProduct(spec, &spec::Y()));
 
 	return spec;
-}
-
-RGBSigmoidPolynomial RGBColorSpace::toRGBCoeffs(RGB rgb) const {
-	DCHECK(rgb.r() >= 0 && rgb.g() >= 0 && rgb.b() >= 0);
-	return (*rgbToSpectrumTable)(rgb.cwiseMax(0));
 }
 
 const RGBColorSpace *RGBColorSpace::getNamed(std::string n) {

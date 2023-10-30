@@ -17,6 +17,8 @@ class PiecewiseLinearSpectrum;
 
 class SampledWavelengths {
 public:
+	SampledWavelengths() = default;
+
 	KRR_CALLABLE bool operator==(const SampledWavelengths& swl) const {
 		return (lambda == swl.lambda).all() && (pdfs == swl.pdfs).all();
 	}
@@ -61,9 +63,9 @@ public:
 
 	KRR_CALLABLE explicit operator bool() const { return this->any(); }
 
-	KRR_HOST_DEVICE float y(const SampledWavelengths &swl) const;
-	KRR_HOST_DEVICE XYZ toXYZ(const SampledWavelengths &swl) const;
-	KRR_HOST_DEVICE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
+	KRR_CALLABLE float y(const SampledWavelengths &swl) const;
+	KRR_CALLABLE XYZ toXYZ(const SampledWavelengths &swl) const;
+	KRR_CALLABLE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
 };
 
 class Spectrum :
@@ -82,7 +84,7 @@ public:
 
 	KRR_CALLABLE float maxValue() const { return rsp.maxValue(); }
 
-	KRR_HOST_DEVICE RGBBoundedSpectrum(RGB rgb, const RGBColorSpace &cs);
+	KRR_CALLABLE RGBBoundedSpectrum(RGB rgb, const RGBColorSpace &cs);
 
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths& lambda) const {
 		SampledSpectrum result;
@@ -101,7 +103,7 @@ public:
 	KRR_CALLABLE float maxValue() const { return scale * rsp.maxValue(); }
 
 	KRR_CALLABLE RGBUnboundedSpectrum(): rsp(0, 0, 0), scale(0) {}
-	KRR_HOST_DEVICE RGBUnboundedSpectrum(RGB rgb, const RGBColorSpace &cs);
+	KRR_CALLABLE RGBUnboundedSpectrum::RGBUnboundedSpectrum(RGB rgb, const RGBColorSpace &cs);
 
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
 		SampledSpectrum result;
@@ -233,7 +235,7 @@ public:
 	RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectrum illuminant,
 				  const RGBToSpectrumTable *rgbToSpectrumTable, Allocator alloc);
 
-	KRR_HOST_DEVICE RGBSigmoidPolynomial toRGBCoeffs(RGB rgb) const;
+	KRR_CALLABLE RGBSigmoidPolynomial toRGBCoeffs(RGB rgb) const;
 
 	static void init(Allocator alloc);
 
@@ -266,6 +268,17 @@ private:
 	// RGBColorSpace Private Members
 	const RGBToSpectrumTable *rgbToSpectrumTable;
 };
+
+ inline RGBBoundedSpectrum::RGBBoundedSpectrum(RGB rgb, const RGBColorSpace &cs) {
+	DCHECK_LE(rgb.maxCoeff(), 1);
+	DCHECK_GE(rgb.minCoeff(), 0);
+	rsp = cs.toRGBCoeffs(rgb);
+ }
+
+ inline RGBUnboundedSpectrum::RGBUnboundedSpectrum(RGB rgb, const RGBColorSpace &cs) {
+	scale	= 2 * rgb.maxCoeff();
+	rsp		= cs.toRGBCoeffs(scale ? rgb / scale : RGB(0, 0, 0));
+ }
 
 namespace spec {
 
@@ -311,4 +324,35 @@ XYZ spectrumToXYZ(Spectrum s);
 Spectrum getNamedSpectrum(std::string name);
 
 } // namespace spec
+
+inline RGBSigmoidPolynomial RGBColorSpace::toRGBCoeffs(RGB rgb) const {
+	DCHECK(rgb.r() >= 0 && rgb.g() >= 0 && rgb.b() >= 0);
+	return (*rgbToSpectrumTable)(rgb.cwiseMax(0));
+}
+
+inline XYZ SampledSpectrum::toXYZ(const SampledWavelengths &lambda) const {
+	// Sample the $X$, $Y$, and $Z$ matching curves at _lambda_
+	SampledSpectrum X = spec::X().sample(lambda);
+	SampledSpectrum Y = spec::Y().sample(lambda);
+	SampledSpectrum Z = spec::Z().sample(lambda);
+
+	// Evaluate estimator to compute $(x,y,z)$ coefficients
+	SampledSpectrum pdf = lambda.pdf();
+	return XYZ(SampledSpectrum(X * *this).safeDiv(pdf).mean(),
+			   SampledSpectrum(Y * *this).safeDiv(pdf).mean(),
+			   SampledSpectrum(Z * *this).safeDiv(pdf).mean()) /
+		   CIE_Y_integral;
+}
+
+inline float SampledSpectrum::y(const SampledWavelengths &lambda) const {
+	SampledSpectrum Ys	= spec::Y().sample(lambda);
+	SampledSpectrum pdf = lambda.pdf();
+	return SampledSpectrum(Ys * *this).safeDiv(pdf).mean() / CIE_Y_integral;
+}
+
+inline RGB SampledSpectrum::toRGB(const SampledWavelengths &lambda, const RGBColorSpace &cs) const {
+	XYZ xyz = toXYZ(lambda);
+	return cs.toRGB(xyz);
+}
+
 KRR_NAMESPACE_END

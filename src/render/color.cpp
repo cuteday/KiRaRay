@@ -5,43 +5,6 @@
 
 KRR_NAMESPACE_BEGIN
 
-RGBSigmoidPolynomial RGBToSpectrumTable::operator()(RGB rgb) const {
-	DCHECK(rgb[0] >= 0.f && rgb[1] >= 0.f && rgb[2] >= 0.f && rgb[0] <= 1.f && rgb[1] <= 1.f &&
-		   rgb[2] <= 1.f);
-
-	// Handle uniform _rgb_ values
-	if (rgb[0] == rgb[1] && rgb[1] == rgb[2])
-		return RGBSigmoidPolynomial(0, 0, (rgb[0] - .5f) / std::sqrt(rgb[0] * (1 - rgb[0])));
-
-	// Find maximum component and compute remapped component values
-	int maxc = (rgb[0] > rgb[1]) ? ((rgb[0] > rgb[2]) ? 0 : 2) : ((rgb[1] > rgb[2]) ? 1 : 2);
-	//rgb.maxCoeff(&maxc);
-	float z	 = rgb[maxc];
-	float x	 = rgb[(maxc + 1) % 3] * (res - 1) / z;
-	float y	 = rgb[(maxc + 2) % 3] * (res - 1) / z;
-
-	// Compute integer indices and offsets for coefficient interpolation
-	int xi = std::min((int) x, res - 2), yi = std::min((int) y, res - 2),
-		zi	 = utils::findInterval(res, [&](int i) { return zNodes[i] < z; });
-	float dx = x - xi, dy = y - yi, dz = (z - zNodes[zi]) / (zNodes[zi + 1] - zNodes[zi]);
-
-	// Trilinearly interpolate sigmoid polynomial coefficients _c_
-	Array3f c;
-	for (int i = 0; i < 3; ++i) {
-		// Define _co_ lambda for looking up sigmoid polynomial coefficients
-		auto co = [&](int dx, int dy, int dz) {
-			return (*coeffs)[maxc][zi + dz][yi + dy][xi + dx][i];
-		};
-
-		c[i] = lerp(
-			lerp(lerp(co(0, 0, 0), co(1, 0, 0), dx), lerp(co(0, 1, 0), co(1, 1, 0), dx), dy),
-			lerp(lerp(co(0, 0, 1), co(1, 0, 1), dx), lerp(co(0, 1, 1), co(1, 1, 1), dx), dy), 
-			dz);
-	}
-
-	return RGBSigmoidPolynomial(c[0], c[1], c[2]);
-}
-
 RGBColorSpace::RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectrum illuminant,
 							 const RGBToSpectrumTable *rgbToSpec, Allocator alloc) :
 	r(r), g(g), b(b), illuminant(illuminant, alloc), rgbToSpectrumTable(rgbToSpec) {
