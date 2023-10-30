@@ -28,7 +28,7 @@ public:
 	KRR_CALLABLE static SampledWavelengths sampleUniform(float u, float lambdaMin = cLambdaMin,
 		float lambdaMax = cLambdaMax) {
 		SampledWavelengths swl;
-		swl.lambda[0] = lerp(u, lambdaMin, lambdaMax);
+		swl.lambda[0] = lerp(lambdaMin, lambdaMax, u);
 		float delta = (lambdaMax - lambdaMin) / nSpectrumSamples;
 		for (int i = 1; i < nSpectrumSamples; i++) {
 			swl.lambda[i] = swl.lambda[i - 1] + delta;
@@ -306,7 +306,7 @@ KRR_CALLABLE const DenselySampledSpectrum &Z() {
 #endif
 }
 
-inline float innerProduct(Spectrum f, Spectrum g);
+float innerProduct(Spectrum f, Spectrum g);
 XYZ spectrumToXYZ(Spectrum s);
 Spectrum getNamedSpectrum(std::string name);
 

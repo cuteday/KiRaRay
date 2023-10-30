@@ -50,7 +50,7 @@ float PiecewiseLinearSpectrum::operator()(float lambda) const {
 	int o = utils::findInterval(lambdas.size(), [&](int i) { return lambdas[i] <= lambda; });
 	DCHECK(lambda >= lambdas[o] && lambda <= lambdas[o + 1]);
 	float t = (lambda - lambdas[o]) / (lambdas[o + 1] - lambdas[o]);
-	return lerp(t, values[o], values[o + 1]);
+	return lerp(values[o], values[o + 1], t);
 }
 
 PiecewiseLinearSpectrum::PiecewiseLinearSpectrum(gpu::span<const float> l, gpu::span<const float> v,
@@ -362,7 +362,7 @@ void init(Allocator alloc) {
 		{"sony_ilce_9_b", PiecewiseLinearSpectrum::fromInterleaved(sony_ilce_9_b, false, alloc)}};
 }
 
-inline float innerProduct(Spectrum f, Spectrum g) {
+float innerProduct(Spectrum f, Spectrum g) {
 	float integral = 0;
 	for (float lambda = cLambdaMin; lambda <= cLambdaMax; ++lambda)
 		integral += f(lambda) * g(lambda);

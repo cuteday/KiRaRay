@@ -64,7 +64,6 @@ class RGBToSpectrumTable {
 public:
 	// RGBToSpectrumTable Public Constants
 	static constexpr int res = 64;
-
 	using CoefficientArray = float[3][res][res][res][3];
 
 	// RGBToSpectrumTable Public Methods
