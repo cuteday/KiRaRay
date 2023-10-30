@@ -6,8 +6,11 @@
 KRR_NAMESPACE_BEGIN
 
 RGBColorSpace::RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectrum illuminant,
-							 const RGBToSpectrumTable *rgbToSpec, Allocator alloc) :
-	r(r), g(g), b(b), illuminant(illuminant, alloc), rgbToSpectrumTable(rgbToSpec) {
+							 const RGBToSpectrumTable *rgbToSpectrumTable,
+							 const DenselySampledSpectrum *x, const DenselySampledSpectrum *y,
+							 const DenselySampledSpectrum *z, Allocator alloc) :
+	r(r), g(g), b(b), illuminant(illuminant, alloc), rgbToSpectrumTable(rgbToSpectrumTable),
+	CIE_X(x), CIE_Y(y), CIE_Z(z) {
 	// Compute whitepoint primaries and XYZ coordinates
 	XYZ W = spec::spectrumToXYZ(illuminant);
 	w	  = W.xy();

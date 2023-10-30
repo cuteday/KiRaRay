@@ -44,7 +44,7 @@ public:
 	KRR_CALLABLE float operator[](int i) const { return lambda[i]; }
 	KRR_CALLABLE float &operator[](int i) { return lambda[i]; }
 
-	Array<float, nSpectrumSamples> pdf() const { return pdfs; }
+	KRR_CALLABLE Array<float, nSpectrumSamples> pdf() const { return pdfs; }
 
 private:
 	Array<float, nSpectrumSamples> lambda, pdfs;
@@ -62,10 +62,10 @@ public:
 	}
 
 	KRR_CALLABLE explicit operator bool() const { return this->any(); }
-
-	KRR_CALLABLE float y(const SampledWavelengths &swl) const;
-	KRR_CALLABLE XYZ toXYZ(const SampledWavelengths &swl) const;
-	KRR_CALLABLE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
+	/* These functions should not be called within a OptiX kernel. */
+	KRR_HOST_DEVICE float y(const SampledWavelengths &swl) const;
+	KRR_HOST_DEVICE XYZ toXYZ(const SampledWavelengths &swl) const;
+	KRR_HOST_DEVICE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
 };
 
 class Spectrum :
@@ -232,8 +232,12 @@ inline SampledSpectrum Spectrum::sample(const SampledWavelengths &lambda) const 
 class RGBColorSpace {
 public:
 	// RGBColorSpace Public Methods
-	RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectrum illuminant,
-				  const RGBToSpectrumTable *rgbToSpectrumTable, Allocator alloc);
+	RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectrum illuminant, 
+		const RGBToSpectrumTable *rgbToSpectrumTable, 
+		const DenselySampledSpectrum *x, 
+		const DenselySampledSpectrum *y, 
+		const DenselySampledSpectrum *z,
+		Allocator alloc);
 
 	KRR_CALLABLE RGBSigmoidPolynomial toRGBCoeffs(RGB rgb) const;
 
@@ -243,6 +247,7 @@ public:
 	Point2f r, g, b, w;
 	DenselySampledSpectrum illuminant;
 	Matrix3f XYZFromRGB, RGBFromXYZ;
+	const DenselySampledSpectrum *CIE_X, *CIE_Y, *CIE_Z;
 	static const RGBColorSpace *sRGB, *DCI_P3, *Rec2020, *ACES2065_1;
 
 	KRR_CALLABLE bool operator==(const RGBColorSpace &cs) const {
@@ -261,8 +266,10 @@ public:
 	static const RGBColorSpace *getNamed(std::string name);
 	static const RGBColorSpace *lookup(Point2f r, Point2f g, Point2f b, Point2f w);
 
-	KRR_CALLABLE RGB toRGB(XYZ xyz) const { return RGBFromXYZ * xyz.matrix(); }
 	KRR_CALLABLE XYZ toXYZ(RGB rgb) const { return XYZFromRGB * rgb.matrix(); }
+	KRR_CALLABLE RGB toRGB(XYZ xyz) const { return RGBFromXYZ * xyz.matrix(); }
+	KRR_CALLABLE XYZ toXYZ(SampledSpectrum s, const SampledWavelengths &lambda) const;
+	KRR_CALLABLE RGB toRGB(SampledSpectrum s, const SampledWavelengths &lambda) const;
 
 private:
 	// RGBColorSpace Private Members
@@ -330,29 +337,23 @@ inline RGBSigmoidPolynomial RGBColorSpace::toRGBCoeffs(RGB rgb) const {
 	return (*rgbToSpectrumTable)(rgb.cwiseMax(0));
 }
 
-inline XYZ SampledSpectrum::toXYZ(const SampledWavelengths &lambda) const {
-	// Sample the $X$, $Y$, and $Z$ matching curves at _lambda_
-	SampledSpectrum X = spec::X().sample(lambda);
-	SampledSpectrum Y = spec::Y().sample(lambda);
-	SampledSpectrum Z = spec::Z().sample(lambda);
-
-	// Evaluate estimator to compute $(x,y,z)$ coefficients
+/* OptiX shader program cannot access the variables on device (i.e. those declared with a 
+	__device__ qualifier). For a workaround, we put these variables (e.g. CIE_X spectral)
+	within the RGBColorSpace class, and pass its pointer to launch parameters. */
+inline XYZ RGBColorSpace::toXYZ(SampledSpectrum s, const SampledWavelengths& lambda) const {
+	SampledSpectrum X	= CIE_X->sample(lambda);
+	SampledSpectrum Y	= CIE_Y->sample(lambda);
+	SampledSpectrum Z	= CIE_Z->sample(lambda);
 	SampledSpectrum pdf = lambda.pdf();
-	return XYZ(SampledSpectrum(X * *this).safeDiv(pdf).mean(),
-			   SampledSpectrum(Y * *this).safeDiv(pdf).mean(),
-			   SampledSpectrum(Z * *this).safeDiv(pdf).mean()) /
+	return XYZ(SampledSpectrum(X * s).safeDiv(pdf).mean(),
+			   SampledSpectrum(Y * s).safeDiv(pdf).mean(),
+			   SampledSpectrum(Z * s).safeDiv(pdf).mean()) /
 		   CIE_Y_integral;
 }
 
-inline float SampledSpectrum::y(const SampledWavelengths &lambda) const {
-	SampledSpectrum Ys	= spec::Y().sample(lambda);
-	SampledSpectrum pdf = lambda.pdf();
-	return SampledSpectrum(Ys * *this).safeDiv(pdf).mean() / CIE_Y_integral;
-}
-
-inline RGB SampledSpectrum::toRGB(const SampledWavelengths &lambda, const RGBColorSpace &cs) const {
-	XYZ xyz = toXYZ(lambda);
-	return cs.toRGB(xyz);
+inline RGB RGBColorSpace::toRGB(SampledSpectrum s, const SampledWavelengths &lambda) const {
+	XYZ xyz = toXYZ(s, lambda);
+	return toRGB(xyz);
 }
 
 KRR_NAMESPACE_END

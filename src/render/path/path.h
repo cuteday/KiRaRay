@@ -3,8 +3,9 @@
 
 #include "sampler.h"
 #include "device/scene.h"
-#include "render/lightsampler.h"
 #include "render/bsdf.h"
+#include "render/spectrum.h"
+#include "render/lightsampler.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -40,6 +41,7 @@ struct LaunchParamsPT {
 	LightSampler lightSampler;
 	rt::SceneData sceneData;
 
+	const RGBColorSpace *colorSpace;
 	CudaRenderTarget colorBuffer;
 	OptixTraversableHandle traversable{ 0 };
 };

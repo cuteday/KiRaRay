@@ -7,6 +7,30 @@ namespace {
 #include "data/named_spectrum.cpp"
 } // anonymous namespace
 
+float SampledSpectrum::y(const SampledWavelengths &lambda) const {
+	SampledSpectrum Ys	= spec::Y().sample(lambda);
+	SampledSpectrum pdf = lambda.pdf();
+	return SampledSpectrum(Ys * *this).safeDiv(pdf).mean() / CIE_Y_integral;
+}
+
+XYZ SampledSpectrum::toXYZ(const SampledWavelengths &lambda) const {
+	// Sample the $X$, $Y$, and $Z$ matching curves at _lambda_
+	SampledSpectrum X = spec::X().sample(lambda);
+	SampledSpectrum Y = spec::Y().sample(lambda);
+	SampledSpectrum Z = spec::Z().sample(lambda);
+	// Evaluate estimator to compute $(x,y,z)$ coefficients
+	SampledSpectrum pdf = lambda.pdf();
+	return XYZ(SampledSpectrum(X * *this).safeDiv(pdf).mean(),
+			   SampledSpectrum(Y * *this).safeDiv(pdf).mean(),
+			   SampledSpectrum(Z * *this).safeDiv(pdf).mean()) /
+		   CIE_Y_integral;
+}
+
+RGB SampledSpectrum::toRGB(const SampledWavelengths &lambda, const RGBColorSpace &cs) const {
+	XYZ xyz = toXYZ(lambda);
+	return cs.toRGB(xyz);
+}
+
 float PiecewiseLinearSpectrum::operator()(float lambda) const {
 	// Handle _PiecewiseLinearSpectrum_ corner cases
 	if (lambdas.empty() || lambda < lambdas.front() || lambda > lambdas.back()) return 0;
@@ -76,32 +100,6 @@ const RGBColorSpace *RGBColorSpace::lookup(Point2f r, Point2f g, Point2f b, Poin
 			return cs;
 	}
 	return nullptr;
-}
-
-void RGBColorSpace::init(Allocator alloc) {
-	using namespace spec;
-	// Rec. ITU-R BT.709.3
-	sRGB = alloc.new_object<RGBColorSpace>(Point2f(.64, .33), Point2f(.3, .6), Point2f(.15, .06),
-										   getNamedSpectrum("stdillum-D65"),
-										   RGBToSpectrumTable::sRGB, alloc);
-	// P3-D65 (display)
-	DCI_P3 = alloc.new_object<RGBColorSpace>(Point2f(.68, .32), Point2f(.265, .690), Point2f(.15, .06),
-		getNamedSpectrum("stdillum-D65"), RGBToSpectrumTable::DCI_P3, alloc);
-	// ITU-R Rec BT.2020
-	Rec2020	   = alloc.new_object<RGBColorSpace>(Point2f(.708, .292), Point2f(.170, .797), Point2f(.131, .046),
-		getNamedSpectrum("stdillum-D65"), RGBToSpectrumTable::Rec2020, alloc);
-	ACES2065_1 = alloc.new_object<RGBColorSpace>(
-		Point2f(.7347, .2653), Point2f(0., 1.), Point2f(.0001, -.077),
-		getNamedSpectrum("illum-acesD60"), RGBToSpectrumTable::ACES2065_1, alloc);
-
-	CUDA_CHECK(cudaMemcpyToSymbol(RGBColorSpace_sRGB, &RGBColorSpace::sRGB,
-									sizeof(RGBColorSpace_sRGB)));
-	CUDA_CHECK(cudaMemcpyToSymbol(RGBColorSpace_DCI_P3, &RGBColorSpace::DCI_P3,
-									sizeof(RGBColorSpace_DCI_P3)));
-	CUDA_CHECK(cudaMemcpyToSymbol(RGBColorSpace_Rec2020, &RGBColorSpace::Rec2020,
-									sizeof(RGBColorSpace_Rec2020)));
-	CUDA_CHECK(cudaMemcpyToSymbol(RGBColorSpace_ACES2065_1, &RGBColorSpace::ACES2065_1,
-									sizeof(RGBColorSpace_ACES2065_1)));
 }
 
 const RGBColorSpace *RGBColorSpace::sRGB;
@@ -339,5 +337,35 @@ Spectrum getNamedSpectrum(std::string name) {
 	return nullptr;
 }
 } // namespace spec
+
+void RGBColorSpace::init(Allocator alloc) {
+	using namespace spec;
+	// Rec. ITU-R BT.709.3
+	sRGB = alloc.new_object<RGBColorSpace>(
+		Point2f(.64, .33), Point2f(.3, .6), Point2f(.15, .06), getNamedSpectrum("stdillum-D65"),
+		RGBToSpectrumTable::sRGB, spec::x, spec::y, spec::z, alloc);
+	// P3-D65 (display)
+	DCI_P3 = alloc.new_object<RGBColorSpace>(
+		Point2f(.68, .32), Point2f(.265, .690), Point2f(.15, .06), getNamedSpectrum("stdillum-D65"),
+		RGBToSpectrumTable::DCI_P3, spec::x, spec::y, spec::z, alloc);
+	// ITU-R Rec BT.2020
+	Rec2020	   = alloc.new_object<RGBColorSpace>(Point2f(.708, .292), Point2f(.170, .797),
+												 Point2f(.131, .046), getNamedSpectrum("stdillum-D65"),
+												 RGBToSpectrumTable::Rec2020, spec::x, spec::y,
+												 spec::z, alloc);
+	ACES2065_1 = alloc.new_object<RGBColorSpace>(
+		Point2f(.7347, .2653), Point2f(0., 1.), Point2f(.0001, -.077),
+		getNamedSpectrum("illum-acesD60"), RGBToSpectrumTable::ACES2065_1, spec::x, spec::y,
+		spec::z, alloc);
+
+	CUDA_CHECK(
+		cudaMemcpyToSymbol(RGBColorSpace_sRGB, &RGBColorSpace::sRGB, sizeof(RGBColorSpace_sRGB)));
+	CUDA_CHECK(cudaMemcpyToSymbol(RGBColorSpace_DCI_P3, &RGBColorSpace::DCI_P3,
+								  sizeof(RGBColorSpace_DCI_P3)));
+	CUDA_CHECK(cudaMemcpyToSymbol(RGBColorSpace_Rec2020, &RGBColorSpace::Rec2020,
+								  sizeof(RGBColorSpace_Rec2020)));
+	CUDA_CHECK(cudaMemcpyToSymbol(RGBColorSpace_ACES2065_1, &RGBColorSpace::ACES2065_1,
+								  sizeof(RGBColorSpace_ACES2065_1)));
+}
 
 KRR_NAMESPACE_END

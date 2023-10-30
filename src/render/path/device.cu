@@ -9,17 +9,14 @@
 using namespace krr;	// this is needed or nvcc cannot recognize the launchParams extern "C" var.
 KRR_NAMESPACE_BEGIN
 
-using namespace utils;
 using namespace shader;
 using namespace rt;
-using namespace types;
 
 extern "C" __constant__ LaunchParamsPT launchParams;
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray, float tMax,
 								  int rayType, OptixRayFlags flags, Args &&...payload) {
-
 	optixTrace(traversable, ray.origin, ray.dir, 0.f, tMax, 0.f, /* ray time val min max */
 			   OptixVisibilityMask(255),						 /* all visible */
 			   flags, rayType, RAY_TYPE_COUNT,					 /* ray type and number of types */
@@ -187,7 +184,7 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 
 	const uint frameID = launchParams.frameID;
 	const uint32_t fbIndex = pixel[0] + pixel[1] * launchParams.fbSize[0];
-
+	
 	Camera::CameraData camera = launchParams.camera;
 	PCGSampler sampler;
 	sampler.setPixelSample(pixel, frameID);

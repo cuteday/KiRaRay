@@ -4,6 +4,7 @@
 #include "device/cuda.h"
 #include "integrator.h"
 #include "wavefront.h"
+#include "render/spectrum.h"
 #include "render/profiler/profiler.h"
 #include "workqueue.h"
 
