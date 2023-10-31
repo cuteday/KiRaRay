@@ -161,11 +161,11 @@ public:
 		p = inverseTransform * p;
 		float d = densityGrid.getDensity(p);
 #if KRR_RENDER_SPECTRAL
-		return {sigma_a * d, sigma_s * d, &phase, Le(p, lambda)};
+		return {RGBUnboundedSpectrum(sigma_a, *colorSpace).sample(lambda) * d,
+				RGBUnboundedSpectrum(sigma_s, *colorSpace).sample(lambda) * d, &phase,
+				Le(p, lambda)};
 #else
-		return {RGBUnboundedSpectrum(sigma_a, *colorSpace).sample(lambda) * d, 
-				RGBUnboundedSpectrum(sigma_s, *colorSpace).sample(lambda) * d, 
-				&phase, Le(p, lambda)};
+		return {sigma_a * d, sigma_s * d, &phase, Le(p, lambda)};
 #endif
 	}
 
