@@ -10,9 +10,11 @@ KRR_NAMESPACE_BEGIN
 #undef RGB
 #endif
 
-#define CIE_Y_integral	106.856895f
-static constexpr int nSpectrumSamples = 4;
+#define CIE_Y_integral				106.856895f
+#define KRR_DEFAULT_COLORSPACE		RGBColorSpace::sRGB
+#define KRR_DEFAULT_COLORSPACE_GPU  spec::RGBColorSpace_sRGB
 constexpr float cLambdaMin = 360, cLambdaMax = 830;
+static constexpr int nSpectrumSamples = KRR_RENDER_SPECTRAL ? 4 : 3;
 
 class RGB : public Array3f {
 public:
@@ -20,6 +22,15 @@ public:
 	KRR_CALLABLE float r() const { return (*this)[0]; }
 	KRR_CALLABLE float g() const { return (*this)[1]; }
 	KRR_CALLABLE float b() const { return (*this)[2]; }
+};
+
+class RGBA : public Array4f {
+public:
+	using Array4f::Array4f;
+	KRR_CALLABLE float r() const { return (*this)[0]; }
+	KRR_CALLABLE float g() const { return (*this)[1]; }
+	KRR_CALLABLE float b() const { return (*this)[2]; }
+	KRR_CALLABLE float a() const { return (*this)[3]; }
 };
 
 class XYZ : public Array3f {

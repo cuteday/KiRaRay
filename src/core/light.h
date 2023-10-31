@@ -1,16 +1,17 @@
 #pragma once
 
 #include "common.h"
-#include "device/taggedptr.h"
 #include "shape.h"
 #include "texture.h"
+#include "render/spectrum.h"
+#include "device/taggedptr.h"
 
 KRR_NAMESPACE_BEGIN
 namespace rt {
 
 struct LightSample {
 	Interaction intr;
-	Color L;
+	SampledSpectrum L;
 	float pdf;
 };
 
@@ -30,18 +31,26 @@ class PointLight {
 public:
 	PointLight() = default;
 
-	PointLight(const Affine3f &transform, const Color &I, float scale = 1) :
-		transform(transform), I(I), scale(scale) {}
+	PointLight(const Affine3f &transform, const RGB &I, float scale = 1, 
+		const RGBColorSpace* colorSpace = RGBColorSpace::sRGB) :
+		transform(transform), I(I), scale(scale), colorSpace(colorSpace) {}
 
-	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
+									const SampledWavelengths &lambda) const {
 		Vector3f p	= transform.translation();
 		Vector3f wi = (p - ctx.p).normalized();
-		Color Li	= scale * I / (p - ctx.p).squaredNorm();
+#ifdef KRR_RENDER_SPECTRAL
+		SampledSpectrum Li = RGBBoundedSpectrum(I, *colorSpace).sample(lambda);
+#else
+		SampledSpectrum Li = I;
+#endif
+		Li*= scale / (p - ctx.p).squaredNorm();
 		return LightSample{Interaction{p}, Li, 1};
 	}
 
-	KRR_DEVICE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
-		return Color::Zero();
+	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+								 const SampledWavelengths &lambda) const {
+		return SampledSpectrum::Zero();
 	}
 
 	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const { return 0; }
@@ -51,28 +60,38 @@ public:
 	KRR_DEVICE bool isDeltaLight() const { return true; }
 
 private:
-	Color I;
+	RGB I;
 	float scale;
 	Affine3f transform;
+	const RGBColorSpace *colorSpace;
 };
 
 class DirectionalLight {
 public:
 	DirectionalLight() = default;
 
-	DirectionalLight(const Matrix3f &rotation, const Color &I, float scale = 1, float sceneRadius = 1e5) :
-		rotation(rotation), I(I), scale(scale), sceneRadius(sceneRadius) {}
+	DirectionalLight(const Matrix3f &rotation, const RGB &I, float scale = 1,
+					 float sceneRadius				 = 1e5,
+					 const RGBColorSpace *colorSpace = RGBColorSpace::sRGB) :
+		rotation(rotation), I(I), scale(scale), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
 
-	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
+									const SampledWavelengths &lambda) const {
 		/* [NOTE] For shadow rays, if the ray direction is too large, optix trace will have precision problems! 
 		(e.g. the ray will self-intersect on the original surface, even if the ray origin has offset) */
 		Vector3f wi = rotation * Vector3f{0, 0, 1};
 		Vector3f p	= ctx.p + wi * 2 * sceneRadius;
+#if KRR_RENDER_SPECTRAL
+		SampledSpectrum Li = scale * RGBBoundedSpectrum(I, *colorSpace).sample(lambda);
+#else 
+		SampledSpectrum Li = scale * I;
+#endif
 		return LightSample{Interaction{p}, scale * I, 1};
 	}
 
-	KRR_DEVICE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
-		return Color::Zero();
+	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+					   const SampledWavelengths &lambda) const {
+		return SampledSpectrum::Zero();
 	}
 
 	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const { return 0; }
@@ -82,25 +101,28 @@ public:
 	KRR_DEVICE bool isDeltaLight() const { return true; }
 
 private:
-	Color I;
+	RGB I;
 	float scale;
 	float sceneRadius{1e5};
 	Matrix3f rotation;
+	const RGBColorSpace *colorSpace;
 };
 
 class DiffuseAreaLight {
 public:
 	DiffuseAreaLight() = default;
 
-	DiffuseAreaLight(Shape &shape, Vector3f Le, bool twoSided = false, float scale = 1.f) :
-		shape(shape), Le(Le), twoSided(twoSided), scale(scale) {}
+	DiffuseAreaLight(Shape &shape, Vector3f Le, bool twoSided = false, float scale = 1.f,
+					 const RGBColorSpace *colorSpace = RGBColorSpace::sRGB) :
+		shape(shape), Le(Le), twoSided(twoSided), scale(scale), colorSpace(colorSpace) {}
 
-	DiffuseAreaLight(Shape &shape, const rt::TextureData &texture, Vector3f Le = {},
-					 bool twoSided = false, float scale = 1.f) :
-		shape(shape), texture(texture), Le(Le), twoSided(twoSided), scale(scale) {}
+	DiffuseAreaLight(Shape &shape, const rt::TextureData &texture, RGB Le = {},
+					 bool twoSided = false, float scale = 1.f,
+					 const RGBColorSpace *colorSpace = RGBColorSpace::sRGB) :
+		shape(shape), texture(texture), Le(Le), twoSided(twoSided), scale(scale), colorSpace(colorSpace) {}
 
-	KRR_DEVICE LightSample DiffuseAreaLight::sampleLi(Vector2f u,
-													  const LightSampleContext &ctx) const {
+	KRR_DEVICE LightSample DiffuseAreaLight::sampleLi(Vector2f u, const LightSampleContext &ctx,
+													  const SampledWavelengths &lambda) const {
 		LightSample ls				= {};
 		ShapeSampleContext shapeCtx = {ctx.p, ctx.n};
 		ShapeSample ss				= shape.sample(u, shapeCtx);
@@ -110,17 +132,20 @@ public:
 
 		ls.intr = intr;
 		ls.pdf	= ss.pdf;
-		ls.L	= L(intr.p, intr.n, intr.uv, intr.wo);
+		ls.L	= L(intr.p, intr.n, intr.uv, intr.wo, lambda);
 		return ls;
 	}
 
-	KRR_DEVICE inline Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
-		if (!twoSided && dot(n, w) < 0.f) return Color::Zero(); // hit backface
+	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+							  const SampledWavelengths &lambda) const {
+		if (!twoSided && dot(n, w) < 0.f) return SampledSpectrum::Zero(); // hit backface
 
-		if (texture.isValid())
-			return scale * texture.evaluate(uv).head<3>();
-		else
-			return scale * Le;
+		RGB L = texture.isValid() ? texture.evaluate(uv).head<3>() : Le;
+#if KRR_RENDER_SPECTRAL
+		return scale * RGBBoundedSpectrum(L, *colorSpace).sample(lambda);
+#else 
+		return scale * L;
+#endif
 	}
 
 	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
@@ -135,28 +160,31 @@ public:
 private:
 	Shape shape;
 	rt::TextureData texture{}; // emissive image texture
-	Color Le{0};
+	RGB Le{0};
 	bool twoSided{true};
 	float scale{1};
+	const RGBColorSpace *colorSpace;
 };
 
 class InfiniteLight {
 public:
 	InfiniteLight() = default;
 
-	InfiniteLight(const Matrix3f &rotation, Color tint, float scale = 1, float sceneRadius = 1e5f) :
-		tint(tint), scale(scale), rotation(rotation), sceneRadius(sceneRadius) {}
+	InfiniteLight(const Matrix3f &rotation, Color tint, float scale = 1, float sceneRadius = 1e5f,
+				  const RGBColorSpace *colorSpace = RGBColorSpace::sRGB) :
+		tint(tint), scale(scale), rotation(rotation), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
 
 	InfiniteLight(const Matrix3f &rotation, const rt::TextureData &image, float scale = 1,
-				  float sceneRadius = 1e5f) :
-		image(image), tint(Color::Ones()), scale(scale), rotation(rotation), sceneRadius(sceneRadius) {}
+				  float sceneRadius = 1e5f, const RGBColorSpace *colorSpace = RGBColorSpace::sRGB) :
+		image(image), tint(Color::Ones()), scale(scale), rotation(rotation), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
 
-	KRR_DEVICE inline LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
+										   const SampledWavelengths &lambda) const {
 		// [TODO] use intensity importance sampling here.
 		LightSample ls = {};
 		Vector3f wi	   = uniformSampleSphere(u);
 		ls.intr		   = Interaction(ctx.p + wi * 2 * sceneRadius);
-		ls.L		   = Li(wi);
+		ls.L		   = Li(wi, lambda);
 		ls.pdf		   = M_INV_4PI;
 		return ls;
 	}
@@ -165,16 +193,19 @@ public:
 		return M_INV_4PI;
 	}
 
-	KRR_DEVICE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
-		return Color::Zero();
+	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+					   const SampledWavelengths &lambda) const {
+		return SampledSpectrum::Zero();
 	}
 
-	KRR_DEVICE inline Color Li(Vector3f wi) const {
-		Color L = tint * scale;
-		if (!image.isValid()) return L;
+	KRR_DEVICE SampledSpectrum Li(Vector3f wi, const SampledWavelengths &lambda) const {
 		Vector2f uv = worldToLatLong(rotation.transpose() * wi);
-		L *= image.evaluate(uv).head<3>();
-		return L;
+		RGB L		= image.isValid() ? tint * image.evaluate(uv).head<3>() : tint;
+#if KRR_RENDER_SPECTRAL
+		return scale * RGBBoundedSpectrum(L, *colorSpace).sample(lambda);
+#else
+		return scale * L;
+#endif
 	}
 
 	KRR_DEVICE LightType type() const { return LightType::Infinite; }
@@ -182,11 +213,12 @@ public:
 	KRR_DEVICE bool isDeltaLight() const { return false; }
 
 private:
-	Color tint{1};
+	RGB tint{1};
 	float scale{1};
 	float sceneRadius{1e5};
 	Matrix3f rotation;
 	rt::TextureData image{};
+	const RGBColorSpace *colorSpace;
 };
 
 class Light :
@@ -195,13 +227,15 @@ class Light :
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx) const {
-		auto sampleLi = [&](auto ptr) -> LightSample { return ptr->sampleLi(u, ctx); };
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx, 
+									const SampledWavelengths& lambda) const {
+		auto sampleLi = [&](auto ptr) -> LightSample { return ptr->sampleLi(u, ctx, lambda); };
 		return dispatch(sampleLi);
 	}
 
-	KRR_DEVICE Color L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w) const {
-		auto L = [&](auto ptr) -> Vector3f { return ptr->L(p, n, uv, w); };
+	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+					   const SampledWavelengths &lambda) const {
+		auto L = [&](auto ptr) -> SampledSpectrum { return ptr->L(p, n, uv, w, lambda); };
 		return dispatch(L);
 	}
 

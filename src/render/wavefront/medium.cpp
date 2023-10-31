@@ -105,14 +105,15 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 	PROFILE("Sample medium scattering");
 	ForAllQueued(mediumScatterQueue, maxQueueSize,
 				 KRR_DEVICE_LAMBDA(const MediumScatterWorkItem &w){
-			const Vector3f& wo = w.wo;
-			Sampler sampler	   = &pixelState->sampler[w.pixelId];
+			const Vector3f &wo		  = w.wo;
+			Sampler sampler			  = &pixelState->sampler[w.pixelId];
+			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
 			LightSampleContext ctx{w.p, Vector3f::Zero()};
 			// [PART-A] Sample direct lighting with ShadowRayTr
 			if (enableNEE) {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
-				LightSample ls			  = light.sampleLi(sampler.get2D(), ctx);
+				LightSample ls			  = light.sampleLi(sampler.get2D(), ctx, lambda);
 				Ray shadowRay			  = Interaction(w.p, w.time, w.medium).spawnRayTo(ls.intr);
 				Vector3f wi				  = shadowRay.dir.normalized();
 				Color thp				  = w.thp * w.phase.p(wo, wi);

@@ -55,7 +55,7 @@ KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 
 KRR_DEVICE_FUNCTION void handleHit(const SurfaceInteraction& intr, PathData& path) {
 	const rt::Light &light = intr.light;
-	Color Le		   = light.L(intr.p, intr.n, intr.uv, intr.wo);
+	Color Le		   = light.L(intr.p, intr.n, intr.uv, intr.wo, path.lambda);
 
 	float weight{ 1 };
 	if (launchParams.NEE && path.depth > 0) {
@@ -79,7 +79,7 @@ KRR_DEVICE_FUNCTION void handleMiss(const SurfaceInteraction& intr, PathData& pa
 			if (isnan(weight) || isinf(weight))
 				weight = 1;
 		}
-		path.L += path.throughput * weight * light.Li(path.ray.dir);
+		path.L += path.throughput * weight * light.Li(path.ray.dir, path.lambda);
 	}
 }
 
@@ -88,7 +88,7 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const SurfaceInteraction& intr, PathD
 
 	SampledLight sampledLight = path.lightSampler.sample(path.sampler.get1D());
 	rt::Light &light		  = sampledLight.light;
-	LightSample ls			  = light.sampleLi(path.sampler.get2D(), { intr.p, intr.n });
+	LightSample ls			  = light.sampleLi(path.sampler.get2D(), { intr.p, intr.n }, path.lambda);
 
 	Vector3f wiWorld = normalize(ls.intr.p - intr.p);
 	Vector3f wiLocal = intr.toLocal(wiWorld);
@@ -194,17 +194,22 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	path.lightSampler = launchParams.sceneData.lightSampler;
 	path.sampler	  = &sampler;
 
-	Color color = Color::Zero();
+	RGB color = RGB::Zero();
 	for (int i = 0; i < launchParams.spp; i++) {
-		path.throughput = Color::Ones();
-		path.L			= Color::Zero();
+		path.throughput = SampledSpectrum::Ones();
+		path.L			= SampledSpectrum::Zero();
 		path.ray		= camera.getRay(pixel, launchParams.fbSize, path.sampler);
+		path.lambda		= SampledWavelengths::sampleUniform(sampler.get1D());
 
 		tracePath(path);
+#if KRR_RENDER_SPECTRAL
+		color += launchParams.colorSpace->toRGB(path.L, path.lambda);
+#else 
 		color += path.L;
+#endif
 	}
-	color /= float(launchParams.spp);
-	launchParams.colorBuffer.write(Color4f(color, 1.f), fbIndex);
+
+	launchParams.colorBuffer.write(RGBA(color, 1.f), fbIndex);
 }
 
 KRR_NAMESPACE_END

@@ -34,6 +34,7 @@ public:
 	}
 
 	KRR_CALLABLE bool hasInf() const { return this->isInf().any(); }
+	KRR_CALLABLE void clamp(const T &lo, const T &hi) { *this = this->cwiseMin(hi).cwiseMax(lo); }
 	KRR_CALLABLE Array safeDiv(const Array &other) const {
 		return this->binaryExpr(other, [](auto x, auto y) { return y == 0 ? 0 : x / y; });
 	}

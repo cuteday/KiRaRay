@@ -14,10 +14,13 @@ flat LCGSampler;
 flat PCGSampler;
 flat HaltonSampler;
 flat SampledChannel;
+flat SampledSpectrum;
+flat SampledWavelengths;
 
+flat RGB;
+flat RGBA;
 flat Vector2f;
 flat Vector3f;
-flat Color;
 
 struct LightSampleContext{ Vector3f p, n; };
 
@@ -29,15 +32,17 @@ struct Ray{
 };
 
 struct PixelState {
-	Color L;
+	SampledSpectrum L;
+	RGB pixel;
 	PCGSampler sampler;
 	SampledChannel channel;
+	SampledWavelengths lambda;
 };
 
 struct BSDFData {
 	float IoR;
-	Color diffuse;	
-	Color specular;
+	SampledSpectrum diffuse;	
+	SampledSpectrum specular;
 	float specularTransmission;
 	float roughness;
 	float metallic;
@@ -63,8 +68,8 @@ struct SurfaceInteraction {
 struct RayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	Color thp;
-	Color pu, pl;
+	SampledSpectrum thp;
+	SampledSpectrum pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -73,8 +78,8 @@ struct RayWorkItem {
 struct MissRayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	Color thp;
-	Color pu, pl;
+	SampledSpectrum thp;
+	SampledSpectrum pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -87,8 +92,8 @@ struct HitLightWorkItem {
 	Vector3f wo;
 	Vector3f n;
 	Vector2f uv;
-	Color thp;
-	Color pu, pl;
+	SampledSpectrum thp;
+	SampledSpectrum pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -97,14 +102,14 @@ struct HitLightWorkItem {
 struct ShadowRayWorkItem {
 	Ray ray;
 	float tMax;
-	Color Ld;
-	Color pu, pl;
+	SampledSpectrum Ld;
+	SampledSpectrum pu, pl;
 	uint pixelId;
 };
 
 struct ScatterRayWorkItem {
-	Color thp;
-	Color pu;
+	SampledSpectrum thp;
+	SampledSpectrum pu;
 	SurfaceInteraction intr;
 	uint depth;
 	uint pixelId;
@@ -113,8 +118,8 @@ struct ScatterRayWorkItem {
 struct MediumSampleWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	Color thp;
-	Color pu, pl;
+	SampledSpectrum thp;
+	SampledSpectrum pu, pl;
 	float tMax;
 	SurfaceInteraction intr;
 	BSDFType bsdfType;
@@ -124,8 +129,8 @@ struct MediumSampleWorkItem {
 
 struct MediumScatterWorkItem {
 	Vector3f p;
-	Color thp;
-	Color pu;
+	SampledSpectrum thp;
+	SampledSpectrum pu;
 	Vector3f wo;
 	float time;
 	Medium medium;

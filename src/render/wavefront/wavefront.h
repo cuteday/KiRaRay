@@ -4,9 +4,10 @@
 
 #include "sampler.h"
 #include "device/scene.h"
-#include "render/lightsampler.h"
 #include "render/bsdf.h"
 #include "render/media.h"
+#include "render/spectrum.h"
+#include "render/lightsampler.h"
 #include "workqueue.h"
 
 KRR_NAMESPACE_BEGIN

@@ -47,12 +47,13 @@ struct LaunchParamsPT {
 };
 
 struct PathData {
-	Color L{};					// total contribution to the current pixel
-	Color throughput;			// maintain the throughput of path
+	SampledSpectrum L{};		// total contribution to the current pixel
+	SampledSpectrum throughput; // maintain the throughput of path
 	float pdf;					// BxDF sampling pdf from last scatter
 	int depth;					// number of vertices along the path
 	BSDFType bsdfType;			// the sampled type of the last scatter event
 	Sampler sampler;			// rng
+	SampledWavelengths lambda;	// sampled wavelength
 	LightSampler lightSampler;	// randomly choosing a light source
 	LightSampleContext ctx;		// last context used for direct light sampling
 	Ray ray;					// The last scattered ray
