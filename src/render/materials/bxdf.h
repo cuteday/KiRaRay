@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-
+#include "render/spectrum.h"
 
 #define KRR_USE_DISNEY			1
 
@@ -36,7 +36,7 @@ KRR_CALLABLE BSDFType operator|(BSDFType a, BSDFType b) { return BSDFType((int) 
 KRR_CALLABLE BSDFType operator&(BSDFType a, BSDFType b) { return BSDFType((int) a & (int) b); }
 
 struct BSDFSample {
-	Color f{};
+	SampledSpectrum f{};
 	Vector3f wi;
 	float pdf = 0;
 	BSDFType flags;

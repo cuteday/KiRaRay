@@ -144,17 +144,4 @@ struct Interaction{
 	Medium medium{nullptr};
 };
 
-class SampledChannel {
-public:
-	KRR_CALLABLE SampledChannel() = default;
-
-	KRR_CALLABLE SampledChannel(float u) : channel(uint(u * Color::dim) % Color::dim) {}
-
-	KRR_CALLABLE static SampledChannel sampleUniform(float u) { return SampledChannel(u); }
-
-	KRR_CALLABLE operator uint() const { return channel; }
-
-	uint channel;
-};
-
 KRR_NAMESPACE_END

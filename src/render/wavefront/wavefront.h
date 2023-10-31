@@ -32,7 +32,7 @@ typedef struct {
 } LaunchParams;
 
 template <typename F>
-KRR_HOST_DEVICE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledChannel channel,
+KRR_HOST_DEVICE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledWavelengths lambda,
 							   F callback) {
 	/* This function returns the [remaining](not told callback before hitting surface) 
 		part of the transmittance. */
@@ -40,7 +40,8 @@ KRR_HOST_DEVICE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledC
 	ray.dir.normalize();
 
 	Color T_maj(1);
-	MajorantIterator iter = ray.medium.sampleRay(ray, tMax);
+	MajorantIterator iter = ray.medium.sampleRay(ray, tMax, lambda);
+	int channel			  = lambda.mainIndex();
 
 	while (true) {
 		gpu::optional<MajorantSegment> seg = iter.next();
@@ -60,7 +61,7 @@ KRR_HOST_DEVICE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledC
 			float t = tMin + sampleExponential(sampler.get1D(), seg->sigma_maj[channel]);
 			if (t < seg->tMax) {
 				T_maj *= (-(t - tMin) * seg->sigma_maj).exp();
-				MediumProperties mp = ray.medium.samplePoint(ray(t));
+				MediumProperties mp = ray.medium.samplePoint(ray(t), lambda);
 				if (!callback(ray(t), mp, seg->sigma_maj, T_maj)) return 1;
 				T_maj = 1;
 				tMin  = t;
@@ -79,11 +80,12 @@ KRR_HOST_DEVICE Color sampleT_maj(Ray ray, float tMax, Sampler sampler, SampledC
 template <typename TraceFunc>
 KRR_HOST_DEVICE void traceTransmittance(ShadowRayWorkItem sr, const SurfaceInteraction& intr,
 									 PixelStateBuffer *pixelState, TraceFunc trace) {
-	SampledChannel channel = pixelState->channel[sr.pixelId];
-	Sampler sampler		   = &pixelState->sampler[sr.pixelId];
-	Ray ray				   = sr.ray;
-	float tMax			   = sr.tMax;
-	Vector3f pLight		   = ray(tMax);
+	SampledWavelengths lambda = pixelState->lambda[sr.pixelId];
+	int channel				  = lambda.mainIndex();
+	Sampler sampler			  = &pixelState->sampler[sr.pixelId];
+	Ray ray					  = sr.ray;
+	float tMax				  = sr.tMax;
+	Vector3f pLight			  = ray(tMax);
 
 	Color T_ray(1);
 	Color pu(1), pl(1);
@@ -98,7 +100,7 @@ KRR_HOST_DEVICE void traceTransmittance(ShadowRayWorkItem sr, const SurfaceInter
 		if (ray.medium) {
 			float tEnd = visible ? tMax : (intr.p - ray.origin).norm() / ray.dir.norm();
 			Color T_maj =
-				sampleT_maj(ray, tEnd, sampler, channel,
+				sampleT_maj(ray, tEnd, sampler, lambda,
 					[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) {
 						Color sigma_n = (sigma_maj - mp.sigma_a - mp.sigma_s).cwiseMax(0);
 

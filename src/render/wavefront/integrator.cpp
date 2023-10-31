@@ -206,7 +206,6 @@ void WavefrontPathTracer::beginFrame(RenderContext* context) {
 			pixelState->pixel[pixelId] = RGB::Zero();
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
-			pixelState->channel[pixelId] = SampledChannel::sampleUniform(pixelState->sampler[pixelId].get1D());
 			pixelState->lambda[pixelId]  = SampledWavelengths::sampleUniform(pixelState->sampler[pixelId].get1D());
 	}, gpContext->cudaStream);
 }

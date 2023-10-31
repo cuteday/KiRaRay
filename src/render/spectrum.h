@@ -41,6 +41,17 @@ public:
 		return swl;
 	}
 
+	KRR_CALLABLE int mainIndex(float lambdaMin = cLambdaMin,
+									float lambdaMax = cLambdaMax) const {
+#if KRR_RENDER_SPECTRAL
+		return 0;
+#else
+		return clamp(int((lambda[0] - lambdaMin) / (lambdaMax - lambdaMin) * nSpectrumSamples),
+					 0, nSpectrumSamples - 1);
+#endif
+	}
+
+
 	KRR_CALLABLE float operator[](int i) const { return lambda[i]; }
 	KRR_CALLABLE float &operator[](int i) { return lambda[i]; }
 

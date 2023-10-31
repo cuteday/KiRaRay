@@ -39,8 +39,8 @@ public:
 									const SampledWavelengths &lambda) const {
 		Vector3f p	= transform.translation();
 		Vector3f wi = (p - ctx.p).normalized();
-#ifdef KRR_RENDER_SPECTRAL
-		SampledSpectrum Li = RGBBoundedSpectrum(I, *colorSpace).sample(lambda);
+#if KRR_RENDER_SPECTRAL
+		SampledSpectrum Li = RGBUnboundedSpectrum(I, *colorSpace).sample(lambda);
 #else
 		SampledSpectrum Li = I;
 #endif
@@ -82,7 +82,7 @@ public:
 		Vector3f wi = rotation * Vector3f{0, 0, 1};
 		Vector3f p	= ctx.p + wi * 2 * sceneRadius;
 #if KRR_RENDER_SPECTRAL
-		SampledSpectrum Li = scale * RGBBoundedSpectrum(I, *colorSpace).sample(lambda);
+		SampledSpectrum Li = scale * RGBUnboundedSpectrum(I, *colorSpace).sample(lambda);
 #else 
 		SampledSpectrum Li = scale * I;
 #endif
@@ -142,7 +142,7 @@ public:
 
 		RGB L = texture.isValid() ? texture.evaluate(uv).head<3>() : Le;
 #if KRR_RENDER_SPECTRAL
-		return scale * RGBBoundedSpectrum(L, *colorSpace).sample(lambda);
+		return scale * RGBUnboundedSpectrum(L, *colorSpace).sample(lambda);
 #else 
 		return scale * L;
 #endif
@@ -202,7 +202,7 @@ public:
 		Vector2f uv = worldToLatLong(rotation.transpose() * wi);
 		RGB L		= image.isValid() ? tint * image.evaluate(uv).head<3>() : tint;
 #if KRR_RENDER_SPECTRAL
-		return scale * RGBBoundedSpectrum(L, *colorSpace).sample(lambda);
+		return scale * RGBUnboundedSpectrum(L, *colorSpace).sample(lambda);
 #else
 		return scale * L;
 #endif
