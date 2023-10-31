@@ -45,6 +45,7 @@ void WavefrontPathTracer::traceClosest(int depth) {
 	static LaunchParams params = {};
 	params.traversable		   = backend->getRootTraversable();
 	params.sceneData		   = backend->getSceneData();
+	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
 	params.currentRayQueue	   = currentRayQueue(depth);
 	params.missRayQueue		   = missRayQueue;
 	params.hitLightRayQueue	   = hitLightRayQueue;
@@ -59,6 +60,7 @@ void WavefrontPathTracer::traceShadow() {
 	static LaunchParams params = {};
 	params.traversable		   = backend->getRootTraversable();
 	params.sceneData		   = backend->getSceneData();
+	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
 	params.shadowRayQueue	   = shadowRayQueue;
 	params.pixelState		   = pixelState;
 	if(enableMedium) backend->launch(params, "ShadowTr", maxQueueSize, 1, 1);

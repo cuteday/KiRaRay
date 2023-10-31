@@ -45,7 +45,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	HitInfo hitInfo = getHitInfo();
 	SurfaceInteraction& intr = *getPRD<SurfaceInteraction>();
 	RayWorkItem r = getRayWorkItem();
-	prepareSurfaceInteraction(intr, hitInfo);
+	prepareSurfaceInteraction(intr, hitInfo, launchParams.colorSpace, {});
 	if (launchParams.mediumSampleQueue && r.ray.medium) {
 		launchParams.mediumSampleQueue->push(r, intr, optixGetRayTmax());
 		return;
@@ -101,7 +101,7 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 extern "C" __global__ void KRR_RT_CH(ShadowTr)() {
 	HitInfo hitInfo			 = getHitInfo();
 	SurfaceInteraction &intr = *getPRD<SurfaceInteraction>();
-	prepareSurfaceInteraction(intr, hitInfo);
+	prepareSurfaceInteraction(intr, hitInfo, launchParams.colorSpace, {});
 }
 
 extern "C" __global__ void KRR_RT_AH(ShadowTr)() {

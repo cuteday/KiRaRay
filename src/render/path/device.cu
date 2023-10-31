@@ -6,9 +6,7 @@
 
 #include <optix_device.h>
 
-using namespace krr;	// this is needed or nvcc cannot recognize the launchParams extern "C" var.
 KRR_NAMESPACE_BEGIN
-
 using namespace shader;
 using namespace rt;
 
@@ -53,9 +51,10 @@ KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 		printf(fmt, std::forward<Args>(args)...);
 }
 
-KRR_DEVICE_FUNCTION void handleHit(const SurfaceInteraction& intr, PathData& path) {
-	const rt::Light &light = intr.light;
-	Color Le		   = light.L(intr.p, intr.n, intr.uv, intr.wo, path.lambda);
+KRR_DEVICE_FUNCTION void handleHit(PathData& path) {
+	const SurfaceInteraction &intr = path.intr;
+	const rt::Light &light		   = intr.light;
+	Color Le					   = light.L(intr.p, intr.n, intr.uv, intr.wo, path.lambda);
 
 	float weight{ 1 };
 	if (launchParams.NEE && path.depth > 0) {
@@ -69,7 +68,8 @@ KRR_DEVICE_FUNCTION void handleHit(const SurfaceInteraction& intr, PathData& pat
 	path.L += Le * weight * path.throughput;
 }
 
-KRR_DEVICE_FUNCTION void handleMiss(const SurfaceInteraction& intr, PathData& path) {
+KRR_DEVICE_FUNCTION void handleMiss(PathData& path) {
+	const SurfaceInteraction &intr = path.intr;
 	for (const rt::InfiniteLight &light : launchParams.sceneData.infiniteLights) {
 		float weight{ 1 };
 		if (launchParams.NEE && path.depth > 0 && !(path.bsdfType & BSDF_SPECULAR)) {
@@ -83,7 +83,8 @@ KRR_DEVICE_FUNCTION void handleMiss(const SurfaceInteraction& intr, PathData& pa
 	}
 }
 
-KRR_DEVICE_FUNCTION void generateShadowRay(const SurfaceInteraction& intr, PathData& path) {
+KRR_DEVICE_FUNCTION void generateShadowRay(PathData& path) {
+	const SurfaceInteraction &intr = path.intr;
 	Vector3f woLocal = intr.toLocal(intr.wo);
 
 	SampledLight sampledLight = path.lightSampler.sample(path.sampler.get1D());
@@ -108,18 +109,18 @@ KRR_DEVICE_FUNCTION void generateShadowRay(const SurfaceInteraction& intr, PathD
 			path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
 }
 
-KRR_DEVICE_FUNCTION void evalDirect(const SurfaceInteraction& intr, PathData& path) {
-	BSDFType bsdfType = intr.getBsdfType();
+KRR_DEVICE_FUNCTION void evalDirect(PathData& path) {
+	BSDFType bsdfType			   = path.intr.getBsdfType();
 	if (bsdfType & BSDF_SMOOTH) {	/* Disable NEE on specular surfaces. */
 		for (int i = 0; i < launchParams.lightSamples; i++) 
-			generateShadowRay(intr, path);
+			generateShadowRay(path);
 	}
 }
 
-KRR_DEVICE_FUNCTION bool generateScatterRay(const SurfaceInteraction& intr, PathData& path) {
-	// how to eliminate branches here to improve performance?
-	Vector3f woLocal = intr.toLocal(intr.wo);
-	BSDFSample sample = BxDF::sample(intr, woLocal, path.sampler, (int)intr.sd.bsdfType);
+KRR_DEVICE_FUNCTION bool generateScatterRay(PathData& path) {
+	const SurfaceInteraction &intr = path.intr;
+	Vector3f woLocal			   = intr.toLocal(intr.wo);
+	BSDFSample sample = BxDF::sample(intr, woLocal, path.sampler, (int) intr.sd.bsdfType);
 	if (sample.pdf == 0 || !any(sample.f)) return false;
 
 	Vector3f wiWorld = intr.toWorld(sample.wi);
@@ -132,9 +133,10 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(const SurfaceInteraction& intr, Path
 }
 
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
-	HitInfo hitInfo	   = getHitInfo();
-	SurfaceInteraction &intr	   = *getPRD<SurfaceInteraction>();
-	prepareSurfaceInteraction(intr, hitInfo);
+	HitInfo hitInfo			 = getHitInfo();
+	PathData *path			 = getPRD<PathData>();
+	SurfaceInteraction &intr = path->intr;
+	prepareSurfaceInteraction(intr, hitInfo, launchParams.colorSpace, path->lambda);
 }
 
 extern "C" __global__ void KRR_RT_AH(Radiance)() {
@@ -154,16 +156,14 @@ extern "C" __global__ void KRR_RT_CH(ShadowRay)() {} /* skipped */
 extern "C" __global__ void KRR_RT_MS(ShadowRay)() { optixSetPayload_0(1); }
 
 KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
-	SurfaceInteraction intr = {};
-
 	for (int &depth = path.depth; true; depth++) {
 		if(!traceRay(launchParams.traversable, path.ray, M_FLOAT_INF, RADIANCE_RAY_TYPE,
-					  OPTIX_RAY_FLAG_NONE, (void *) &intr)) {
-			handleMiss(intr, path);
+					  OPTIX_RAY_FLAG_NONE, (void *) &path)) {
+			handleMiss(path);
 			break;
 		}
 		
-		if (intr.light) handleHit(intr, path);
+		if (path.intr.light) handleHit(path);
 
 		/* If the path is terminated by this vertex, then NEE should not be evaluated
 		 * otherwise the MIS weight of this NEE action will be meaningless. */
@@ -172,9 +172,8 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 			break;
 		path.throughput /= launchParams.probRR;
 		
-		if (launchParams.NEE) evalDirect(intr, path);
-
-		if (!generateScatterRay(intr, path)) break;
+		if (launchParams.NEE) evalDirect(path);
+		if (!generateScatterRay(path)) break;
 	}
 }
 

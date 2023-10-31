@@ -55,7 +55,8 @@ struct PathData {
 	Sampler sampler;			// rng
 	SampledWavelengths lambda;	// sampled wavelength
 	LightSampler lightSampler;	// randomly choosing a light source
-	LightSampleContext ctx;		// last context used for direct light sampling
+	LightSampleContext ctx;		// *last* context used for direct light sampling
+	SurfaceInteraction intr;	// surface interaction of the *current* hit
 	Ray ray;					// The last scattered ray
 };
 

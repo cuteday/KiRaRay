@@ -4,6 +4,7 @@
 #include "common.h"
 
 #include "shared.h"
+#include "spectrum.h"
 #include "raytracing.h"
 #include "util/hash.h"
 
@@ -13,7 +14,7 @@ KRR_NAMESPACE_BEGIN
 using namespace rt;
 
 namespace {
-KRR_DEVICE_FUNCTION float getMetallic(Color diffuse, Color spec) {
+KRR_DEVICE_FUNCTION float getMetallic(RGB diffuse, RGB spec) {
 	// This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular
 	// level to diffuse/spec colors We don't have the specular level information, so the assumption
 	// is that it is equal to 0.5 (based on the UE4 documentation)
@@ -28,8 +29,7 @@ KRR_DEVICE_FUNCTION float getMetallic(Color diffuse, Color spec) {
 	return max(0.f, m);
 }
 
-KRR_DEVICE_FUNCTION Color rgbToNormal(Color rgb) { return 2 * rgb - Color::Ones(); }
-
+KRR_DEVICE_FUNCTION Vector3f rgbToNormal(RGB rgb) { return 2 * rgb - RGB::Ones(); }
 } 
 
 template <typename T>
@@ -71,8 +71,8 @@ KRR_DEVICE_FUNCTION bool alphaKilled() {
 		uv = b[0] * mesh.texcoords[v[0]] + b[1] * mesh.texcoords[v[1]] +
 					  b[2] * mesh.texcoords[v[2]];
 
-	Vector3f opacity = sampleTexture(opaticyTexture, uv, Color3f(1));
-	float alpha		 = 1 - luminance(opacity);
+	RGB opacity = sampleTexture(opaticyTexture, uv, Color3f(1));
+	float alpha = 1 - luminance(opacity);
 	if (alpha >= 1) return false;
 	if (alpha <= 0) return true;
 	float3 o = optixGetWorldRayOrigin();
@@ -81,12 +81,12 @@ KRR_DEVICE_FUNCTION bool alphaKilled() {
 	return u > alpha;
 }
 
-KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, const HitInfo &hitInfo) {
+KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, const HitInfo &hitInfo, 
+	const RGBColorSpace* colorSpace, const SampledWavelengths& lambda) {
 	// [NOTE] about local shading frame (tangent space, TBN, etc.)
 	// The shading normal intr.n and face normal is always points towards the outside of
 	// the object, we can use this convention to determine whether an incident ray is coming from
 	// outside of the object.
-
 	const rt::InstanceData &instance = hitInfo.getInstance();
 	const rt::MeshData &mesh		 = hitInfo.getMesh();
 	Vector3f b						 = hitInfo.barycentric;
@@ -150,12 +150,12 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	const rt::TextureData &normalTexture =
 		material.mTextures[(uint) Material::TextureType::Normal];
 
-	Color4f diff	   = sampleTexture(diffuseTexture, intr.uv, materialParams.diffuse);
-	Color4f spec	   = sampleTexture(specularTexture, intr.uv, materialParams.specular);
-	Color3f baseColor  = (Color3f) diff;
+	RGBA diff	  = sampleTexture(diffuseTexture, intr.uv, materialParams.diffuse);
+	RGBA spec	  = sampleTexture(specularTexture, intr.uv, materialParams.specular);
+	RGB baseColor = (RGB) diff;
 
 	if (normalTexture.isValid() && mesh.texcoords.size()) { // be cautious if we have TBN info
-		Vector3f normal = sampleTexture(normalTexture, intr.uv, Color3f{ 0, 0, 1 });
+		Vector3f normal = sampleTexture(normalTexture, intr.uv, RGB{0, 0, 1});
 		normal			= rgbToNormal(normal);
 		
 		intr.n =
@@ -164,19 +164,27 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 		intr.bitangent = normalize(cross(intr.n, intr.tangent));
 	}
 
+	RGB diffuse, specular;
 	if (material.mShadingModel == Material::ShadingModel::MetallicRoughness) {
 		// [SPECULAR] G - Roughness; B - Metallic
-		intr.sd.diffuse	  = lerp(baseColor, Color3f::Zero(), spec[2]);
-		intr.sd.specular  = lerp(Color3f::Zero(), baseColor, spec[2]);
+		diffuse			  = lerp(baseColor, RGB::Zero(), spec[2]);
+		specular		  = lerp(RGB::Zero(), baseColor, spec[2]);
 		intr.sd.metallic  = spec[2];
 		intr.sd.roughness = spec[1];
 	} else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		// [SPECULAR] RGB - Specular Color; A - Glossiness
-		intr.sd.diffuse	  = baseColor;
-		intr.sd.specular  = (Color3f) spec; // specular reflectance
+		diffuse			  = baseColor;
+		specular		  = (RGB) spec; // specular reflectance
 		intr.sd.roughness = 1.f - spec[3];	//
-		intr.sd.metallic  = getMetallic(intr.sd.diffuse, intr.sd.specular);
+		intr.sd.metallic  = getMetallic(diffuse, specular);
 	} else assert(false);
+#if KRR_RENDER_SPECTRAL
+	intr.sd.diffuse = RGBBoundedSpectrum(diffuse, *colorSpace).sample(lambda);
+	intr.sd.specular = RGBBoundedSpectrum(specular, *colorSpace).sample(lambda);
+#else
+	intr.sd.diffuse	 = diffuse;
+	intr.sd.specular = specular;
+#endif
 }
 
 KRR_NAMESPACE_END

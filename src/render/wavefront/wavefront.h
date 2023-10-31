@@ -26,6 +26,7 @@ typedef struct {
 	MediumSampleQueue* mediumSampleQueue;
 	
 	PixelStateBuffer* pixelState;
+	const RGBColorSpace *colorSpace;
 	rt::SceneData sceneData;
 	OptixTraversableHandle traversable;
 } LaunchParams;
