@@ -47,7 +47,7 @@ void MegakernelPathTracer::render(RenderContext *context) {
 	PROFILE("Megakernel Path Tracer");
 	{
 		launchParams.fbSize		 = getFrameSize();
-		launchParams.colorSpace	 = RGBColorSpace::sRGB;
+		launchParams.colorSpace	 = KRR_DEFAULT_COLORSPACE;
 		launchParams.colorBuffer = context->getColorTexture()->getCudaRenderTarget();
 		launchParams.camera		 = mScene->getCamera()->getCameraData();
 		launchParams.sceneData	 = mScene->getSceneRT()->getSceneData();

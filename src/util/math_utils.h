@@ -76,9 +76,6 @@ KRR_CALLABLE float nextFloatDown(float v) {
 /*******************************************************
  * colors
  ********************************************************/
-KRR_CALLABLE float luminance(Color3f color) {
-	return dot(Vector3f(color), Vector3f(0.299, 0.587, 0.114));
-}
 
 KRR_CALLABLE float srgb2linear(float sRGBColor) {
 	if (sRGBColor <= 0.04045f)

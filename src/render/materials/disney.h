@@ -41,8 +41,6 @@ public:
 			Fi = SchlickWeight(AbsCosTheta(wi));
 		return R * M_INV_PI * (1 - Fo / 2) * (1 - Fi / 2);
 	}
-	KRR_CALLABLE SampledSpectrum rho(const Vector3f &, int, const Vector2f *) const { return R; }
-	KRR_CALLABLE SampledSpectrum rho(int, const Vector3f *, const Vector3f *) const { return R; }
 
 	SampledSpectrum R;
 };
@@ -71,9 +69,6 @@ public:
 		return R * M_INV_PI * ss;
 	};
 
-	KRR_CALLABLE SampledSpectrum rho(const Vector3f &, int, const Vector2f *) const { return R; }
-	KRR_CALLABLE SampledSpectrum rho(int, const Vector2f *, const Vector2f *) const { return R; }
-
 	SampledSpectrum R;
 	float roughness;
 };
@@ -96,8 +91,6 @@ public:
 		// Burley 2015, eq (4).
 		return R * M_INV_PI * Rr * (Fo + Fi + Fo * Fi * (Rr - 1));
 	};
-	KRR_CALLABLE SampledSpectrum rho(const Vector3f &, int, const Vector2f *) const { return R; }
-	KRR_CALLABLE SampledSpectrum rho(int, const Vector2f *, const Vector2f *) const { return R; }
 
 	SampledSpectrum R;
 	float roughness;
@@ -106,7 +99,7 @@ public:
 class DisneySheen{
 public:
 	DisneySheen() = default;
-	KRR_CALLABLE DisneySheen(const Vector3f& R): R(R) {}
+	KRR_CALLABLE DisneySheen(const SampledSpectrum& R): R(R) {}
 	KRR_CALLABLE SampledSpectrum f(const Vector3f &wo, const Vector3f &wi) const {
 		Vector3f wh = wi + wo;
 		if (!wh.any()) return SampledSpectrum::Zero();
@@ -115,9 +108,6 @@ public:
 
 		return R * SchlickWeight(cosThetaD);
 	}
-
-	KRR_CALLABLE SampledSpectrum rho(const Vector3f &, int, const Vector2f *) const { return R; }
-	KRR_CALLABLE SampledSpectrum rho(int, const Vector2f *, const Vector2f *) const { return R; }
 
 	SampledSpectrum R;
 };
@@ -209,7 +199,7 @@ public:
 
 	KRR_CALLABLE void setup(const SurfaceInteraction& intr) {
 
-		SampledSpectrum c				 = intr.sd.diffuse;
+		SampledSpectrum c	 = intr.sd.diffuse;
 		float metallicWeight = intr.sd.metallic;
 		float e				 = intr.sd.IoR;
 		float strans		 = intr.sd.specularTransmission;

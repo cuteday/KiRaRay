@@ -32,7 +32,7 @@ public:
 	PointLight() = default;
 
 	PointLight(const Affine3f &transform, const RGB &I, float scale = 1, 
-		const RGBColorSpace* colorSpace = RGBColorSpace::sRGB) :
+		const RGBColorSpace* colorSpace = KRR_DEFAULT_COLORSPACE) :
 		transform(transform), I(I), scale(scale), colorSpace(colorSpace) {}
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
@@ -72,7 +72,7 @@ public:
 
 	DirectionalLight(const Matrix3f &rotation, const RGB &I, float scale = 1,
 					 float sceneRadius				 = 1e5,
-					 const RGBColorSpace *colorSpace = RGBColorSpace::sRGB) :
+					 const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		rotation(rotation), I(I), scale(scale), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
@@ -86,7 +86,7 @@ public:
 #else 
 		SampledSpectrum Li = scale * I;
 #endif
-		return LightSample{Interaction{p}, scale * I, 1};
+		return LightSample{Interaction{p}, Li, 1};
 	}
 
 	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
@@ -113,12 +113,12 @@ public:
 	DiffuseAreaLight() = default;
 
 	DiffuseAreaLight(Shape &shape, Vector3f Le, bool twoSided = false, float scale = 1.f,
-					 const RGBColorSpace *colorSpace = RGBColorSpace::sRGB) :
+					 const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		shape(shape), Le(Le), twoSided(twoSided), scale(scale), colorSpace(colorSpace) {}
 
 	DiffuseAreaLight(Shape &shape, const rt::TextureData &texture, RGB Le = {},
 					 bool twoSided = false, float scale = 1.f,
-					 const RGBColorSpace *colorSpace = RGBColorSpace::sRGB) :
+					 const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		shape(shape), texture(texture), Le(Le), twoSided(twoSided), scale(scale), colorSpace(colorSpace) {}
 
 	KRR_DEVICE LightSample DiffuseAreaLight::sampleLi(Vector2f u, const LightSampleContext &ctx,
@@ -171,11 +171,11 @@ public:
 	InfiniteLight() = default;
 
 	InfiniteLight(const Matrix3f &rotation, Color tint, float scale = 1, float sceneRadius = 1e5f,
-				  const RGBColorSpace *colorSpace = RGBColorSpace::sRGB) :
+				  const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		tint(tint), scale(scale), rotation(rotation), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
 
 	InfiniteLight(const Matrix3f &rotation, const rt::TextureData &image, float scale = 1,
-				  float sceneRadius = 1e5f, const RGBColorSpace *colorSpace = RGBColorSpace::sRGB) :
+				  float sceneRadius = 1e5f, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		image(image), tint(Color::Ones()), scale(scale), rotation(rotation), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,

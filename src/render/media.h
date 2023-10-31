@@ -37,7 +37,7 @@ class MajorantIterator {
 public:
 	MajorantIterator() = default;
 
-	KRR_CALLABLE MajorantIterator(Ray ray, float tMin, float tMax, Color sigma_t, const MajorantGrid *grid = nullptr) 
+	KRR_CALLABLE MajorantIterator(Ray ray, float tMin, float tMax, SampledSpectrum sigma_t, const MajorantGrid *grid = nullptr) 
 		: tMin(tMin), tMax(tMax), sigma_t(sigma_t), grid(grid) {
 		if (!grid) return;	// acts like a homogeneous ray majorant iterator
 		Ray rayGrid(grid->bounds.offset(ray.origin), ray.dir / grid->bounds.diagonal());
@@ -79,7 +79,7 @@ public:
 		float tVoxelExit	   = min(tMax, nextCrossingT[stepAxis]);
 
 		// Get _maxDensity_ for current voxel and initialize _RayMajorantSegment_, _seg_
-		Color sigma_maj = sigma_t * grid->lookup(voxel[0], voxel[1], voxel[2]);
+		SampledSpectrum sigma_maj = sigma_t * grid->lookup(voxel[0], voxel[1], voxel[2]);
 		MajorantSegment seg{tMin, tVoxelExit, sigma_maj};
 
 		// Advance to next voxel in maximum density grid
@@ -105,7 +105,7 @@ public:
 	HomogeneousMedium() = default;
 
 	HomogeneousMedium(RGB sigma_a, RGB sigma_s, RGB L_e, float g, 
-		const RGBColorSpace* colorSpace = RGBColorSpace::sRGB) :
+		const RGBColorSpace* colorSpace = KRR_DEFAULT_COLORSPACE) :
 		sigma_a(sigma_a), sigma_s(sigma_s), L_e(L_e), phase(g), colorSpace(colorSpace) {}
 
 	KRR_CALLABLE bool isEmissive() const { return L_e.any(); }
@@ -147,7 +147,7 @@ public:
 class NanoVDBMedium {
 public:
 	NanoVDBMedium(const Affine3f &transform, Color sigma_a, Color sigma_s, float g,
-				  NanoVDBGrid density, const RGBColorSpace *colorSpace = RGBColorSpace::sRGB);
+				  NanoVDBGrid density, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
 
 	KRR_HOST void initializeFromHost();
 

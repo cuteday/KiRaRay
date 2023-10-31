@@ -54,7 +54,7 @@ KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 KRR_DEVICE_FUNCTION void handleHit(PathData& path) {
 	const SurfaceInteraction &intr = path.intr;
 	const rt::Light &light		   = intr.light;
-	Color Le					   = light.L(intr.p, intr.n, intr.uv, intr.wo, path.lambda);
+	SampledSpectrum Le			   = light.L(intr.p, intr.n, intr.uv, intr.wo, path.lambda);
 
 	float weight{ 1 };
 	if (launchParams.NEE && path.depth > 0) {
@@ -97,11 +97,11 @@ KRR_DEVICE_FUNCTION void generateShadowRay(PathData& path) {
 	float lightPdf = sampledLight.pdf * ls.pdf;
 	if (lightPdf == 0)
 		return; // We have sampled on the primitive itself...
-	float bsdfPdf	= BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-	Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType) * fabs(wiLocal[2]);
+	float bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+	SampledSpectrum bsdfVal =
+		BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType) * fabs(wiLocal[2]);
 	float misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
-	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any())
-		return;
+	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any()) return;
 
 	Ray shadowRay = intr.spawnRayTo(ls.intr);
 	if (traceShadowRay(launchParams.traversable, shadowRay, 1))

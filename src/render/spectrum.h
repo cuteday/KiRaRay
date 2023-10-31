@@ -63,14 +63,9 @@ private:
 
 class SampledSpectrum : public Array<float, nSpectrumSamples> {
 public:
-	using Array::Array;
+	using Array<float, nSpectrumSamples>::Array;
 	//SampledSpectrum() = default;
 	KRR_CALLABLE explicit SampledSpectrum(float c) : Array(c) {}
-
-	KRR_CALLABLE SampledSpectrum(gpu::span<const float> v) {
-		DCHECK_EQ(v.size(), nSpectrumSamples);
-		for (int i = 0; i < nSpectrumSamples; i++) (*this)[i] = v[i];
-	}
 
 	KRR_CALLABLE explicit operator bool() const { return this->any(); }
 	/* These functions should not be called within a OptiX kernel. */
@@ -366,5 +361,13 @@ inline RGB RGBColorSpace::toRGB(SampledSpectrum s, const SampledWavelengths &lam
 	XYZ xyz = toXYZ(s, lambda);
 	return toRGB(xyz);
 }
+
+KRR_CALLABLE float luminance(Color3f color) {
+	return dot(Vector3f(color), Vector3f(0.299, 0.587, 0.114));
+}
+
+#if KRR_RENDER_SPECTRAL
+KRR_CALLABLE float luminance(SampledSpectrum color) { return color.mean(); }
+#endif
 
 KRR_NAMESPACE_END

@@ -29,10 +29,15 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 	traceRay(traversable, ray, tMax, rayType, flags, u0, u1);
 }
 
+KRR_DEVICE_FUNCTION int getRayId() { return optixGetLaunchIndex().x; }
+
+KRR_DEVICE_FUNCTION int getPixelId() { 
+	return launchParams.currentRayQueue->pixelId[getRayId()]; 
+}
+
 KRR_DEVICE_FUNCTION RayWorkItem getRayWorkItem() {
-	int rayIndex(optixGetLaunchIndex().x);
-	DCHECK_LT(rayIndex, launchParams.currentRayQueue->size());
-	return (*launchParams.currentRayQueue)[rayIndex];
+	DCHECK_LT(getRayIndex(), launchParams.currentRayQueue->size());
+	return (*launchParams.currentRayQueue)[getRayId()];
 }
 
 KRR_DEVICE_FUNCTION ShadowRayWorkItem getShadowRayWorkItem() {
@@ -45,7 +50,8 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	HitInfo hitInfo = getHitInfo();
 	SurfaceInteraction& intr = *getPRD<SurfaceInteraction>();
 	RayWorkItem r = getRayWorkItem();
-	prepareSurfaceInteraction(intr, hitInfo, launchParams.colorSpace, {});
+	SampledWavelengths lambda = launchParams.pixelState->lambda[getPixelId()];
+	prepareSurfaceInteraction(intr, hitInfo, launchParams.colorSpace, lambda);
 	if (launchParams.mediumSampleQueue && r.ray.medium) {
 		launchParams.mediumSampleQueue->push(r, intr, optixGetRayTmax());
 		return;
@@ -100,8 +106,9 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 
 extern "C" __global__ void KRR_RT_CH(ShadowTr)() {
 	HitInfo hitInfo			 = getHitInfo();
+	SampledWavelengths lambda = launchParams.pixelState->lambda[getPixelId()];
 	SurfaceInteraction &intr = *getPRD<SurfaceInteraction>();
-	prepareSurfaceInteraction(intr, hitInfo, launchParams.colorSpace, {});
+	prepareSurfaceInteraction(intr, hitInfo, launchParams.colorSpace, lambda);
 }
 
 extern "C" __global__ void KRR_RT_AH(ShadowTr)() {

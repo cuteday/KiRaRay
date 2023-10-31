@@ -71,7 +71,7 @@ KRR_DEVICE_FUNCTION bool alphaKilled() {
 		uv = b[0] * mesh.texcoords[v[0]] + b[1] * mesh.texcoords[v[1]] +
 					  b[2] * mesh.texcoords[v[2]];
 
-	RGB opacity = sampleTexture(opaticyTexture, uv, Color3f(1));
+	RGB opacity = sampleTexture(opaticyTexture, uv, RGB(1));
 	float alpha = 1 - luminance(opacity);
 	if (alpha >= 1) return false;
 	if (alpha <= 0) return true;

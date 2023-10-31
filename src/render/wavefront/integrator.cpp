@@ -52,6 +52,7 @@ void WavefrontPathTracer::traceClosest(int depth) {
 	params.scatterRayQueue	   = scatterRayQueue;
 	params.nextRayQueue		   = nextRayQueue(depth);
 	params.mediumSampleQueue   = enableMedium ? mediumSampleQueue : nullptr;
+	params.pixelState		   = pixelState;
 	backend->launch(params, "Closest", maxQueueSize, 1, 1);
 }
 
@@ -71,7 +72,7 @@ void WavefrontPathTracer::handleHit() {
 	PROFILE("Process intersected rays");
 	ForAllQueued(
 		hitLightRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const HitLightWorkItem &w) {
-			Color Le = w.light.L(w.p, w.n, w.uv, w.wo, pixelState->lambda[w.pixelId]) * w.thp;
+			SampledSpectrum Le = w.light.L(w.p, w.n, w.uv, w.wo, pixelState->lambda[w.pixelId]) * w.thp;
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
 				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
@@ -121,9 +122,11 @@ void WavefrontPathTracer::generateScatterRays() {
 				Vector3f wiWorld		  = normalize(shadowRay.dir);
 				Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
-				float lightPdf	= sampledLight.pdf * ls.pdf;
-				Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-				float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+				float lightPdf			= sampledLight.pdf * ls.pdf;
+				SampledSpectrum bsdfVal = BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+				float bsdfPdf			= light.isDeltaLight()
+											  ? 0
+											  : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 				if (lightPdf > 0 && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
@@ -250,10 +253,10 @@ void WavefrontPathTracer::render(RenderContext *context) {
 		}
 		GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 #if KRR_RENDER_SPECTRAL
-			SampledSpectrum L = pixelState->L[pixelId].toRGB(pixelState->lambda[pixelId],
-															*KRR_DEFAULT_COLORSPACE);
+			RGB L = pixelState->L[pixelId].toRGB(pixelState->lambda[pixelId],
+															*KRR_DEFAULT_COLORSPACE_GPU);
 #else
-			SampledSpectrum L = pixelState->L[pixelId];
+			RGB L = pixelState->L[pixelId];
 #endif
 			pixelState->pixel[pixelId] = pixelState->pixel[pixelId] + L;
 		}, gpContext->cudaStream);

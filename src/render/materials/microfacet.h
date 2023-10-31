@@ -259,7 +259,7 @@ public:
 		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)) *
 			   R; // etaT / etaI, auto inversion.
 #else
-		return FrSchlick(R, SampledSpectrum(1.f), dot(wo, wh));
+		return FrSchlick(R, SampledSpectrum(1), dot(wo, wh));
 		return FrDielectric(dot(wo, wh), eta); // etaT / etaI.
 #endif
 	}
