@@ -4,6 +4,7 @@
 #include "device/cuda.h"
 #include "integrator.h"
 #include "wavefront.h"
+#include "render/spectrum.h"
 #include "render/profiler/profiler.h"
 #include "workqueue.h"
 
@@ -44,12 +45,14 @@ void WavefrontPathTracer::traceClosest(int depth) {
 	static LaunchParams params = {};
 	params.traversable		   = backend->getRootTraversable();
 	params.sceneData		   = backend->getSceneData();
+	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
 	params.currentRayQueue	   = currentRayQueue(depth);
 	params.missRayQueue		   = missRayQueue;
 	params.hitLightRayQueue	   = hitLightRayQueue;
 	params.scatterRayQueue	   = scatterRayQueue;
 	params.nextRayQueue		   = nextRayQueue(depth);
 	params.mediumSampleQueue   = enableMedium ? mediumSampleQueue : nullptr;
+	params.pixelState		   = pixelState;
 	backend->launch(params, "Closest", maxQueueSize, 1, 1);
 }
 
@@ -58,6 +61,7 @@ void WavefrontPathTracer::traceShadow() {
 	static LaunchParams params = {};
 	params.traversable		   = backend->getRootTraversable();
 	params.sceneData		   = backend->getSceneData();
+	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
 	params.shadowRayQueue	   = shadowRayQueue;
 	params.pixelState		   = pixelState;
 	if(enableMedium) backend->launch(params, "ShadowTr", maxQueueSize, 1, 1);
@@ -68,7 +72,7 @@ void WavefrontPathTracer::handleHit() {
 	PROFILE("Process intersected rays");
 	ForAllQueued(
 		hitLightRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const HitLightWorkItem &w) {
-			Color Le = w.light.L(w.p, w.n, w.uv, w.wo) * w.thp;
+			SampledSpectrum Le = w.light.L(w.p, w.n, w.uv, w.wo, pixelState->lambda[w.pixelId]) * w.thp;
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
 				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
@@ -83,13 +87,14 @@ void WavefrontPathTracer::handleMiss() {
 	const rt::SceneData &sceneData = mScene->mSceneRT->getSceneData();
 	ForAllQueued(
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
-			Color L = {};
+			SampledSpectrum L		  = {};
+			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
-					L += light.Li(w.ray.dir) / (w.pu + w.pl * lightPdf).mean();
-				} else L += light.Li(w.ray.dir) / w.pu.mean();	
+					L += light.Li(w.ray.dir, lambda) / (w.pu + w.pl * lightPdf).mean();
+				} else L += light.Li(w.ray.dir, lambda) / w.pu.mean();	
 			}
 			pixelState->addRadiance(w.pixelId, w.thp * L);
 		});
@@ -105,20 +110,23 @@ void WavefrontPathTracer::generateScatterRays() {
 			if (sampler.get1D() >= probRR) return;
 			w.thp /= probRR;
 			const SurfaceInteraction &intr = w.intr;
-			Vector3f woLocal	  = intr.toLocal(intr.wo);
-			BSDFType bsdfType	  = intr.getBsdfType();
+			Vector3f woLocal			   = intr.toLocal(intr.wo);
+			BSDFType bsdfType			   = intr.getBsdfType();
+			SampledWavelengths lambda	   = pixelState->lambda[w.pixelId];
 			/* sample direct lighting */
 			if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
-				LightSample ls			  = light.sampleLi(sampler.get2D(), { intr.p, intr.n });
+				LightSample ls			  = light.sampleLi(sampler.get2D(), {intr.p, intr.n}, lambda);
 				Ray shadowRay			  = intr.spawnRayTo(ls.intr);
 				Vector3f wiWorld		  = normalize(shadowRay.dir);
 				Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
-				float lightPdf	= sampledLight.pdf * ls.pdf;
-				Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-				float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+				float lightPdf			= sampledLight.pdf * ls.pdf;
+				SampledSpectrum bsdfVal = BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+				float bsdfPdf			= light.isDeltaLight()
+											  ? 0
+											  : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 				if (lightPdf > 0 && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
@@ -196,12 +204,13 @@ void WavefrontPathTracer::beginFrame(RenderContext* context) {
 	auto frameSize = getFrameSize();
 	GPUParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
-			Vector2i pixelCoord	   = {pixelId % frameSize[0], pixelId / frameSize[0]};
-			pixelState->L[pixelId] = 0;
+			Vector2i pixelCoord		   = {pixelId % frameSize[0], pixelId / frameSize[0]};
+			pixelState->L[pixelId]	   = SampledSpectrum::Zero();
+			pixelState->pixel[pixelId] = RGB::Zero();
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
-			pixelState->channel[pixelId] = SampledChannel::sampleUniform(pixelState->sampler[pixelId].get1D());
-		}, gpContext->cudaStream);
+			pixelState->lambda[pixelId]  = SampledWavelengths::sampleUniform(pixelState->sampler[pixelId].get1D());
+	}, gpContext->cudaStream);
 }
 
 void WavefrontPathTracer::render(RenderContext *context) {
@@ -242,13 +251,20 @@ void WavefrontPathTracer::render(RenderContext *context) {
 			// [STEP#2.5] trace shadow rays (next event estimation)
 			if (enableNEE) traceShadow();
 		}
+		GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
+#if KRR_RENDER_SPECTRAL
+			RGB L = pixelState->L[pixelId].toRGB(pixelState->lambda[pixelId],
+															*KRR_DEFAULT_COLORSPACE_GPU);
+#else
+			RGB L = pixelState->L[pixelId];
+#endif
+			pixelState->pixel[pixelId] = pixelState->pixel[pixelId] + L;
+		}, gpContext->cudaStream);
 	}
-	GPUParallelFor(
-		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-			Color L = pixelState->L[pixelId] / float(samplesPerPixel);
-			if (enableClamp)
-				L = clamp(L, 0.f, clampMax);
-			frameBuffer.write(Color4f(L, 1), pixelId);
+	GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
+			RGB pixel = pixelState->pixel[pixelId] / float(samplesPerPixel);
+			if (enableClamp) pixel.clamp(0, clampMax);
+			frameBuffer.write(RGBA(pixel, 1), pixelId);
 		}, gpContext->cudaStream);
 }
 

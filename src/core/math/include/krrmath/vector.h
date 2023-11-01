@@ -34,6 +34,8 @@ public:
 	}
 
 	KRR_CALLABLE bool hasInf() const { return this->array().isInf().any(); }
+	KRR_CALLABLE void clamp(const T &lo, const T &hi) { *this = this->cwiseMin(hi).cwiseMax(lo); }
+
 	KRR_CALLABLE friend Vector max(const Vector &vec1, const Vector &vec2) {
 		return vec1.cwiseMax(vec2);
 	}

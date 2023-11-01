@@ -31,6 +31,7 @@ using ::tan;
 using ::sinh;
 using ::cosh;
 using ::tanh;
+using ::fma;
 
 template <typename T> KRR_CALLABLE void swap(T &a, T &b) {
 	T tmp = std::move(a);
@@ -42,6 +43,13 @@ template <typename T> KRR_CALLABLE auto clamp(T v, T lo, T hi) {
 	return std::max(std::min(v, hi), lo);
 }
 
+template <typename T, typename U, typename V>
+KRR_CALLABLE constexpr std::enable_if_t<std::is_fundamental_v<T>, T> clamp(T val, U low, V high) {
+	if (val < low) return T(low);
+	else if (val > high) return T(high);
+	else return val;
+}
+
 template <typename DerivedV, typename DerivedB>
 KRR_CALLABLE auto clamp(const Eigen::MatrixBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
 	return v.cwiseMin(hi).cwiseMax(lo);
@@ -50,6 +58,11 @@ KRR_CALLABLE auto clamp(const Eigen::MatrixBase<DerivedV> &v, DerivedB lo, Deriv
 template <typename DerivedV, typename DerivedB>
 KRR_CALLABLE auto clamp(const Eigen::ArrayBase<DerivedV> &v, DerivedB lo, DerivedB hi) {
 	return v.min(hi).max(lo);
+}
+
+template <typename T>
+KRR_CALLABLE auto safediv(const Eigen::EigenBase<T> &v, const Eigen::ArrayBase<T> &divisor) {
+	return v.binaryExpr(divisor, [](auto x, auto y) { return y == 0 ? 0 : x / y; });
 }
 
 template <typename DerivedV, typename DerivedB>
@@ -75,10 +88,6 @@ template <typename DerivedV> KRR_CALLABLE auto abs(const Eigen::MatrixBase<Deriv
 
 template <typename DerivedV> KRR_CALLABLE auto length(const Eigen::MatrixBase<DerivedV> &v) {
 	return v.norm();
-}
-
-template <typename DerivedV> KRR_CALLABLE auto squaredLength(const Eigen::MatrixBase<DerivedV> &v) {
-	return v.SquaredNorm();
 }
 
 template <typename DerivedV> KRR_CALLABLE auto any(const Eigen::DenseBase<DerivedV> &v) {
@@ -136,5 +145,7 @@ KRR_CALLABLE float sech(const float x) { return 1 / cosh(x); }
 
 KRR_CALLABLE float radians(const float degree) { return degree * M_PI / 180.f; }
 
+template <typename T> KRR_CALLABLE 
+T lerp(T x, T y, T weight) { return (1.f - weight) * x + weight * y; }
 
 KRR_NAMESPACE_END

@@ -59,8 +59,8 @@ void initializeMajorantGrid(MajorantGrid& majorantGrid,
 }
 
 NanoVDBMedium::NanoVDBMedium(const Affine3f &transform, Color sigma_a, Color sigma_s, float g,
-							 NanoVDBGrid density) :
-	transform(transform), phase(g), sigma_a(sigma_a), sigma_s(sigma_s), densityGrid(std::move(density)) {
+							 NanoVDBGrid density, const RGBColorSpace *colorSpace) :
+	transform(transform), phase(g), sigma_a(sigma_a), sigma_s(sigma_s), densityGrid(std::move(density)), colorSpace(colorSpace) {
 	inverseTransform = transform.inverse();
 	const Vector3f majorantGridRes{64, 64, 64};
 	majorantGrid	 = MajorantGrid(densityGrid.getBounds(), majorantGridRes);

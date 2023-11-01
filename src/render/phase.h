@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-#include "taggedptr.h"
+#include "device/taggedptr.h"
 #include "krrmath/math.h"
 
 KRR_NAMESPACE_BEGIN

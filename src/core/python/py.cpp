@@ -14,7 +14,7 @@
 KRR_NAMESPACE_BEGIN
 
 void run(const json& config) {
-	if (!gpContext) gpContext.reset(new Context());
+	if (!gpContext) gpContext = std::make_unique<Context>();
 	{
 		RenderApp app;
 		app.loadConfig(config);
@@ -28,8 +28,7 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 	static bool initialized{};
 	static DenoiseBackend denoiser;
 	if (!initialized) {
-		if (!gpContext)
-			gpContext = Context::SharedPtr(new Context());
+		if (!gpContext) gpContext = std::make_unique<Context>();
 		initialized = true;
 	}
 	Vector2i size = { (int)rgb.shape()[1], (int)rgb.shape()[0] };

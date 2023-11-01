@@ -1,7 +1,8 @@
 #pragma once
 #include "common.h"
-#include "taggedptr.h"
 #include "krrmath/math.h"
+#include "device/taggedptr.h"
+#include "render/spectrum.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -26,22 +27,23 @@ public:
 };
 
 struct MediumProperties {
-	Color sigma_a, sigma_s;
+	SampledSpectrum sigma_a, sigma_s;
 	PhaseFunction phase;
-	Color Le;
+	SampledSpectrum Le;
 };
 
 class Medium : public TaggedPointer<HomogeneousMedium, NanoVDBMedium> {
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_CALLABLE Color Le(Vector3f p) const;
+	KRR_CALLABLE SampledSpectrum Le(Vector3f p, const SampledWavelengths& lambda) const;
 
 	KRR_CALLABLE bool isEmissive() const;
 
-	KRR_CALLABLE MediumProperties samplePoint(Vector3f p) const;
+	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const;
 
-	KRR_CALLABLE MajorantIterator sampleRay(const Ray &ray, float tMax) const;
+	KRR_CALLABLE MajorantIterator sampleRay(const Ray &ray, float tMax,
+											const SampledWavelengths &lambda) const;
 };
 
 class MediumInterface {

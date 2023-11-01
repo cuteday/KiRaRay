@@ -1,9 +1,9 @@
 #pragma once
 #include "common.h"
-
-#include "render/materials/bxdf.h"
 #include "raytracing.h"
 #include "render/shared.h"
+#include "render/spectrum.h"
+#include "render/materials/bxdf.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -13,16 +13,17 @@ using namespace rt;
 /* Remember to copy these definitions to workitem.soa whenever changing them. */
 
 struct PixelState {
-	Color L;
+	SampledSpectrum L;
+	RGB pixel;
 	PCGSampler sampler;
-	SampledChannel channel;
+	SampledWavelengths lambda;
 };
 
 struct RayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	Color thp;
-	Color pu, pl;
+	SampledSpectrum thp;
+	SampledSpectrum pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -31,8 +32,8 @@ struct RayWorkItem {
 struct MissRayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	Color thp;
-	Color pu, pl;
+	SampledSpectrum thp;
+	SampledSpectrum pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -45,8 +46,8 @@ struct HitLightWorkItem {
 	Vector3f wo;
 	Vector3f n;
 	Vector2f uv;
-	Color thp;
-	Color pu, pl;
+	SampledSpectrum thp;
+	SampledSpectrum pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -55,14 +56,14 @@ struct HitLightWorkItem {
 struct ShadowRayWorkItem {
 	Ray ray;
 	float tMax;
-	Color Ld;
-	Color pu, pl;
+	SampledSpectrum Ld;
+	SampledSpectrum pu, pl;
 	uint pixelId;
 };
 
 struct ScatterRayWorkItem {
-	Color thp;
-	Color pu;
+	SampledSpectrum thp;
+	SampledSpectrum pu;
 	SurfaceInteraction intr;
 	uint depth;
 	uint pixelId;
@@ -71,8 +72,8 @@ struct ScatterRayWorkItem {
 struct MediumSampleWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	Color thp;
-	Color pu, pl;
+	SampledSpectrum thp;
+	SampledSpectrum pu, pl;
 	float tMax;
 	SurfaceInteraction intr;	// has hit a surface as well...
 	BSDFType bsdfType;
@@ -82,8 +83,8 @@ struct MediumSampleWorkItem {
 
 struct MediumScatterWorkItem {
 	Vector3f p;
-	Color thp;
-	Color pu;
+	SampledSpectrum thp;
+	SampledSpectrum pu;
 	Vector3f wo;
 	float time;
 	Medium medium;

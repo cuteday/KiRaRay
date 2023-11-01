@@ -42,6 +42,7 @@ public:
 	int getChannels() const { return mChannels; }
 	template <int DIM>
 	inline void permuteChannels(const Vector<int, DIM> permutation);
+	template <typename F> inline void process(F func);
 	size_t getSizeInBytes() const { return mChannels * mSize[0] * mSize[1] * getElementSize(); }
 	uchar* data() const { return mData; }
 	void reset(uchar *data) { mData = data; }
@@ -54,39 +55,25 @@ private:
 	uchar* mData{ };
 };
 
-template <int DIM> void Image::permuteChannels(const Vector<int, DIM> permutation) {
-	if (!isValid())
-		Log(Error, "Load the image before do permutations");
+template <typename F> void Image::process(F func) {
+	if (!isValid()) Log(Error, "Load the image before do permutations");
 	CHECK_LOG(4 == mChannels, "Only support channel == 4 currently!");
-	CHECK_LOG(DIM <= mChannels, "Permutation do not match channel count!");
 	size_t data_size = getElementSize();
 	size_t n_pixels	 = mSize[0] * mSize[1];
 	if (data_size == sizeof(float)) {
 		using PixelType = Array<float, 4>;
 		auto *pixels	= reinterpret_cast<PixelType *>(mData);
-		thrust::transform(thrust::host, pixels, pixels + n_pixels, pixels, [=](PixelType pixel) {
-			PixelType res = pixel;
-			for (int c = 0; c < DIM; c++) {
-				res[c] = pixel[permutation[c]];
-			}
-			return res;
-		});
-	} else if (data_size == sizeof(char)) {
+		thrust::transform(thrust::host, pixels, pixels + n_pixels, pixels,
+						  [=](auto pixel) { return func(pixel); });
+	}
+	else if (data_size == sizeof(char)) {
 		using PixelType = Array<char, 4>;
 		auto *pixels	= reinterpret_cast<PixelType *>(mData);
-		thrust::transform(thrust::host, pixels, pixels + n_pixels, pixels, [=](PixelType pixel) {
-			PixelType res = pixel;
-			for (int c = 0; c < DIM; c++) {
-				res[c] = pixel[permutation[c]];
-			}
-			return res;
-		});
+		thrust::transform(thrust::host, pixels, pixels + n_pixels, pixels,
+						  [=](auto pixel) { return func(pixel); });
 	}
-	else {
-		Log(Error, "Permute channels not implemented yet :-(");
-	}
+	else Log(Error, "Permute channels not implemented yet :-(");
 }
-
 
 class Texture {
 public:
@@ -120,9 +107,7 @@ public:
 };
 
 class Material {
-private:
 	friend class SceneGraph;
-
 public:
 	using SharedPtr = std::shared_ptr<Material>;
 
@@ -189,7 +174,7 @@ public:
 		return mCudaTexture;
 	}
 	KRR_CALLABLE Color4f getConstant() const { return mValue; }
-	KRR_DEVICE Color4f tex(Vector2f uv) const {
+	KRR_DEVICE Color4f evaluate(Vector2f uv) const {
 #ifdef __NVCC__
 		if (mCudaTexture) return tex2D<float4>(mCudaTexture, uv[0], uv[1]);
 #endif

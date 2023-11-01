@@ -77,12 +77,14 @@ void ZeroGuidingPT::traceClosest(int depth) {
 	static LaunchParamsZero params = {};
 	params.traversable			  = backend->getRootTraversable();
 	params.sceneData			  = backend->getSceneData();
+	params.colorSpace			  = KRR_DEFAULT_COLORSPACE;
 	params.currentRayQueue		  = currentRayQueue(depth);
 	params.missRayQueue			  = missRayQueue;
 	params.hitLightRayQueue		  = hitLightRayQueue;
 	params.scatterRayQueue		  = scatterRayQueue;
 	params.nextRayQueue			  = nextRayQueue(depth);
 	params.mediumSampleQueue	  = enableMedium ? mediumSampleQueue : nullptr;
+	params.pixelState			  = pixelState;
 	backend->launch(params, "Closest", maxQueueSize, 1, 1);
 }
 
@@ -91,6 +93,7 @@ void ZeroGuidingPT::traceShadow() {
 	static LaunchParamsZero params = {};
 	params.traversable			  = backend->getRootTraversable();
 	params.sceneData			  = backend->getSceneData();
+	params.colorSpace			  = KRR_DEFAULT_COLORSPACE;
 	params.shadowRayQueue		  = shadowRayQueue;
 	params.pixelState			  = pixelState;
 	params.guidedState			  = guidedPathState;
@@ -103,7 +106,8 @@ void ZeroGuidingPT::handleHit() {
 	PROFILE("Process intersected rays");
 	ForAllQueued(hitLightRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const HitLightWorkItem & w){
-			Color Le = w.light.L(w.p, w.n, w.uv, w.wo) * w.thp;
+			SampledSpectrum Le =
+				w.light.L(w.p, w.n, w.uv, w.wo, pixelState->lambda[w.pixelId]) * w.thp;
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
 				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
@@ -118,13 +122,14 @@ void ZeroGuidingPT::handleMiss() {
 	PROFILE("Process escaped rays");
 	const rt::SceneData& sceneData = mScene->mSceneRT->getSceneData();
 	ForAllQueued(missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem & w) {
-			Color L = {};
+			SampledSpectrum L = {};
+			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
-					L += light.Li(w.ray.dir) / (w.pu + w.pl * lightPdf).mean();
-				} else L += light.Li(w.ray.dir) / w.pu.mean();	
+					L += light.Li(w.ray.dir, lambda) / (w.pu + w.pl * lightPdf).mean();
+				} else L += light.Li(w.ray.dir, lambda) / w.pu.mean();	
 			}
 			pixelState->addRadiance(w.pixelId, w.thp * L);
 			guidedPathState->recordRadiance(w.pixelId, w.thp * L);	// ppg
@@ -142,6 +147,7 @@ void ZeroGuidingPT::handleIntersections() {
 		const SurfaceInteraction& intr = w.intr;
 		BSDFType bsdfType = intr.getBsdfType();
 		Vector3f woLocal = intr.toLocal(intr.wo);
+		SampledWavelengths lambda	   = pixelState->lambda[w.pixelId];
 
 		/* Statistics for mixed bsdf-guided sampling */
 		float bsdfPdf, dTreePdf;
@@ -150,13 +156,13 @@ void ZeroGuidingPT::handleIntersections() {
 		if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
 			SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 			Light light				  = sampledLight.light;
-			LightSample ls			  = light.sampleLi(sampler.get2D(), { intr.p, intr.n });
+			LightSample ls			  = light.sampleLi(sampler.get2D(), {intr.p, intr.n}, lambda);
 			Ray shadowRay			  = intr.spawnRayTo(ls.intr);
 			Vector3f wiWorld		  = normalize(shadowRay.dir);
 			Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
 			float lightPdf	= sampledLight.pdf * ls.pdf;
-			Color bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+			SampledSpectrum bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 			float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 			if (lightPdf > 0 && bsdfVal.any()) {
 				ShadowRayWorkItem sw = {};
@@ -258,11 +264,16 @@ void ZeroGuidingPT::render(RenderContext *context) {
 	// write results of the current frame...
 	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
 	GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-		Color3f L = Color3f(pixelState->L[pixelId]) / samplesPerPixel;
-		if (enableClamp) L = clamp(L, 0.f, clampMax);
-		m_image->put(Color4f(L, 1.f), pixelId);
+#if KRR_RENDER_SPECTRAL
+		RGB L = pixelState->L[pixelId].toRGB(pixelState->lambda[pixelId],
+				*KRR_DEFAULT_COLORSPACE_GPU) / samplesPerPixel;
+#else
+		RGB L = RGB(pixelState->L[pixelId]) / samplesPerPixel;
+#endif
+		if (enableClamp) L.clamp(0, clampMax);
+		m_image->put(RGBA(L, 1.f), pixelId);
 		if (m_renderMode == RenderMode::Interactive)
-			frameBuffer.write(Color4f(L, 1), pixelId);
+			frameBuffer.write(RGBA(L, 1), pixelId);
 		else if (m_renderMode == RenderMode::Offline)
 			frameBuffer.write(m_image->getPixel(pixelId), pixelId);
 	});
@@ -285,9 +296,15 @@ void ZeroGuidingPT::endFrame(RenderContext* context) {
 		PROFILE("Training SD-Tree");
 		GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 			Sampler sampler = &pixelState->sampler[pixelId];
-			Color pixelEstimate = 0.5f;
+			SampledSpectrum pixelEstimate(0.5);
 			if (m_isBuilt && m_distribution == EDistribution::EFull)
+#if KRR_RENDER_SPECTRAL
+				pixelEstimate = RGBUnboundedSpectrum(m_pixelEstimate->getPixel(pixelId).head<3>(),
+													 *KRR_DEFAULT_COLORSPACE_GPU)
+									.sample(pixelState->lambda[pixelId]);
+#else 
 				pixelEstimate = m_pixelEstimate->getPixel(pixelId).head<3>();
+#endif
 			guidedPathState->commitAll(pixelId, m_sdTree, 1.f, m_spatialFilter, m_directionalFilter, m_bsdfSamplingFractionLoss, sampler,
 										   m_distribution, pixelEstimate);
 		});

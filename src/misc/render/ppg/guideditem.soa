@@ -12,8 +12,7 @@ flat HaltonSampler;
 flat DTreeWrapper;
 
 flat Vector3f;
-flat Color3f;
-flat Color;
+flat SampledSpectrum;
 
 struct Ray;
 struct LightSampleContext;
@@ -26,9 +25,9 @@ struct Vertex {
 	DTreeWrapper* dTree;
 	Vector3f dTreeVoxelSize;
 	Ray ray;
-	Color3f throughput;
-	Color3f bsdfVal;
-	Color3f radiance;
+	SampledSpectrum throughput;
+	SampledSpectrum bsdfVal;
+	SampledSpectrum radiance;
 	float wiPdf, bsdfPdf, dTreePdf;
 	float wiMisWeight;
 	bool isDelta;

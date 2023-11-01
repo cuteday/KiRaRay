@@ -47,6 +47,8 @@ SET (KRR_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/render/profiler/profiler.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/profiler/ui.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/media.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/color.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/spectrum.cpp
 	${KRR_RENDER_SOURCE_DIR}/scene/assimp.cpp
 	${KRR_RENDER_SOURCE_DIR}/scene/pbrt.cpp
 	${KRR_RENDER_SOURCE_DIR}/scene/openvdb.cpp
@@ -54,6 +56,15 @@ SET (KRR_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/util/tables.cpp
 	${KRR_RENDER_SOURCE_DIR}/util/volume.cpp
 	${KRR_RENDER_SOURCE_DIR}/util/image.cpp
+)
+
+SET (KRR_SOURCE
+	${KRR_SOURCE}
+	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_srgb.cpp
+	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_aces.cpp
+	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_dci_p3.cpp
+	${KRR_RENDER_SOURCE_DIR}/data/rgbspectrum_rec2020.cpp
+	${KRR_RENDER_SOURCE_DIR}/data/named_spectrum.cpp
 )
 
 SET (KRR_SOURCE_VULKAN
@@ -71,6 +82,8 @@ SET_SOURCE_FILES_PROPERTIES (
 	# the symbols that are defined within these .cpp files.
 	${KRR_RENDER_SOURCE_DIR}/core/light.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/media.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/color.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/spectrum.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/wavefront/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/wavefront/medium.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/passes/denoise/denoise.cpp
@@ -108,8 +121,8 @@ INCLUDE_DIRECTORIES (${KRR_INCLUDE_ALL})
 INCLUDE (${KRR_RENDER_ROOT}/common/build/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code
 CUDA_COMPILE_EMBED(GBUFFER_PTX ${KRR_SHADER_REL_DIR}render/passes/gbuffer/device.cu krr-gbuffer krr_soa_generated) 
-CUDA_COMPILE_EMBED(PATHTRACER_PTX ${KRR_SHADER_REL_DIR}render/path/path.cu krr-path krr_soa_generated)
-CUDA_COMPILE_EMBED(WAVEFRONT_PTX ${KRR_SHADER_REL_DIR}render/wavefront/wavefront.cu krr-wavefront krr_soa_generated)
+CUDA_COMPILE_EMBED(PATHTRACER_PTX ${KRR_SHADER_REL_DIR}render/path/device.cu krr-path krr_soa_generated)
+CUDA_COMPILE_EMBED(WAVEFRONT_PTX ${KRR_SHADER_REL_DIR}render/wavefront/device.cu krr-wavefront krr_soa_generated)
 CUDA_COMPILE_EMBED(BDPT_PTX ${KRR_SHADER_REL_DIR}render/bdpt/device.cu krr-bdpt krr_soa_generated)
 
 SET(KRR_PTX_FILES
@@ -127,14 +140,12 @@ SET(KRR_SOURCE
 	${KRR_SOURCE}
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/treemanip.cpp
-	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/medium.cpp
 	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/medium.cpp
 )
 
 SET_SOURCE_FILES_PROPERTIES (
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/integrator.cpp
-	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/medium.cpp
 	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/medium.cpp
 	PROPERTIES LANGUAGE CUDA

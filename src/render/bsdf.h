@@ -1,14 +1,11 @@
 #pragma once
 
 #include "common.h"
-#include "taggedptr.h"
+#include "device/taggedptr.h"
 
 #include "materials/diffuse.h"
-#include "materials/microfacet.h"
-#include "materials/fresnelblend.h"
 #include "materials/disney.h"
 #include "materials/dielectric.h"
-#include "materials/principled.h"
 
 KRR_NAMESPACE_BEGIN
 using namespace shader;
@@ -26,9 +23,9 @@ public:
 		return dispatch(sample, bsdfIndex);
 	}
 
-	KRR_CALLABLE static Color f(const SurfaceInteraction &intr, Vector3f wo, Vector3f wi,
+	KRR_CALLABLE static SampledSpectrum f(const SurfaceInteraction &intr, Vector3f wo, Vector3f wi,
 								int bsdfIndex, TransportMode mode = TransportMode::Radiance) {
-		auto f = [&](auto ptr)->Vector3f {return ptr->fInternal(intr, wo, wi, mode); };
+		auto f = [&](auto ptr) -> SampledSpectrum { return ptr->fInternal(intr, wo, wi, mode); };
 		return dispatch(f, bsdfIndex);
 	}
 
@@ -49,9 +46,9 @@ public:
 	}
 
 	// [NOTE] f the cosine theta term in render equation is not contained in f().
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
+	KRR_CALLABLE SampledSpectrum f(Vector3f wo, Vector3f wi,
 						 TransportMode mode = TransportMode::Radiance) const {
-		auto f = [&](auto ptr) -> Color { return ptr->f(wo, wi, mode); };
+		auto f = [&](auto ptr) -> SampledSpectrum { return ptr->f(wo, wi, mode); };
 		return dispatch(f);
 	}
 

@@ -20,9 +20,9 @@ KRR_CALLABLE Color toneMapAces(Color color) {
 	}
 
 	KRR_CALLABLE Color toneMapReinhard(Color color) {
-		float luminance = utils::luminance(color);
-		float reinhard = luminance / (luminance + 1);
-		return color * (reinhard / luminance);
+		float lum = luminance(color);
+		float reinhard = lum / (lum + 1);
+		return color * (reinhard / lum);
 	}
 
 	KRR_CALLABLE Color toneMapUC2(Color color) {
