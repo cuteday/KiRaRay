@@ -32,14 +32,13 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 KRR_DEVICE_FUNCTION int getRayId() { return optixGetLaunchIndex().x; }
 
 KRR_DEVICE_FUNCTION RayWorkItem getRayWorkItem() {
-	DCHECK_LT(getRayIndex(), launchParams.currentRayQueue->size());
+	DCHECK_LT(getRayId(), launchParams.currentRayQueue->size());
 	return (*launchParams.currentRayQueue)[getRayId()];
 }
 
 KRR_DEVICE_FUNCTION ShadowRayWorkItem getShadowRayWorkItem() {
-	int rayIndex(optixGetLaunchIndex().x);
-	DCHECK_LT(rayIndex, launchParams.shadowRayQueue->size());
-	return (*launchParams.shadowRayQueue)[rayIndex];
+	DCHECK_LT(getRayId(), launchParams.shadowRayQueue->size());
+	return (*launchParams.shadowRayQueue)[getRayId()];
 }
 
 extern "C" __global__ void KRR_RT_CH(Closest)() {
@@ -76,8 +75,7 @@ extern "C" __global__ void KRR_RT_MS(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_RG(Closest)() {
-	uint rayIndex(optixGetLaunchIndex().x);
-	if (rayIndex >= launchParams.currentRayQueue->size()) return;
+	if (getRayId() >= launchParams.currentRayQueue->size()) return;
 	RayWorkItem r = getRayWorkItem();
 	SurfaceInteraction intr = {};
 	traceRay(launchParams.traversable, r.ray, M_FLOAT_INF,
@@ -91,8 +89,7 @@ extern "C" __global__ void KRR_RT_AH(Shadow)() {
 extern "C" __global__ void KRR_RT_MS(Shadow)() { optixSetPayload_0(1); }
 
 extern "C" __global__ void KRR_RT_RG(Shadow)() {
-	uint rayIndex(optixGetLaunchIndex().x);
-	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
+	if (getRayId() >= launchParams.shadowRayQueue->size()) return;
 	ShadowRayWorkItem r = getShadowRayWorkItem();
 	uint32_t visible{0};
 	traceRay(launchParams.traversable, r.ray, r.tMax, 1,
@@ -116,8 +113,7 @@ extern "C" __global__ void KRR_RT_AH(ShadowTr)() {
 extern "C" __global__ void KRR_RT_MS(ShadowTr)() { optixSetPayload_2(1); }
 
 extern "C" __global__ void KRR_RT_RG(ShadowTr)() {
-	uint rayIndex(optixGetLaunchIndex().x);
-	if (rayIndex >= launchParams.shadowRayQueue->size()) return;
+	if (getRayId() >= launchParams.shadowRayQueue->size()) return;
 	ShadowRayWorkItem r = getShadowRayWorkItem();
 	SurfaceInteraction intr = {};
 	uint u0, u1;

@@ -15,7 +15,7 @@ SET(KRR_RENDER_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
 
 OPTION (KRR_BUILD_STARLIGHT 
 	"Build some additional code implementation of fancy algorithms."
-	OFF
+	ON
 )
 
 OPTION (KRR_BUILD_EXAMPLES 
@@ -25,7 +25,7 @@ OPTION (KRR_BUILD_EXAMPLES
 
 OPTION (KRR_RENDER_SPECTRAL 
 	"Build the spectral variant of the renderer (WIP)."
-	OFF
+	ON
 )
 
 ###############################################################################

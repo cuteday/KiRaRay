@@ -15,6 +15,7 @@ typedef struct {
 
 	bool enableTraining;
 	PixelStateBuffer* pixelState;
+	const RGBColorSpace *colorSpace;
 	rt::SceneData sceneData;
 	GuidedPathStateBuffer* guidedState;
 	OptixTraversableHandle traversable;
