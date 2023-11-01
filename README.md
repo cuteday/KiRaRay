@@ -12,7 +12,7 @@
 
 - [x] GPU path tracing (megakernel/wavefront).
 - [x] GPU volumetric rendering (wavefront).
-- [x] Selectable tristimulus (RGB) and spectral rendering. 
+- [x] Spectral or tristimulus (RGB) rendering. 
 - [x] Post processing passes (e.g. denoising).
 - [x] Basic support for scene animation (glTF).
 
