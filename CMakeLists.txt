@@ -140,6 +140,67 @@ else()
 	message("Do not find python, disable python binding")
 endif()
 
+################################################################################
+# Optix
+################################################################################
+if(NOT DEFINED {OptiX_INSTALL_DIR} AND NOT DEFINED {OptiX_INCLUDE})
+	if(NOT DEFINED ENV{OPTIX_ROOT})
+		message("Try to find OptiX SDK in PROGRAMDATA directory.")
+		if(NOT DEFINED ENV{PROGRAMDATA})
+			message(FATAL_ERROR "PROGRAMDATA is not defined. OPTIX_ROOT has to be specified manually.")
+		else()
+			# Transform the path to generic style
+			file(TO_CMAKE_PATH "$ENV{PROGRAMDATA}" PROGRAMDATA)
+			# Find the directory with prefix of "OptiX SDK" in PROGRAMDATA directory
+			file(GLOB OPTIX_ROOT "${PROGRAMDATA}/NVIDIA Corporation/OptiX SDK*")
+			# If there are multiple directories, use the first one
+			list(GET OPTIX_ROOT 0 OPTIX_ROOT)
+			# If there is no directory, popup an error message
+			if(NOT OPTIX_ROOT)
+				message(FATAL_ERROR "OPTIX_ROOT has to be specified manually.")
+			else ()
+				message(STATUS "Found OptiX SDK at ${OPTIX_ROOT}")
+			endif()
+		endif()
+	else()
+		set( OPTIX_ROOT $ENV{OPTIX_ROOT} )
+	endif()
+else()
+	set( OPTIX_ROOT ${OptiX_INSTALL_DIR} )
+endif()
+message(STATUS "Found OptiX SDK at ${OPTIX_ROOT}")
+# Guess the OptiX install directory by OPTIX_ROOT
+set(OptiX_INSTALL_DIR ${OPTIX_ROOT} PATH)
+# Include the OptiX header directory
+set(OptiX_INCLUDE_DIR ${OPTIX_ROOT}/include PATH)
+# Aliasing for compatibility.
+set(OptiX_INCLUDE ${OPTIX_ROOT}/include PATH)
+
+# Resolve the atlbase.h issue when building with IDEs other than Visual Studio
+if(${CMAKE_CXX_COMPILER_ID} EQUAL MSVC)
+	# atlbase.h is required under Windows build.
+	# Test for the presense of "atlbase.h"
+	include(CheckIncludeFileCXX)
+	CHECK_INCLUDE_FILE_CXX("atlbase.h" HAVE_ATLBASE_H)
+	# Try to find atlbase.h within MSVC
+	if(NOT HAVE_ATLBASE_H)
+		message(STATUS "atlbase.h not found. Trying to find it within atlmfc directory in the current MSVC installation.")
+		# Find MSVC executable directory
+		get_filename_component(MSVC_EXECUTABLE_DIR ${CMAKE_CXX_COMPILER} DIRECTORY)
+		# Try to find atlmfc directory within the current toolchain directory
+		find_path(ATLMFC_INCLUDE_DIR "atlmfc" PATHS "${MSVC_DIR}/../../..")
+		# If atlmfc directory is found, append it to the include directories
+		if(ATLMFC_INCLUDE_DIR)
+			message(STATUS "Found atlmfc directory at ${ATLMFC_INCLUDE_DIR}")
+			# Include atlbase.h
+			include_directories(${ATLMFC_INCLUDE_DIR})
+		else()
+			message(FATAL_ERROR "atlmfc directory not found. Please specify it manually.")
+		endif()
+	endif()
+endif()
+
+
 ADD_SUBDIRECTORY (src)
 if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 	SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_DIRS} PARENT_SCOPE)	# exporting KRR_INCLUDE_DIRS to parent scope
