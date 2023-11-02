@@ -283,6 +283,7 @@ public:
 		this->pu[index]		 = pu;
 		this->depth[index]	 = depth;
 		this->pixelId[index] = pixelId;
+		return index;
 	}
 };
 
