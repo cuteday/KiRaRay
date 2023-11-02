@@ -2,7 +2,7 @@
 #include "common.h"
 
 #include "util/math_utils.h"
-#include "taggedptr.h"
+#include "device/taggedptr.h"
 #include "util/lowdiscrepancy.h"
 #include "util/hash.h"
 

@@ -3,11 +3,13 @@
 #include "logger.h"
 #include "context.h"
 #include "renderpass.h"
+#include "render/color.h"
+#include "render/spectrum.h"
 
 KRR_NAMESPACE_BEGIN
 
 using namespace gpu;
-Context::SharedPtr gpContext;
+std::unique_ptr<Context> gpContext;
 std::shared_ptr<RenderPassFactory::map_type> RenderPassFactory::map = nullptr;
 std::shared_ptr<RenderPassFactory::configured_map_type> RenderPassFactory::configured_map = nullptr;
 CUDATrackedMemory CUDATrackedMemory::singleton;
@@ -45,8 +47,7 @@ void Context::initialize() {
 		Log(Debug, "Concurrent access of managed memory is not supported.");
 
 	CUresult cuRes = cuCtxGetCurrent(&cudaContext);
-	if (cuRes != CUDA_SUCCESS)
-		logError("Error querying current context: error code " + cuRes);
+	if (cuRes != CUDA_SUCCESS) Log(Error, "Error querying current context: error code " + cuRes);
 
 	OptixDeviceContextOptions optixContextOptions = {};
 	//optixContextOptions.validationMode = OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL;
@@ -58,6 +59,14 @@ void Context::initialize() {
 	// tracked cuda device memory management
 	set_default_resource(&CUDATrackedMemory::singleton);
 	alloc = new Allocator(&CUDATrackedMemory::singleton);
+
+	// initialize spectral rendering resources
+#if KRR_RENDER_SPECTRAL
+	spec::init(*alloc);
+	RGBToSpectrumTable::init(*alloc);
+	RGBColorSpace::init(*alloc);
+	CUDA_SYNC_CHECK();
+#endif
 }
 
 void Context::finalize(){

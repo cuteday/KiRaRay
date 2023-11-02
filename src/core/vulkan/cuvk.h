@@ -621,9 +621,7 @@ public:
 		memset(&extSemaphoreWaitParams, 0, sizeof(extSemaphoreWaitParams));
 		extSemaphoreWaitParams.params.fence.value = value;
 		extSemaphoreWaitParams.flags			  = 0;
-		CUDA_CHECK(
-			cudaWaitExternalSemaphoresAsync(extSem, &extSemaphoreWaitParams, numSems,
-												   stream));
+		cudaWaitExternalSemaphoresAsync(extSem, &extSemaphoreWaitParams, numSems, stream);
 	}
 
 	static void cudaSignalExternalSemaphore(CUstream stream, size_t value,
@@ -633,9 +631,7 @@ public:
 
 		extSemaphoreSignalParams.params.fence.value = value;
 		extSemaphoreSignalParams.flags				= 0;
-		CUDA_CHECK(
-			cudaSignalExternalSemaphoresAsync(extSem, &extSemaphoreSignalParams,
-													 numSems, stream));
+		cudaSignalExternalSemaphoresAsync(extSem, &extSemaphoreSignalParams, numSems, stream);
 	}
 
 private:

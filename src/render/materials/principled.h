@@ -1,5 +1,5 @@
 #pragma once
-
+/* This file is currently not used and WIP. */
 #include "common.h"
 
 #include "util/math_utils.h"
@@ -23,24 +23,24 @@ class PrincipledDiffuse {
 public:
 	PrincipledDiffuse() = default;
 
-	KRR_CALLABLE PrincipledDiffuse(const Color &R) : R(R) {}
-	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
+	KRR_CALLABLE PrincipledDiffuse(const SampledSpectrum &R) : R(R) {}
+	KRR_CALLABLE SampledSpectrum f(const Vector3f &wo, const Vector3f &wi) const {
 		if (!SameHemisphere(wo, wi))
 			return 0;
 		float Fo = SchlickWeight(AbsCosTheta(wo)), Fi = SchlickWeight(AbsCosTheta(wi));
 		return R * M_INV_PI * (1 - Fo / 2) * (1 - Fi / 2);
 	}
-	KRR_CALLABLE Color rho(const Vector3f &, int, const Vector2f *) const { return R; }
-	KRR_CALLABLE Color rho(int, const Vector3f *, const Vector3f *) const { return R; }
+	KRR_CALLABLE SampledSpectrum rho(const Vector3f &, int, const Vector2f *) const { return R; }
+	KRR_CALLABLE SampledSpectrum rho(int, const Vector3f *, const Vector3f *) const { return R; }
 
-	Color R;
+	SampledSpectrum R;
 };
 
 class PrincipledRetro {
 public:
 	PrincipledRetro() = default;
-	KRR_CALLABLE PrincipledRetro(const Color &R, float roughness) : R(R), roughness(roughness) {}
-	KRR_CALLABLE Color f(const Vector3f &wo, const Vector3f &wi) const {
+	KRR_CALLABLE PrincipledRetro(const SampledSpectrum &R, float roughness) : R(R), roughness(roughness) {}
+	KRR_CALLABLE SampledSpectrum f(const Vector3f &wo, const Vector3f &wi) const {
 		Vector3f wh = wi + wo;
 		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0)
 			return Vector3f(0.);
@@ -53,10 +53,10 @@ public:
 		// Burley 2015, eq (4).
 		return R * M_INV_PI * Rr * (Fo + Fi + Fo * Fi * (Rr - 1));
 	};
-	KRR_CALLABLE Color rho(const Vector3f &, int, const Vector2f *) const { return R; }
-	KRR_CALLABLE Color rho(int, const Vector2f *, const Vector2f *) const { return R; }
+	KRR_CALLABLE SampledSpectrum rho(const Vector3f &, int, const Vector2f *) const { return R; }
+	KRR_CALLABLE SampledSpectrum rho(int, const Vector2f *, const Vector2f *) const { return R; }
 
-	Color R;
+	SampledSpectrum R;
 	float roughness;
 };
 
@@ -71,7 +71,7 @@ public:
 	_DEFINE_BSDF_INTERNAL_ROUTINES(PrincipledBsdf);
 
 	KRR_CALLABLE void setup(const SurfaceInteraction &intr) { 
-		Color c				 = intr.sd.diffuse;		/* base color*/
+		SampledSpectrum c				 = intr.sd.diffuse;		/* base color*/
 		float metallicWeight = intr.sd.metallic;
 		float e				 = intr.sd.IoR;
 		float strans		 = intr.sd.specularTransmission;
@@ -79,15 +79,15 @@ public:
 		float roughness		 = intr.sd.roughness;
 		float lum			 = luminance(c);
 		// normalize lum. to isolate hue+sat
-		Color Ctint = Color::Ones();
+		SampledSpectrum Ctint = SampledSpectrum::Ones();
 		if (lum > 0)
 			Ctint = c / lum;
 
 		float sheenWeight = 0;
-		Color Csheen;
+		SampledSpectrum Csheen;
 		if (sheenWeight > 0) { // unused
 			float stint = 0;
-			Csheen		= lerp(Color(1), Ctint, stint);
+			Csheen		= lerp(SampledSpectrum(1), Ctint, stint);
 		}
 
 		if (diffuseWeight > 0) {
@@ -105,12 +105,12 @@ public:
 		delta		 = max(ax, ay) <= 1e-3f;
 
 		// Specular is Trowbridge-Reitz with a modified Fresnel function.
-		Color Cspec0   = intr.sd.specular;
+		SampledSpectrum Cspec0   = intr.sd.specular;
 		if (!any(intr.sd.specular))
 			Cspec0 =
-				lerp(SchlickR0FromEta(e) * lerp(Color::Ones(), Ctint, 1), c, metallicWeight);
+				lerp(SchlickR0FromEta(e) * lerp(SampledSpectrum::Ones(), Ctint, 1), c, metallicWeight);
 
-		metalBrdf = MicrofacetBrdf(Color(1), e, ax, ay);
+		metalBrdf = MicrofacetBrdf(SampledSpectrum(1), e, ax, ay);
 		components |= PRINCIPLED_METAL;
 #if KRR_USE_DISNEY
 		metalBrdf.disneyR0 = Cspec0;
@@ -137,9 +137,9 @@ public:
 			pGlass = weightGlass / totalWt;
 	}
 
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
+	KRR_CALLABLE SampledSpectrum f(Vector3f wo, Vector3f wi,
 						 TransportMode mode = TransportMode::Radiance) const {
-		Color val	 = Color::Zero();
+		SampledSpectrum val	 = SampledSpectrum::Zero();
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
 			val += weightDiffuse * disneyDiffuse.f(wo, wi);

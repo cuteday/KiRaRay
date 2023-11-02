@@ -15,20 +15,22 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 	ForAllQueued(mediumSampleQueue, maxQueueSize,
 				 KRR_DEVICE_LAMBDA(const MediumSampleWorkItem &w){
 			/* Each ray is either absorped or scattered after some null collisions... */
-			Color L(0);
-			Ray ray	   = w.ray;
-			Color thp = w.thp;
-			Color pu = w.pu, pl = w.pl;
-			Sampler sampler		   = &pixelState->sampler[w.pixelId];
-			SampledChannel channel = pixelState->channel[w.pixelId];
-			Medium medium		   = ray.medium;
+			SampledSpectrum L(0);
+			Ray ray	  = w.ray;
+			SampledSpectrum thp = w.thp;
+			SampledSpectrum pu = w.pu, pl = w.pl;
+			Sampler sampler			  = &pixelState->sampler[w.pixelId];
+			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
+			int channel				  = lambda.mainIndex();
+			Medium medium			  = ray.medium;
 			bool scattered{false};
 
-			Color T_maj = sampleT_maj(ray, w.tMax, sampler, channel, 
-				[&](Vector3f p, MediumProperties mp, Color sigma_maj, Color T_maj) -> bool {
+			SampledSpectrum T_maj = sampleT_maj(ray, w.tMax, sampler, lambda, 
+				[&](Vector3f p, MediumProperties mp, SampledSpectrum sigma_maj,
+					SampledSpectrum T_maj) -> bool {
 					if (w.depth < maxDepth && mp.Le.any()) {
 						float pr = sigma_maj[channel] * T_maj[channel];
-						Color pe = pu * sigma_maj * T_maj / pr;
+						SampledSpectrum pe = pu * sigma_maj * T_maj / pr;
 						if (pe.any()) L += thp * mp.sigma_a * T_maj * mp.Le / (pr * pe.mean());
 					}
 					/* [STEP.2] Sample a type of the three scattering events */
@@ -36,8 +38,8 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 					float pScatter	= mp.sigma_s[channel] / sigma_maj[channel];
 					float pNull		= max(0.f, 1.f - pAbsorb - pScatter);
 					int mode = sampleDiscrete({pAbsorb, pScatter, pNull}, sampler.get1D());
-					if (mode == 0) {		// Absorbed (goodbye)
-						thp = 0;			// Will not continue
+					if (mode == 0) {					// Absorbed (goodbye)
+						thp = SampledSpectrum::Zero();	// Will not continue
 						return false;
 					} else if (mode == 1) {	// Real scattering
 						float pr = T_maj[channel] * mp.sigma_s[channel];
@@ -49,10 +51,10 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 						scattered = true;	// Continue on another direction
 						return false;
 					} else {				// Null-collision
-						Color sigma_n = (sigma_maj - mp.sigma_a - mp.sigma_s).cwiseMax(0);
+						SampledSpectrum sigma_n = (sigma_maj - mp.sigma_a - mp.sigma_s).cwiseMax(0);
 						float pr = T_maj[channel] * sigma_n[channel];
 						thp *= T_maj * sigma_n / pr;
-						if (pr == 0) thp = 0;
+						if (pr == 0) thp = SampledSpectrum::Zero();
 						pu *= T_maj * sigma_n / pr;
 						pl *= T_maj * sigma_maj / pr;
 						return thp.any() && pu.any();
@@ -105,21 +107,22 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 	PROFILE("Sample medium scattering");
 	ForAllQueued(mediumScatterQueue, maxQueueSize,
 				 KRR_DEVICE_LAMBDA(const MediumScatterWorkItem &w){
-			const Vector3f& wo = w.wo;
-			Sampler sampler	   = &pixelState->sampler[w.pixelId];
+			const Vector3f &wo		  = w.wo;
+			Sampler sampler			  = &pixelState->sampler[w.pixelId];
+			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
 			LightSampleContext ctx{w.p, Vector3f::Zero()};
 			// [PART-A] Sample direct lighting with ShadowRayTr
 			if (enableNEE) {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
-				LightSample ls			  = light.sampleLi(sampler.get2D(), ctx);
+				LightSample ls			  = light.sampleLi(sampler.get2D(), ctx, lambda);
 				Ray shadowRay			  = Interaction(w.p, w.time, w.medium).spawnRayTo(ls.intr);
 				Vector3f wi				  = shadowRay.dir.normalized();
-				Color thp				  = w.thp * w.phase.p(wo, wi);
+				SampledSpectrum thp		  = w.thp * w.phase.p(wo, wi);
 				float lightPdf			  = sampledLight.pdf * ls.pdf;
 				float phasePdf			  = light.isDeltaLight() ? 0 : w.phase.pdf(wo, wi);
 				
-				Color Ld = thp * ls.L;
+				SampledSpectrum Ld = thp * ls.L;
 				if (Ld.any() && lightPdf > 0) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
@@ -134,7 +137,7 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			
 			// [PART-B] Sample indirect lighting with scattering function
 			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get2D());
-			Color thp			   = w.thp * ps.p / ps.pdf;
+			SampledSpectrum thp	   = w.thp * ps.p / ps.pdf;
 			// Russian roulette
 			float rrProb = (thp / w.pu.mean()).maxCoeff();
 			if (w.depth >= 1 && rrProb < 1) {

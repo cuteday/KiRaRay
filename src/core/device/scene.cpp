@@ -151,12 +151,12 @@ void RTScene::uploadSceneMediumData() {
 	// For a medium, its index in mediumBuffer is the same as medium->getMediumId();
 	for (auto medium : mScene.lock()->getMedia()) {
 		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) {
-			HomogeneousMedium gMedium(m->sigma_a, m->sigma_s, m->Le, m->g);
+			HomogeneousMedium gMedium(m->sigma_a, m->sigma_s, m->Le, m->g, KRR_DEFAULT_COLORSPACE);
 			mHomogeneousMedium.push_back(gMedium);
 		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
 			float maxDensity{0};
 			mNanoVDBMedium.emplace_back(m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s,
-										m->g, std::move(*m->densityGrid));
+										m->g, std::move(*m->densityGrid), KRR_DEFAULT_COLORSPACE);
 			mNanoVDBMedium.back().initializeFromHost();
 		}
 	}

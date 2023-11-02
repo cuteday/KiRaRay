@@ -190,7 +190,7 @@ class MicrofacetBrdf {
 public:
 	MicrofacetBrdf() = default;
 
-	KRR_CALLABLE MicrofacetBrdf(const Color &R, float eta, float alpha_x, float alpha_y)
+	KRR_CALLABLE MicrofacetBrdf(const SampledSpectrum &R, float eta, float alpha_x, float alpha_y)
 		:R(R), eta(eta){
 		distribution = { alpha_x, alpha_y };
 	}
@@ -202,17 +202,17 @@ public:
 		distribution = { alpha, alpha };
 	}
 
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
+	KRR_CALLABLE SampledSpectrum f(Vector3f wo, Vector3f wi,
 						 TransportMode mode = TransportMode::Radiance) const {
-		if (distribution.isSpecular()) return 0;
-		if (!SameHemisphere(wi, wo)) return 0;
+		if (distribution.isSpecular()) return SampledSpectrum::Zero();
+		if (!SameHemisphere(wi, wo)) return SampledSpectrum::Zero();
 		
 		float cosThetaO = AbsCosTheta(wo), cosThetaI = AbsCosTheta(wi);
 		Vector3f wh = wi + wo;
-		if (cosThetaI == 0 || cosThetaO == 0) return Color::Zero();
-		if (!any(wh)) return 0;
+		if (cosThetaI == 0 || cosThetaO == 0) return SampledSpectrum::Zero();
+		if (!any(wh)) return SampledSpectrum::Zero();
 		wh = normalize(wh);
-		Color F = Fr(wo, wh);
+		SampledSpectrum F = Fr(wo, wh);
 
 		return distribution.D(wh) * distribution.G(wo, wi) * F /
 			(4 * cosThetaI * cosThetaO);
@@ -253,13 +253,13 @@ public:
 		return distribution.Pdf(wo, wh) / (4 * dot(wo, wh));
 	}
 
-	KRR_CALLABLE Color Fr(Vector3f wo, Vector3f wh) const {
+	KRR_CALLABLE SampledSpectrum Fr(Vector3f wo, Vector3f wh) const {
 		// fresnel is also on the microfacet (wrt to wh)
 #if KRR_USE_DISNEY
 		return DisneyFresnel(disneyR0, metallic, eta, dot(wo, wh)) *
 			   R; // etaT / etaI, auto inversion.
 #else
-		return FrSchlick(R, Color3f(1.f), dot(wo, wh));
+		return FrSchlick(R, SampledSpectrum(1), dot(wo, wh));
 		return FrDielectric(dot(wo, wh), eta); // etaT / etaI.
 #endif
 	}
@@ -269,11 +269,11 @@ public:
 		return distribution.isSpecular() ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
 	}
 	
-	Color R{ 1 };	            // specular reflectance
+	SampledSpectrum R{ 1 };	            // specular reflectance
 	float eta{ 1.5 };	        // eta_inner / eta_outer
 
 #if KRR_USE_DISNEY
-	Color disneyR0;
+	SampledSpectrum disneyR0;
 	float metallic;
 	DisneyMicrofacetDistribution distribution;          // separable masking shadow model for disney
 #else
@@ -286,7 +286,7 @@ class MicrofacetBtdf {
 public:
 	MicrofacetBtdf() = default;
 
-	KRR_CALLABLE MicrofacetBtdf(const Color &T, float eta, float alpha_x, float alpha_y)
+	KRR_CALLABLE MicrofacetBtdf(const SampledSpectrum &T, float eta, float alpha_x, float alpha_y)
 		: T(T), etaT(eta) {
 		distribution = { alpha_x, alpha_y };
 		etaT		 = max(1.01f, etaT);
@@ -300,13 +300,13 @@ public:
 		distribution = { alpha, alpha };
 	}
 
-	KRR_CALLABLE Color f(Vector3f wo, Vector3f wi,
+	KRR_CALLABLE SampledSpectrum f(Vector3f wo, Vector3f wi,
 						 TransportMode mode = TransportMode::Radiance) const {
-		if (distribution.isSpecular()) return 0;
-		if (SameHemisphere(wo, wi)) return 0;
+		if (distribution.isSpecular()) return SampledSpectrum::Zero();
+		if (SameHemisphere(wo, wi)) return SampledSpectrum::Zero();
 
 		float cosThetaO = wo[2], cosThetaI = wi[2];
-		if (cosThetaI == 0 || cosThetaO == 0) return 0;
+		if (cosThetaI == 0 || cosThetaO == 0) return SampledSpectrum::Zero();
 
 		// Compute $\wh$ from $\wo$ and $\wi$ for microfacet transmission
 		float eta = CosTheta(wo) > 0 ? etaT : 1 / etaT;
@@ -314,11 +314,11 @@ public:
 		if (wh[2] < 0) wh = -wh;
 
 		// Same side?
-		if (dot(wo, wh) * dot(wi, wh) > 0) return 0;
-		Color F = Fr(wo, wh);
+		if (dot(wo, wh) * dot(wi, wh) > 0) return SampledSpectrum::Zero();
+		SampledSpectrum F = Fr(wo, wh);
 		
 		float sqrtDenom = dot(wo, wh) + eta * dot(wi, wh);
-		Color3f ft = (Color::Ones() - F) * T *
+		SampledSpectrum ft = (SampledSpectrum::Ones() - F) * T *
 			fabs(distribution.D(wh) * distribution.G(wo, wi) *
 				AbsDot(wi, wh) * AbsDot(wo, wh)  /
 				(cosThetaI * cosThetaO * pow2(sqrtDenom)));
@@ -337,7 +337,7 @@ public:
 			if (!Refract(wo, wh, etaT, &eta, &wi))
 				return {};
 			
-			Color ft = (Color::Ones() - Fr(wo, wh)) * T / AbsCosTheta(wi);
+			SampledSpectrum ft = (SampledSpectrum::Ones() - Fr(wo, wh)) * T / AbsCosTheta(wi);
 			if (mode == TransportMode::Radiance) ft /= pow2(eta);
 			return BSDFSample(ft, wi, 1, BSDF_SPECULAR_TRANSMISSION);
 		}
@@ -374,7 +374,7 @@ public:
 		return distribution.isSpecular() ? BSDF_SPECULAR_TRANSMISSION : BSDF_GLOSSY_TRANSMISSION;
 	}
 
-	KRR_CALLABLE Color Fr(Vector3f wo, Vector3f wh) const {
+	KRR_CALLABLE SampledSpectrum Fr(Vector3f wo, Vector3f wh) const {
 #if KRR_USE_DISNEY
 		return DisneyFresnel(disneyR0, metallic, etaT, dot(wo, wh)); // etaT / etaI, auto inversion
 #else
@@ -383,10 +383,10 @@ public:
 #endif
 	}
 
-	Color T{ 0 }; // specular reflectance
+	SampledSpectrum T{ 0 }; // specular reflectance
 	float etaT{ 1.5 }				/* etaA: outside IoR, etaB: inside IoR */;
 #if KRR_USE_DISNEY
-	Color disneyR0;
+	SampledSpectrum disneyR0;
 	float metallic;
 	DisneyMicrofacetDistribution distribution; // separable masking shadow model for disney
 #else

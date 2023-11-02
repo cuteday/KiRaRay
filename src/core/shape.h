@@ -4,7 +4,7 @@
 #include "util/math_utils.h"
 #include "render/sampling.h"
 #include "device/buffer.h"
-#include "taggedptr.h"
+#include "device/taggedptr.h"
 #include "raytracing.h"
 #include "mesh.h"
 
@@ -98,7 +98,7 @@ public:
 		Vector3f wi	   = normalize(ss.intr.p - ctx.p);
 
 		// Convert area sampling PDF in _ss_ to solid angle measure
-		ss.pdf /= fabs(dot(ss.intr.n, wi)) / squaredLength(ctx.p - ss.intr.p);
+		ss.pdf /= fabs(dot(ss.intr.n, wi)) / (ctx.p - ss.intr.p).squaredNorm();
 		if (wi.norm() == 0 || isinf(ss.pdf)) 
 			/* We are sampling the primitive itself ?! */
 			ss.pdf = 0;
@@ -114,7 +114,7 @@ public:
 		// Naive version: always return PDF based on uniform area sampling
 		Vector3f wi = normalize(sample.p - ctx.p);
 		// Compute PDF in solid angle measure from shape intersection point
-		float pdf = (1 / area()) / (fabs(sample.n.dot(-wi)) / squaredLength(ctx.p - sample.p));
+		float pdf = (1 / area()) / (fabs(sample.n.dot(-wi)) / (ctx.p - sample.p).squaredNorm());
 		if (wi.norm() == 0 || isinf(pdf))
 			pdf = 0;
 		return pdf;
