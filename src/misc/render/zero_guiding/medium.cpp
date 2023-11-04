@@ -16,22 +16,22 @@ void ZeroGuidingPT::sampleMediumInteraction(int depth) {
 		mediumSampleQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const MediumSampleWorkItem &w) {
 			/* Each ray is either absorped or scattered after some null collisions... */
-			SampledSpectrum L(0);
+			Spectrum L(0);
 			Ray ray	  = w.ray;
-			SampledSpectrum thp = w.thp;
-			SampledSpectrum pu = w.pu, pl = w.pl;
+			Spectrum thp = w.thp;
+			Spectrum pu = w.pu, pl = w.pl;
 			Sampler sampler			  = &pixelState->sampler[w.pixelId];
 			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
 			int channel				  = lambda.mainIndex();
 			Medium medium			  = ray.medium;
 			bool scattered{false};
 
-			SampledSpectrum T_maj = sampleT_maj(ray, w.tMax, sampler, lambda, 
-				[&](Vector3f p, MediumProperties mp, SampledSpectrum sigma_maj,
-					SampledSpectrum T_maj) -> bool {
+			Spectrum T_maj = sampleT_maj(ray, w.tMax, sampler, lambda, 
+				[&](Vector3f p, MediumProperties mp, Spectrum sigma_maj,
+					Spectrum T_maj) -> bool {
 					if (w.depth < maxDepth && mp.Le.any()) {
 						float pr = sigma_maj[channel] * T_maj[channel];
-						SampledSpectrum pe = pu * sigma_maj * T_maj / pr;
+						Spectrum pe = pu * sigma_maj * T_maj / pr;
 						if (pe.any()) L += thp * mp.sigma_a * T_maj * mp.Le / (pr * pe.mean());
 					}
 					/* [STEP.2] Sample a type of the three scattering events */
@@ -40,7 +40,7 @@ void ZeroGuidingPT::sampleMediumInteraction(int depth) {
 					float pNull		= max(0.f, 1.f - pAbsorb - pScatter);
 					int mode = sampleDiscrete({pAbsorb, pScatter, pNull}, sampler.get1D());
 					if (mode == 0) {					// Absorbed (goodbye)
-						thp = SampledSpectrum::Zero();	// Will not continue
+						thp = Spectrum::Zero();	// Will not continue
 						return false;
 					} else if (mode == 1) {	// Real scattering
 						float pr = T_maj[channel] * mp.sigma_s[channel];
@@ -52,10 +52,10 @@ void ZeroGuidingPT::sampleMediumInteraction(int depth) {
 						scattered = true;	// Continue on another direction
 						return false;
 					} else {				// Null-collision
-						SampledSpectrum sigma_n = (sigma_maj - mp.sigma_a - mp.sigma_s).cwiseMax(0);
+						Spectrum sigma_n = (sigma_maj - mp.sigma_a - mp.sigma_s).cwiseMax(0);
 						float pr = T_maj[channel] * sigma_n[channel];
 						thp *= T_maj * sigma_n / pr;
-						if (pr == 0) thp = SampledSpectrum::Zero();
+						if (pr == 0) thp = Spectrum::Zero();
 						pu *= T_maj * sigma_n / pr;
 						pl *= T_maj * sigma_maj / pr;
 						return thp.any() && pu.any();
@@ -120,11 +120,11 @@ void ZeroGuidingPT::sampleMediumScattering(int depth) {
 				LightSample ls			  = light.sampleLi(sampler.get2D(), ctx, lambda);
 				Ray shadowRay			  = Interaction(w.p, w.time, w.medium).spawnRayTo(ls.intr);
 				Vector3f wi				  = shadowRay.dir.normalized();
-				SampledSpectrum thp		  = w.thp * w.phase.p(wo, wi);
+				Spectrum thp		  = w.thp * w.phase.p(wo, wi);
 				float lightPdf			  = sampledLight.pdf * ls.pdf;
 				float phasePdf			  = light.isDeltaLight() ? 0 : w.phase.pdf(wo, wi);
 				
-				SampledSpectrum Ld = thp * ls.L;
+				Spectrum Ld = thp * ls.L;
 				if (Ld.any() && lightPdf > 0) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
@@ -139,7 +139,7 @@ void ZeroGuidingPT::sampleMediumScattering(int depth) {
 			
 			// [PART-B] Sample indirect lighting with scattering function
 			PhaseFunctionSample ps = w.phase.sample(wo, sampler.get2D());
-			SampledSpectrum thp	   = w.thp * ps.p / ps.pdf;
+			Spectrum thp	   = w.thp * ps.p / ps.pdf;
 			// Russian roulette
 			float rrProb = (thp / w.pu.mean()).maxCoeff();
 			if (w.depth >= 1 && rrProb < 1) {

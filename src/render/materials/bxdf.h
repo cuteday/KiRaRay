@@ -36,13 +36,13 @@ KRR_CALLABLE BSDFType operator|(BSDFType a, BSDFType b) { return BSDFType((int) 
 KRR_CALLABLE BSDFType operator&(BSDFType a, BSDFType b) { return BSDFType((int) a & (int) b); }
 
 struct BSDFSample {
-	SampledSpectrum f{};
+	Spectrum f{};
 	Vector3f wi;
 	float pdf = 0;
 	BSDFType flags;
 
 	KRR_CALLABLE BSDFSample() = default;
-	KRR_CALLABLE BSDFSample(SampledSpectrum f, Vector3f wi, float pdf, BSDFType flags)
+	KRR_CALLABLE BSDFSample(Spectrum f, Vector3f wi, float pdf, BSDFType flags)
 		: f(f), wi(wi), pdf(pdf), flags(flags) {}
 
 	KRR_CALLABLE bool isSpecular() const { return flags & BSDF_SPECULAR; }

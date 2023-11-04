@@ -26,11 +26,6 @@ XYZ SampledSpectrum::toXYZ(const SampledWavelengths &lambda) const {
 		   CIE_Y_integral;
 }
 
-RGB SampledSpectrum::toRGB(const SampledWavelengths &lambda, const RGBColorSpace &cs) const {
-	XYZ xyz = toXYZ(lambda);
-	return cs.toRGB(xyz);
-}
-
 float PiecewiseLinearSpectrum::operator()(float lambda) const {
 	// Handle _PiecewiseLinearSpectrum_ corner cases
 	if (lambdas.empty() || lambda < lambdas.front() || lambda > lambdas.back()) return 0;
@@ -109,7 +104,7 @@ const RGBColorSpace *RGBColorSpace::ACES2065_1;
 
 namespace spec {
 
-std::map<std::string, Spectrum> namedSpectra;
+std::map<std::string, Spectra> namedSpectra;
 
 KRR_DEVICE DenselySampledSpectrum *xGPU, *yGPU, *zGPU;
 DenselySampledSpectrum *x, *y, *z;
@@ -133,44 +128,44 @@ void init(Allocator alloc) {
 	CUDA_CHECK(cudaMemcpyToSymbol(yGPU, &y, sizeof(y)));
 	CUDA_CHECK(cudaMemcpyToSymbol(zGPU, &z, sizeof(z)));
 
-	Spectrum illuma		  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_A, true, alloc);
-	Spectrum illumd50	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_D5000, true, alloc);
-	Spectrum illumacesd60 = PiecewiseLinearSpectrum::fromInterleaved(ACES_Illum_D60, true, alloc);
-	Spectrum illumd65	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_D6500, true, alloc);
-	Spectrum illumf1	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F1, true, alloc);
-	Spectrum illumf2	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F2, true, alloc);
-	Spectrum illumf3	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F3, true, alloc);
-	Spectrum illumf4	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F4, true, alloc);
-	Spectrum illumf5	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F5, true, alloc);
-	Spectrum illumf6	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F6, true, alloc);
-	Spectrum illumf7	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F7, true, alloc);
-	Spectrum illumf8	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F8, true, alloc);
-	Spectrum illumf9	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F9, true, alloc);
-	Spectrum illumf10	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F10, true, alloc);
-	Spectrum illumf11	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F11, true, alloc);
-	Spectrum illumf12	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F12, true, alloc);
+	Spectra illuma		  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_A, true, alloc);
+	Spectra illumd50	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_D5000, true, alloc);
+	Spectra illumacesd60 = PiecewiseLinearSpectrum::fromInterleaved(ACES_Illum_D60, true, alloc);
+	Spectra illumd65	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_D6500, true, alloc);
+	Spectra illumf1	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F1, true, alloc);
+	Spectra illumf2	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F2, true, alloc);
+	Spectra illumf3	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F3, true, alloc);
+	Spectra illumf4	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F4, true, alloc);
+	Spectra illumf5	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F5, true, alloc);
+	Spectra illumf6	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F6, true, alloc);
+	Spectra illumf7	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F7, true, alloc);
+	Spectra illumf8	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F8, true, alloc);
+	Spectra illumf9	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F9, true, alloc);
+	Spectra illumf10	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F10, true, alloc);
+	Spectra illumf11	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F11, true, alloc);
+	Spectra illumf12	  = PiecewiseLinearSpectrum::fromInterleaved(CIE_Illum_F12, true, alloc);
 
-	Spectrum ageta		   = PiecewiseLinearSpectrum::fromInterleaved(Ag_eta, false, alloc);
-	Spectrum agk		   = PiecewiseLinearSpectrum::fromInterleaved(Ag_k, false, alloc);
-	Spectrum aleta		   = PiecewiseLinearSpectrum::fromInterleaved(Al_eta, false, alloc);
-	Spectrum alk		   = PiecewiseLinearSpectrum::fromInterleaved(Al_k, false, alloc);
-	Spectrum aueta		   = PiecewiseLinearSpectrum::fromInterleaved(Au_eta, false, alloc);
-	Spectrum auk		   = PiecewiseLinearSpectrum::fromInterleaved(Au_k, false, alloc);
-	Spectrum cueta		   = PiecewiseLinearSpectrum::fromInterleaved(Cu_eta, false, alloc);
-	Spectrum cuk		   = PiecewiseLinearSpectrum::fromInterleaved(Cu_k, false, alloc);
-	Spectrum cuzneta	   = PiecewiseLinearSpectrum::fromInterleaved(CuZn_eta, false, alloc);
-	Spectrum cuznk		   = PiecewiseLinearSpectrum::fromInterleaved(CuZn_k, false, alloc);
-	Spectrum mgoeta		   = PiecewiseLinearSpectrum::fromInterleaved(MgO_eta, false, alloc);
-	Spectrum mgok		   = PiecewiseLinearSpectrum::fromInterleaved(MgO_k, false, alloc);
-	Spectrum tio2eta	   = PiecewiseLinearSpectrum::fromInterleaved(TiO2_eta, false, alloc);
-	Spectrum tio2k		   = PiecewiseLinearSpectrum::fromInterleaved(TiO2_k, false, alloc);
-	Spectrum glassbk7eta   = PiecewiseLinearSpectrum::fromInterleaved(GlassBK7_eta, false, alloc);
-	Spectrum glassbaf10eta = PiecewiseLinearSpectrum::fromInterleaved(GlassBAF10_eta, false, alloc);
-	Spectrum glassfk51aeta = PiecewiseLinearSpectrum::fromInterleaved(GlassFK51A_eta, false, alloc);
-	Spectrum glasslasf9eta = PiecewiseLinearSpectrum::fromInterleaved(GlassLASF9_eta, false, alloc);
-	Spectrum glasssf5eta   = PiecewiseLinearSpectrum::fromInterleaved(GlassSF5_eta, false, alloc);
-	Spectrum glasssf10eta  = PiecewiseLinearSpectrum::fromInterleaved(GlassSF10_eta, false, alloc);
-	Spectrum glasssf11eta  = PiecewiseLinearSpectrum::fromInterleaved(GlassSF11_eta, false, alloc);
+	Spectra ageta		   = PiecewiseLinearSpectrum::fromInterleaved(Ag_eta, false, alloc);
+	Spectra agk		   = PiecewiseLinearSpectrum::fromInterleaved(Ag_k, false, alloc);
+	Spectra aleta		   = PiecewiseLinearSpectrum::fromInterleaved(Al_eta, false, alloc);
+	Spectra alk		   = PiecewiseLinearSpectrum::fromInterleaved(Al_k, false, alloc);
+	Spectra aueta		   = PiecewiseLinearSpectrum::fromInterleaved(Au_eta, false, alloc);
+	Spectra auk		   = PiecewiseLinearSpectrum::fromInterleaved(Au_k, false, alloc);
+	Spectra cueta		   = PiecewiseLinearSpectrum::fromInterleaved(Cu_eta, false, alloc);
+	Spectra cuk		   = PiecewiseLinearSpectrum::fromInterleaved(Cu_k, false, alloc);
+	Spectra cuzneta	   = PiecewiseLinearSpectrum::fromInterleaved(CuZn_eta, false, alloc);
+	Spectra cuznk		   = PiecewiseLinearSpectrum::fromInterleaved(CuZn_k, false, alloc);
+	Spectra mgoeta		   = PiecewiseLinearSpectrum::fromInterleaved(MgO_eta, false, alloc);
+	Spectra mgok		   = PiecewiseLinearSpectrum::fromInterleaved(MgO_k, false, alloc);
+	Spectra tio2eta	   = PiecewiseLinearSpectrum::fromInterleaved(TiO2_eta, false, alloc);
+	Spectra tio2k		   = PiecewiseLinearSpectrum::fromInterleaved(TiO2_k, false, alloc);
+	Spectra glassbk7eta   = PiecewiseLinearSpectrum::fromInterleaved(GlassBK7_eta, false, alloc);
+	Spectra glassbaf10eta = PiecewiseLinearSpectrum::fromInterleaved(GlassBAF10_eta, false, alloc);
+	Spectra glassfk51aeta = PiecewiseLinearSpectrum::fromInterleaved(GlassFK51A_eta, false, alloc);
+	Spectra glasslasf9eta = PiecewiseLinearSpectrum::fromInterleaved(GlassLASF9_eta, false, alloc);
+	Spectra glasssf5eta   = PiecewiseLinearSpectrum::fromInterleaved(GlassSF5_eta, false, alloc);
+	Spectra glasssf10eta  = PiecewiseLinearSpectrum::fromInterleaved(GlassSF10_eta, false, alloc);
+	Spectra glasssf11eta  = PiecewiseLinearSpectrum::fromInterleaved(GlassSF11_eta, false, alloc);
 
 	namedSpectra = {
 		{"glass-BK7", glassbk7eta},
@@ -319,19 +314,19 @@ void init(Allocator alloc) {
 		{"sony_ilce_9_b", PiecewiseLinearSpectrum::fromInterleaved(sony_ilce_9_b, false, alloc)}};
 }
 
-float innerProduct(Spectrum f, Spectrum g) {
+float innerProduct(Spectra f, Spectra g) {
 	float integral = 0;
 	for (float lambda = cLambdaMin; lambda <= cLambdaMax; ++lambda)
 		integral += f(lambda) * g(lambda);
 	return integral;
 }
 
-XYZ spectrumToXYZ(Spectrum s) {
+XYZ spectrumToXYZ(Spectra s) {
 	return XYZ(innerProduct(&X(), s), innerProduct(&Y(), s), innerProduct(&Z(), s)) /
 		   CIE_Y_integral;
 }
 
-Spectrum getNamedSpectrum(std::string name) {
+Spectra getNamedSpectrum(std::string name) {
 	auto iter = spec::namedSpectra.find(name);
 	if (iter != spec::namedSpectra.end()) return iter->second;
 	return nullptr;

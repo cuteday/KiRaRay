@@ -54,7 +54,7 @@ KRR_DEVICE_FUNCTION void print(const char* fmt, Args &&... args) {
 KRR_DEVICE_FUNCTION void handleHit(PathData& path) {
 	const SurfaceInteraction &intr = path.intr;
 	const rt::Light &light		   = intr.light;
-	SampledSpectrum Le			   = light.L(intr.p, intr.n, intr.uv, intr.wo, path.lambda);
+	Spectrum Le			   = light.L(intr.p, intr.n, intr.uv, intr.wo, path.lambda);
 
 	float weight{ 1 };
 	if (launchParams.NEE && path.depth > 0) {
@@ -98,7 +98,7 @@ KRR_DEVICE_FUNCTION void generateShadowRay(PathData& path) {
 	if (lightPdf == 0)
 		return; // We have sampled on the primitive itself...
 	float bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-	SampledSpectrum bsdfVal =
+	Spectrum bsdfVal =
 		BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType) * fabs(wiLocal[2]);
 	float misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
 	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any()) return;
@@ -195,17 +195,13 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 
 	RGB color = RGB::Zero();
 	for (int i = 0; i < launchParams.spp; i++) {
-		path.throughput = SampledSpectrum::Ones();
-		path.L			= SampledSpectrum::Zero();
+		path.throughput = Spectrum::Ones();
+		path.L			= Spectrum::Zero();
 		path.ray		= camera.getRay(pixel, launchParams.fbSize, path.sampler);
 		path.lambda		= SampledWavelengths::sampleUniform(sampler.get1D());
 
 		tracePath(path);
-#if KRR_RENDER_SPECTRAL
-		color += launchParams.colorSpace->toRGB(path.L, path.lambda);
-#else 
-		color += path.L;
-#endif
+		color += path.L.toRGB(path.lambda, *launchParams.colorSpace);
 	}
 
 	launchParams.colorBuffer.write(RGBA(color, 1.f), fbIndex);

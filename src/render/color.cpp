@@ -5,7 +5,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-RGBColorSpace::RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectrum illuminant,
+RGBColorSpace::RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectra illuminant,
 							 const RGBToSpectrumTable *rgbToSpectrumTable,
 							 const DenselySampledSpectrum *x, const DenselySampledSpectrum *y,
 							 const DenselySampledSpectrum *z, Allocator alloc) :

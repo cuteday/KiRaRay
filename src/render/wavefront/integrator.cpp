@@ -72,7 +72,7 @@ void WavefrontPathTracer::handleHit() {
 	PROFILE("Process intersected rays");
 	ForAllQueued(
 		hitLightRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const HitLightWorkItem &w) {
-			SampledSpectrum Le = w.light.L(w.p, w.n, w.uv, w.wo, pixelState->lambda[w.pixelId]) * w.thp;
+			Spectrum Le = w.light.L(w.p, w.n, w.uv, w.wo, pixelState->lambda[w.pixelId]) * w.thp;
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
 				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
@@ -87,7 +87,7 @@ void WavefrontPathTracer::handleMiss() {
 	const rt::SceneData &sceneData = mScene->mSceneRT->getSceneData();
 	ForAllQueued(
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
-			SampledSpectrum L		  = {};
+			Spectrum L		  = {};
 			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
@@ -123,7 +123,7 @@ void WavefrontPathTracer::generateScatterRays() {
 				Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
 				float lightPdf			= sampledLight.pdf * ls.pdf;
-				SampledSpectrum bsdfVal = BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+				Spectrum bsdfVal = BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 				float bsdfPdf			= light.isDeltaLight()
 											  ? 0
 											  : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
@@ -205,7 +205,7 @@ void WavefrontPathTracer::beginFrame(RenderContext* context) {
 	GPUParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
 			Vector2i pixelCoord		   = {pixelId % frameSize[0], pixelId / frameSize[0]};
-			pixelState->L[pixelId]	   = SampledSpectrum::Zero();
+			pixelState->L[pixelId]	   = Spectrum::Zero();
 			pixelState->pixel[pixelId] = RGB::Zero();
 			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
@@ -252,12 +252,8 @@ void WavefrontPathTracer::render(RenderContext *context) {
 			if (enableNEE) traceShadow();
 		}
 		GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-#if KRR_RENDER_SPECTRAL
 			RGB L = pixelState->L[pixelId].toRGB(pixelState->lambda[pixelId],
 															*KRR_DEFAULT_COLORSPACE_GPU);
-#else
-			RGB L = pixelState->L[pixelId];
-#endif
 			pixelState->pixel[pixelId] = pixelState->pixel[pixelId] + L;
 		}, gpContext->cudaStream);
 	}

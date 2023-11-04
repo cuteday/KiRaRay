@@ -71,10 +71,13 @@ public:
 	/* These functions should not be called within a OptiX kernel. */
 	KRR_HOST_DEVICE float y(const SampledWavelengths &swl) const;
 	KRR_HOST_DEVICE XYZ toXYZ(const SampledWavelengths &swl) const;
-	KRR_HOST_DEVICE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
+	KRR_CALLABLE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
+	KRR_CALLABLE static SampledSpectrum fromRGB(const RGB &rgb, SpectrumType type,
+												   const SampledWavelengths &lambda,
+												   const RGBColorSpace &colorSpace);
 };
 
-class Spectrum :
+class Spectra :
 	public TaggedPointer<RGBBoundedSpectrum, RGBUnboundedSpectrum, DenselySampledSpectrum,
 						 PiecewiseLinearSpectrum> {
 public:
@@ -161,7 +164,7 @@ public:
 		lambdaMin(lambdaMin),
 		lambdaMax(lambdaMax),
 		values(lambdaMax - lambdaMin + 1, alloc) {}
-	DenselySampledSpectrum(Spectrum s, Allocator alloc) :
+	DenselySampledSpectrum(Spectra s, Allocator alloc) :
 		DenselySampledSpectrum(s, cLambdaMin, cLambdaMax, alloc) {}
 	DenselySampledSpectrum(const DenselySampledSpectrum &s, Allocator alloc) :
 		lambdaMin(s.lambdaMin),
@@ -183,7 +186,7 @@ public:
 	KRR_CALLABLE
 	float maxValue() const { return *std::max_element(values.begin(), values.end()); }
 
-	DenselySampledSpectrum(Spectrum spec, int lambdaMin = cLambdaMin, int lambdaMax = cLambdaMax,
+	DenselySampledSpectrum(Spectra spec, int lambdaMin = cLambdaMin, int lambdaMax = cLambdaMax,
 						   Allocator alloc = {}) :
 		lambdaMin(lambdaMin), lambdaMax(lambdaMax), values(lambdaMax - lambdaMin + 1, alloc) {
 		CHECK_GE(lambdaMax, lambdaMin);
@@ -222,15 +225,15 @@ private:
 	gpu::vector<float> values;
 };
 
-inline float Spectrum::operator()(float lambda) const {
+inline float Spectra::operator()(float lambda) const {
 	auto op = [&](auto ptr) -> float { return (*ptr)(lambda); };
 	return dispatch(op);
 }
-inline float Spectrum::maxValue() const {
+inline float Spectra::maxValue() const {
 	auto op = [&](auto ptr) -> float { return ptr->maxValue(); };
 	return dispatch(op);
 }
-inline SampledSpectrum Spectrum::sample(const SampledWavelengths &lambda) const {
+inline SampledSpectrum Spectra::sample(const SampledWavelengths &lambda) const {
 	auto sample = [&](auto ptr) -> SampledSpectrum { return ptr->sample(lambda); };
 	return dispatch(sample);
 }
@@ -238,7 +241,7 @@ inline SampledSpectrum Spectrum::sample(const SampledWavelengths &lambda) const 
 class RGBColorSpace {
 public:
 	// RGBColorSpace Public Methods
-	RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectrum illuminant, 
+	RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectra illuminant, 
 		const RGBToSpectrumTable *rgbToSpectrumTable, 
 		const DenselySampledSpectrum *x, 
 		const DenselySampledSpectrum *y, 
@@ -332,9 +335,9 @@ KRR_CALLABLE const DenselySampledSpectrum &Z() {
 #endif
 }
 
-float innerProduct(Spectrum f, Spectrum g);
-XYZ spectrumToXYZ(Spectrum s);
-Spectrum getNamedSpectrum(std::string name);
+float innerProduct(Spectra f, Spectra g);
+XYZ spectrumToXYZ(Spectra s);
+Spectra getNamedSpectrum(std::string name);
 
 } // namespace spec
 
@@ -360,6 +363,34 @@ inline XYZ RGBColorSpace::toXYZ(SampledSpectrum s, const SampledWavelengths& lam
 inline RGB RGBColorSpace::toRGB(SampledSpectrum s, const SampledWavelengths &lambda) const {
 	XYZ xyz = toXYZ(s, lambda);
 	return toRGB(xyz);
+}
+
+KRR_CALLABLE RGB RGB::fromRGB(const RGB& rgb, SpectrumType type, const SampledWavelengths& lambda,
+	const RGBColorSpace& colorSpace) {
+	return rgb;
+}
+
+KRR_CALLABLE RGB RGB::toRGB(const SampledWavelengths& lambda, const RGBColorSpace& colorSpace) {
+	return *this;
+}
+
+KRR_CALLABLE RGB SampledSpectrum::toRGB(const SampledWavelengths &lambda,
+										const RGBColorSpace &cs) const {
+	return cs.toRGB(*this, lambda);
+}
+
+KRR_CALLABLE SampledSpectrum SampledSpectrum::fromRGB(const RGB &rgb, SpectrumType type,
+	const SampledWavelengths& lambda, const RGBColorSpace& colorSpace) {
+	switch (type) {
+		case SpectrumType::RGBBounded:
+			return RGBBoundedSpectrum(rgb, colorSpace).sample(lambda);
+		case SpectrumType::RGBIlluminant:
+			return RGBUnboundedSpectrum(rgb, colorSpace).sample(lambda) *
+				   colorSpace.illuminant.sample(lambda);
+		case SpectrumType::RGBUnbounded:
+		default:
+			return RGBUnboundedSpectrum(rgb, colorSpace).sample(lambda);
+	}
 }
 
 KRR_CALLABLE float luminance(Color3f color) {

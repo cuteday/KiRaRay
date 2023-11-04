@@ -16,12 +16,34 @@ KRR_NAMESPACE_BEGIN
 constexpr float cLambdaMin = 360, cLambdaMax = 830;
 static constexpr int nSpectrumSamples = KRR_RENDER_SPECTRAL ? 4 : 3;
 
+class RGB;
+class SampledSpectrum;
+class RGBColorSpace;
+class SampledWavelengths;
+
+#if KRR_RENDER_SPECTRAL
+typedef SampledSpectrum Spectrum;
+#else
+typedef RGB Spectrum;
+#endif
+
+enum class SpectrumType {
+	RGBBounded,
+	RGBUnbounded,
+	RGBIlluminant,
+};
+
 class RGB : public Array3f {
 public:
 	using Array3f::Array3f;
 	KRR_CALLABLE float r() const { return (*this)[0]; }
 	KRR_CALLABLE float g() const { return (*this)[1]; }
 	KRR_CALLABLE float b() const { return (*this)[2]; }
+
+	KRR_CALLABLE static RGB fromRGB(const RGB &rgb, SpectrumType type,
+									const SampledWavelengths &lambda,
+									const RGBColorSpace &colorSpace);
+	KRR_CALLABLE RGB toRGB(const SampledWavelengths &lambda, const RGBColorSpace &colorSpace);
 };
 
 class RGBA : public Array4f {

@@ -17,14 +17,14 @@ struct Vertex {
 	DTreeWrapper* dTree;
 	Vector3f dTreeVoxelSize;
 	Ray ray;
-	SampledSpectrum throughput;
-	SampledSpectrum bsdfVal;
-	SampledSpectrum radiance;
+	Spectrum throughput;
+	Spectrum bsdfVal;
+	Spectrum radiance;
 	float wiPdf, bsdfPdf, dTreePdf;
 	float wiMisWeight;	// @addition VAPG
 	bool isDelta;
 
-	KRR_DEVICE void record(const SampledSpectrum &r) {
+	KRR_DEVICE void record(const Spectrum &r) {
 		radiance += r;
 	}
 
@@ -32,17 +32,17 @@ struct Vertex {
 						   EDirectionalFilter directionalFilter,
 						   EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler &sampler,
 						   EDistribution distribution = EDistribution::ERadiance,
-						   const SampledSpectrum &pixelEstimate = {}) {
+						   const Spectrum &pixelEstimate = {}) {
 		if (wiPdf <= 0 || isDelta) return;
 		
-		SampledSpectrum localRadiance(0);
+		Spectrum localRadiance(0);
 		if (throughput[0] * wiPdf > 1e-4f)
 			localRadiance[0] = radiance[0] / throughput[0];
 		if (throughput[1] * wiPdf > 1e-4f)
 			localRadiance[1] = radiance[1] / throughput[1];
 		if (throughput[2] * wiPdf > 1e-4f)
 			localRadiance[2] = radiance[2] / throughput[2];
-		SampledSpectrum product = localRadiance * bsdfVal;
+		Spectrum product = localRadiance * bsdfVal;
 		
 		/* @modified: VAPG */
 		float value	= localRadiance.mean();
@@ -120,13 +120,13 @@ public:
 	GuidedPathStateBuffer(int n, Allocator alloc) : SOA<GuidedPathState>(n, alloc) {}
 
 	KRR_DEVICE void incrementDepth(int pixelId, Ray &ray, DTreeWrapper *dTree,
-								   Vector3f dTreeVoxelSize, SampledSpectrum thp,
-								   SampledSpectrum bsdfVal, float wiPdf, float bsdfPdf,
+								   Vector3f dTreeVoxelSize, Spectrum thp,
+								   Spectrum bsdfVal, float wiPdf, float bsdfPdf,
 								   float dTreePdf, bool isDelta = false) {
 		int depth = n_vertices[pixelId];
 		if (depth >= MAX_TRAIN_DEPTH) return;
 		/* Always remember to clear the radiance from last frame, as I forgotten... */
-		vertices[depth].radiance[pixelId] = SampledSpectrum(0); 
+		vertices[depth].radiance[pixelId] = Spectrum(0); 
 		vertices[depth].ray[pixelId]			= ray;
 		vertices[depth].dTree[pixelId]			= dTree;
 		vertices[depth].dTreeVoxelSize[pixelId] = dTreeVoxelSize;
@@ -141,10 +141,10 @@ public:
 		n_vertices[pixelId] = 1 + depth;
 	}
 
-	KRR_DEVICE void recordRadiance(int pixelId, SampledSpectrum L) {
+	KRR_DEVICE void recordRadiance(int pixelId, Spectrum L) {
 		int cur_depth = n_vertices[pixelId];
 		for (int i = 0; i < cur_depth; i++) {
-			SampledSpectrum prevRadiance  = vertices[i].radiance[pixelId];
+			Spectrum prevRadiance  = vertices[i].radiance[pixelId];
 			vertices[i].radiance[pixelId] = prevRadiance + L;
 		}
 	}
@@ -154,7 +154,7 @@ public:
 		STree* sdTree, float statisticalWeight,
 		ESpatialFilter spatialFilter, EDirectionalFilter directionalFilter,
 		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler& sampler,
-		EDistribution distribution = EDistribution::ERadiance, const SampledSpectrum &pixelEstimate = {}) {
+		EDistribution distribution = EDistribution::ERadiance, const Spectrum &pixelEstimate = {}) {
 		for (int i = 0; i < n_vertices[pixelId]; i++) {
 			Vertex v = vertices[i][pixelId];
 			v.commit(sdTree, statisticalWeight,

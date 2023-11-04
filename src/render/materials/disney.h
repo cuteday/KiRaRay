@@ -34,27 +34,27 @@ class DisneyDiffuse{
 public:
 	DisneyDiffuse() = default;
 
-	KRR_CALLABLE DisneyDiffuse(const SampledSpectrum &R) : R(R) {}
-	KRR_CALLABLE SampledSpectrum f(const Vector3f &wo, const Vector3f &wi) const {
-		if (!SameHemisphere(wo, wi)) return SampledSpectrum::Zero();
+	KRR_CALLABLE DisneyDiffuse(const Spectrum &R) : R(R) {}
+	KRR_CALLABLE Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
+		if (!SameHemisphere(wo, wi)) return Spectrum::Zero();
 		float Fo = SchlickWeight(AbsCosTheta(wo)),
 			Fi = SchlickWeight(AbsCosTheta(wi));
 		return R * M_INV_PI * (1 - Fo / 2) * (1 - Fi / 2);
 	}
 
-	SampledSpectrum R;
+	Spectrum R;
 };
 
 class DisneyFakeSS{
 public:
 	DisneyFakeSS() = default;
 
-	KRR_CALLABLE DisneyFakeSS(const SampledSpectrum &R, float roughness)
+	KRR_CALLABLE DisneyFakeSS(const Spectrum &R, float roughness)
 		: R(R), roughness(roughness) {}
 
-	KRR_CALLABLE SampledSpectrum f(const Vector3f &wo, const Vector3f &wi) const {
+	KRR_CALLABLE Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
 		Vector3f wh = wi + wo;
-		if (!wh.any()) return SampledSpectrum::Zero();
+		if (!wh.any()) return Spectrum::Zero();
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -69,18 +69,18 @@ public:
 		return R * M_INV_PI * ss;
 	};
 
-	SampledSpectrum R;
+	Spectrum R;
 	float roughness;
 };
 
 class DisneyRetro{
 public:
 	DisneyRetro() = default;
-	KRR_CALLABLE DisneyRetro(const SampledSpectrum& R, float roughness)
+	KRR_CALLABLE DisneyRetro(const Spectrum& R, float roughness)
 		: R(R), roughness(roughness) {}
-	KRR_CALLABLE SampledSpectrum f(const Vector3f &wo, const Vector3f &wi) const {
+	KRR_CALLABLE Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
 		Vector3f wh = wi + wo;
-		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return SampledSpectrum::Zero();
+		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0) return Spectrum::Zero();
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -92,24 +92,24 @@ public:
 		return R * M_INV_PI * Rr * (Fo + Fi + Fo * Fi * (Rr - 1));
 	};
 
-	SampledSpectrum R;
+	Spectrum R;
 	float roughness;
 };
 
 class DisneySheen{
 public:
 	DisneySheen() = default;
-	KRR_CALLABLE DisneySheen(const SampledSpectrum& R): R(R) {}
-	KRR_CALLABLE SampledSpectrum f(const Vector3f &wo, const Vector3f &wi) const {
+	KRR_CALLABLE DisneySheen(const Spectrum& R): R(R) {}
+	KRR_CALLABLE Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
 		Vector3f wh = wi + wo;
-		if (!wh.any()) return SampledSpectrum::Zero();
+		if (!wh.any()) return Spectrum::Zero();
 		wh = normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
 		return R * SchlickWeight(cosThetaD);
 	}
 
-	SampledSpectrum R;
+	Spectrum R;
 };
 
 KRR_CALLABLE float GTR1(float cosTheta, float alpha) {
@@ -132,9 +132,9 @@ public:
 	KRR_CALLABLE DisneyClearcoat(float weight, float gloss)
 		: weight(weight), gloss(gloss) {}
 
-	KRR_CALLABLE SampledSpectrum f(const Vector3f &wo, const Vector3f &wi) const {
+	KRR_CALLABLE Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
 		Vector3f wh = wi + wo;
-		if (!wh.any()) return SampledSpectrum::Zero();
+		if (!wh.any()) return Spectrum::Zero();
 		wh = normalize(wh);
 
 		float Dr = GTR1(AbsCosTheta(wh), gloss);
@@ -142,13 +142,13 @@ public:
 		// The geometric term always based on alpha = 0.25.
 		float Gr = smithG_GGX(AbsCosTheta(wo), .25) * smithG_GGX(AbsCosTheta(wi), .25);
 
-		return SampledSpectrum(weight * Gr * Fr * Dr / 4);
+		return Spectrum(weight * Gr * Fr * Dr / 4);
 	};
 
-	KRR_CALLABLE SampledSpectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Vector2f &u,
+	KRR_CALLABLE Spectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Vector2f &u,
 		float* pdf, BSDFType* sampledType) const {
 
-		if (wo[2] == 0) return SampledSpectrum::Zero();
+		if (wo[2] == 0) return Spectrum::Zero();
 
 		float alpha2   = gloss * gloss;
 		float cosTheta = sqrt(max(float(0), (1 - pow(alpha2, 1 - u[0])) / (1 - alpha2)));
@@ -158,7 +158,7 @@ public:
 		if (!SameHemisphere(wo, wh)) wh = -wh;
 
 		*wi = Reflect(wo, wh);
-		if (!SameHemisphere(wo, *wi)) return SampledSpectrum(0);
+		if (!SameHemisphere(wo, *wi)) return Spectrum(0);
 
 		*pdf = Pdf(wo, *wi);
 		return f(wo, *wi);
@@ -199,7 +199,7 @@ public:
 
 	KRR_CALLABLE void setup(const SurfaceInteraction& intr) {
 
-		SampledSpectrum c	 = intr.sd.diffuse;
+		Spectrum c	 = intr.sd.diffuse;
 		float metallicWeight = intr.sd.metallic;
 		float e				 = intr.sd.IoR;
 		float strans		 = intr.sd.specularTransmission;
@@ -207,14 +207,14 @@ public:
 		float roughness		 = intr.sd.roughness;
 		float lum			 = luminance(c);
 		// normalize lum. to isolate hue+sat
-		SampledSpectrum Ctint = SampledSpectrum::Ones();
+		Spectrum Ctint = Spectrum::Ones();
 		if (lum > 0) Ctint = c / lum;
 
 		float sheenWeight = 0;
-		SampledSpectrum Csheen;
+		Spectrum Csheen;
 		if (sheenWeight > 0) {	//unused
 			float stint = 0;
-			Csheen		= lerp(SampledSpectrum(1), Ctint, stint);
+			Csheen		= lerp(Spectrum(1), Ctint, stint);
 		}
 
 		if (diffuseWeight > 0) {
@@ -239,11 +239,11 @@ public:
 
 		// Specular is Trowbridge-Reitz with a modified Fresnel function.
 		float specTint = 1;		// [unused] this is manually set to 1...
-		SampledSpectrum Cspec0   = intr.sd.specular;
+		Spectrum Cspec0   = intr.sd.specular;
 		if (!any(intr.sd.specular)) 
-			Cspec0 = lerp(SchlickR0FromEta(e) * lerp(SampledSpectrum::Ones(), Ctint, specTint), c, metallicWeight);
+			Cspec0 = lerp(SchlickR0FromEta(e) * lerp(Spectrum::Ones(), Ctint, specTint), c, metallicWeight);
 
-		microfacetBrdf = MicrofacetBrdf(SampledSpectrum(1), e, ax, ay);
+		microfacetBrdf = MicrofacetBrdf(Spectrum(1), e, ax, ay);
 		components |= DISNEY_SPEC_REFLECTION;
 #if KRR_USE_DISNEY
 		microfacetBrdf.disneyR0 = Cspec0;
@@ -252,7 +252,7 @@ public:
 
 		// specular BTDF if has transmission
 		if (strans > 0) {
-			SampledSpectrum T = strans * sqrt(c);
+			Spectrum T = strans * sqrt(c);
 
 			microfacetBtdf = MicrofacetBtdf(T, e, ax, ay);
 #if KRR_USE_DISNEY
@@ -270,7 +270,7 @@ public:
 													  (1 - intr.sd.specularTransmission)
 												: 0;
 		pSpecRefl	  = components & DISNEY_SPEC_REFLECTION
-								? lerp(intr.sd.specular, SampledSpectrum::Ones(), approxFresnel).mean() *
+								? lerp(intr.sd.specular, Spectrum::Ones(), approxFresnel).mean() *
 							(1 - intr.sd.specularTransmission * (1 - metallicWeight))
 								: 0;
 		pSpecTrans	  = components & DISNEY_SPEC_TRANSMISSION
@@ -280,9 +280,9 @@ public:
 		if (totalWt > 0) pDiffuse /= totalWt, pSpecRefl /= totalWt, pSpecTrans /= totalWt;
 	}
 
-	KRR_CALLABLE SampledSpectrum f(Vector3f wo, Vector3f wi,
+	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
 						 TransportMode mode = TransportMode::Radiance) const {
-		SampledSpectrum val	 = SampledSpectrum::Zero();
+		Spectrum val	 = Spectrum::Zero();
 		bool reflect = SameHemisphere(wo, wi);
 		if (pDiffuse > 0 && reflect) {
 			val += disneyDiffuse.f(wo, wi);

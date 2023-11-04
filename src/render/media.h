@@ -12,7 +12,7 @@ KRR_NAMESPACE_BEGIN
 
 struct MajorantSegment {
 	float tMin, tMax;
-	SampledSpectrum sigma_maj;
+	Spectrum sigma_maj;
 };
 
 class MajorantGrid : public Grid<float, 3> {
@@ -37,7 +37,7 @@ class MajorantIterator {
 public:
 	MajorantIterator() = default;
 
-	KRR_CALLABLE MajorantIterator(Ray ray, float tMin, float tMax, SampledSpectrum sigma_t, const MajorantGrid *grid = nullptr) 
+	KRR_CALLABLE MajorantIterator(Ray ray, float tMin, float tMax, Spectrum sigma_t, const MajorantGrid *grid = nullptr) 
 		: tMin(tMin), tMax(tMax), sigma_t(sigma_t), grid(grid) {
 		if (!grid) return;	// acts like a homogeneous ray majorant iterator
 		Ray rayGrid(grid->bounds.offset(ray.origin), ray.dir / grid->bounds.diagonal());
@@ -79,7 +79,7 @@ public:
 		float tVoxelExit	   = min(tMax, nextCrossingT[stepAxis]);
 
 		// Get _maxDensity_ for current voxel and initialize _RayMajorantSegment_, _seg_
-		SampledSpectrum sigma_maj = sigma_t * grid->lookup(voxel[0], voxel[1], voxel[2]);
+		Spectrum sigma_maj = sigma_t * grid->lookup(voxel[0], voxel[1], voxel[2]);
 		MajorantSegment seg{tMin, tVoxelExit, sigma_maj};
 
 		// Advance to next voxel in maximum density grid
@@ -93,7 +93,7 @@ public:
 	}
 
 private:
-	SampledSpectrum sigma_t;
+	Spectrum sigma_t;
 	float tMin = M_FLOAT_INF, tMax = -M_FLOAT_INF;
 	const MajorantGrid *grid = nullptr;
 	Array3f nextCrossingT, deltaT;
@@ -110,33 +110,23 @@ public:
 
 	KRR_CALLABLE bool isEmissive() const { return L_e.any(); }
 
-	KRR_CALLABLE SampledSpectrum Le(Vector3f p, const SampledWavelengths &lambda) const { 
-#if KRR_RENDER_SPECTRAL
-		return RGBUnboundedSpectrum(L_e, *colorSpace).sample(lambda); 
-#else
-		return L_e;
-#endif
+	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const { 
+		Spectrum::fromRGB(L_e, SpectrumType::RGBUnbounded, lambda, *colorSpace);
 	}
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const {
-#if KRR_RENDER_SPECTRAL
-		return {RGBUnboundedSpectrum(sigma_a, *colorSpace).sample(lambda),
-				RGBUnboundedSpectrum(sigma_s, *colorSpace).sample(lambda), &phase, Le(p, lambda)};
-#else 		
-		return {sigma_a, sigma_s, &phase, L_e};
-#endif
+		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace),
+				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace), 
+				&phase, Le(p, lambda)};
 	}
 
 	KRR_CALLABLE MajorantIterator sampleRay(const Ray &ray, float tMax,
 											const SampledWavelengths &lambda) const {
-#if KRR_RENDER_SPECTRAL
-		return MajorantIterator{ray, 0, tMax,
-								RGBUnboundedSpectrum(sigma_a, *colorSpace).sample(lambda) +
-									RGBUnboundedSpectrum(sigma_s, *colorSpace).sample(lambda),
-								nullptr};
-#else
-		return MajorantIterator{ray, 0, tMax, sigma_a + sigma_s, nullptr};
-#endif
+		return MajorantIterator{
+			ray, 0, tMax,
+			Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) +
+				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace),
+			nullptr};
 	}
 
 	RGB sigma_a, sigma_s, L_e;
@@ -153,20 +143,16 @@ public:
 
 	KRR_CALLABLE bool isEmissive() const { return false; }
 
-	KRR_CALLABLE SampledSpectrum Le(Vector3f p, const SampledWavelengths &lambda) const {
-		return SampledSpectrum::Zero();
+	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const {
+		return Spectrum::Zero();
 	}
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const { 
 		p = inverseTransform * p;
 		float d = densityGrid.getDensity(p);
-#if KRR_RENDER_SPECTRAL
-		return {RGBUnboundedSpectrum(sigma_a, *colorSpace).sample(lambda) * d,
-				RGBUnboundedSpectrum(sigma_s, *colorSpace).sample(lambda) * d, &phase,
-				Le(p, lambda)};
-#else
-		return {sigma_a * d, sigma_s * d, &phase, Le(p, lambda)};
-#endif
+		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) * d,
+				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace) * d,
+				&phase, Le(p, lambda)};
 	}
 
 	KRR_CALLABLE MajorantIterator sampleRay(const Ray &ray, float raytMax,
@@ -175,14 +161,11 @@ public:
 		AABB3f box	 = densityGrid.getBounds();
 		Ray localRay = inverseTransform * ray;
 		if(!box.intersect(localRay.origin, localRay.dir, raytMax, &tMin, &tMax)) return {};
-#if KRR_RENDER_SPECTRAL
-		return MajorantIterator{localRay, tMin, tMax, 
-			RGBUnboundedSpectrum(sigma_a, *colorSpace).sample(lambda) +
-									RGBUnboundedSpectrum(sigma_s, *colorSpace).sample(lambda),
+		return MajorantIterator{
+			localRay, tMin, tMax,
+			Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) +
+				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace),
 			&majorantGrid};
-#else
-		return MajorantIterator{localRay, tMin, tMax, sigma_a + sigma_s, &majorantGrid};
-#endif
 	}
 
 	NanoVDBGrid densityGrid;
@@ -195,8 +178,8 @@ public:
 
 /* Put these definitions here since the optix kernel will need them... */
 /* Definitions of inline functions should be put into header files. */
-inline SampledSpectrum Medium::Le(Vector3f p, const SampledWavelengths &lambda) const {
-	auto Le = [&](auto ptr) -> SampledSpectrum { return ptr->Le(p, lambda); };
+inline Spectrum Medium::Le(Vector3f p, const SampledWavelengths &lambda) const {
+	auto Le = [&](auto ptr) -> Spectrum { return ptr->Le(p, lambda); };
 	return dispatch(Le);
 }
 

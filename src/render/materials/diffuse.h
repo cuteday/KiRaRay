@@ -25,9 +25,9 @@ public:
 		diffuse = intr.sd.diffuse;
 	}
 
-	KRR_CALLABLE SampledSpectrum f(Vector3f wo, Vector3f wi,
+	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
 						 TransportMode mode = TransportMode::Radiance) const {
-		if (!SameHemisphere(wo, wi)) return SampledSpectrum::Zero();
+		if (!SameHemisphere(wo, wi)) return Spectrum::Zero();
 		return diffuse * M_INV_PI;
 	}
 
@@ -53,7 +53,7 @@ public:
 		return diffuse.any() ? BSDF_DIFFUSE : BSDF_UNSET;
 	}
 
-	SampledSpectrum diffuse;
+	Spectrum diffuse;
 };
 
 class DiffuseBsdf {
@@ -71,7 +71,7 @@ public:
 		}
 	}
 
-	KRR_CALLABLE SampledSpectrum f(Vector3f wo, Vector3f wi) const {
+	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi) const {
 		if (SameHemisphere(wo, wi)) return reflection * M_INV_PI;
 		return transmission * M_INV_PI;
 	}
@@ -101,7 +101,7 @@ public:
 		return pT * fabs(wi[2]);
 	}
 
-	SampledSpectrum reflection{ 0 }, transmission{ 0 };
+	Spectrum reflection{ 0 }, transmission{ 0 };
 	float pR{ 1 }, pT{ 0 };
 };
 
