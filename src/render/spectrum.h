@@ -71,10 +71,10 @@ public:
 	/* These functions should not be called within a OptiX kernel. */
 	KRR_HOST_DEVICE float y(const SampledWavelengths &swl) const;
 	KRR_HOST_DEVICE XYZ toXYZ(const SampledWavelengths &swl) const;
-	KRR_HOST_DEVICE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
+	KRR_CALLABLE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
 	KRR_CALLABLE static SampledSpectrum fromRGB(const RGB &rgb, SpectrumType type,
 												   const SampledWavelengths &lambda,
-												   const RGBColorSpace *colorSpace);
+												   const RGBColorSpace &colorSpace);
 };
 
 class Spectra :
@@ -366,21 +366,30 @@ inline RGB RGBColorSpace::toRGB(SampledSpectrum s, const SampledWavelengths &lam
 }
 
 KRR_CALLABLE RGB RGB::fromRGB(const RGB& rgb, SpectrumType type, const SampledWavelengths& lambda,
-	const RGBColorSpace* colorSpace) {
+	const RGBColorSpace& colorSpace) {
 	return rgb;
 }
 
+KRR_CALLABLE RGB RGB::toRGB(const SampledWavelengths& lambda, const RGBColorSpace& colorSpace) {
+	return *this;
+}
+
+KRR_CALLABLE RGB SampledSpectrum::toRGB(const SampledWavelengths &lambda,
+										const RGBColorSpace &cs) const {
+	return cs.toRGB(*this, lambda);
+}
+
 KRR_CALLABLE SampledSpectrum SampledSpectrum::fromRGB(const RGB &rgb, SpectrumType type,
-	const SampledWavelengths& lambda, const RGBColorSpace* colorSpace) {
+	const SampledWavelengths& lambda, const RGBColorSpace& colorSpace) {
 	switch (type) {
 		case SpectrumType::RGBBounded:
-			return RGBBoundedSpectrum(rgb, *colorSpace).sample(lambda);
+			return RGBBoundedSpectrum(rgb, colorSpace).sample(lambda);
 		case SpectrumType::RGBIlluminant:
-			return RGBUnboundedSpectrum(rgb, *colorSpace).sample(lambda) *
-				   colorSpace->illuminant.sample(lambda);
+			return RGBUnboundedSpectrum(rgb, colorSpace).sample(lambda) *
+				   colorSpace.illuminant.sample(lambda);
 		case SpectrumType::RGBUnbounded:
 		default:
-			return RGBUnboundedSpectrum(rgb, *colorSpace).sample(lambda);
+			return RGBUnboundedSpectrum(rgb, colorSpace).sample(lambda);
 	}
 }
 

@@ -42,7 +42,8 @@ public:
 
 	KRR_CALLABLE static RGB fromRGB(const RGB &rgb, SpectrumType type,
 									const SampledWavelengths &lambda,
-									const RGBColorSpace *colorSpace);
+									const RGBColorSpace &colorSpace);
+	KRR_CALLABLE RGB toRGB(const SampledWavelengths &lambda, const RGBColorSpace &colorSpace);
 };
 
 class RGBA : public Array4f {

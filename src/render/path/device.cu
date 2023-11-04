@@ -201,11 +201,7 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 		path.lambda		= SampledWavelengths::sampleUniform(sampler.get1D());
 
 		tracePath(path);
-#if KRR_RENDER_SPECTRAL
-		color += launchParams.colorSpace->toRGB(path.L, path.lambda);
-#else 
-		color += path.L;
-#endif
+		color += path.L.toRGB(path.lambda, *launchParams.colorSpace);
 	}
 
 	launchParams.colorBuffer.write(RGBA(color, 1.f), fbIndex);

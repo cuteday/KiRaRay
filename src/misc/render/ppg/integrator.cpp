@@ -261,12 +261,8 @@ void PPGPathTracer::render(RenderContext *context) {
 	// write results of the current frame...
 	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
 	GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-#if KRR_RENDER_SPECTRAL
 		RGB L = pixelState->L[pixelId].toRGB(pixelState->lambda[pixelId],
 				*KRR_DEFAULT_COLORSPACE_GPU) / samplesPerPixel;
-#else
-		RGB L = RGB(pixelState->L[pixelId]) / samplesPerPixel;
-#endif
 		if (enableClamp) L.clamp(0, clampMax);
 		m_image->put(RGBA(L, 1.f), pixelId);
 		if (m_renderMode == RenderMode::Interactive)
@@ -295,13 +291,9 @@ void PPGPathTracer::endFrame(RenderContext* context) {
 			Sampler sampler = &pixelState->sampler[pixelId];
 			Spectrum pixelEstimate(0.5);
 			if (m_isBuilt && m_distribution == EDistribution::EFull)
-#if KRR_RENDER_SPECTRAL
-				pixelEstimate = RGBUnboundedSpectrum(m_pixelEstimate->getPixel(pixelId).head<3>(),
-													 *KRR_DEFAULT_COLORSPACE_GPU)
-									.sample(pixelState->lambda[pixelId]);
-#else 
-				pixelEstimate = m_pixelEstimate->getPixel(pixelId).head<3>();
-#endif
+				pixelEstimate = Spectrum::fromRGB(
+					m_pixelEstimate->getPixel(pixelId).head<3>(), SpectrumType::RGBUnbounded,
+					pixelState->lambda[pixelId], *KRR_DEFAULT_COLORSPACE_GPU);
 			guidedPathState->commitAll(pixelId, m_sdTree, 1.f, m_spatialFilter, m_directionalFilter, m_bsdfSamplingFractionLoss, sampler,
 										   m_distribution, pixelEstimate);
 		});

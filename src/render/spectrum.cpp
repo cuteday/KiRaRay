@@ -26,11 +26,6 @@ XYZ SampledSpectrum::toXYZ(const SampledWavelengths &lambda) const {
 		   CIE_Y_integral;
 }
 
-RGB SampledSpectrum::toRGB(const SampledWavelengths &lambda, const RGBColorSpace &cs) const {
-	XYZ xyz = toXYZ(lambda);
-	return cs.toRGB(xyz);
-}
-
 float PiecewiseLinearSpectrum::operator()(float lambda) const {
 	// Handle _PiecewiseLinearSpectrum_ corner cases
 	if (lambdas.empty() || lambda < lambdas.front() || lambda > lambdas.back()) return 0;

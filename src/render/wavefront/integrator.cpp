@@ -252,12 +252,8 @@ void WavefrontPathTracer::render(RenderContext *context) {
 			if (enableNEE) traceShadow();
 		}
 		GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-#if KRR_RENDER_SPECTRAL
 			RGB L = pixelState->L[pixelId].toRGB(pixelState->lambda[pixelId],
 															*KRR_DEFAULT_COLORSPACE_GPU);
-#else
-			RGB L = pixelState->L[pixelId];
-#endif
 			pixelState->pixel[pixelId] = pixelState->pixel[pixelId] + L;
 		}, gpContext->cudaStream);
 	}
