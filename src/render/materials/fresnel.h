@@ -9,7 +9,7 @@ KRR_NAMESPACE_BEGIN
 
 namespace bsdf {
 	
-	KRR_CALLABLE SampledSpectrum FrSchlick(SampledSpectrum f0, SampledSpectrum f90, float cosTheta) {
+	KRR_CALLABLE Spectrum FrSchlick(Spectrum f0, Spectrum f90, float cosTheta) {
 		return f0 + (f90 - f0) * pow5(clamp(1 - fabs(cosTheta), 0.f, 1.f)); // clamp to avoid NaN if cosTheta = 1+epsilon
 	}
 
@@ -62,8 +62,8 @@ namespace bsdf {
 	}
 
 	// eta: etaT/etaI if incident ray (etaB / etaA)
-	KRR_CALLABLE SampledSpectrum DisneyFresnel(const SampledSpectrum &R0, float metallic, float eta, float cosI) {
-		return lerp(SampledSpectrum(FrDielectric(cosI, eta)), FrSchlick(R0, SampledSpectrum(1), cosI), metallic);
+	KRR_CALLABLE Spectrum DisneyFresnel(const Spectrum &R0, float metallic, float eta, float cosI) {
+		return lerp(Spectrum(FrDielectric(cosI, eta)), FrSchlick(R0, Spectrum(1), cosI), metallic);
 	}
 
 }

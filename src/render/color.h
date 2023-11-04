@@ -16,8 +16,16 @@ KRR_NAMESPACE_BEGIN
 constexpr float cLambdaMin = 360, cLambdaMax = 830;
 static constexpr int nSpectrumSamples = KRR_RENDER_SPECTRAL ? 4 : 3;
 
+class RGB;
+class SampledSpectrum;
 class RGBColorSpace;
 class SampledWavelengths;
+
+#if KRR_RENDER_SPECTRAL
+typedef SampledSpectrum Spectrum;
+#else
+typedef RGB Spectrum;
+#endif
 
 enum class SpectrumType {
 	RGBBounded,

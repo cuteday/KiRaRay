@@ -39,8 +39,8 @@ struct HitInfo {
 
 struct BSDFData {
 	float IoR{1.5};
-	SampledSpectrum diffuse;	// diffuse reflectance
-	SampledSpectrum specular;	// specular reflectance
+	Spectrum diffuse;	// diffuse reflectance
+	Spectrum specular;	// specular reflectance
 	float specularTransmission{0};
 	float roughness{1};	  // linear roughness (alpha=roughness^2)
 	float metallic{0};	  //

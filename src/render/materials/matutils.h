@@ -12,7 +12,7 @@
 		return bsdf.sample(wo, sg, mode);                                                          \
 	}                                                                                              \
                                                                                                    \
-	KRR_CALLABLE static SampledSpectrum fInternal(const SurfaceInteraction &intr, Vector3f wo,     \
+	KRR_CALLABLE static Spectrum fInternal(const SurfaceInteraction &intr, Vector3f wo,     \
 												  Vector3f wi,                                     \
 												  TransportMode mode = TransportMode::Radiance) {  \
 		bsdf_name bsdf;                                                                            \

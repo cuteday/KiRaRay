@@ -95,7 +95,7 @@ extern "C" __global__ void KRR_RT_RG(Shadow)() {
 			 OptixRayFlags( OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
 		visible);
 	if (visible) {
-		SampledSpectrum contrib = r.Ld / (r.pl + r.pu).mean();
+		Spectrum contrib = r.Ld / (r.pl + r.pu).mean();
 		launchParams.pixelState->addRadiance(r.pixelId, contrib);
 		if (launchParams.enableTraining)
 			launchParams.guidedState->recordRadiance(r.pixelId, contrib);

@@ -106,7 +106,7 @@ void ZeroGuidingPT::handleHit() {
 	PROFILE("Process intersected rays");
 	ForAllQueued(hitLightRayQueue, maxQueueSize,
 		KRR_DEVICE_LAMBDA(const HitLightWorkItem & w){
-			SampledSpectrum Le =
+			Spectrum Le =
 				w.light.L(w.p, w.n, w.uv, w.wo, pixelState->lambda[w.pixelId]) * w.thp;
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
@@ -122,7 +122,7 @@ void ZeroGuidingPT::handleMiss() {
 	PROFILE("Process escaped rays");
 	const rt::SceneData& sceneData = mScene->mSceneRT->getSceneData();
 	ForAllQueued(missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem & w) {
-			SampledSpectrum L = {};
+			Spectrum L = {};
 			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
@@ -162,7 +162,7 @@ void ZeroGuidingPT::handleIntersections() {
 			Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
 			float lightPdf	= sampledLight.pdf * ls.pdf;
-			SampledSpectrum bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+			Spectrum bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 			float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
 			if (lightPdf > 0 && bsdfVal.any()) {
 				ShadowRayWorkItem sw = {};
@@ -296,7 +296,7 @@ void ZeroGuidingPT::endFrame(RenderContext* context) {
 		PROFILE("Training SD-Tree");
 		GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId){
 			Sampler sampler = &pixelState->sampler[pixelId];
-			SampledSpectrum pixelEstimate(0.5);
+			Spectrum pixelEstimate(0.5);
 			if (m_isBuilt && m_distribution == EDistribution::EFull)
 #if KRR_RENDER_SPECTRAL
 				pixelEstimate = RGBUnboundedSpectrum(m_pixelEstimate->getPixel(pixelId).head<3>(),

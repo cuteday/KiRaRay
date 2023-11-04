@@ -13,7 +13,7 @@ using namespace rt;
 /* Remember to copy these definitions to workitem.soa whenever changing them. */
 
 struct PixelState {
-	SampledSpectrum L;
+	Spectrum L;
 	RGB pixel;
 	PCGSampler sampler;
 	SampledWavelengths lambda;
@@ -22,8 +22,8 @@ struct PixelState {
 struct RayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	SampledSpectrum thp;
-	SampledSpectrum pu, pl;
+	Spectrum thp;
+	Spectrum pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -32,8 +32,8 @@ struct RayWorkItem {
 struct MissRayWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	SampledSpectrum thp;
-	SampledSpectrum pu, pl;
+	Spectrum thp;
+	Spectrum pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -46,8 +46,8 @@ struct HitLightWorkItem {
 	Vector3f wo;
 	Vector3f n;
 	Vector2f uv;
-	SampledSpectrum thp;
-	SampledSpectrum pu, pl;
+	Spectrum thp;
+	Spectrum pu, pl;
 	BSDFType bsdfType;
 	uint depth;
 	uint pixelId;
@@ -56,14 +56,14 @@ struct HitLightWorkItem {
 struct ShadowRayWorkItem {
 	Ray ray;
 	float tMax;
-	SampledSpectrum Ld;
-	SampledSpectrum pu, pl;
+	Spectrum Ld;
+	Spectrum pu, pl;
 	uint pixelId;
 };
 
 struct ScatterRayWorkItem {
-	SampledSpectrum thp;
-	SampledSpectrum pu;
+	Spectrum thp;
+	Spectrum pu;
 	SurfaceInteraction intr;
 	uint depth;
 	uint pixelId;
@@ -72,8 +72,8 @@ struct ScatterRayWorkItem {
 struct MediumSampleWorkItem {
 	Ray ray;
 	LightSampleContext ctx;
-	SampledSpectrum thp;
-	SampledSpectrum pu, pl;
+	Spectrum thp;
+	Spectrum pu, pl;
 	float tMax;
 	SurfaceInteraction intr;	// has hit a surface as well...
 	BSDFType bsdfType;
@@ -83,8 +83,8 @@ struct MediumSampleWorkItem {
 
 struct MediumScatterWorkItem {
 	Vector3f p;
-	SampledSpectrum thp;
-	SampledSpectrum pu;
+	Spectrum thp;
+	Spectrum pu;
 	Vector3f wo;
 	float time;
 	Medium medium;

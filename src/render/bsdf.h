@@ -23,9 +23,9 @@ public:
 		return dispatch(sample, bsdfIndex);
 	}
 
-	KRR_CALLABLE static SampledSpectrum f(const SurfaceInteraction &intr, Vector3f wo, Vector3f wi,
+	KRR_CALLABLE static Spectrum f(const SurfaceInteraction &intr, Vector3f wo, Vector3f wi,
 								int bsdfIndex, TransportMode mode = TransportMode::Radiance) {
-		auto f = [&](auto ptr) -> SampledSpectrum { return ptr->fInternal(intr, wo, wi, mode); };
+		auto f = [&](auto ptr) -> Spectrum { return ptr->fInternal(intr, wo, wi, mode); };
 		return dispatch(f, bsdfIndex);
 	}
 
@@ -46,9 +46,9 @@ public:
 	}
 
 	// [NOTE] f the cosine theta term in render equation is not contained in f().
-	KRR_CALLABLE SampledSpectrum f(Vector3f wo, Vector3f wi,
+	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
 						 TransportMode mode = TransportMode::Radiance) const {
-		auto f = [&](auto ptr) -> SampledSpectrum { return ptr->f(wo, wi, mode); };
+		auto f = [&](auto ptr) -> Spectrum { return ptr->f(wo, wi, mode); };
 		return dispatch(f);
 	}
 

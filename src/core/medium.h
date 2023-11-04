@@ -27,16 +27,16 @@ public:
 };
 
 struct MediumProperties {
-	SampledSpectrum sigma_a, sigma_s;
+	Spectrum sigma_a, sigma_s;
 	PhaseFunction phase;
-	SampledSpectrum Le;
+	Spectrum Le;
 };
 
 class Medium : public TaggedPointer<HomogeneousMedium, NanoVDBMedium> {
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_CALLABLE SampledSpectrum Le(Vector3f p, const SampledWavelengths& lambda) const;
+	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths& lambda) const;
 
 	KRR_CALLABLE bool isEmissive() const;
 

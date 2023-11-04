@@ -15,11 +15,11 @@ public:
 	PixelStateBuffer() = default;
 	PixelStateBuffer(int n, Allocator alloc) : SOA<PixelState>(n, alloc) {}
 
-	KRR_CALLABLE void setRadiance(int pixelId, const SampledSpectrum& L_val){
+	KRR_CALLABLE void setRadiance(int pixelId, const Spectrum& L_val){
 		L[pixelId] = L_val;
 	}
-	KRR_CALLABLE void addRadiance(int pixelId, const SampledSpectrum& L_val) {
-		L[pixelId] = L_val + SampledSpectrum(L[pixelId]);
+	KRR_CALLABLE void addRadiance(int pixelId, const Spectrum& L_val) {
+		L[pixelId] = L_val + Spectrum(L[pixelId]);
 	}
 };
 
@@ -109,16 +109,16 @@ public:
 	KRR_CALLABLE int pushCameraRay(Ray ray, uint pixelId) {
 		int index = allocateEntry();
 		this->depth[index]	 = 0;
-		this->thp[index]	 = SampledSpectrum::Ones();
-		this->pu[index]		 = SampledSpectrum::Ones();
-		this->pl[index]		 = SampledSpectrum::Ones();
+		this->thp[index]	 = Spectrum::Ones();
+		this->pu[index]		 = Spectrum::Ones();
+		this->pl[index]		 = Spectrum::Ones();
 		this->pixelId[index] = pixelId;
 		this->ray[index]	 = ray;
 		return index;
 	}
 
-	KRR_CALLABLE int push(const Ray& ray, const LightSampleContext& ctx, const SampledSpectrum& thp, 
-						  const SampledSpectrum &pu, const SampledSpectrum &pl, uint depth,
+	KRR_CALLABLE int push(const Ray& ray, const LightSampleContext& ctx, const Spectrum& thp, 
+						  const Spectrum &pu, const Spectrum &pl, uint depth,
 						  uint pixelId, BSDFType bsdfType) {
 		int index = allocateEntry();
 		this->ray[index]	  = ray;
@@ -151,8 +151,8 @@ public:
 		return index;
 	}
 
-	KRR_CALLABLE int push(const Ray &ray, const LightSampleContext &ctx, const SampledSpectrum &thp,
-						  const SampledSpectrum &pu, const SampledSpectrum &pl, BSDFType bsdfType,
+	KRR_CALLABLE int push(const Ray &ray, const LightSampleContext &ctx, const Spectrum &thp,
+						  const Spectrum &pu, const Spectrum &pl, BSDFType bsdfType,
 						  uint depth, uint pixelId) {
 		int index			  = allocateEntry();
 		this->ray[index]	  = ray;
@@ -190,8 +190,8 @@ public:
 	}
 	
 	KRR_CALLABLE int push(const SurfaceInteraction& intr, const LightSampleContext& prevCtx,
-						  BSDFType bsdfType, uint depth, uint pixelId, const SampledSpectrum &thp,
-						  const SampledSpectrum &pu, const SampledSpectrum &pl) {
+						  BSDFType bsdfType, uint depth, uint pixelId, const Spectrum &thp,
+						  const Spectrum &pu, const Spectrum &pl) {
 		int index			  = allocateEntry();
 		this->depth[index]	  = depth;
 		this->thp[index]	  = thp;
@@ -220,8 +220,8 @@ public:
 	using WorkQueue::WorkQueue;
 	using WorkQueue::push;
 
-	KRR_CALLABLE int push(const SurfaceInteraction &intr, const SampledSpectrum &thp,
-						  const SampledSpectrum &pu, uint depth, uint pixelId) {
+	KRR_CALLABLE int push(const SurfaceInteraction &intr, const Spectrum &thp,
+						  const Spectrum &pu, uint depth, uint pixelId) {
 		int index = allocateEntry();
 		this->intr[index]	 = intr;
 		this->thp[index]	 = thp;
@@ -270,7 +270,7 @@ public:
 	using WorkQueue::push;
 	using WorkQueue::WorkQueue;
 
-	KRR_CALLABLE int push(Vector3f p, const SampledSpectrum &thp, const SampledSpectrum &pu,
+	KRR_CALLABLE int push(Vector3f p, const Spectrum &thp, const Spectrum &pu,
 						  Vector3f wo, float time, Medium medium, PhaseFunction phase, uint depth,
 						  uint pixelId) {
 		int index = allocateEntry();

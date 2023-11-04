@@ -47,8 +47,8 @@ struct LaunchParamsPT {
 };
 
 struct PathData {
-	SampledSpectrum L{};		// total contribution to the current pixel
-	SampledSpectrum throughput; // maintain the throughput of path
+	Spectrum L{};		// total contribution to the current pixel
+	Spectrum throughput; // maintain the throughput of path
 	float pdf;					// BxDF sampling pdf from last scatter
 	int depth;					// number of vertices along the path
 	BSDFType bsdfType;			// the sampled type of the last scatter event

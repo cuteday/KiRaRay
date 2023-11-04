@@ -12,7 +12,7 @@ KRR_NAMESPACE_BEGIN
 
 struct MajorantSegment {
 	float tMin, tMax;
-	SampledSpectrum sigma_maj;
+	Spectrum sigma_maj;
 };
 
 class MajorantGrid : public Grid<float, 3> {
@@ -37,7 +37,7 @@ class MajorantIterator {
 public:
 	MajorantIterator() = default;
 
-	KRR_CALLABLE MajorantIterator(Ray ray, float tMin, float tMax, SampledSpectrum sigma_t, const MajorantGrid *grid = nullptr) 
+	KRR_CALLABLE MajorantIterator(Ray ray, float tMin, float tMax, Spectrum sigma_t, const MajorantGrid *grid = nullptr) 
 		: tMin(tMin), tMax(tMax), sigma_t(sigma_t), grid(grid) {
 		if (!grid) return;	// acts like a homogeneous ray majorant iterator
 		Ray rayGrid(grid->bounds.offset(ray.origin), ray.dir / grid->bounds.diagonal());
@@ -79,7 +79,7 @@ public:
 		float tVoxelExit	   = min(tMax, nextCrossingT[stepAxis]);
 
 		// Get _maxDensity_ for current voxel and initialize _RayMajorantSegment_, _seg_
-		SampledSpectrum sigma_maj = sigma_t * grid->lookup(voxel[0], voxel[1], voxel[2]);
+		Spectrum sigma_maj = sigma_t * grid->lookup(voxel[0], voxel[1], voxel[2]);
 		MajorantSegment seg{tMin, tVoxelExit, sigma_maj};
 
 		// Advance to next voxel in maximum density grid
@@ -93,7 +93,7 @@ public:
 	}
 
 private:
-	SampledSpectrum sigma_t;
+	Spectrum sigma_t;
 	float tMin = M_FLOAT_INF, tMax = -M_FLOAT_INF;
 	const MajorantGrid *grid = nullptr;
 	Array3f nextCrossingT, deltaT;
@@ -110,7 +110,7 @@ public:
 
 	KRR_CALLABLE bool isEmissive() const { return L_e.any(); }
 
-	KRR_CALLABLE SampledSpectrum Le(Vector3f p, const SampledWavelengths &lambda) const { 
+	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const { 
 #if KRR_RENDER_SPECTRAL
 		return RGBUnboundedSpectrum(L_e, *colorSpace).sample(lambda); 
 #else
@@ -153,8 +153,8 @@ public:
 
 	KRR_CALLABLE bool isEmissive() const { return false; }
 
-	KRR_CALLABLE SampledSpectrum Le(Vector3f p, const SampledWavelengths &lambda) const {
-		return SampledSpectrum::Zero();
+	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const {
+		return Spectrum::Zero();
 	}
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const { 
@@ -195,8 +195,8 @@ public:
 
 /* Put these definitions here since the optix kernel will need them... */
 /* Definitions of inline functions should be put into header files. */
-inline SampledSpectrum Medium::Le(Vector3f p, const SampledWavelengths &lambda) const {
-	auto Le = [&](auto ptr) -> SampledSpectrum { return ptr->Le(p, lambda); };
+inline Spectrum Medium::Le(Vector3f p, const SampledWavelengths &lambda) const {
+	auto Le = [&](auto ptr) -> Spectrum { return ptr->Le(p, lambda); };
 	return dispatch(Le);
 }
 

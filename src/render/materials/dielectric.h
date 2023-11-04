@@ -23,7 +23,7 @@ public:
 	
 	_DEFINE_BSDF_INTERNAL_ROUTINES(DielectricBsdf);
 
-	KRR_CALLABLE DielectricBsdf(SampledSpectrum base, float eta, float alpha_x, float alpha_y) {
+	KRR_CALLABLE DielectricBsdf(Spectrum base, float eta, float alpha_x, float alpha_y) {
 		baseColor	 = base;
 		eta			 = eta;
 		distribution = GGXMicrofacetDistribution(alpha_x, alpha_y);
@@ -36,9 +36,9 @@ public:
 		distribution = { alpha, alpha };
 	}
 
-	KRR_CALLABLE SampledSpectrum f(Vector3f wo, Vector3f wi,
+	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
 								   TransportMode mode = TransportMode::Radiance) const {
-		if (eta == 1 || distribution.isSpecular()) return SampledSpectrum::Zero();
+		if (eta == 1 || distribution.isSpecular()) return Spectrum::Zero();
 		// Evaluate rough dielectric BSDF
 		// Compute generalized half vector _wm_
 		float cosTheta_o = CosTheta(wo), cosTheta_i = CosTheta(wi);
@@ -47,24 +47,24 @@ public:
 		if (!reflect)
 			etap = cosTheta_o > 0 ? eta : (1 / eta);
 		Vector3f wm = wi * etap + wo;
-		if (cosTheta_i == 0 || cosTheta_o == 0 || !wm.any()) return SampledSpectrum::Zero();
+		if (cosTheta_i == 0 || cosTheta_o == 0 || !wm.any()) return Spectrum::Zero();
 		wm = FaceForward(normalize(wm), Vector3f(0, 0, 1));
 
 		// Discard backfacing microfacets
 		if (dot(wm, wi) * cosTheta_i < 0 || dot(wm, wo) * cosTheta_o < 0)
-			return SampledSpectrum::Zero();
+			return Spectrum::Zero();
 
 		float F	  = FrDielectric(copysignf(dot(wo, wm), wo[2]), eta);
-		SampledSpectrum R = baseColor * F, T = baseColor * (1 - F);
+		Spectrum R = baseColor * F, T = baseColor * (1 - F);
 		if (reflect) {
 			// Compute reflection at rough dielectric interface
-			return SampledSpectrum(distribution.D(wm) * distribution.G(wo, wi) * R /
+			return Spectrum(distribution.D(wm) * distribution.G(wo, wi) * R /
 								   abs(4 * cosTheta_i * cosTheta_o));
 
 		} else {
 			// Compute transmission at rough dielectric interface
 			float denom = pow2(dot(wi, wm) + dot(wo, wm) / etap) * cosTheta_i * cosTheta_o;
-			SampledSpectrum ft	= T * distribution.D(wm) * distribution.G(wo, wi) *
+			Spectrum ft	= T * distribution.D(wm) * distribution.G(wo, wi) *
 					   abs(dot(wi, wm) * dot(wo, wm) / denom);
 			// Account for non-symmetry with transmission to different medium
 			if (mode == TransportMode::Radiance) ft /= pow2(etap); 
@@ -77,7 +77,7 @@ public:
 		if (eta == 1 || distribution.isSpecular()) {
 			// Sample perfectly specular dielectric BSDF
 			float F = FrDielectric(CosTheta(wo), eta);
-			SampledSpectrum R = baseColor * F, T = baseColor * (1 - F);
+			Spectrum R = baseColor * F, T = baseColor * (1 - F);
 			// Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
 			float pr = R.mean(), pt = T.mean();
 			if (pr == 0 && pt == 0)
@@ -86,7 +86,7 @@ public:
 			if (sg.get1D() < pr / (pr + pt)) {
 				// Sample perfect specular dielectric BRDF
 				Vector3f wi(-wo[0], -wo[1], wo[2]);
-				SampledSpectrum fr(R / AbsCosTheta(wi));
+				Spectrum fr(R / AbsCosTheta(wi));
 				return BSDFSample(fr, wi, pr / (pr + pt), BSDF_SPECULAR_REFLECTION);
 
 			} else {
@@ -98,7 +98,7 @@ public:
 				if (!valid)
 					return {};
 
-				SampledSpectrum ft(T / AbsCosTheta(wi));
+				Spectrum ft(T / AbsCosTheta(wi));
 				// Account for non-symmetry with transmission to different medium
 				if (mode == TransportMode::Radiance) ft /= pow2(etap);
 
@@ -109,7 +109,7 @@ public:
 			// Sample rough dielectric BSDF
 			Vector3f wm = distribution.Sample(wo, sg.get2D());
 			float F		= FrDielectric(copysignf(dot(wo, wm), wo[2]), eta);
-			SampledSpectrum R = baseColor * F, T = baseColor * (1 - F);
+			Spectrum R = baseColor * F, T = baseColor * (1 - F);
 			// Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
 			float pr = R.mean(), pt = T.mean();
 			if (pr == 0 && pt == 0)
@@ -123,7 +123,7 @@ public:
 				// Compute PDF of rough dielectric reflection
 				pdf = distribution.Pdf(wo, wm) / (4 * fabs(dot(wo, wm))) * pr / (pr + pt);
 
-				SampledSpectrum f = distribution.D(wm) * distribution.G(wo, wi) * R /
+				Spectrum f = distribution.D(wm) * distribution.G(wo, wi) * R /
 									(4 * CosTheta(wi) * CosTheta(wo));
 				return BSDFSample(f, wi, pdf, BSDF_GLOSSY_REFLECTION);
 
@@ -140,7 +140,7 @@ public:
 				pdf			  = distribution.Pdf(wo, wm) * dwm_dwi * pt / (pr + pt);
 
 				// Evaluate BRDF and return _BSDFSample_ for rough transmission
-				SampledSpectrum ft(T * distribution.D(wm) * distribution.G(wo, wi) *
+				Spectrum ft(T * distribution.D(wm) * distribution.G(wo, wi) *
 					abs(dot(wi, wm) * dot(wo, wm) / (CosTheta(wi) * CosTheta(wo) * denom)));
 				// Account for non-symmetry with transmission to different medium
 				if (mode == TransportMode::Radiance) ft /= pow2(etap);
@@ -172,7 +172,7 @@ public:
 
 		// Determine Fresnel reflectance of rough dielectric boundary
 		float F	  = FrDielectric(CosTheta(wo), eta);
-		SampledSpectrum R = baseColor * F, T = baseColor * (1 - F);
+		Spectrum R = baseColor * F, T = baseColor * (1 - F);
 
 		// Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
 		float pr = R.mean(), pt = T.mean();
@@ -201,7 +201,7 @@ public:
 
 private:
 	float eta;	
-	SampledSpectrum baseColor;
+	Spectrum baseColor;
 	GGXMicrofacetDistribution distribution;
 };
 
