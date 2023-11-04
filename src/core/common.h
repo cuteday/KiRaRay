@@ -30,6 +30,14 @@ using nlohmann::json;
 typedef uint32_t uint;
 typedef unsigned char uchar;
 
+class RGB;
+class SampledSpectrum;
+#if KRR_RENDER_SPECTRAL
+typedef SampledSpectrum Spectrum;
+#else
+typedef RGB Spectrum;
+#endif
+
 #define KRR_NAMESPACE_BEGIN namespace krr {
 #define KRR_NAMESPACE_END }
 
