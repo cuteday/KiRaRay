@@ -136,7 +136,7 @@ extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo			 = getHitInfo();
 	PathData *path			 = getPRD<PathData>();
 	SurfaceInteraction &intr = path->intr;
-	prepareSurfaceInteraction(intr, hitInfo, launchParams.colorSpace, path->lambda);
+	prepareSurfaceInteraction(intr, hitInfo, path->lambda);
 }
 
 extern "C" __global__ void KRR_RT_AH(Radiance)() {

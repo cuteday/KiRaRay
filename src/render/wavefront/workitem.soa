@@ -60,6 +60,7 @@ struct SurfaceInteraction {
 	Medium medium;
 	Vector3f tangent;
 	Vector3f bitangent;
+	SampledWavelengths lambda;
 	Light light;
 	BSDFData sd;
 };

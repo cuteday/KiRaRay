@@ -140,6 +140,7 @@ public:
 	void setTexture(TextureType type, Texture::SharedPtr texture);
 	void setConstantTexture(TextureType type, const Color4f color);
 	bool determineSrgb(string filename, TextureType type);
+	void setColorSpace(const ColorSpaceType colorSpace) { mColorSpace = colorSpace; }
 
 	bool hasEmission();
 	bool hasTexture(TextureType type);
@@ -147,6 +148,7 @@ public:
 	
 	const string& getName() const { return mName; }
 	int getMaterialId() const { return mMaterialId; }
+	const RGBColorSpace *getColorSpace() const { return spec::getColorSpace(mColorSpace); }
 	bool isUpdated() const { return mUpdated; }
 	void setUpdated(bool updated = true) { mUpdated = updated; }
 	void renderUI();
@@ -155,6 +157,7 @@ public:
 	Texture::SharedPtr mTextures[(uint32_t)TextureType::Count];
 	MaterialType mBsdfType{ MaterialType::Disney };
 	ShadingModel mShadingModel{ ShadingModel::SpecularGlossiness };
+	ColorSpaceType mColorSpace{ ColorSpaceType::sRGB };
 	string mName;
 	bool mUpdated{false};
 	int mMaterialId{-1};
@@ -188,12 +191,16 @@ public:
 	TextureData mTextures[(uint32_t) Material::TextureType::Count];
 	MaterialType mBsdfType{MaterialType::Disney};
 	Material::ShadingModel mShadingModel{Material::ShadingModel::MetallicRoughness};
+	const RGBColorSpace *mColorSpace{nullptr};
 
 	void initializeFromHost(Material::SharedPtr material);
 
 	KRR_CALLABLE TextureData getTexture(Material::TextureType type) const {
 		return mTextures[(uint32_t) type];
 	}
+
+	KRR_CALLABLE const RGBColorSpace *getColorSpace() const { return mColorSpace; }
+
 	void renderUI();
 };
 }

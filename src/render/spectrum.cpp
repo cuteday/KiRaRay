@@ -109,10 +109,10 @@ std::map<std::string, Spectra> namedSpectra;
 KRR_DEVICE DenselySampledSpectrum *xGPU, *yGPU, *zGPU;
 DenselySampledSpectrum *x, *y, *z;
 
-KRR_CONST RGBColorSpace *RGBColorSpace_sRGB;
-KRR_CONST RGBColorSpace *RGBColorSpace_DCI_P3;
-KRR_CONST RGBColorSpace *RGBColorSpace_Rec2020;
-KRR_CONST RGBColorSpace *RGBColorSpace_ACES2065_1;
+KRR_DEVICE_CONST RGBColorSpace *RGBColorSpace_sRGB;
+KRR_DEVICE_CONST RGBColorSpace *RGBColorSpace_DCI_P3;
+KRR_DEVICE_CONST RGBColorSpace *RGBColorSpace_Rec2020;
+KRR_DEVICE_CONST RGBColorSpace *RGBColorSpace_ACES2065_1;
 
 void init(Allocator alloc) {
 	PiecewiseLinearSpectrum xpls(CIE_lambda, CIE_X);

@@ -275,6 +275,7 @@ public:
 	static const RGBColorSpace *getNamed(std::string name);
 	static const RGBColorSpace *lookup(Point2f r, Point2f g, Point2f b, Point2f w);
 
+	KRR_CALLABLE float lum(const SampledSpectrum &s, const SampledWavelengths &lambda) const;
 	KRR_CALLABLE XYZ toXYZ(RGB rgb) const { return XYZFromRGB * rgb.matrix(); }
 	KRR_CALLABLE RGB toRGB(XYZ xyz) const { return RGBFromXYZ * xyz.matrix(); }
 	KRR_CALLABLE XYZ toXYZ(SampledSpectrum s, const SampledWavelengths &lambda) const;
@@ -298,12 +299,38 @@ private:
 
 namespace spec {
 
-extern KRR_CONST RGBColorSpace *RGBColorSpace_sRGB;
-extern KRR_CONST RGBColorSpace *RGBColorSpace_DCI_P3;
-extern KRR_CONST RGBColorSpace *RGBColorSpace_Rec2020;
-extern KRR_CONST RGBColorSpace *RGBColorSpace_ACES2065_1;
+extern KRR_DEVICE_CONST RGBColorSpace *RGBColorSpace_sRGB;
+extern KRR_DEVICE_CONST RGBColorSpace *RGBColorSpace_DCI_P3;
+extern KRR_DEVICE_CONST RGBColorSpace *RGBColorSpace_Rec2020;
+extern KRR_DEVICE_CONST RGBColorSpace *RGBColorSpace_ACES2065_1;
 
 void init(Allocator alloc);
+
+KRR_CALLABLE const RGBColorSpace* getColorSpace(ColorSpaceType type) {
+	switch (type) {
+#ifdef KRR_DEVICE_CODE
+	case ColorSpaceType::sRGB:
+		return RGBColorSpace_sRGB;
+	case ColorSpaceType::DCI_P3:
+		return RGBColorSpace_DCI_P3;
+	case ColorSpaceType::Rec2020:
+		return RGBColorSpace_Rec2020;
+	case ColorSpaceType::ACES2065_1:
+		return RGBColorSpace_ACES2065_1;
+#else 
+	case ColorSpaceType::sRGB:
+		return RGBColorSpace::sRGB;
+	case ColorSpaceType::DCI_P3:
+		return RGBColorSpace::DCI_P3;
+	case ColorSpaceType::Rec2020:
+		return RGBColorSpace::Rec2020;
+	case ColorSpaceType::ACES2065_1:
+		return RGBColorSpace::ACES2065_1;
+#endif
+	default:
+		return nullptr;
+	}
+}
 
 KRR_CALLABLE const DenselySampledSpectrum &X() {
 #ifdef KRR_DEVICE_CODE
@@ -393,12 +420,13 @@ KRR_CALLABLE SampledSpectrum SampledSpectrum::fromRGB(const RGB &rgb, SpectrumTy
 	}
 }
 
+KRR_CALLABLE float RGBColorSpace::lum(const SampledSpectrum& s, const SampledWavelengths& lambda) const {
+	SampledSpectrum Ys	= CIE_Y->sample(lambda);
+	SampledSpectrum pdf = lambda.pdf();
+	return SampledSpectrum(Ys * s).safeDiv(pdf).mean() / CIE_Y_integral;
+}
+
 KRR_CALLABLE float luminance(Color3f color) {
 	return dot(Vector3f(color), Vector3f(0.299, 0.587, 0.114));
 }
-
-#if KRR_RENDER_SPECTRAL
-KRR_CALLABLE float luminance(SampledSpectrum color) { return color.mean(); }
-#endif
-
 KRR_NAMESPACE_END

@@ -48,7 +48,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	RayWorkItem r = getRayWorkItem();
 	int pixelId				  = launchParams.currentRayQueue->pixelId[getRayId()];
 	SampledWavelengths lambda = launchParams.pixelState->lambda[pixelId];
-	prepareSurfaceInteraction(intr, hitInfo, launchParams.colorSpace, lambda);
+	prepareSurfaceInteraction(intr, hitInfo, lambda);
 	if (launchParams.mediumSampleQueue && r.ray.medium) {
 		launchParams.mediumSampleQueue->push(r, intr, optixGetRayTmax());
 		return;
@@ -107,7 +107,7 @@ extern "C" __global__ void KRR_RT_CH(ShadowTr)() {
 	int pixelId				  = launchParams.shadowRayQueue->pixelId[getRayId()];
 	SampledWavelengths lambda = launchParams.pixelState->lambda[pixelId];
 	SurfaceInteraction &intr = *getPRD<SurfaceInteraction>();
-	prepareSurfaceInteraction(intr, hitInfo, launchParams.colorSpace, lambda);
+	prepareSurfaceInteraction(intr, hitInfo, lambda);
 }
 
 extern "C" __global__ void KRR_RT_AH(ShadowTr)() {

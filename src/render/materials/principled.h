@@ -77,11 +77,11 @@ public:
 		float strans		 = intr.sd.specularTransmission;
 		float diffuseWeight	 = (1 - metallicWeight) * (1 - strans);
 		float roughness		 = intr.sd.roughness;
-		float lum			 = luminance(c);
+		const RGBColorSpace *colorSpace = intr.material->getColorSpace();
+		float lum						= colorSpace->lum(c, intr.lambda);
 		// normalize lum. to isolate hue+sat
 		Spectrum Ctint = Spectrum::Ones();
-		if (lum > 0)
-			Ctint = c / lum;
+		if (lum > 0) Ctint = c / lum;
 
 		float sheenWeight = 0;
 		Spectrum Csheen;

@@ -250,6 +250,7 @@ void MaterialData::initializeFromHost(Material::SharedPtr material) {
 	mBsdfType		= material->mBsdfType;
 	mMaterialParams = material->mMaterialParams;
 	mShadingModel	= material->mShadingModel;
+	mColorSpace		= material->getColorSpace();
 	for (size_t tex_idx = 0; tex_idx < (size_t)Material::TextureType::Count;
 		 tex_idx++) {
 		mTextures[tex_idx].initializeFromHost(material->mTextures[tex_idx]);

@@ -81,8 +81,7 @@ KRR_DEVICE_FUNCTION bool alphaKilled() {
 	return u > alpha;
 }
 
-KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, const HitInfo &hitInfo, 
-	const RGBColorSpace* colorSpace, const SampledWavelengths& lambda) {
+KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, const HitInfo &hitInfo, const SampledWavelengths& lambda) {
 	// [NOTE] about local shading frame (tangent space, TBN, etc.)
 	// The shading normal intr.n and face normal is always points towards the outside of
 	// the object, we can use this convention to determine whether an incident ray is coming from
@@ -138,6 +137,7 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 
 	const rt::MaterialData &material			   = instance.getMaterial();
 	const Material::MaterialParams &materialParams = material.mMaterialParams;
+	const RGBColorSpace &colorSpace				   = *material.getColorSpace();
 
 	intr.sd.IoR					 = materialParams.IoR;
 	intr.sd.bsdfType			 = material.mBsdfType;
@@ -178,8 +178,9 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 		intr.sd.roughness = 1.f - spec[3];	//
 		intr.sd.metallic  = getMetallic(diffuse, specular);
 	} else assert(false);
-	intr.sd.diffuse	 = Spectrum::fromRGB(diffuse, SpectrumType::RGBBounded, lambda, *colorSpace);
-	intr.sd.specular = Spectrum::fromRGB(specular, SpectrumType::RGBBounded, lambda, *colorSpace);
+	intr.sd.diffuse	 = Spectrum::fromRGB(diffuse, SpectrumType::RGBBounded, lambda, colorSpace);
+	intr.sd.specular = Spectrum::fromRGB(specular, SpectrumType::RGBBounded, lambda, colorSpace);
+	intr.lambda		 = lambda;
 }
 
 KRR_NAMESPACE_END

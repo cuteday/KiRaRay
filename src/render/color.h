@@ -33,6 +33,13 @@ enum class SpectrumType {
 	RGBIlluminant,
 };
 
+enum class ColorSpaceType {
+	sRGB,
+	DCI_P3,
+	Rec2020,
+	ACES2065_1,
+};
+
 class RGB : public Array3f {
 public:
 	using Array3f::Array3f;

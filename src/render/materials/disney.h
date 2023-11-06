@@ -158,7 +158,7 @@ public:
 		if (!SameHemisphere(wo, wh)) wh = -wh;
 
 		*wi = Reflect(wo, wh);
-		if (!SameHemisphere(wo, *wi)) return Spectrum(0);
+		if (!SameHemisphere(wo, *wi)) return Spectrum::Zero();
 
 		*pdf = Pdf(wo, *wi);
 		return f(wo, *wi);
@@ -199,13 +199,14 @@ public:
 
 	KRR_CALLABLE void setup(const SurfaceInteraction& intr) {
 
-		Spectrum c	 = intr.sd.diffuse;
+		Spectrum c			 = intr.sd.diffuse;
 		float metallicWeight = intr.sd.metallic;
 		float e				 = intr.sd.IoR;
 		float strans		 = intr.sd.specularTransmission;
 		float diffuseWeight	 = (1 - metallicWeight) * (1 - strans);
 		float roughness		 = intr.sd.roughness;
-		float lum			 = luminance(c);
+		const RGBColorSpace *colorSpace = intr.material->getColorSpace();
+		float lum			 = colorSpace->lum(c, intr.lambda);
 		// normalize lum. to isolate hue+sat
 		Spectrum Ctint = Spectrum::Ones();
 		if (lum > 0) Ctint = c / lum;
@@ -264,7 +265,7 @@ public:
 
 		// calculate sampling weights
 		float approxFresnel =
-			luminance(DisneyFresnel(Cspec0, metallicWeight, e, AbsCosTheta(intr.wo)));
+			colorSpace->lum(DisneyFresnel(Cspec0, metallicWeight, e, AbsCosTheta(intr.wo)), intr.lambda);
 		pDiffuse	  = components & (DISNEY_DIFFUSE | DISNEY_RETRO)
 							? intr.sd.diffuse.mean() * (1 - metallicWeight) *
 													  (1 - intr.sd.specularTransmission)

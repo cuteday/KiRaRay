@@ -27,13 +27,13 @@ typedef unsigned char uchar;
 # define KRR_DEVICE   __device__
 # define KRR_HOST     __host__
 # define KRR_FORCEINLINE __forceinline__
-# define KRR_CONST	__device__ const 
+# define KRR_DEVICE_CONST	__device__ const 
 # define KRR_GLOBAL	__global__
 #else
 # define KRR_DEVICE			/* ignore */
 # define KRR_HOST			/* ignore */
 # define KRR_FORCEINLINE	/* ignore */
-# define KRR_CONST	const
+# define KRR_DEVICE_CONST	const
 # define KRR_GLOBAL			/* ignore */
 #endif
 

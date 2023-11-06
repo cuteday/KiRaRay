@@ -88,6 +88,7 @@ struct SurfaceInteraction : public Interaction {
 
 	Vector3f tangent{0};
 	Vector3f bitangent{0};
+	SampledWavelengths lambda;
 
 	Light light{nullptr};
 	const MaterialData *material{nullptr};

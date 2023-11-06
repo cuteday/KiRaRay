@@ -39,7 +39,7 @@ public:
 									const SampledWavelengths &lambda) const {
 		Vector3f p	= transform.translation();
 		Vector3f wi = (p - ctx.p).normalized();
-		SampledSpectrum Li = Spectrum::fromRGB(I, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		SampledSpectrum Li = Spectrum::fromRGB(I, SpectrumType::RGBIlluminant, lambda, *colorSpace);
 		Li*= scale / (p - ctx.p).squaredNorm();
 		return LightSample{Interaction{p}, Li, 1};
 	}
@@ -77,7 +77,8 @@ public:
 		(e.g. the ray will self-intersect on the original surface, even if the ray origin has offset) */
 		Vector3f wi = rotation * Vector3f{0, 0, 1};
 		Vector3f p	= ctx.p + wi * 2 * sceneRadius;
-		SampledSpectrum Li = scale * Spectrum::fromRGB(I, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		SampledSpectrum Li =
+			scale * Spectrum::fromRGB(I, SpectrumType::RGBIlluminant, lambda, *colorSpace);
 		return LightSample{Interaction{p}, Li, 1};
 	}
 
@@ -133,7 +134,7 @@ public:
 		if (!twoSided && dot(n, w) < 0.f) return SampledSpectrum::Zero(); // hit backface
 
 		RGB L = texture.isValid() ? texture.evaluate(uv).head<3>() : Le;
-		return scale * Spectrum::fromRGB(L, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		return scale * Spectrum::fromRGB(L, SpectrumType::RGBIlluminant, lambda, *colorSpace);
 	}
 
 	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const {
@@ -189,7 +190,7 @@ public:
 	KRR_DEVICE SampledSpectrum Li(Vector3f wi, const SampledWavelengths &lambda) const {
 		Vector2f uv = worldToLatLong(rotation.transpose() * wi);
 		RGB L		= image.isValid() ? tint * image.evaluate(uv).head<3>() : tint;
-		return scale * Spectrum::fromRGB(L, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		return scale * Spectrum::fromRGB(L, SpectrumType::RGBIlluminant, lambda, *colorSpace);
 	}
 
 	KRR_DEVICE LightType type() const { return LightType::Infinite; }
