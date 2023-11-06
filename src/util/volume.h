@@ -18,6 +18,8 @@ public:
 	using SharedPtr  = std::shared_ptr<NanoVDBGrid>;
 	using VDBSampler = nanovdb::SampleFromVoxels<nanovdb::FloatGrid::TreeType, 1, false>;
 
+	NanoVDBGrid() = default;
+
 	NanoVDBGrid(nanovdb::GridHandle<nanovdb::CudaDeviceBuffer>&& density, float maxDensity) :
 		densityHandle(std::move(density)), maxDensity(maxDensity) {
 		densityGrid						   = densityHandle.grid<float>();
@@ -35,6 +37,8 @@ public:
 
 	void toDevice() { densityHandle.deviceUpload(); }
 
+	KRR_CALLABLE operator bool() const { return densityGrid != nullptr; }
+
 	KRR_CALLABLE AABB3f getBounds() const { return bounds; }
 
 	KRR_CALLABLE float getDensity(const Vector3f &p) const {
@@ -49,7 +53,7 @@ public:
 
 private:
 	AABB3f bounds;
-	nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle;
+	nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> densityHandle{};
 	nanovdb::FloatGrid *densityGrid{nullptr};
 	float maxDensity{0};
 };

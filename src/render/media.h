@@ -139,12 +139,19 @@ public:
 	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g,
 				  NanoVDBGrid density, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
 
+	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g, NanoVDBGrid density,
+				  NanoVDBGrid temperature, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
+
 	KRR_HOST void initializeFromHost();
 
 	KRR_CALLABLE bool isEmissive() const { return false; }
 
 	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const {
-		return Spectrum::Zero();
+		if (!temperatureGrid) return Spectrum::Zero();
+		p = inverseTransform * p;
+		float temp = temperatureGrid.getDensity(p);
+		if (temp <= 100.f) return SampledSpectrum(0);
+		return BlackbodySpectrum(temp).sample(lambda);
 	}
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const { 
@@ -169,6 +176,7 @@ public:
 	}
 
 	NanoVDBGrid densityGrid;
+	NanoVDBGrid temperatureGrid;
 	MajorantGrid majorantGrid;
 	Affine3f transform, inverseTransform;
 	HGPhaseFunction phase;

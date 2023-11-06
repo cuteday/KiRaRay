@@ -10,6 +10,7 @@
 KRR_NAMESPACE_BEGIN
 
 class RGBColorSpace;
+class BlackbodySpectrum;
 class RGBBoundedSpectrum;
 class RGBUnboundedSpectrum;
 class DenselySampledSpectrum;
@@ -78,13 +79,51 @@ public:
 };
 
 class Spectra :
-	public TaggedPointer<RGBBoundedSpectrum, RGBUnboundedSpectrum, DenselySampledSpectrum,
-						 PiecewiseLinearSpectrum> {
+	public TaggedPointer<BlackbodySpectrum, RGBBoundedSpectrum, RGBUnboundedSpectrum, 
+						DenselySampledSpectrum, PiecewiseLinearSpectrum> {
 public:
 	using TaggedPointer::TaggedPointer;
 	KRR_HOST_DEVICE float operator()(float lambda) const;
 	KRR_HOST_DEVICE float maxValue() const;
 	KRR_HOST_DEVICE SampledSpectrum sample(const SampledWavelengths &lambda) const;
+};
+
+class BlackbodySpectrum {
+public:
+	KRR_CALLABLE BlackbodySpectrum(float T) : T(T) {
+		// Compute blackbody normalization constant for given temperature
+		float lambdaMax		= 2.8977721e-3f / T;
+		normalizationFactor = 1 / blackbody(lambdaMax * 1e9f, T);
+	}
+
+	KRR_CALLABLE float operator()(float lambda) const { 
+		return blackbody(lambda, T) * normalizationFactor; 
+	}
+
+	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
+		SampledSpectrum s;
+		for (int i = 0; i < SampledSpectrum::dim; ++i)
+			s[i] = blackbody(lambda[i], T) * normalizationFactor;
+		return s;
+	}
+
+	KRR_CALLABLE float maxValue() const { return 1.f; }
+
+	static KRR_CALLABLE float blackbody(float lambda, float T) {
+		if (T <= 0) return 0;
+		const float c  = 299792458.f;
+		const float h  = 6.62606957e-34f;
+		const float kb = 1.3806488e-23f;
+		// Return emitted radiance for blackbody at wavelength _lambda_
+		float l	 = lambda * 1e-9f;
+		float Le = (2 * h * c * c) / (pow5(l) * (expf((h * c) / (l * kb * T)) - 1));
+		DCHECK(!isnan(Le));
+		return Le;
+	}
+
+private:
+	float T;
+	float normalizationFactor;
 };
 
 class RGBBoundedSpectrum {
