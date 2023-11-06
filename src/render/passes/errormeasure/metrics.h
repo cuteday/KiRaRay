@@ -13,6 +13,6 @@ KRR_ENUM_DEFINE(ErrorMetric, {
 	{ErrorMetric::RelMSE, "rel_mse"}
 });
 
-float calc_metric(const CudaRenderTarget& frame, const Color4f *reference, size_t n_elements, ErrorMetric metric);
+float calc_metric(const CudaRenderTarget& frame, const RGBA *reference, size_t n_elements, ErrorMetric metric);
 
 KRR_NAMESPACE_END

@@ -150,9 +150,9 @@ Material::SharedPtr PbrtImporter::loadMaterial(pbrt::Material::SP mat) {
 				loadTexture(material, m->map_opacity, Material::TextureType::Transmission,
 							mBasepath);
 		} else if (cast(m->opacity) != Vector3f(1)) {
-			Color3f transmission = Vector3f(1) - cast(m->opacity);
+			RGB transmission = Vector3f(1) - cast(m->opacity);
 			material->setConstantTexture(Material::TextureType::Transmission,
-										 Color4f(transmission, 1));
+										 RGBA(transmission, 1));
 		}
 		if (m->map_roughness) {
 			Log(Info, "A roughness map is found for %s texture %s",

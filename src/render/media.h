@@ -136,7 +136,7 @@ public:
 
 class NanoVDBMedium {
 public:
-	NanoVDBMedium(const Affine3f &transform, Color sigma_a, Color sigma_s, float g,
+	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g,
 				  NanoVDBGrid density, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
 
 	KRR_HOST void initializeFromHost();
@@ -172,7 +172,7 @@ public:
 	MajorantGrid majorantGrid;
 	Affine3f transform, inverseTransform;
 	HGPhaseFunction phase;
-	Color sigma_a, sigma_s;
+	RGB sigma_a, sigma_s;
 	const RGBColorSpace *colorSpace;
 };
 

@@ -172,7 +172,7 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 		intr.sd.metallic  = spec[2];
 		intr.sd.roughness = spec[1];
 	} else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
-		// [SPECULAR] RGB - Specular Color; A - Glossiness
+		// [SPECULAR] RGB - Specular RGB; A - Glossiness
 		diffuse			  = baseColor;
 		specular		  = (RGB) spec; // specular reflectance
 		intr.sd.roughness = 1.f - spec[3];	//

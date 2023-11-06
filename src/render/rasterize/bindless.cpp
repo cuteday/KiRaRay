@@ -112,7 +112,7 @@ void BindlessRender::initialize() {
 	if (mScene->getLights().size() == 0) {
 		Log(Warning, "The scene does not contain any light, adding a default sun light.");
 		auto graph	  = mScene->getSceneGraph();
-		auto sunLight = std::make_shared<DirectionalLight>(Color(1), 2);
+		auto sunLight = std::make_shared<DirectionalLight>(RGB(1), 2);
 		graph->attachLeaf(graph->getRoot(), sunLight);
 		sunLight->setDirection({0.5f, -0.8f, 0.5f});
 		sunLight->setName("Sunlight");
@@ -211,7 +211,7 @@ void BindlessRender::render(RenderContext *context) {
 	LightConstants lightConstants;
 	lightConstants.numLights	 = getScene()->getLights().size();
 	lightConstants.ambientBottom = 0.2f;
-	lightConstants.ambientTop	 = lightConstants.ambientBottom * Color3f(0.3, 0.4, 0.3);
+	lightConstants.ambientTop	 = lightConstants.ambientBottom * RGB(0.3, 0.4, 0.3);
 	mCommandList->writeBuffer(mLightConstants, &lightConstants, sizeof(lightConstants));
 
 	/* Draw geometries. */

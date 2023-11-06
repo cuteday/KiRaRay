@@ -94,8 +94,8 @@ void RTScene::uploadSceneLightData() {
 			rt::MeshData &meshData		   = mMeshes[mesh->getMeshId()];
 			rt::TextureData &textureData = materialData.getTexture(Material::TextureType::Emissive);
 			rt::InstanceData &instanceData = mInstances[instance->getInstanceId()];
-			Color3f Le = material->hasEmission()
-							 ? Color3f(textureData.getConstant()) : mesh->Le;
+			RGB Le = material->hasEmission()
+							 ? RGB(textureData.getConstant()) : mesh->Le;
 			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld", 
 					 " constant emission(?): %f", mesh->indices.size(), luminance(Le));
 			std::vector<Triangle> primitives =

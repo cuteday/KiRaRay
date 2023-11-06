@@ -5,6 +5,7 @@
 #include "zlib.h"
 #include "tinyexr.h"
 
+#include "render/color.h"
 #include "util/math_utils.h"
 
 KRR_NAMESPACE_BEGIN
@@ -341,10 +342,10 @@ static int readWord(FILE *fp, char *buffer, int bufferLength) {
 }
 
 /* out: data[rgb], res_x, res_y */
-Color4f *ReadImagePFM(const std::string &filename, int *xres, int *yres) {
+RGBA *ReadImagePFM(const std::string &filename, int *xres, int *yres) {
 	constexpr int BUFFER_SIZE = 80;
 	float *data				  = nullptr;
-	Color4f *rgb			  = nullptr;
+	RGBA *rgb			  = nullptr;
 	char buffer[BUFFER_SIZE];
 	unsigned int nFloats;
 	int nChannels, width, height;
@@ -410,10 +411,10 @@ Color4f *ReadImagePFM(const std::string &filename, int *xres, int *yres) {
 			data[i] *= std::abs(scale);
 
 	// create RGBs...
-	rgb = new Color4f[width * height];
+	rgb = new RGBA[width * height];
 	if (nChannels == 1) {
 		for (int i = 0; i < width * height; ++i)
-			rgb[i] = Color4f(data[i]);
+			rgb[i] = RGBA(data[i]);
 	} else {
 		for (int i = 0; i < width * height; ++i)
 			rgb[i] = { data[3 * i], data[3 * i + 1], data[3 * i + 2], 1 };

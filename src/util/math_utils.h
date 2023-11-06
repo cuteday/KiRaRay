@@ -72,38 +72,6 @@ KRR_CALLABLE float nextFloatDown(float v) {
 	else ++ui;
 	return bitsToFloat(ui);
 }
-	
-/*******************************************************
- * colors
- ********************************************************/
-
-KRR_CALLABLE float srgb2linear(float sRGBColor) {
-	if (sRGBColor <= 0.04045f)
-		return sRGBColor / 12.92f;
-	else
-		return pow((sRGBColor + 0.055f) / 1.055f, 2.4f);
-}
-
-KRR_CALLABLE Color srgb2linear(Color sRGBColor) {
-	Color ret{};
-	for (int ch = 0; ch < Color::dim; ch++)
-		ret[ch] = srgb2linear(sRGBColor[ch]);
-	return ret;
-}
-
-KRR_CALLABLE float linear2srgb(float linearColor) {
-	if (linearColor <= 0.0031308)
-		return linearColor * 12.92f;
-	else
-		return 1.055f * pow(linearColor, 1.f / 2.4f) - 0.055f;
-}
-
-KRR_CALLABLE Color linear2srgb(Color linearColor) {
-	Color ret{};
-	for (int ch = 0; ch < Color::dim; ch++)
-		ret[ch] = linear2srgb(linearColor[ch]);
-	return ret;
-}
 
 /*******************************************************
  * algorithms

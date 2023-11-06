@@ -70,15 +70,15 @@ public:
 		InfiniteLight	 = 3
 	};
 	SceneLight()		= default;
-	SceneLight(const Color &color, const float scale) : color(color), scale(scale) {}
+	SceneLight(const RGB &color, const float scale) : color(color), scale(scale) {}
 	virtual Type getType() const { return Type::Undefined; }
 	virtual void renderUI() override;
 
-	void setColor(const Color &_color) { color = _color; setUpdated();}
+	void setColor(const RGB &_color) { color = _color; setUpdated();}
 	void setScale(const float _scale) { scale = _scale; setUpdated();}
 	void setPosition(const Vector3f& position);
 	void setDirection(const Vector3f& direction);
-	Color getColor() const { return color; }
+	RGB getColor() const { return color; }
 	float getScale() const { return scale; }
 	Vector3f getPosition() const;
 	Vector3f getDirection() const;
@@ -86,7 +86,7 @@ public:
 	void setUpdated(bool _updated = true) { updated = _updated; }
 
 protected:
-	Color color;
+	RGB color;
 	float scale;
 	bool updated{false};
 };
@@ -115,7 +115,7 @@ public:
 	using SharedPtr = std::shared_ptr<InfiniteLight>;
 	using SceneLight::SceneLight;
 	InfiniteLight(Texture::SharedPtr texture, const float scale = 1) :
-		SceneLight(Color::Ones(), 1), texture(texture) {}
+		SceneLight(RGB::Ones(), 1), texture(texture) {}
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual Type getType() const override { return Type::InfiniteLight; }
@@ -149,9 +149,9 @@ public:
 
 	bool isEmissive() const { return !Le.isZero(); }
 
-	Color sigma_a;
-	Color sigma_s;
-	Color Le;
+	RGB sigma_a;
+	RGB sigma_s;
+	RGB Le;
 	float g;
 
 private:
@@ -162,20 +162,20 @@ class VDBVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<VDBVolume>;
 
-	VDBVolume(Color sigma_a, Color sigma_s, float g, fs::path density) :
+	VDBVolume(RGB sigma_a, RGB sigma_s, float g, fs::path density) :
 		sigma_a(sigma_a), sigma_s(sigma_s), g(g) {
 		densityGrid = loadNanoVDB(density);
 	}
 
-	VDBVolume(Color sigma_a, Color sigma_s, float g, NanoVDBGrid::SharedPtr density) :
+	VDBVolume(RGB sigma_a, RGB sigma_s, float g, NanoVDBGrid::SharedPtr density) :
 		sigma_a(sigma_a), sigma_s(sigma_s), g(g), densityGrid(density) {}
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual AABB getLocalBoundingBox() const override { return densityGrid->getBounds(); }
 	virtual void renderUI() override;
 
-	Color sigma_a;
-	Color sigma_s;
+	RGB sigma_a;
+	RGB sigma_s;
 	float g;
 	NanoVDBGrid::SharedPtr densityGrid;
 

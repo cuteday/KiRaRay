@@ -76,7 +76,7 @@ public:
 	int meshId{-1};
 	std::string name;
 	AABB aabb{};
-	Color Le{};		/* A mesh-specific area light, used when importing pbrt formats. */
+	RGB Le{};		/* A mesh-specific area light, used when importing pbrt formats. */
 };
 
 KRR_NAMESPACE_END

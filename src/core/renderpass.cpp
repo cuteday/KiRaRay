@@ -37,7 +37,7 @@ void RenderTarget::resize(const Vector2i size) {
 	mSize = size;
 	if (size[0] * size[1] == 0) return;
 
-	mColor = RenderTexture::create(mDevice, size, vkrhi::Format::RGBA32_FLOAT, "Color Texture");
+	mColor = RenderTexture::create(mDevice, size, vkrhi::Format::RGBA32_FLOAT, "RGB Texture");
 
 	if (mEnableDepth)
 		mDepth = RenderTexture::create(mDevice, size, vkrhi::Format::R32_FLOAT, "Depth Texture");

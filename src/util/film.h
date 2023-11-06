@@ -10,7 +10,7 @@ KRR_NAMESPACE_BEGIN
 class Film {
 public:
 	using SharedPtr = std::shared_ptr<Film>;
-	using Pixel = Color4f;
+	using Pixel = RGBA;
 	using WeightedPixel = struct {Pixel pixel; float weight;};
 
 	Film() = default;
@@ -73,7 +73,7 @@ public:
 		thrust::transform(thrust::device, m_data.data(), m_data.data() + n_pixels, pixels_device,
 						  [] KRR_DEVICE(const WeightedPixel &d) -> Pixel { return d.pixel / d.weight; });
 		Image frame(m_size, Image::Format::RGBAfloat, false);
-		tmp.copy_to_host(frame.data(), n_pixels * sizeof(Color4f));
+		tmp.copy_to_host(frame.data(), n_pixels * sizeof(RGBA));
 		frame.saveImage(filepath, true);
 	}
 

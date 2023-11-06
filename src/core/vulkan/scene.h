@@ -77,8 +77,8 @@ struct InstanceData {
 };
 
 struct MaterialConstants {
-	Color4f baseColor;
-	Color4f specularColor;
+	RGBA baseColor;
+	RGBA specularColor;
 
 	float IoR;
 	float opacity;
@@ -98,7 +98,7 @@ struct LightData {
 	Vector3f position;
 	int texture;	// for environment lights?
 
-	Color3f color;
+	RGB color;
 	float scale;
 };
 }

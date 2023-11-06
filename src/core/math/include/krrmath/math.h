@@ -17,10 +17,6 @@
 
 KRR_NAMESPACE_BEGIN
 
-using Color = Array3f;
-using Color3f = Array3f;
-using Color4f = Array4f;
-using Point = Vector3f;
 using Point2f = Vector2f;
 using Point3f = Vector3f;
 using AABB = AABB3f;

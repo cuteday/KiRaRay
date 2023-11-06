@@ -145,7 +145,7 @@ void Material::setTexture(TextureType type, Texture::SharedPtr texture) {
 	mTextures[(uint) type] = texture; 
 }
 
-void Material::setConstantTexture(TextureType type, const Color4f color) {
+void Material::setConstantTexture(TextureType type, const RGBA color) {
 	if (!mTextures[(uint) type]) mTextures[(uint) type] = std::make_shared<Texture>();
 	mTextures[(uint) type]->setConstant(color);
 }

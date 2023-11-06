@@ -545,17 +545,17 @@ void SceneLight::renderUI() {
 	auto direction = getDirection(), position = getPosition();
 	auto color	= getColor();
 	float scale = getScale();
-	if (ui::DragFloat3("Color", (float *) &color, 1e-3, 0, 1)) setColor(color);
+	if (ui::DragFloat3("RGB", (float *) &color, 1e-3, 0, 1)) setColor(color);
 	if (ui::DragFloat("Scale", &scale, 1e-2, 0, 100)) setScale(scale);
 	if (ui::DragFloat3("Direction input", (float *) &direction, 1e-3, -1, 1)) setDirection(direction);
 	if (ui::DragFloat3("Position", (float *) &position), 1e-2, -100, 100) setPosition(position);
 }
 
 void DirectionalLight::renderUI() {
-	Color3f color	= getColor();
+	RGB color	= getColor();
 	float scale = getScale();
 	Vector2f sphericalDir = worldToLatLong(getDirection());
-	if (ui::DragFloat3("Color", (float *) &color, 1e-3, 0, 1)) setColor(color);
+	if (ui::DragFloat3("RGB", (float *) &color, 1e-3, 0, 1)) setColor(color);
 	if (ui::DragFloat("Scale", &scale, 1e-2, 0, 100)) setScale(scale);
 	ui::SliderFloat("Azimuth", &sphericalDir[0], 0, 1);
 	ui::SliderFloat("Altitude", &sphericalDir[1], 0, 1);

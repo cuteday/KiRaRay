@@ -23,8 +23,8 @@ public:
 
 	struct LightConstants {
 		uint32_t numLights;
-		Color3f ambientBottom;
-		Color3f ambientTop;
+		RGB ambientBottom;
+		RGB ambientTop;
 		uint32_t padding;
 	};
 

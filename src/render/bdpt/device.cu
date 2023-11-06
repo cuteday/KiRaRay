@@ -29,7 +29,7 @@ KRR_DEVICE_FUNCTION int ExtendPath(Sampler sampler, int maxDepth,
 	return 0;
 }
 
-KRR_DEVICE_FUNCTION Color Connect(Vertex* lightVertices, Vertex* cameraVertices,
+KRR_DEVICE_FUNCTION RGB Connect(Vertex* lightVertices, Vertex* cameraVertices,
 	uint s, uint t, LightSampler lightSampler, Sampler sampler) {
 	return 0;
 }

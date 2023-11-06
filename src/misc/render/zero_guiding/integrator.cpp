@@ -516,7 +516,7 @@ void ZeroGuidingPT::filterFrame(Film *image) {
 	image->getInternalBuffer().copy_to_host(reinterpret_cast<PixelData *>(data), n_pixels);
 
 	constexpr int FILTER_ITERATIONS = 3;
-	constexpr int SPECTRUM_SAMPLES	= Color4f::dim;
+	constexpr int SPECTRUM_SAMPLES	= nSpectrumSamples;
 
 	for (int i = 0, j = size[0] * size[1]; i < j; ++i) {
 		int isBlack = true;

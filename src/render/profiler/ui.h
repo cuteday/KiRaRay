@@ -63,7 +63,7 @@ private:
 		Profiler::Event* pEvent;            ///< Source profiler event.
 		std::string name;                   ///< Short name.
 		uint32_t level;                     ///< Event tree level.
-		uint32_t color;                     ///< Color (for graph).
+		uint32_t color;                     ///< RGB (for graph).
 		uint32_t mutedColor;                ///< Muted color (for graph).
 		float cpuTime;                      ///< Current CPU time.
 		float gpuTime;                      ///< Current GPU time.

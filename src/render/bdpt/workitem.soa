@@ -12,8 +12,7 @@ flat HaltonSampler;
 flat DTreeWrapper;
 
 flat Vector3f;
-flat Color3f;
-flat Color;
+flat RGB;
 flat VertexType;
 
 struct Ray;
@@ -21,7 +20,7 @@ struct LightSampleContext;
 
 struct Vertex {
 	VertexType type;
-	Color3f throughput;
+	RGB throughput;
 	bool delta;
 	float pdfFwd, pdfRev;
 };

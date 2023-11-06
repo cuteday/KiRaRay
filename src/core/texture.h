@@ -81,10 +81,10 @@ public:
 	using Format = Image::Format;
 
 	Texture() = default; 
-	Texture(Color4f value) { setConstant(value); }
+	Texture(RGBA value) { setConstant(value); }
 	Texture(const string& filepath, bool flip = false, bool srgb = false);
 
-	void setConstant(const Color4f value) { 
+	void setConstant(const RGBA value) { 
 		mValue = value;
 	};
 
@@ -94,14 +94,14 @@ public:
 			mImage.reset();
 	}
 	Image::SharedPtr getImage() const { return mImage; }
-	Color4f getConstant() const { return mValue; }
+	RGBA getConstant() const { return mValue; }
 	std::string getFilemame() const { return mFilename; }
 	bool hasImage() const { return mImage && mImage->isValid(); }
 
 	static Texture::SharedPtr createFromFile(const fs::path &filepath, bool flip = false,
 											 bool srgb = false);
 
-	Color4f mValue{};	 /* If this is a constant texture, the value should be set. */
+	RGBA mValue{};	 /* If this is a constant texture, the value should be set. */
 	Image::SharedPtr mImage;
 	string mFilename;
 };
@@ -126,8 +126,8 @@ public:
 	};
 
 	struct MaterialParams {
-		Color4f diffuse{ 1 };			// RGB for base color and A (optional) for opacity 
-		Color4f specular{ 0 };			// G-roughness B-metallic A-shininess in MetalRough model
+		RGBA diffuse{ 1 };			// RGB for base color and A (optional) for opacity 
+		RGBA specular{ 0 };			// G-roughness B-metallic A-shininess in MetalRough model
 										// RGB - specular color (F0); A - shininess in SpecGloss model
 		float IoR{ 1.5f };
 		float specularTransmission{ 0 };
@@ -138,7 +138,7 @@ public:
 
 	void setName(const std::string& name) { mName = name; }
 	void setTexture(TextureType type, Texture::SharedPtr texture);
-	void setConstantTexture(TextureType type, const Color4f color);
+	void setConstantTexture(TextureType type, const RGBA color);
 	bool determineSrgb(string filename, TextureType type);
 	void setColorSpace(const ColorSpaceType colorSpace) { mColorSpace = colorSpace; }
 
@@ -166,7 +166,7 @@ public:
 namespace rt {
 class TextureData {
 public:
-	Color4f mValue{};
+	RGBA mValue{};
 	cudaTextureObject_t mCudaTexture{};
 	bool mValid{};
 
@@ -176,8 +176,8 @@ public:
 	KRR_CALLABLE cudaTextureObject_t getCudaTexture() const {
 		return mCudaTexture;
 	}
-	KRR_CALLABLE Color4f getConstant() const { return mValue; }
-	KRR_DEVICE Color4f evaluate(Vector2f uv) const {
+	KRR_CALLABLE RGBA getConstant() const { return mValue; }
+	KRR_DEVICE RGBA evaluate(Vector2f uv) const {
 #ifdef __NVCC__
 		if (mCudaTexture) return tex2D<float4>(mCudaTexture, uv[0], uv[1]);
 #endif

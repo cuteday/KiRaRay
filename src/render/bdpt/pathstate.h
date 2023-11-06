@@ -15,7 +15,7 @@ enum class VertexType { Camera, Light, Surface };
 
 struct Vertex {
 	VertexType type;
-	Color3f throughput;
+	RGB throughput;
 	bool delta{};
 	float pdfFwd{}, pdfRev{};
 };

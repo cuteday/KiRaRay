@@ -426,7 +426,7 @@ KRR_CALLABLE float RGBColorSpace::lum(const SampledSpectrum& s, const SampledWav
 	return SampledSpectrum(Ys * s).safeDiv(pdf).mean() / CIE_Y_integral;
 }
 
-KRR_CALLABLE float luminance(Color3f color) {
+KRR_CALLABLE float luminance(RGB color) {
 	return dot(Vector3f(color), Vector3f(0.299, 0.587, 0.114));
 }
 KRR_NAMESPACE_END

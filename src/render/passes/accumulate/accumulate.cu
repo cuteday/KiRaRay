@@ -24,11 +24,11 @@ void AccumulatePass::render(RenderContext *context) {
 		lastResetFrame = lastSceneUpdates.frameIndex;
 	} 
 	
-	Color4f *accumBuffer = (Color4f *) mAccumBuffer->data();
+	RGBA *accumBuffer = (RGBA *) mAccumBuffer->data();
 	CudaRenderTarget currentBuffer = context->getColorTexture()->getCudaRenderTarget();
 	GPUParallelFor(getFrameSize()[0] * getFrameSize()[1], KRR_DEVICE_LAMBDA(int i) {
 		float currentWeight = 1.f / (mAccumCount + 1);
-		Color4f currentPixel = currentBuffer.read(i);
+		RGBA currentPixel = currentBuffer.read(i);
 		if (mAccumCount > 0) {
 			if (mMode == Mode::MovingAverage) // moving average mode
 				accumBuffer[i] =

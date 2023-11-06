@@ -159,13 +159,13 @@ class InfiniteLight {
 public:
 	InfiniteLight() = default;
 
-	InfiniteLight(const Matrix3f &rotation, Color tint, float scale = 1, float sceneRadius = 1e5f,
+	InfiniteLight(const Matrix3f &rotation, RGB tint, float scale = 1, float sceneRadius = 1e5f,
 				  const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		tint(tint), scale(scale), rotation(rotation), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
 
 	InfiniteLight(const Matrix3f &rotation, const rt::TextureData &image, float scale = 1,
 				  float sceneRadius = 1e5f, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
-		image(image), tint(Color::Ones()), scale(scale), rotation(rotation), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
+		image(image), tint(RGB::Ones()), scale(scale), rotation(rotation), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
 										   const SampledWavelengths &lambda) const {

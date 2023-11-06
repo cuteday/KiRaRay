@@ -26,38 +26,66 @@ float *initialize_metric(size_t n_elements) {
 	}
 	return intermediateResult.data();
 }
+
+KRR_CALLABLE float srgb2linear(float sRGBColor) {
+	if (sRGBColor <= 0.04045f)
+		return sRGBColor / 12.92f;
+	else
+		return pow((sRGBColor + 0.055f) / 1.055f, 2.4f);
 }
 
-KRR_CALLABLE float mse(const Color& y, const Color& ref) {
+KRR_CALLABLE RGB srgb2linear(RGB sRGBColor) {
+	RGB ret{};
+	for (int ch = 0; ch < RGB::dim; ch++)
+		ret[ch] = srgb2linear(sRGBColor[ch]);
+	return ret;
+}
+
+KRR_CALLABLE float linear2srgb(float linearColor) {
+	if (linearColor <= 0.0031308)
+		return linearColor * 12.92f;
+	else
+		return 1.055f * pow(linearColor, 1.f / 2.4f) - 0.055f;
+}
+
+KRR_CALLABLE RGB linear2srgb(RGB linearColor) {
+	RGB ret{};
+	for (int ch = 0; ch < RGB::dim; ch++)
+		ret[ch] = linear2srgb(linearColor[ch]);
+	return ret;
+}
+}
+
+KRR_CALLABLE float mse(const RGB& y, const RGB& ref) {
 	return (y - ref).abs().pow(2).mean(); 
 }
 
-KRR_CALLABLE float mape(const Color &y, const Color &ref) { 
+KRR_CALLABLE float mape(const RGB &y, const RGB &ref) { 
 	return ((y - ref).abs() / (ref + ERROR_EPS)).mean();
 }
 
-KRR_CALLABLE float smape(const Color &y, const Color &ref) { 
+KRR_CALLABLE float smape(const RGB &y, const RGB &ref) { 
 	return ((y - ref).abs() / (ref + y + ERROR_EPS)).mean();
 }
 
 // is in fact MRSE...
-KRR_CALLABLE float rel_mse(const Color &y, const Color &ref) {
+KRR_CALLABLE float rel_mse(const RGB &y, const RGB &ref) {
 	return ((y - ref) / (ref + ERROR_EPS)).square().mean();
-	//Color ret{}, diff = (y - ref).abs();
-	//for (int ch = 0; ch < Color::dim; ch++)
+	//RGB ret{}, diff = (y - ref).abs();
+	//for (int ch = 0; ch < RGB::dim; ch++)
 	//	ret[ch] = ref[ch] == 0.f ? 0.f : pow2(diff[ch] / (ref[ch]));
 	//return ret.mean();
 }
 
-float calc_metric(const CudaRenderTarget & frame, const Color4f *reference, 
+float calc_metric(const CudaRenderTarget & frame, const RGBA *reference, 
 	size_t n_elements, ErrorMetric metric) {
 	float *error_buffer = initialize_metric(n_elements);
 	GPUParallelFor(n_elements, [=] KRR_DEVICE(int i) {	
-		Color y = frame.read(i);
-		Color ref = reference[i];
+		RGB y = frame.read(i);
+		RGB ref = reference[i];
 #if METRIC_IN_SRGB
-		y = utils::linear2srgb(y);
-		ref = utils::linear2srgb(ref);
+		y = linear2srgb(y);
+		ref = linear2srgb(ref);
 #endif
 		float error;
 		switch (metric) {

@@ -21,7 +21,7 @@ void ErrorMeasurePass::render(RenderContext *context) {
 				  "ErrorMeasure::Reference image size does not match frame size!");
 		size_t n_elememts = getFrameSize()[0] * getFrameSize()[1];
 		float result	  = calc_metric(context->getColorTexture()->getCudaRenderTarget(),
-			reinterpret_cast<Color4f *>(mReferenceImageBuffer.data()),
+			reinterpret_cast<RGBA *>(mReferenceImageBuffer.data()),
 			n_elememts, mMetric);
 		mLastResult = { { string(metricNames[(int) mMetric]), result } };
 		if (mLogResults)
@@ -104,8 +104,8 @@ bool ErrorMeasurePass::loadReferenceImage(const string &path) {
 		};
 		mReferenceImage->process(permute);
 		mReferenceImageBuffer.resize(mReferenceImage->getSizeInBytes());
-		mReferenceImageBuffer.copy_from_host(reinterpret_cast<Color4f*>(mReferenceImage->data()), 
-			mReferenceImage->getSizeInBytes() / sizeof(Color4f));
+		mReferenceImageBuffer.copy_from_host(reinterpret_cast<RGBA*>(mReferenceImage->data()), 
+			mReferenceImage->getSizeInBytes() / sizeof(RGBA));
 		reset();
 		mReferenceImagePath = path;
 		Log(Info, "ErrorMeasure::Loaded reference image from %s.", path.c_str());

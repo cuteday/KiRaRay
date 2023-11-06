@@ -6,6 +6,7 @@
 #include <typeindex>
 
 #include "common.h"
+#include "render/color.h"
 #include "device/taggedptr.h"
 
 KRR_NAMESPACE_BEGIN
@@ -18,24 +19,24 @@ public:
 		mCudaFrame(cudaFrame), width(width), height(height) {}
 	~CudaRenderTarget() = default;
 
-	KRR_DEVICE Color4f read(int x, int y) const {
+	KRR_DEVICE RGBA read(int x, int y) const {
 		float4 res{};
 #ifdef __NVCC__
 		surf2Dread(&res, mCudaFrame, x * sizeof(float4), height - 1 - y);
-		return Color4f(res);
+		return RGBA(res);
 #endif
 		return {};
 	}
-	KRR_DEVICE void write(const Color4f &value, int x, int y) {
+	KRR_DEVICE void write(const RGBA &value, int x, int y) {
 #ifdef __NVCC__
 		surf2Dwrite(float4(value), mCudaFrame, x * sizeof(float4), height - 1 - y);
 #endif
 	}
-	KRR_DEVICE Color4f read(int idx) const {
+	KRR_DEVICE RGBA read(int idx) const {
 		int x = idx % width, y = idx / width;
 		return read(x, y);
 	}
-	KRR_DEVICE void write(const Color4f &value, int idx) {
+	KRR_DEVICE void write(const RGBA &value, int idx) {
 		int x = idx % width, y = idx / width;
 		return write(value, x, y);
 	}

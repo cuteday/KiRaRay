@@ -144,7 +144,7 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 	aiColor3D color;
 
 	if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS) {
-		Color transmission = 1.f - Color(color[0], color[1], color[2]);
+		RGB transmission = 1.f - RGB(color[0], color[1], color[2]);
 		pMaterial->mMaterialParams.specularTransmission =
 			luminance(transmission);
 		if (luminance(transmission) > 1 - M_EPSILON)
@@ -169,10 +169,10 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 
 	// Emissive color
 	if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
-		Color3f emissive = Vector3f(color[0], color[1], color[2]);
+		RGB emissive = Vector3f(color[0], color[1], color[2]);
 		if (emissive.any()) {
 			pMaterial->setConstantTexture(Material::TextureType::Emissive,
-										  Color4f(emissive, 1));
+										  RGBA(emissive, 1));
 		}
 	}
 

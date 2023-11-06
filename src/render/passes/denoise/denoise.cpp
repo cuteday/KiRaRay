@@ -45,8 +45,8 @@ void DenoiseBackend::initialize() {
 
 void DenoiseBackend::denoise(CUstream stream, float *rgb, float *normal, float *albedo, float *result) {
 	std::array<OptixImage2D, 3> inputLayers;
-	int inputPixelStride = pixelFormat == PixelFormat::FLOAT3 ? sizeof(Color3f) : sizeof(Color4f);
-	int outputPixelStride = pixelFormat == PixelFormat::FLOAT3 ? sizeof(Color3f) : sizeof(Color4f);
+	int inputPixelStride = pixelFormat == PixelFormat::FLOAT3 ? sizeof(RGB) : sizeof(RGBA);
+	int outputPixelStride = pixelFormat == PixelFormat::FLOAT3 ? sizeof(RGB) : sizeof(RGBA);
 	int nLayers = haveGeometryBuffer ? 3 : 1;
 	
 	for (int i = 0; i < nLayers; ++i) {
@@ -135,7 +135,7 @@ void DenoisePass::render(RenderContext *context) {
 	PROFILE("Denoise");
 	auto size				   = context->getRenderTarget()->getSize();
 	CudaRenderTarget cudaFrame = context->getColorTexture()->getCudaRenderTarget();
-	Color4f* colorBuffer	   = mColorBuffer.data();
+	RGBA* colorBuffer	   = mColorBuffer.data();
 	GPUParallelFor(size[0] * size[1], [=] KRR_DEVICE(int pixelId) mutable {
 		colorBuffer[pixelId] = cudaFrame.read(pixelId);
 	});

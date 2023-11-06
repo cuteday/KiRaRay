@@ -53,7 +53,7 @@ public:
 
 private:
 	bool mUseGeometry{};
-	TypedBuffer<Color4f> mColorBuffer;
+	TypedBuffer<RGBA> mColorBuffer;
 	DenoiseBackend mBackend;
 };
 

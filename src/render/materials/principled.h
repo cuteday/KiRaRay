@@ -71,7 +71,7 @@ public:
 	_DEFINE_BSDF_INTERNAL_ROUTINES(PrincipledBsdf);
 
 	KRR_CALLABLE void setup(const SurfaceInteraction &intr) { 
-		Spectrum c				 = intr.sd.diffuse;		/* base color*/
+		Spectrum c			 = intr.sd.diffuse;		/* base color*/
 		float metallicWeight = intr.sd.metallic;
 		float e				 = intr.sd.IoR;
 		float strans		 = intr.sd.specularTransmission;
