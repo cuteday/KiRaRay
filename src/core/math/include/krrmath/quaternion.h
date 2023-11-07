@@ -39,6 +39,23 @@ public:
 		ss << *this;
 		return ss.str();
 	}
+
+#ifdef KRR_MATH_JSON
+	friend void to_json(json &j, const Quaternion<T> &q) { 
+		j.push_back(q.w());
+		j.push_back(q.x());
+		j.push_back(q.y());
+		j.push_back(q.z());
+	}
+
+	friend void from_json(const json &j, Quaternion<T> &q) {
+		assert(j.size() == 4);
+		q.w() = (T) j.at(0);
+		q.x() = (T) j.at(1);
+		q.y() = (T) j.at(2);
+		q.z() = (T) j.at(3);
+	}
+#endif
 };
 
 using Quaternionf = Quaternion<float>;

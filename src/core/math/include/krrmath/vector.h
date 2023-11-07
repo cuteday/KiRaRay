@@ -51,6 +51,17 @@ public:
 		ss << "[" << *this << "]";
 		return std::regex_replace(ss.str(), std::regex("\n"), ", ");
 	}
+
+#ifdef KRR_MATH_JSON
+	friend void to_json(json &j, const Vector<T, Size> &v) {
+		for (int i = 0; i < Size; i++) j.push_back(v[i]);	
+	}
+
+	friend void from_json(const json &j, Vector<T, Size> &v) {
+		assert(j.size() == Size);
+		for (int i = 0; i < Size; i++) v[i] = (T) j.at(i);
+	}
+#endif
 };
 
 template <typename T>
@@ -98,15 +109,11 @@ public:
 
 #ifdef KRR_MATH_JSON
 	friend void to_json(json &j, const Vector2<T> &v) {
-		for (int i = 0; i < 2; i++) {
-			j.push_back(v[i]);
-		}
+		for (int i = 0; i < 2; i++) j.push_back(v[i]);
 	}
 
 	friend void from_json(const json &j, Vector2<T> &v) {
-		for (int i = 0; i < 2; i++) {
-			v[i] = (T) j.at(i);
-		}
+		for (int i = 0; i < 2; i++) v[i] = (T) j.at(i);
 	}
 #endif
 };
@@ -164,15 +171,11 @@ public:
 
 #ifdef KRR_MATH_JSON
 	friend void to_json(json &j, const Vector3<T> &v) {
-		for (int i = 0; i < 3; i++) {
-			j.push_back(v[i]);
-		}
+		for (int i = 0; i < 3; i++) j.push_back(v[i]);
 	}
 
 	friend void from_json(const json &j, Vector3<T> &v) {
-		for (int i = 0; i < 3; i++) {
-			v[i] = (T) j.at(i);
-		}
+		for (int i = 0; i < 3; i++) v[i] = (T) j.at(i);
 	}
 #endif
 };
@@ -219,15 +222,11 @@ public:
 
 #ifdef KRR_MATH_JSON
 	friend void to_json(json &j, const Vector4<T> &v) {
-		for (int i = 0; i < 4; i++) {
-			j.push_back(v[i]);
-		}
+		for (int i = 0; i < 4; i++) j.push_back(v[i]);
 	}
 
 	friend void from_json(const json &j, Vector4<T> &v) {
-		for (int i = 0; i < 4; i++) {
-			v[i] = (T) j.at(i);
-		}
+		for (int i = 0; i < 4; i++) v[i] = (T) j.at(i);
 	}
 #endif
 };

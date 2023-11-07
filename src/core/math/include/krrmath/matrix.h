@@ -35,6 +35,17 @@ public:
 		ss << *this;
 		return ss.str();
 	}
+
+#ifdef KRR_MATH_JSON
+	friend void to_json(json &j, const Matrix<T, Rows, Cols, Options> &m) {
+		for (int i = 0; i < Rows; i++) j.push_back(Vector<T, Cols>(m.row(i)));
+	}
+
+	friend void from_json(const json &j, Matrix<T, Rows, Cols, Options> &m) {
+		assert(j.size() == Rows);
+		for (int i = 0; i < Rows; i++) m.row(i) = j.at(i).get<Vector<T, Cols>>();
+	}
+#endif
 };
 
 /* About storage order: 
