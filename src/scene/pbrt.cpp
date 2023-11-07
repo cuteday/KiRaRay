@@ -318,7 +318,8 @@ Volume::SharedPtr PbrtImporter::loadMedium(pbrt::Medium::SP pbrtMedium) {
 	return result;
 }
 
-bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {
+bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene,
+						  SceneGraphNode::SharedPtr root, const json &params) {
 	string basepath = fs::path(filepath).parent_path().string();
 	mBasepath		= basepath;
 	mScene			= pScene;
@@ -331,8 +332,11 @@ bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene) {
 	}
 	scene->makeSingleLevel(); // since currently kiraray supports only single gas.
 
-	auto root = std::make_shared<SceneGraphNode>();
-	mScene->getSceneGraph()->setRoot(root);
+	root = root ? root : pScene->getSceneGraph()->getRoot();
+	if (!root) {
+		root = std::make_shared<SceneGraphNode>();
+		pScene->getSceneGraph()->setRoot(root);
+	}
 
 	pScene->addMaterial(std::make_shared<Material>("default material")); 
 	// the default material for shapes without material

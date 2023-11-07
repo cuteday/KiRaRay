@@ -54,22 +54,24 @@ public:
 	void setCameraController(OrbitCameraController::SharedPtr cameraController) {
 		mCameraController = cameraController;
 	}
-	void addEnvironmentMap(Texture::SharedPtr infiniteLight);
-	void loadConfig(const json &config);
+
+	json getConfig() const { return mConfig; }
+	void setConfig(const json &config, bool update = true);
 	AABB getBoundingBox() const { return mGraph->getRoot()->getGlobalBoundingBox(); }
 
 	friend void to_json(json& j, const Scene& scene) { 
-		j = json{ 
+		j = scene.getConfig();
+		j.update(json{ 
 			{ "camera", *scene.mCamera }, 
 			{ "cameraController", *std::dynamic_pointer_cast
 				<OrbitCameraController>(scene.mCameraController) },
-		};
+		});
 	}
 
+	json mConfig;
 	SceneGraph::SharedPtr mGraph;
 	Camera::SharedPtr mCamera;
 	OrbitCameraController::SharedPtr mCameraController;
-	std::vector<Texture::SharedPtr> environments;
 	bool mHasChanges	  = false;
 	bool mEnableAnimation = true;
 

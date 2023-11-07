@@ -218,7 +218,7 @@ void RenderApp::captureFrame(bool hdr, fs::path filename) {
 	if (!fs::exists(filepath.parent_path()))
 		fs::create_directories(filepath.parent_path());
 	screenshot.saveImage(filepath);
-	logSuccess("Rendering saved to " + filepath.string());
+	Log(Success, "Rendering saved to " + filepath.string());
 }
 
 void RenderApp::saveConfig(string path) {
@@ -275,9 +275,9 @@ void RenderApp::loadConfig(const json config) {
 		logWarning("No specified render pass in configuration!");
 	Scene::SharedPtr scene { mScene };
 	if (config.contains("model")) {
-		scene		 = std::make_shared<Scene>();
+		if (!scene) scene = std::make_shared<Scene>();
 		string model = config["model"].get<string>();
-		importer::loadScene(model, scene);
+		SceneImporter::loadScene(model, scene);
 	}
 	if (config.contains("environment")) {
 		if (!scene) Log(Fatal, "Import a model before doing scene configurations!");
@@ -288,8 +288,9 @@ void RenderApp::loadConfig(const json config) {
 		scene->getSceneGraph()->attachLeaf(root, light);
 	}
 	if (config.contains("scene")) {
-		if (!scene) Log(Fatal, "Import a model before doing scene configurations!");
-		scene->loadConfig(config["scene"]);
+		if(!scene) scene = std::make_shared<Scene>();
+		SceneImporter importer;
+		importer.import(config["scene"], scene /* attach to root by default */);
 	}
 	if (scene) mScene = scene;
 	if (config.contains("resolution")) {

@@ -52,6 +52,7 @@ SET (KRR_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/scene/assimp.cpp
 	${KRR_RENDER_SOURCE_DIR}/scene/pbrt.cpp
 	${KRR_RENDER_SOURCE_DIR}/scene/openvdb.cpp
+	${KRR_RENDER_SOURCE_DIR}/scene/krrscene.cpp
 	${KRR_RENDER_SOURCE_DIR}/main/renderer.cpp
 	${KRR_RENDER_SOURCE_DIR}/util/tables.cpp
 	${KRR_RENDER_SOURCE_DIR}/util/volume.cpp

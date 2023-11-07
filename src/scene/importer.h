@@ -38,13 +38,14 @@ public:
 		GLTF2,
 	};
 	AssimpImporter() = default;
-	bool import(const fs::path filepath, Scene::SharedPtr pScene);
+	bool import(const fs::path filepath, Scene::SharedPtr pScene,
+				SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
 
 private:
 	AssimpImporter(const AssimpImporter &) = delete;
 	void operator=(const AssimpImporter &) = delete;
 
-	void traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr graphNode);
+	void traverseNode(aiNode *assimnode, SceneGraphNode::SharedPtr graphNode);
 	void loadMaterials(const string &modelFolder);
 	void loadMeshes();
 	void loadAnimations();
@@ -59,7 +60,8 @@ private:
 class PbrtImporter {
 public:
 	PbrtImporter() = default;
-	bool import(const fs::path filepath, Scene::SharedPtr scene);
+	bool import(const fs::path filepath, Scene::SharedPtr scene,
+				SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
 
 private:
 	PbrtImporter(const PbrtImporter &)	 = delete;
@@ -79,8 +81,8 @@ private:
 class OpenVDBImporter {
 public:
 	OpenVDBImporter() = default;
-
-	bool import(const fs::path filepath, Scene::SharedPtr scene);
+	bool import(const fs::path filepath, Scene::SharedPtr scene,
+				SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
 
 private:
 	OpenVDBImporter(const OpenVDBImporter &) = delete;
@@ -89,25 +91,27 @@ private:
 	string mFilepath;
 	Scene::SharedPtr mScene;
 };
-
-inline bool loadScene(const fs::path filepath, Scene::SharedPtr pScene) {
-	bool success{};
-	string format = filepath.extension().string();
-	if (format == ".obj" || format == ".gltf" || format == ".glb" || format == ".fbx") {
-		success = AssimpImporter().import(filepath, pScene);
-	} else if (format == ".pbrt") {
-		success = PbrtImporter().import(filepath, pScene);
-	} else if (format == ".vdb" || format == ".nvdb") {
-		success = OpenVDBImporter().import(filepath, pScene);
-	} else {
-		Log(Fatal, "Unsupported file format: %s...", format.c_str());
-		return false;
-	}
-	if (!success)
-		Log(Error, "Failed to load scene file from %ls...", filepath.c_str());
-	return success;
-}
-
 } // namespace importer
+
+class SceneImporter {
+public:
+	SceneImporter() = default;
+	bool import(const fs::path filepath, Scene::SharedPtr scene,
+				SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
+	bool import(const json &j, Scene::SharedPtr scene, SceneGraphNode::SharedPtr node = nullptr,
+				const json &params = {});
+	bool importModel(const json &j, Scene::SharedPtr scene,
+					 SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
+
+	static bool loadScene(const fs::path filepath, Scene::SharedPtr pScene,
+					 SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
+
+private:
+	SceneImporter(const SceneImporter &)  = delete;
+	void operator=(const SceneImporter &) = delete;
+
+	string mFilepath;
+	Scene::SharedPtr mScene;
+};
 
 KRR_NAMESPACE_END

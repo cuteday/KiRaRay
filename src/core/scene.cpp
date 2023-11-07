@@ -25,12 +25,6 @@ bool Scene::update(size_t frameIndex, double currentTime) {
 	return mHasChanges = hasChanges;
 }
 
-void Scene::loadConfig(const json& config) {
-	mCamera			  = std::make_shared<Camera>(config.at("camera")); 
-	mCameraController = std::make_shared<OrbitCameraController>(config.at("cameraController"));
-	mCameraController->setCamera(mCamera);
-}
-
 void Scene::renderUI() {
 	if (ui::TreeNode("Statistics")) {
 		ui::Text("Meshes: %d", getMeshes().size());
@@ -128,10 +122,6 @@ void Scene::renderUI() {
 	}
 }
 
-void Scene::addEnvironmentMap(Texture::SharedPtr infiniteLight) {
-	environments.emplace_back(infiniteLight);
-}
-
 bool Scene::onMouseEvent(const MouseEvent& mouseEvent){
 	if(mCameraController && mCameraController->onMouseEvent(mouseEvent))
 		return true;
@@ -157,6 +147,11 @@ void Scene::initializeSceneRT() {
 	}
 	mSceneRT = std::make_shared<RTScene>(shared_from_this()); 
 	mSceneRT->uploadSceneData();
+}
+
+void Scene::setConfig(const json& config, bool update) {
+	if (update) mConfig.update(config);
+	else mConfig = config;
 }
 
 KRR_NAMESPACE_END

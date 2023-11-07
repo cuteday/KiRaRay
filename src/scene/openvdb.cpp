@@ -5,17 +5,20 @@ KRR_NAMESPACE_BEGIN
 namespace importer {
 
 /* Construct an axis-aligned bounding box with null-material as the container of the volume. */
-bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene) {
+bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene,
+							 SceneGraphNode::SharedPtr node, const json &params) {
 	mFilepath = filepath.string();
 	mScene	  = scene;
 	
-	if (!scene->getSceneGraph()->getRoot())
-		scene->getSceneGraph()->setRoot(std::make_shared<SceneGraphNode>());
+	node = node ? node : scene->getSceneGraph()->getRoot();
+	if (!node) {
+		node = std::make_shared<SceneGraphNode>();
+		scene->getSceneGraph()->setRoot(node);
+	}
 
 	auto mesh	  = std::make_shared<Mesh>();
 	auto instance = std::make_shared<MeshInstance>(mesh);
-	auto root	  = scene->getSceneGraph()->getRoot();
-	auto volume	  = std::make_shared<VDBVolume>(1, 1, 0, filepath);
+	auto volume	  = std::make_shared<VDBVolume>(RGB(1, 0.5, 0.8), RGB(0.8, 0.9, 0.8), 0, filepath);
 
 	/* initialize a intersection bounding box for this volume */
 	auto aabb	  = volume->densityGrid->getBounds();
@@ -36,10 +39,9 @@ bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene) {
 	mesh->setMaterial(nullptr);
 	mesh->setMedium(volume, nullptr);
 	mesh->computeBoundingBox();
-
 	scene->addMesh(mesh);
-	scene->getSceneGraph()->attachLeaf(root, instance);
-	scene->getSceneGraph()->attachLeaf(root, volume);
+	scene->getSceneGraph()->attachLeaf(node, instance);
+	scene->getSceneGraph()->attachLeaf(node, volume);
 	return true; 
 }
 

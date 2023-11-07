@@ -1,5 +1,7 @@
 #pragma once
-
+#ifdef __INTELLISENSE__
+#define _CUDACC__
+#endif
 
 #include "util/math_utils.h"
 #include "raytracing.h"
