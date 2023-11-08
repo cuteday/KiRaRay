@@ -33,7 +33,7 @@ public:
 	void handleHit();
 	void handleMiss();
 	void handleIntersections();
-	void generateScatterRays();
+	void generateScatterRays(int depth);
 	void traceClosest(int depth);
 	void traceShadow();
 

@@ -85,7 +85,7 @@ public:
 		return ss;
 	}
 
-	// TODO: Direct sampling on the projeced area to the sphere.
+	// TODO: Direct sampling on the projected area to the sphere.
 	KRR_CALLABLE ShapeSample sample(Vector2f u, const ShapeSampleContext &ctx) const {
 		// sample w.r.t. the reference point,
 		// also the pdf counted is in solid angle.

@@ -100,7 +100,7 @@ void WavefrontPathTracer::handleMiss() {
 		});
 }
 
-void WavefrontPathTracer::generateScatterRays() {
+void WavefrontPathTracer::generateScatterRays(int depth) {
 	PROFILE("Generate scatter rays");
 	ForAllQueued(
 		scatterRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(ScatterRayWorkItem & w) {
@@ -152,7 +152,7 @@ void WavefrontPathTracer::generateScatterRays() {
 				r.pixelId		 = w.pixelId;
 				r.depth			 = w.depth + 1;
 				r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf;
-				if (any(r.thp)) nextRayQueue(w.depth)->push(r);
+				if (any(r.thp)) nextRayQueue(depth)->push(r);
 			}
 		});
 }
@@ -247,7 +247,7 @@ void WavefrontPathTracer::render(RenderContext *context) {
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
 			// [STEP#2.4] evaluate materials & bsdfs, and generate shadow rays
-			generateScatterRays();
+			generateScatterRays(depth);
 			// [STEP#2.5] trace shadow rays (next event estimation)
 			if (enableNEE) traceShadow();
 		}

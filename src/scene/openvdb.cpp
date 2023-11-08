@@ -16,8 +16,8 @@ bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene,
 		scene->getSceneGraph()->setRoot(node);
 	}
 	
-	auto sigma_a = params.value<Array3f>("sigma_a", Array3f::Ones());
-	auto sigma_s = params.value<Array3f>("sigma_s", Array3f::Zero());
+	auto sigma_a = params.value<Array3f>("sigma_a", Array3f{1, 1, 1});
+	auto sigma_s = params.value<Array3f>("sigma_s", Array3f{0, 0, 0});
 	float g		 = params.value<float>("g", 0);
 
 	auto mesh	  = std::make_shared<Mesh>();
