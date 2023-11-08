@@ -28,9 +28,12 @@ public:
 
 	KRR_CALLABLE float area()const {
 		rt::MeshData *mesh = instance->mesh;
+		const Affine3f &transform = instance->transform;
 		Vector3i v = mesh->indices[primId];
-		Vector3f p0 = mesh->positions[v[0]], p1 = mesh->positions[v[1]],
-				 p2 = mesh->positions[v[2]];
+		/* Remember to transform the vertices, in case that the meshes are scaled */
+		Vector3f p0 = transform * mesh->positions[v[0]], 
+				 p1 = transform * mesh->positions[v[1]],
+				 p2 = transform * mesh->positions[v[2]];
 		float s = 0.5f * length(cross(p1 - p0, p2 - p0));
 		DCHECK(s > 0);
 		return s;
@@ -44,9 +47,8 @@ public:
 				 p1 = transform * mesh->positions[v[1]],
 				 p2 = transform * mesh->positions[v[2]];
 
-		return utils::sphericalTriangleArea(normalize(p0 - p), 
-			normalize(p1 - p),
-			normalize(p2 - p));
+		return utils::sphericalTriangleArea(normalize(p0 - p), normalize(p1 - p),
+											normalize(p2 - p));
 	}
 
 	KRR_CALLABLE ShapeSample sample(Vector2f u) const {
@@ -77,7 +79,7 @@ public:
 
 		// transform to world space [TODO: refactor]
 		p		= instance->getTransform() * p;
-		n		= instance->getTransposedInverseTransform() * n;
+		n		= (instance->getTransposedInverseTransform() * n).normalized();
 		ss.intr = Interaction(p, n, uvSample);
 		ss.pdf	= 1 / area();
 		return ss;

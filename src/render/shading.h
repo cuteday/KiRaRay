@@ -128,9 +128,9 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	// transform local interaction to world space
 	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
 	intr.p		   = hitInfo.instance->getTransform() * intr.p;
-	intr.n		   = hitInfo.instance->getTransposedInverseTransform() * intr.n;
-	intr.tangent   = hitInfo.instance->getTransposedInverseTransform() * intr.tangent;
-	intr.bitangent = hitInfo.instance->getTransposedInverseTransform() * intr.bitangent;
+	intr.n		   = (hitInfo.instance->getTransposedInverseTransform() * intr.n).normalized();
+	intr.tangent   = (hitInfo.instance->getTransposedInverseTransform() * intr.tangent).normalized();
+	intr.bitangent = (hitInfo.instance->getTransposedInverseTransform() * intr.bitangent).normalized();
 	
 	/* Safely return here since below are all material-related operations. */
 	if (intr.material == nullptr) return;
@@ -174,8 +174,8 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	} else if (material.mShadingModel == Material::ShadingModel::SpecularGlossiness) {
 		// [SPECULAR] RGB - Specular RGB; A - Glossiness
 		diffuse			  = baseColor;
-		specular		  = (RGB) spec; // specular reflectance
-		intr.sd.roughness = 1.f - spec[3];	//
+		specular		  = (RGB) spec;
+		intr.sd.roughness = 1.f - spec[3];	
 		intr.sd.metallic  = getMetallic(diffuse, specular);
 	} else assert(false);
 	intr.sd.diffuse	 = Spectrum::fromRGB(diffuse, SpectrumType::RGBBounded, lambda, colorSpace);
