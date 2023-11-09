@@ -66,8 +66,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(Closest)() { 
-	if (alphaKilled())
-		optixIgnoreIntersection();
+	if (alphaKilled(getHitInfo())) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_MS(Closest)() {
@@ -83,7 +82,10 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(Shadow)() { 
-	if (alphaKilled()) optixIgnoreIntersection();
+	/* We are here since we did not enable medium rendering, so safely ignore null-material. */
+	const HitInfo &hitInfo = getHitInfo();
+	if (hitInfo.instance->mesh->material == nullptr || alphaKilled(hitInfo))
+		optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_MS(Shadow)() { optixSetPayload_0(1); }
@@ -112,7 +114,7 @@ extern "C" __global__ void KRR_RT_CH(ShadowTr)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(ShadowTr)() {
-	if (alphaKilled()) optixIgnoreIntersection();
+	if (alphaKilled(getHitInfo())) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_MS(ShadowTr)() { optixSetPayload_2(1); }

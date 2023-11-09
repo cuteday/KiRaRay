@@ -141,7 +141,7 @@ extern "C" __global__ void KRR_RT_CH(Radiance)(){
 }
 
 extern "C" __global__ void KRR_RT_AH(Radiance)() {
-	if (alphaKilled()) optixIgnoreIntersection();
+	if (alphaKilled(getHitInfo())) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_MS(Radiance)() {
@@ -149,7 +149,7 @@ extern "C" __global__ void KRR_RT_MS(Radiance)() {
 }
 
 extern "C" __global__ void KRR_RT_AH(ShadowRay)() {
-	if (alphaKilled()) optixIgnoreIntersection();
+	if (alphaKilled(getHitInfo())) optixIgnoreIntersection();
 }
 
 extern "C" __global__ void KRR_RT_CH(ShadowRay)() {} /* skipped */

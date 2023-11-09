@@ -54,8 +54,7 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	return hitInfo;
 }
 
-KRR_DEVICE_FUNCTION bool alphaKilled() {
-	HitInfo hitInfo			   = getHitInfo();
+KRR_DEVICE_FUNCTION bool alphaKilled(const HitInfo& hitInfo) {
 	/* Null-material is only used as medium interface, so do not ignore it here. */
 	if (hitInfo.instance->mesh->material == nullptr) return false;
 	const rt::MaterialData &material = hitInfo.getMaterial();
