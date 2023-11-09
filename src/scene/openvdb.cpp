@@ -15,10 +15,14 @@ bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene,
 		node = std::make_shared<SceneGraphNode>();
 		scene->getSceneGraph()->setRoot(node);
 	}
+	
+	auto sigma_a = params.value<Array3f>("sigma_a", Array3f{1, 1, 1});
+	auto sigma_s = params.value<Array3f>("sigma_s", Array3f{0, 0, 0});
+	float g		 = params.value<float>("g", 0);
 
 	auto mesh	  = std::make_shared<Mesh>();
 	auto instance = std::make_shared<MeshInstance>(mesh);
-	auto volume	  = std::make_shared<VDBVolume>(RGB(1, 0.5, 0.8), RGB(0.8, 0.9, 0.8), 0, filepath);
+	auto volume	  = std::make_shared<VDBVolume>(sigma_a, sigma_s, g, filepath);
 
 	/* initialize a intersection bounding box for this volume */
 	auto aabb	  = volume->densityGrid->getBounds();

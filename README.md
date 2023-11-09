@@ -3,7 +3,8 @@
 *KiRaRay* is a simple interactive ray-tracing renderer using optix.
 
 <p align=center>
-<img src=common/demo/kirara.jpg width="800">
+<img src=common/demo/kirara.png width="800">
+
 
 ### Features
 

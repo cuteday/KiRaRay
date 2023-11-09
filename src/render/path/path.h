@@ -47,17 +47,17 @@ struct LaunchParamsPT {
 };
 
 struct PathData {
-	Spectrum L{};		// total contribution to the current pixel
-	Spectrum throughput; // maintain the throughput of path
-	float pdf;					// BxDF sampling pdf from last scatter
-	int depth;					// number of vertices along the path
-	BSDFType bsdfType;			// the sampled type of the last scatter event
-	Sampler sampler;			// rng
-	SampledWavelengths lambda;	// sampled wavelength
-	LightSampler lightSampler;	// randomly choosing a light source
-	LightSampleContext ctx;		// *last* context used for direct light sampling
-	SurfaceInteraction intr;	// surface interaction of the *current* hit
-	Ray ray;					// The last scattered ray
+	Spectrum L{};			   // total contribution to the current pixel
+	Spectrum throughput;	   // maintain the throughput of path
+	float pdf;				   // BxDF sampling pdf from last scatter
+	int depth;				   // number of vertices along the path
+	BSDFType bsdfType;		   // the sampled type of the last scatter event
+	Sampler sampler;		   // rng
+	SampledWavelengths lambda; // sampled wavelength
+	LightSampler lightSampler; // randomly choosing a light source
+	LightSampleContext ctx;	   // *last* context used for direct light sampling
+	SurfaceInteraction intr;   // surface interaction of the *current* hit
+	Ray ray;				   // The last scattered ray
 };
 
 KRR_NAMESPACE_END

@@ -220,9 +220,9 @@ public:
 	using WorkQueue::WorkQueue;
 	using WorkQueue::push;
 
-	KRR_CALLABLE int push(const SurfaceInteraction &intr, const Spectrum &thp,
-						  const Spectrum &pu, uint depth, uint pixelId) {
-		int index = allocateEntry();
+	KRR_CALLABLE int push(const SurfaceInteraction &intr, const Spectrum &thp, const Spectrum &pu,
+						  uint depth, uint pixelId) {
+		int index			 = allocateEntry();
 		this->intr[index]	 = intr;
 		this->thp[index]	 = thp;
 		this->pu[index]		 = pu;

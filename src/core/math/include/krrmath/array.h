@@ -49,6 +49,17 @@ public:
 		ss << "[" << *this << "]";
 		return std::regex_replace(ss.str(), std::regex("\n"), ", ");
 	}
+
+#ifdef KRR_MATH_JSON
+	friend void to_json(json &j, const Array<T, Size> &v) {
+		for (int i = 0; i < Size; i++) j.push_back(v[i]);
+	}
+
+	friend void from_json(const json &j, Array<T, Size> &v) {
+		assert(j.size() == Size);
+		for (int i = 0; i < Size; i++) v[i] = (T) j.at(i);
+	}
+#endif
 };
 
 template <typename T>

@@ -48,6 +48,7 @@ extern "C" __global__ void KRR_RT_CH(Closest)() {
 	RayWorkItem r = getRayWorkItem();
 	int pixelId				  = launchParams.currentRayQueue->pixelId[getRayId()];
 	SampledWavelengths lambda = launchParams.pixelState->lambda[pixelId];
+	intr.medium				  = r.ray.medium; // if this surface is inside a medium
 	prepareSurfaceInteraction(intr, hitInfo, lambda);
 	if (launchParams.mediumSampleQueue && r.ray.medium) {
 		launchParams.mediumSampleQueue->push(r, intr, optixGetRayTmax());

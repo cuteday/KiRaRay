@@ -1,14 +1,10 @@
 {
-	"resolution": [
-		750,
-		750
-	],
-	"passes": [
+    "passes": [
 		{
 			"enable": true,
 			"name": "WavefrontPathTracer",
 			"params": {
-				"nee": true,
+				"nee": false,
 				"rr": 0.8,
 				"max_depth": 10
 			}
@@ -29,55 +25,68 @@
 			"enable": true,
 			"name": "ToneMappingPass",
 			"params": {
-				"exposure": 1,
+				"exposure": 5,
 				"operator": "aces"
 			}
 		}
-	],
-	"scene": {
-		"model": [
-			{
-				"model": "common/assets/scenes/cbox/cbox.obj"
-			},
-			{
-				"model": "common/assets/scenes/smoke/smoke.vdb"
-			}
-		],
-		"camera": {
-			"mData": {
-				"aspectRatio": 1.0,
-				"focalDistance": 10.0,
-				"focalLength": 21.0,
-				"lensRadius": 0.0,
-				"pos": [
-					-0.010055910795927048,
-					1.0200917720794678,
-					2.828592300415039
-				],
-				"target": [
-					-0.011140584014356136,
-					1.0211291313171387,
-					-0.2837386131286621
-				],
-				"up": [
-					0.0,
-					1.0,
-					0.0
-				]
-			}
-		},
-		"cameraController": {
-			"mData": {
-				"pitch": 0.0003333091735839844,
-				"radius": 3.1123313903808594,
-				"target": [
-					-0.011140584014356136,
-					1.0211291313171387,
-					-0.2837386131286621
-				],
-				"yaw": 0.000348508358001709
-			}
-		}
-	},
-	"spp": 0
+    ],
+    "resolution": [
+        750,
+        750
+    ],
+    "scene": {
+        "camera": {
+            "mData": {
+                "aspectRatio": 1.0,
+                "focalDistance": 10.0,
+                "focalLength": 21.0,
+                "lensRadius": 0.0,
+                "pos": [
+                    -0.10795403271913528,
+                    40.9928092956543,
+                    111.58308410644531
+                ],
+                "target": [
+                    -0.14693589508533478,
+                    41.03009033203125,
+                    -0.27035611867904663
+                ],
+                "up": [
+                    0.0,
+                    1.0,
+                    0.0
+                ]
+            }
+        },
+        "cameraController": {
+            "mData": {
+                "pitch": 0.0003333091735839844,
+                "radius": 111.85345458984375,
+                "target": [
+                    -0.14693589508533478,
+                    41.03009033203125,
+                    -0.27035611867904663
+                ],
+                "yaw": 0.000348508358001709
+            }
+        },
+        "model": [
+            {
+                "model": "common/assets/scenes/cbox/cbox.obj",
+                "name": "Cornell Box",
+                "scale": [40, 40, 40]
+            },
+            {
+                "model": "common/assets/scenes/smoke/smoke.vdb",
+                "name": "Smoke",
+                "params": {
+                    "g": 0,
+                    "sigma_a": [1, 0.5, 0.8],
+                    "sigma_s": [0.8, 0.9, 0.8]
+                },
+                "scale": [1, 1, 1],
+                "translate": [0, 5, 0]
+            }
+        ]
+    }
 }

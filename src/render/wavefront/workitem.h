@@ -65,6 +65,7 @@ struct ScatterRayWorkItem {
 	Spectrum thp;
 	Spectrum pu;
 	SurfaceInteraction intr;
+	MediumInterface mediumInterface;
 	uint depth;
 	uint pixelId;
 };

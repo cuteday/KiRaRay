@@ -230,7 +230,7 @@ void MaterialLoader::loadTexture(const Material::SharedPtr &pMaterial,
 
 using namespace krr::assimp;
 bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scene,
-	SceneGraphNode::SharedPtr node, const json& params) {
+	SceneGraphNode::SharedPtr root, const json& params) {
 	Assimp::DefaultLogger::create("", Assimp::Logger::NORMAL, aiDefaultLogStream_STDOUT);
 	Assimp::DefaultLogger::get()->info("KRR::Assimp::DefaultLogger initialized!");
 
@@ -289,12 +289,16 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 		logInfo("Importing GLTF2 model.");
 	}
 
-	node = node ? node : scene->getSceneGraph()->getRoot();
-	if (!node) {
-		node = std::make_shared<SceneGraphNode>();
-		scene->getSceneGraph()->setRoot(node);
+	root = root ? root : scene->getSceneGraph()->getRoot();
+	if (!root) {
+		root = std::make_shared<SceneGraphNode>();
+		scene->getSceneGraph()->setRoot(root);
 	}
+
+	auto node = std::make_shared<SceneGraphNode>();
 	node->setName(filepath.filename().string());
+	scene->getSceneGraph()->attach(root, node);
+
 	loadMaterials(modelFolder);
 	loadMeshes();
 	traverseNode(mAiScene->mRootNode, node);

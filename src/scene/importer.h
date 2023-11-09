@@ -39,7 +39,7 @@ public:
 	};
 	AssimpImporter() = default;
 	bool import(const fs::path filepath, Scene::SharedPtr pScene,
-				SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
+				SceneGraphNode::SharedPtr node = nullptr, const json &params = json::object());
 
 private:
 	AssimpImporter(const AssimpImporter &) = delete;
@@ -61,7 +61,7 @@ class PbrtImporter {
 public:
 	PbrtImporter() = default;
 	bool import(const fs::path filepath, Scene::SharedPtr scene,
-				SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
+				SceneGraphNode::SharedPtr node = nullptr, const json &params = json::object());
 
 private:
 	PbrtImporter(const PbrtImporter &)	 = delete;
@@ -82,7 +82,7 @@ class OpenVDBImporter {
 public:
 	OpenVDBImporter() = default;
 	bool import(const fs::path filepath, Scene::SharedPtr scene,
-				SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
+				SceneGraphNode::SharedPtr node = nullptr, const json &params = json::object());
 
 private:
 	OpenVDBImporter(const OpenVDBImporter &) = delete;
@@ -97,14 +97,15 @@ class SceneImporter {
 public:
 	SceneImporter() = default;
 	bool import(const fs::path filepath, Scene::SharedPtr scene,
-				SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
+				SceneGraphNode::SharedPtr node = nullptr, const json &params = json::object());
 	bool import(const json &j, Scene::SharedPtr scene, SceneGraphNode::SharedPtr node = nullptr,
-				const json &params = {});
+				const json &params = json::object());
 	bool importModel(const json &j, Scene::SharedPtr scene,
-					 SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
+					 SceneGraphNode::SharedPtr node = nullptr, const json &params = json::object());
 
 	static bool loadScene(const fs::path filepath, Scene::SharedPtr pScene,
-					 SceneGraphNode::SharedPtr node = nullptr, const json &params = {});
+						  SceneGraphNode::SharedPtr node = nullptr,
+						  const json &params			 = json::object());
 
 private:
 	SceneImporter(const SceneImporter &)  = delete;

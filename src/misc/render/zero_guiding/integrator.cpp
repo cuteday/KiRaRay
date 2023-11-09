@@ -181,7 +181,7 @@ void ZeroGuidingPT::handleIntersections() {
 	});
 }
 
-void ZeroGuidingPT::generateScatterRays() {
+void ZeroGuidingPT::generateScatterRays(int depth) {
 	PROFILE("Generate scatter rays");
 	ForAllQueued(guidedRayQueue, maxQueueSize, 
 		KRR_DEVICE_LAMBDA(const GuidedRayWorkItem &id) {
@@ -209,7 +209,7 @@ void ZeroGuidingPT::generateScatterRays() {
 				r.depth			 = w.depth + 1;
 				r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf;
 				if (any(r.thp)) {
-					nextRayQueue(w.depth)->push(r);
+					nextRayQueue(depth)->push(r);
 					/* guidance... */
 					if (r.depth <= MAX_TRAIN_DEPTH) {
 						guidedPathState->incrementDepth(r.pixelId, r.ray, dTree, dTreeVoxelSize,
@@ -258,7 +258,7 @@ void ZeroGuidingPT::render(RenderContext *context) {
 			handleIntersections();
 			if (enableNEE) traceShadow();
 			// [STEP#2.4] towards next bounce
-			generateScatterRays();
+			generateScatterRays(depth);
 		}
 	}
 	// write results of the current frame...

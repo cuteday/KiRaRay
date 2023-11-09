@@ -31,7 +31,7 @@ struct DeviceCreationParameters {
 	uint32_t backBufferHeight		= 720;
 	uint32_t refreshRate			= 0;
 	uint32_t swapChainBufferCount	= 2;
-	nvrhi::Format swapChainFormat	= nvrhi::Format::SRGBA8_UNORM;
+	nvrhi::Format swapChainFormat	= nvrhi::Format::RGBA8_UNORM;	// not srgb, since we render in linear HDR.
 	nvrhi::Format renderFormat		= nvrhi::Format::RGBA32_FLOAT;
 	uint32_t swapChainSampleCount	= 1;
 	uint32_t swapChainSampleQuality = 0;

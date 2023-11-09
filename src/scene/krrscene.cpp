@@ -43,6 +43,11 @@ bool SceneImporter::import(const json &j, Scene::SharedPtr scene, SceneGraphNode
 		node = std::make_shared<SceneGraphNode>();
 		scene->getSceneGraph()->setRoot(node);
 	}
+
+	if (scene->getConfig().empty()) {
+		// [TODO] only set the config once... any better solution?
+		scene->setConfig(j);
+	}
 	
 	if (j.contains("environment")) {
 		if (!scene) Log(Fatal, "Import a model before doing scene configurations!");
@@ -81,8 +86,7 @@ bool SceneImporter::importModel(const json &j, Scene::SharedPtr scene,
 			auto translate = j.value<Vector3f>("translate", Vector3f::Zero());
 			auto rotate	   = j.value<Quaternionf>("rotate", Quaternionf::Identity());
 			auto scale	   = j.value<Vector3f>("scale", Vector3f::Ones());
-			auto transform = j.value<Matrix4f>("transform", Matrix4f::Identity());
-
+			
 			child->setName(name);
 			child->setScaling(scale);
 			child->setRotation(rotate);
