@@ -42,11 +42,12 @@ KRR_DEVICE_FUNCTION ShadowRayWorkItem getShadowRayWorkItem() {
 }
 
 extern "C" __global__ void KRR_RT_CH(Closest)() {
-	HitInfo hitInfo = getHitInfo();
-	SurfaceInteraction& intr = *getPRD<SurfaceInteraction>();
-	RayWorkItem r = getRayWorkItem();
-	int pixelId				  = launchParams.currentRayQueue->pixelId[getRayId()]; 
+	HitInfo hitInfo			  = getHitInfo();
+	SurfaceInteraction &intr  = *getPRD<SurfaceInteraction>();
+	RayWorkItem r			  = getRayWorkItem();
+	int pixelId				  = launchParams.currentRayQueue->pixelId[getRayId()];
 	SampledWavelengths lambda = launchParams.pixelState->lambda[pixelId];
+	intr.medium				  = r.ray.medium;	// if this surface is inside a medium
 	prepareSurfaceInteraction(intr, hitInfo, lambda);
 	if (launchParams.mediumSampleQueue && r.ray.medium) {
 		launchParams.mediumSampleQueue->push(r, intr, optixGetRayTmax());

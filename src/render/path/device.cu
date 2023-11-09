@@ -136,6 +136,7 @@ extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo			 = getHitInfo();
 	PathData *path			 = getPRD<PathData>();
 	SurfaceInteraction &intr = path->intr;
+	intr.medium				 = path->ray.medium; // if this surface is inside a medium
 	prepareSurfaceInteraction(intr, hitInfo, path->lambda);
 }
 

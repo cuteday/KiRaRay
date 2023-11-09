@@ -12,6 +12,7 @@ KRR_NAMESPACE_BEGIN
 extern "C" char WAVEFRONT_PTX[];
 
 void WavefrontPathTracer::initialize() {
+	/* [TODO] Disable missRayQueue if no environment light exist. */
 	Allocator &alloc = *gpContext->alloc;
 	maxQueueSize	 = getFrameSize()[0] * getFrameSize()[1];
 	CUDA_SYNC_CHECK(); // necessary, preventing kernel accessing memories tobe free'ed...

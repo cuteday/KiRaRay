@@ -94,8 +94,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			if (w.intr.light) {
 				// Handle contribution for light hit
 				/* The light is sampled from the last vertex on surface, so use its context! */
-				hitLightRayQueue->push(w.intr, w.ctx, w.bsdfType, w.depth, w.pixelId, thp,
-									   pu, pl);
+				hitLightRayQueue->push(w.intr, w.ctx, w.bsdfType, w.depth, w.pixelId, thp, pu, pl);
 			}
 
 			// [Tomorrow is another day] Next surface scattering event...!
@@ -118,7 +117,7 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 				LightSample ls			  = light.sampleLi(sampler.get2D(), ctx, lambda);
 				Ray shadowRay			  = Interaction(w.p, w.time, w.medium).spawnRayTo(ls.intr);
 				Vector3f wi				  = shadowRay.dir.normalized();
-				Spectrum thp		  = w.thp * w.phase.p(wo, wi);
+				Spectrum thp			  = w.thp * w.phase.p(wo, wi);
 				float lightPdf			  = sampledLight.pdf * ls.pdf;
 				float phasePdf			  = light.isDeltaLight() ? 0 : w.phase.pdf(wo, wi);
 				
