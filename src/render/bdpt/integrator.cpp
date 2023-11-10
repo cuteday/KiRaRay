@@ -9,7 +9,7 @@ KRR_NAMESPACE_BEGIN
 extern "C" char BDPT_PTX[];
 
 namespace {
-	LaunchParamsBDPT *launchParamsDevice{};
+	LaunchParameters<BDPTIntegrator> *launchParamsDevice{};
 }
 
 BDPTIntegrator::BDPTIntegrator() {

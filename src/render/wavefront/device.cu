@@ -8,7 +8,7 @@
 using namespace krr;
 KRR_NAMESPACE_BEGIN
 
-extern "C" __constant__ LaunchParams launchParams;
+extern "C" __constant__ LaunchParameters <WavefrontPathTracer> launchParams;
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,

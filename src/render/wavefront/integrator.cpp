@@ -43,7 +43,7 @@ void WavefrontPathTracer::initialize() {
 void WavefrontPathTracer::traceClosest(int depth) {
 	PROFILE("Trace intersect rays");
 	// Telling whether volume rendering is enabled by mediumSampleQueue is null?
-	static LaunchParams params = {};
+	static LaunchParameters <WavefrontPathTracer> params = {};
 	params.traversable		   = backend->getRootTraversable();
 	params.sceneData		   = backend->getSceneData();
 	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
@@ -59,7 +59,7 @@ void WavefrontPathTracer::traceClosest(int depth) {
 
 void WavefrontPathTracer::traceShadow() {
 	PROFILE("Trace shadow rays");
-	static LaunchParams params = {};
+	static LaunchParameters <WavefrontPathTracer> params = {};
 	params.traversable		   = backend->getRootTraversable();
 	params.sceneData		   = backend->getSceneData();
 	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;

@@ -10,8 +10,10 @@
 KRR_NAMESPACE_BEGIN
 
 using namespace shader;
+class BDPTIntegrator;
 
-struct LaunchParamsBDPT {
+template <> 
+struct LaunchParameters<BDPTIntegrator> {
 	uint frameID{ 0 };
 	Vector2i fbSize = Vector2i::Zero();
 	bool debugOutput	= false;

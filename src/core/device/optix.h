@@ -90,17 +90,19 @@ public:
 
 	void initialize(const OptixInitializeParameters& params);
 	void setScene(std::shared_ptr<Scene> _scene);
-	template <typename T>
-	void launch(const T& parameters, string entryPoint, int width,
-		int height, int depth = 1) {
+	template <typename Integrator>
+	void launch(const LaunchParameters<Integrator>& parameters, string entryPoint, 
+		int width, int height, int depth = 1) {
 		if (height * width * depth == 0) return;
-		static T *launchParams{nullptr};
-		if (!launchParams) cudaMalloc(&launchParams, sizeof(T));
+		static LaunchParameters<Integrator> *launchParams{nullptr};
+		if (!launchParams) cudaMalloc(&launchParams, sizeof(LaunchParameters<Integrator>));
 		if (!entryPoints.count(entryPoint))
 			Log(Fatal, "The entrypoint %s is not initialized!", entryPoint.c_str());
-		cudaMemcpyAsync(launchParams, &parameters, sizeof(T), cudaMemcpyHostToDevice, cudaStream);
-		OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream, CUdeviceptr(launchParams), 
-			sizeof(T), &SBT[entryPoints[entryPoint]], width, height, depth));
+		cudaMemcpyAsync(launchParams, &parameters, sizeof(LaunchParameters<Integrator>),
+						cudaMemcpyHostToDevice, cudaStream);
+		OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream, CUdeviceptr(launchParams),
+								sizeof(LaunchParameters<Integrator>), &SBT[entryPoints[entryPoint]],
+								width, height, depth));
 	}
 
 	std::shared_ptr<Scene> getScene() const { return scene; }

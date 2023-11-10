@@ -90,4 +90,7 @@ private:
 	std::shared_ptr<OptixScene> mOptixScene;
 };
 
+template <typename Integrator> 
+struct LaunchParameters {};
+
 KRR_NAMESPACE_END

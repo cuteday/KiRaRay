@@ -27,7 +27,7 @@ public:
 
 private:
 	OptixBackend::SharedPtr optixBackend;
-	LaunchParamsPT launchParams;
+	LaunchParameters<MegakernelPathTracer> launchParams;
 
 	friend void to_json(json &j, const MegakernelPathTracer &p) {
 		j = json{

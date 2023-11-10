@@ -23,7 +23,7 @@ void GBufferPass::setScene(Scene::SharedPtr scene) {
 
 void GBufferPass::render(RenderContext* context) {
 	PROFILE("GBuffer drawing");
-	static LaunchParamsGBuffer launchParams = {};
+	static LaunchParameters <GBufferPass> launchParams = {};
 	launchParams.frameIndex					= getFrameIndex();
 	launchParams.frameSize					= getFrameSize();
 	launchParams.cameraData					= mScene->getCamera()->getCameraData();

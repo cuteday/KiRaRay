@@ -13,10 +13,12 @@
 KRR_NAMESPACE_BEGIN
 
 class PixelStateBuffer;
+class WavefrontPathTracer;
 
 using namespace shader;
 
-typedef struct {
+template <>
+struct LaunchParameters <WavefrontPathTracer> {
 	RayQueue* currentRayQueue;
 	RayQueue* nextRayQueue;
 	ShadowRayQueue* shadowRayQueue;
@@ -29,7 +31,7 @@ typedef struct {
 	const RGBColorSpace *colorSpace;
 	rt::SceneData sceneData;
 	OptixTraversableHandle traversable;
-} LaunchParams;
+};
 
 template <typename F>
 KRR_HOST_DEVICE Spectrum sampleT_maj(Ray ray, float tMax, Sampler sampler,
@@ -78,12 +80,12 @@ KRR_HOST_DEVICE Spectrum sampleT_maj(Ray ray, float tMax, Sampler sampler,
 }
 
 template <typename TraceFunc>
-KRR_HOST_DEVICE void traceTransmittance(ShadowRayWorkItem sr, const SurfaceInteraction& intr,
+KRR_HOST_DEVICE void traceTransmittance(const ShadowRayWorkItem& sr, const SurfaceInteraction& intr,
 									 PixelStateBuffer *pixelState, TraceFunc trace) {
-	SampledWavelengths lambda = pixelState->lambda[sr.pixelId];
-	int channel				  = lambda.mainIndex();
-	Sampler sampler			  = &pixelState->sampler[sr.pixelId];
 	Ray ray					  = sr.ray;
+	SampledWavelengths lambda = pixelState->lambda[sr.pixelId];
+	Sampler sampler			  = &pixelState->sampler[sr.pixelId];
+	int channel				  = lambda.mainIndex();
 	float tMax				  = sr.tMax;
 	Vector3f pLight			  = ray(tMax);
 

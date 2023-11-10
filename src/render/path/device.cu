@@ -10,7 +10,7 @@ KRR_NAMESPACE_BEGIN
 using namespace shader;
 using namespace rt;
 
-extern "C" __constant__ LaunchParamsPT launchParams;
+extern "C" __constant__ LaunchParameters<MegakernelPathTracer> launchParams;
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray, float tMax,

@@ -20,7 +20,7 @@ public:
 
 private:
 	OptixBackend::SharedPtr mOptixBackend;
-	LaunchParamsGBuffer mLaunchParams;
+	LaunchParameters <GBufferPass> mLaunchParams;
 
 	bool mEnableDepth{};
 	bool mEnableDiffuse{};

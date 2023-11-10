@@ -75,7 +75,7 @@ void PPGPathTracer::initialize() {
 
 void PPGPathTracer::traceClosest(int depth) {
 	PROFILE("Trace intersect rays");
-	static LaunchParamsPPG params = {};
+	static LaunchParameters<PPGPathTracer> params = {};
 	params.traversable			  = backend->getRootTraversable();
 	params.sceneData			  = backend->getSceneData();
 	params.colorSpace			  = KRR_DEFAULT_COLORSPACE;
@@ -91,7 +91,7 @@ void PPGPathTracer::traceClosest(int depth) {
 
 void PPGPathTracer::traceShadow() {
 	PROFILE("Trace shadow rays");
-	static LaunchParamsPPG params = {};
+	static LaunchParameters<PPGPathTracer> params = {};
 	params.traversable			  = backend->getRootTraversable();
 	params.sceneData			  = backend->getSceneData();
 	params.colorSpace			  = KRR_DEFAULT_COLORSPACE;

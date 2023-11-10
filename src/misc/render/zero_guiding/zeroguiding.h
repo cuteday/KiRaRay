@@ -4,7 +4,10 @@
 
 KRR_NAMESPACE_BEGIN
 
-typedef struct {
+class ZeroGuidingPT;
+
+template <> 
+struct LaunchParameters<ZeroGuidingPT> {
 	RayQueue* currentRayQueue;
 	RayQueue* nextRayQueue;
 	ShadowRayQueue* shadowRayQueue;
@@ -19,6 +22,6 @@ typedef struct {
 	rt::SceneData sceneData;
 	GuidedPathStateBuffer* guidedState;
 	OptixTraversableHandle traversable;
-} LaunchParamsZero;
+};
 
 KRR_NAMESPACE_END

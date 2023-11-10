@@ -6,13 +6,16 @@
 
 KRR_NAMESPACE_BEGIN
 
-typedef struct {
+class GBufferPass;
+
+template <> 
+struct LaunchParameters<GBufferPass> {
 	Vector2i frameSize;
 	size_t frameIndex;
 
 	rt::SceneData sceneData;
 	Camera::CameraData cameraData;
 	OptixTraversableHandle traversable;
-} LaunchParamsGBuffer;
+};
 
 KRR_NAMESPACE_END

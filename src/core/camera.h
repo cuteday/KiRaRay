@@ -25,22 +25,29 @@ public:
 		Vector3f u{ 1, 0, 0 };					// camera right		[dependent to aspect ratio]
 		Vector3f v{ 0, 1, 0 };					// camera up		[dependent to aspect ratio]
 		Vector3f w{ 0, 0, -1 };					// camera forward
+
+		Medium medium{nullptr};					// the ray is inside the medium
 	
 		KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler& sampler) {
 			Ray ray;
 			/* 1. Statified sample on the film plane (within the fragment) */
-			Vector2f p = (Vector2f)pixel + Vector2f(0.5f) + sampler.get2D(); // uniform sample + box filter
-			Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
-			if (lensRadius > 0) {			/*Thin lens*/
+			Vector2f p =
+				(Vector2f) pixel + Vector2f(0.5f) + sampler.get2D(); // uniform sample + box filter
+			Vector2f ndc =
+				Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
+			if (lensRadius > 0) {										/*Thin lens*/
 				/* 2. Sample the lens (uniform) */
 				Vector3f focalPoint = pos + ndc[0] * u + ndc[1] * v + w;
-				Vector2f apertureSample = lensRadius > M_EPSILON ? uniformSampleDisk(sampler.get2D()) : Vector2f::Zero();
-				ray.origin = pos + lensRadius * (apertureSample[0] * normalize(u) + apertureSample[1] * normalize(v));
-				ray.dir = normalize(focalPoint - ray.origin);
-			} else {							/*Pin hole*/
+				Vector2f apertureSample =
+					lensRadius > M_EPSILON ? uniformSampleDisk(sampler.get2D()) : Vector2f::Zero();
+				ray.origin = pos + lensRadius * (apertureSample[0] * normalize(u) +
+												 apertureSample[1] * normalize(v));
+				ray.dir	   = normalize(focalPoint - ray.origin);
+			} else { /*Pin hole*/
 				ray.origin = pos;
-				ray.dir = normalize(ndc[0] * u + ndc[1] * v + w);
+				ray.dir	   = normalize(ndc[0] * u + ndc[1] * v + w);
 			}
+			ray.medium = medium;
 			return ray;
 		}
 

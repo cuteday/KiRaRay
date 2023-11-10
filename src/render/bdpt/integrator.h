@@ -33,7 +33,7 @@ private:
 	OptixPipeline               pipeline;
 	OptixModule                 module;
 
-	LaunchParamsBDPT launchParams;
+	LaunchParameters<BDPTIntegrator> launchParams;
 };
 
 KRR_NAMESPACE_END

@@ -7,7 +7,7 @@
 using namespace krr;
 KRR_NAMESPACE_BEGIN
 
-extern "C" __constant__ LaunchParamsGBuffer launchParams;
+extern "C" __constant__ LaunchParameters <GBufferPass> launchParams;
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray, float tMax,

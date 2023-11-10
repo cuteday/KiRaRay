@@ -8,7 +8,7 @@
 using namespace krr;
 KRR_NAMESPACE_BEGIN
 
-extern "C" __constant__ LaunchParamsZero launchParams;
+extern "C" __constant__ LaunchParameters<ZeroGuidingPT> launchParams;
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,

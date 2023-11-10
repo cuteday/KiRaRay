@@ -74,7 +74,7 @@ void ZeroGuidingPT::initialize() {
 
 void ZeroGuidingPT::traceClosest(int depth) {
 	PROFILE("Trace intersect rays");
-	static LaunchParamsZero params = {};
+	static LaunchParameters<ZeroGuidingPT> params = {};
 	params.traversable			  = backend->getRootTraversable();
 	params.sceneData			  = backend->getSceneData();
 	params.colorSpace			  = KRR_DEFAULT_COLORSPACE;
@@ -90,7 +90,7 @@ void ZeroGuidingPT::traceClosest(int depth) {
 
 void ZeroGuidingPT::traceShadow() {
 	PROFILE("Trace shadow rays");
-	static LaunchParamsZero params = {};
+	static LaunchParameters<ZeroGuidingPT> params = {};
 	params.traversable			  = backend->getRootTraversable();
 	params.sceneData			  = backend->getSceneData();
 	params.colorSpace			  = KRR_DEFAULT_COLORSPACE;

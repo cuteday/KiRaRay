@@ -24,26 +24,28 @@ const string shaderProgramNames[RAY_TYPE_COUNT] = {
 	"ShadowTransmittanceRay"
 };
 
-struct LaunchParamsPT {
-	uint frameID{ 0 };
+class MegakernelPathTracer;
+
+template <>
+struct LaunchParameters<MegakernelPathTracer> {
+	uint frameID{0};
 	Vector2i fbSize = Vector2i::Zero();
 	// per pixel debugging output
-	bool debugOutput	= false;
-	bool NEE			= false; // enable next event estimation (and MIS)
-	Vector2i debugPixel = {960, 540};
+	bool debugOutput	 = false;
+	bool NEE			 = false; // enable next event estimation (and MIS)
+	Vector2i debugPixel	 = {960, 540};
 	int maxDepth		 = 10;
 	float probRR		 = 0.8;
 	float clampThreshold = 1e4f; // clamp max radiance contrib per frame
 	int spp				 = 1;
 	int lightSamples	 = 1;
-	// scene 
+	// scene
 	Camera::CameraData camera;
 	LightSampler lightSampler;
 	rt::SceneData sceneData;
-
 	const RGBColorSpace *colorSpace;
 	CudaRenderTarget colorBuffer;
-	OptixTraversableHandle traversable{ 0 };
+	OptixTraversableHandle traversable{0};
 };
 
 struct PathData {
