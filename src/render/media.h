@@ -111,7 +111,7 @@ public:
 	KRR_CALLABLE bool isEmissive() const { return L_e.any(); }
 
 	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const { 
-		Spectrum::fromRGB(L_e, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		return Spectrum::fromRGB(L_e, SpectrumType::RGBIlluminant, lambda, *colorSpace);
 	}
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const {

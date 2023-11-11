@@ -11,7 +11,7 @@ namespace rt {
 
 struct LightSample {
 	Interaction intr;
-	SampledSpectrum L;
+	Spectrum L;
 	float pdf;
 };
 
@@ -39,14 +39,14 @@ public:
 									const SampledWavelengths &lambda) const {
 		Vector3f p	= transform.translation();
 		Vector3f wi = (p - ctx.p).normalized();
-		SampledSpectrum Li = Spectrum::fromRGB(I, SpectrumType::RGBIlluminant, lambda, *colorSpace);
+		Spectrum Li = Spectrum::fromRGB(I, SpectrumType::RGBIlluminant, lambda, *colorSpace);
 		Li*= scale / (p - ctx.p).squaredNorm();
 		return LightSample{Interaction{p}, Li, 1};
 	}
 
-	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
 								 const SampledWavelengths &lambda) const {
-		return SampledSpectrum::Zero();
+		return Spectrum::Zero();
 	}
 
 	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const { return 0; }
@@ -77,14 +77,14 @@ public:
 		(e.g. the ray will self-intersect on the original surface, even if the ray origin has offset) */
 		Vector3f wi = rotation * Vector3f{0, 0, 1};
 		Vector3f p	= ctx.p + wi * 2 * sceneRadius;
-		SampledSpectrum Li =
+		Spectrum Li =
 			scale * Spectrum::fromRGB(I, SpectrumType::RGBIlluminant, lambda, *colorSpace);
 		return LightSample{Interaction{p}, Li, 1};
 	}
 
-	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
 					   const SampledWavelengths &lambda) const {
-		return SampledSpectrum::Zero();
+		return Spectrum::Zero();
 	}
 
 	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const { return 0; }
@@ -129,9 +129,9 @@ public:
 		return ls;
 	}
 
-	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
 							  const SampledWavelengths &lambda) const {
-		if (!twoSided && dot(n, w) < 0.f) return SampledSpectrum::Zero(); // hit backface
+		if (!twoSided && dot(n, w) < 0.f) return Spectrum::Zero(); // hit backface
 
 		RGB L = texture.isValid() ? texture.evaluate(uv).head<3>() : Le;
 		return scale * Spectrum::fromRGB(L, SpectrumType::RGBIlluminant, lambda, *colorSpace);
@@ -182,12 +182,12 @@ public:
 		return M_INV_4PI;
 	}
 
-	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
 					   const SampledWavelengths &lambda) const {
-		return SampledSpectrum::Zero();
+		return Spectrum::Zero();
 	}
 
-	KRR_DEVICE SampledSpectrum Li(Vector3f wi, const SampledWavelengths &lambda) const {
+	KRR_DEVICE Spectrum Li(Vector3f wi, const SampledWavelengths &lambda) const {
 		Vector2f uv = worldToLatLong(rotation.transpose() * wi);
 		RGB L		= image.isValid() ? tint * image.evaluate(uv).head<3>() : tint;
 		return scale * Spectrum::fromRGB(L, SpectrumType::RGBIlluminant, lambda, *colorSpace);
@@ -218,9 +218,9 @@ public:
 		return dispatch(sampleLi);
 	}
 
-	KRR_DEVICE SampledSpectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
 					   const SampledWavelengths &lambda) const {
-		auto L = [&](auto ptr) -> SampledSpectrum { return ptr->L(p, n, uv, w, lambda); };
+		auto L = [&](auto ptr) -> Spectrum { return ptr->L(p, n, uv, w, lambda); };
 		return dispatch(L);
 	}
 
