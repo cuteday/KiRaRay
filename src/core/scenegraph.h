@@ -165,11 +165,6 @@ class VDBVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<VDBVolume>;
 
-	VDBVolume(RGB sigma_a, RGB sigma_s, float g, fs::path filepath) :
-		sigma_a(sigma_a), sigma_s(sigma_s), g(g) {
-		densityGrid = loadNanoVDB(filepath);
-	}
-
 	VDBVolume(RGB sigma_a, RGB sigma_s, float g, 
 		NanoVDBGrid::SharedPtr density, NanoVDBGrid::SharedPtr temperature = nullptr) :
 		sigma_a(sigma_a), sigma_s(sigma_s), g(g), densityGrid(density), temperatureGrid(temperature) {}

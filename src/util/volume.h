@@ -58,6 +58,6 @@ private:
 	float maxDensity{0};
 };
 
-NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path);
+NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path, std::string key);
 
 KRR_NAMESPACE_END

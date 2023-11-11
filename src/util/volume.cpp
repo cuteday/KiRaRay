@@ -17,7 +17,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path) {
+NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path, std::string key) {
 	openvdb::initialize();
 	Log(Info, "Loading openvdb file from %s", path.string().c_str());
 	openvdb::io::File file(path.generic_string());
@@ -25,19 +25,17 @@ NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path) {
 		Log(Fatal, "Failed to open vdb file %s", path.string().c_str());
 	
 	openvdb::GridBase::Ptr baseGrid;
-	if(file.hasGrid("density"))
-		baseGrid = file.readGrid("density");
+	if (file.hasGrid(key.c_str()))
+		baseGrid = file.readGrid(key.c_str());
 	else {
-		baseGrid = file.getGrids()->at(0);
-		Log(Warning, "VDB file do not pocess a density grid, loading the first grid [%s].", 
-			baseGrid->getName().c_str());
+		Log(Warning, "VDB file %s do not pocess a [%s] grid.", path.string().c_str(), key.c_str());
+		return nullptr;
 	}
 
 	auto grid							  = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
 	auto transform						  = grid->transform();
 	auto handle							  = nanovdb::openToNanoVDB<nanovdb::CudaDeviceBuffer>(grid);
 	const nanovdb::GridMetaData *metadata = handle.gridMetaData();
-	Log(Info, "Find a vdb grid: %s", metadata->gridName());
 	if (metadata->gridType() != nanovdb::GridType::Float) Log(Fatal, "only support float grid!");
 	float minValue, maxValue;
 	grid->evalMinMax(minValue, maxValue);

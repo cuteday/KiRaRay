@@ -156,7 +156,10 @@ void RTScene::uploadSceneMediumData() {
 		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
 			float maxDensity{0};
 			mNanoVDBMedium.emplace_back(m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s,
-										m->g, std::move(*m->densityGrid), KRR_DEFAULT_COLORSPACE);
+										m->g, std::move(*m->densityGrid),
+										m->temperatureGrid ? std::move(*m->temperatureGrid)
+														   : NanoVDBGrid{},
+										KRR_DEFAULT_COLORSPACE);
 			mNanoVDBMedium.back().initializeFromHost();
 		}
 	}

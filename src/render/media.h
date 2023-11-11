@@ -136,9 +136,6 @@ public:
 
 class NanoVDBMedium {
 public:
-	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g,
-				  NanoVDBGrid density, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
-
 	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g, NanoVDBGrid density,
 				  NanoVDBGrid temperature, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
 

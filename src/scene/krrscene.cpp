@@ -56,6 +56,7 @@ bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPt
 		pScene->addMesh(mesh);
 		pScene->getSceneGraph()->attachLeaf(node, instance);
 		pScene->getSceneGraph()->attachLeaf(node, volume);
+		return true;
 	} else if (type == "heterogeneous") {
 		if (params.contains("file")) {
 			return OpenVDBImporter().import(params.at("file"), pScene, node, params);
