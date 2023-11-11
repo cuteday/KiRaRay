@@ -1,0 +1,93 @@
+{
+    "passes": [
+		{
+			"enable": true,
+			"name": "WavefrontPathTracer",
+			"params": {
+				"nee": false,
+				"rr": 0.8,
+				"max_depth": 10
+			}
+		},
+		{
+			"enable": true,
+			"name": "AccumulatePass",
+			"params": {
+				"spp": 0,
+				"mode": "accumulate"
+			}
+		},
+		{
+			"enable": false,
+			"name": "DenoisePass"
+		},
+		{
+			"enable": true,
+			"name": "ToneMappingPass",
+			"params": {
+				"exposure": 5,
+				"operator": "aces"
+			}
+		}
+    ],
+    "resolution": [
+        750,
+        750
+    ],
+    "scene": {
+		"camera": {
+			"mData": {
+				"aspectRatio": 1.0,
+				"focalDistance": 10.0,
+				"focalLength": 21.0,
+				"lensRadius": 0.0,
+				"pos": [
+					-0.010055910795927048,
+					1.0200917720794678,
+					2.828592300415039
+				],
+				"target": [
+					-0.011140584014356136,
+					1.0211291313171387,
+					-0.2837386131286621
+				],
+				"up": [
+					0.0,
+					1.0,
+					0.0
+				]
+			}
+		},
+		"cameraController": {
+			"mData": {
+				"pitch": 0.0003333091735839844,
+				"radius": 3.1123313903808594,
+				"target": [
+					-0.011140584014356136,
+					1.0211291313171387,
+					-0.2837386131286621
+				],
+				"yaw": 0.000348508358001709
+			}
+		},
+        "model": [
+            {
+                "model": "common/assets/scenes/cbox/cbox.obj",
+                "name": "Cornell Box",
+                "scale": [1, 1, 1]
+            },
+            {
+                "type": "medium",
+                "name": "Mist",
+                "params": {
+                    "g": 0.2,
+                    "sigma_a": [0.4, 0.4, 0.4],
+                    "sigma_s": [0.4, 0.4, 0.4],
+                    "bound": [[-2, -2, -2], [2, 2, 2]]
+                },
+                "scale": [1, 1, 1],
+                "translate": [0, 0, 0]
+            }
+        ]
+    }
+}

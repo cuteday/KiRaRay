@@ -144,6 +144,9 @@ class HomogeneousVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
 
+	HomogeneousVolume(RGB sigma_a, RGB sigma_s, float g, RGB Le = RGB::Zero()) :
+		sigma_a(sigma_a), sigma_s(sigma_s), g(g), Le(Le) {}
+
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual void renderUI() override;
 

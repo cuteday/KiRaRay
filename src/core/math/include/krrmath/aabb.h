@@ -74,6 +74,18 @@ public:
 	std::string string() const { 
 		return min().string() + "~" + max().string();
 	}
+
+#ifdef KRR_MATH_JSON
+	friend void to_json(json &j, const AxisAligned<T, Size> &aabb) {
+		j.push_back((VectorType) aabb.min());
+		j.push_back((VectorType) aabb.max());
+	}
+
+	friend void from_json(const json &j, AxisAligned<T, Size> &aabb) {
+		assert(j.size() == 2);
+		aabb = AxisAligned<T, Size>(j.at(0).get<VectorType>(), j.at(1).get<VectorType>());
+	}
+#endif
 };
 
 using AABB3f = AxisAligned<float, 3>;

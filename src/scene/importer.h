@@ -100,12 +100,15 @@ public:
 				SceneGraphNode::SharedPtr node = nullptr, const json &params = json::object());
 	bool import(const json &j, Scene::SharedPtr scene, SceneGraphNode::SharedPtr node = nullptr,
 				const json &params = json::object());
-	bool importModel(const json &j, Scene::SharedPtr scene,
+	bool importNode(const json &j, Scene::SharedPtr scene,
 					 SceneGraphNode::SharedPtr node = nullptr, const json &params = json::object());
 
-	static bool loadScene(const fs::path filepath, Scene::SharedPtr pScene,
+	static bool loadModel(const fs::path filepath, Scene::SharedPtr pScene,
 						  SceneGraphNode::SharedPtr node = nullptr,
 						  const json &params			 = json::object());
+	static bool loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr node = nullptr,
+						   const json &params = json::object());
+
 
 private:
 	SceneImporter(const SceneImporter &)  = delete;

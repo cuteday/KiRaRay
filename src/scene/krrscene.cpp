@@ -3,7 +3,7 @@
 KRR_NAMESPACE_BEGIN
 using namespace importer;
 
-bool SceneImporter::loadScene(const fs::path filepath, Scene::SharedPtr pScene,
+bool SceneImporter::loadModel(const fs::path filepath, Scene::SharedPtr pScene,
 					  SceneGraphNode::SharedPtr node, const json &params) {
 	bool success{};
 	string format = filepath.extension().string();
@@ -21,6 +21,52 @@ bool SceneImporter::loadScene(const fs::path filepath, Scene::SharedPtr pScene,
 	}
 	if (!success) Log(Error, "Failed to load scene file from %ls...", filepath.c_str());
 	return success;
+}
+
+bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr node,
+								const json& params) {
+	auto type = params.value("type", "homogeneous");
+	if (type == "homogeneous") {
+		auto sigma_a = params.value<Array3f>("sigma_a", Array3f{1, 1, 1});
+		auto sigma_s = params.value<Array3f>("sigma_s", Array3f{0, 0, 0});
+		auto g		 = params.value<float>("g", 0.f);
+		auto Le		 = params.value<Array3f>("Le", Array3f{0, 0, 0});
+		auto aabb	 = params.value<AABB3f>("bound", AABB3f{0, 0});
+
+		auto mesh		= std::make_shared<Mesh>();
+		auto instance	= std::make_shared<MeshInstance>(mesh);
+		auto volume		= std::make_shared<HomogeneousVolume>(sigma_a, sigma_s, g, Le);
+		mesh->indices	= {{4, 2, 0}, {2, 7, 3}, {6, 5, 7}, {1, 7, 5}, {0, 3, 1}, {4, 1, 5},
+						   {4, 6, 2}, {2, 6, 7}, {6, 4, 5}, {1, 3, 7}, {0, 2, 3}, {4, 0, 1}};
+		mesh->positions = {
+			{aabb.max()[0], aabb.max()[1], aabb.min()[2]},
+			{aabb.max()[0], aabb.min()[1], aabb.min()[2]},
+			{aabb.max()[0], aabb.max()[1], aabb.max()[2]},
+			{aabb.max()[0], aabb.min()[1], aabb.max()[2]},
+			{aabb.min()[0], aabb.max()[1], aabb.min()[2]},
+			{aabb.min()[0], aabb.min()[1], aabb.min()[2]},
+			{aabb.min()[0], aabb.max()[1], aabb.max()[2]},
+			{aabb.min()[0], aabb.min()[1], aabb.max()[2]},
+		};
+
+		mesh->setName("Medium box");
+		mesh->setMaterial(nullptr);
+		mesh->setMedium(volume, nullptr);
+		mesh->computeBoundingBox();
+		pScene->addMesh(mesh);
+		pScene->getSceneGraph()->attachLeaf(node, instance);
+		pScene->getSceneGraph()->attachLeaf(node, volume);
+	} else if (type == "heterogeneous") {
+		if (params.contains("file")) {
+			return OpenVDBImporter().import(params.at("file"), pScene, node, params);
+		} else {
+			Log(Error, "Heterogeneous medium must have a file path!");
+			return false;
+		}
+	} else {
+			Log(Error, "Unsupported medium type: %s", type.c_str());
+			return false;
+	}
 }
 
 bool SceneImporter::import(const fs::path filepath, Scene::SharedPtr scene,
@@ -66,37 +112,45 @@ bool SceneImporter::import(const json &j, Scene::SharedPtr scene, SceneGraphNode
 	}
 
 	if (j.contains("model")) {
-		importModel(j.at("model"), scene, node, params);
+		importNode(j.at("model"), scene, node, params);
 	}
 	return true; 
 }
 
-bool SceneImporter::importModel(const json &j, Scene::SharedPtr scene, 
+bool SceneImporter::importNode(const json &j, Scene::SharedPtr scene, 
 	SceneGraphNode::SharedPtr node, const json& params) {
 	json::value_t type = j.type();
 	if (type == json::value_t::array) {
 		for (auto model : j) 
-			importModel(model, scene, node, params);
+			importNode(model, scene, node, params);
 	} else if (type == json::value_t::object) {
 		// recursively unwrap the config
 		// maybe another json object, an array, or a string indicating the filepath of the model
-		if (j.contains("model")) {
-			auto child	   = std::make_shared<SceneGraphNode>();
-			auto name	   = j.value<string>("name", "");
-			auto translate = j.value<Vector3f>("translate", Vector3f::Zero());
-			auto rotate	   = j.value<Quaternionf>("rotate", Quaternionf::Identity());
-			auto scale	   = j.value<Vector3f>("scale", Vector3f::Ones());
+		auto child	   = std::make_shared<SceneGraphNode>();
+		auto name	   = j.value<string>("name", "");
+		auto type	   = j.value<string>("type", "model");
+		auto translate = j.value<Vector3f>("translate", Vector3f::Zero());
+		auto rotate	   = j.value<Quaternionf>("rotate", Quaternionf::Identity());
+		auto scale	   = j.value<Vector3f>("scale", Vector3f::Ones());
 			
-			child->setName(name);
-			child->setScaling(scale);
-			child->setRotation(rotate);
-			child->setTranslation(translate);
-			scene->getSceneGraph()->attach(node, child);
+		child->setName(name);
+		child->setScaling(scale);
+		child->setRotation(rotate);
+		child->setTranslation(translate);
+		scene->getSceneGraph()->attach(node, child);
 
-			importModel(j["model"], scene, child, j.value("params", json{}));
+		if (j.contains("model"))
+			importNode(j["model"], scene, child, j.value("params", json{}));
+		else {
+			// [TODO] support other types of leaf nodes
+			if (type == "medium") {
+				loadMedium(scene, child, j.value("params", json{}));
+			} else {
+				Log(Error, "Unsupported node type: %s", type.c_str());
+			}
 		}
 	} else if (type == json::value_t::string) {
-		loadScene(j.get<string>(), scene, node, params);	
+		loadModel(j.get<string>(), scene, node, params);	
 	} else {
 		Log(Error, "Unsupported model type: %s", string(j).c_str());
 		return false;

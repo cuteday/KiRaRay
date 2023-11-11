@@ -299,12 +299,11 @@ Volume::SharedPtr PbrtImporter::loadMedium(pbrt::Medium::SP pbrtMedium) {
 
 	Volume::SharedPtr result = nullptr;
 	if (auto m = std::dynamic_pointer_cast<pbrt::HomogeneousMedium>(pbrtMedium)) {
-		auto medium = std::make_shared<HomogeneousVolume>();
-		medium->sigma_a = cast(m->sigmaScale * m->sigma_a);
-		medium->sigma_s = cast(m->sigmaScale * m->sigma_s);
-		medium->Le		= cast(m->LeScale * m->Le);
-		medium->g		= m->g;
-		result = medium;
+		RGB sigma_a = cast(m->sigmaScale * m->sigma_a);
+		RGB sigma_s = cast(m->sigmaScale * m->sigma_s);
+		RGB Le		= cast(m->LeScale * m->Le);
+		float g		= m->g;
+		result = std::make_shared<HomogeneousVolume>(sigma_a, sigma_s, g, Le);
 	} else {
 		Log(Warning, "Encountered unsupported medium: %s", pbrtMedium->toString().c_str());
 		return nullptr;

@@ -277,7 +277,7 @@ void RenderApp::loadConfig(const json config) {
 	if (config.contains("model")) {
 		if (!scene) scene = std::make_shared<Scene>();
 		string model = config["model"].get<string>();
-		SceneImporter::loadScene(model, scene);
+		SceneImporter::loadModel(model, scene);
 	}
 	if (config.contains("environment")) {
 		if (!scene) Log(Fatal, "Import a model before doing scene configurations!");
