@@ -58,7 +58,7 @@ public:
 
 	
 	OptixBackend *backend{ };
-	Camera::CameraData* camera{ };
+	rt::CameraData* camera{ };
 	LightSampler lightSampler;
 
 	// work queues

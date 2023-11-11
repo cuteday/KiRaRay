@@ -4,15 +4,24 @@
 KRR_NAMESPACE_BEGIN
 
 bool Camera::update(){
-	if (mPreserveHeight)
-		mData.filmSize[0] = mData.aspectRatio * mData.filmSize[1];
+	if (mScene.lock()->getSceneRT()) {
+		/* Ray-tracing enabled, update medium info */
+		for (auto medium : mScene.lock()->getMedia()) {
+			if (medium->getNode()->getGlobalBoundingBox().contains(getPosition())) {
+				mData.medium =
+					mScene.lock()->getSceneRT()->getMediumData()[medium->getMediumId()];
+			}
+		}
+	}
+	/* Update parameters in data. */
+	if (mPreserveHeight) mData.filmSize[0] = mData.aspectRatio * mData.filmSize[1];
 	else mData.filmSize[1] = mData.filmSize[0] / mData.aspectRatio;
 
 	float fovY = atan2(mData.filmSize[1] * 0.5, mData.focalLength);
 	mData.w = normalize(mData.target - mData.pos) * mData.focalDistance;
 	mData.u = normalize(cross(mData.w, mData.up)) * tan(fovY) * mData.focalDistance * mData.aspectRatio;
 	mData.v = normalize(cross(mData.u, mData.w)) * tan(fovY) * mData.focalDistance;
-	bool hasChanges = (bool)memcmp(&mData, &mDataPrev, sizeof(CameraData));;
+	bool hasChanges = (bool)memcmp(&mData, &mDataPrev, sizeof(rt::CameraData));;
 	mDataPrev = mData;
 	return hasChanges;
 }

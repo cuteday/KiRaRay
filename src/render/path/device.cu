@@ -185,7 +185,7 @@ extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
 	const uint frameID = launchParams.frameID;
 	const uint32_t fbIndex = pixel[0] + pixel[1] * launchParams.fbSize[0];
 	
-	Camera::CameraData camera = launchParams.camera;
+	rt::CameraData camera = launchParams.camera;
 	PCGSampler sampler;
 	sampler.setPixelSample(pixel, frameID);
 	sampler.advance(fbIndex * 256);

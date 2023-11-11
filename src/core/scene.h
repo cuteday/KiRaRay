@@ -50,10 +50,8 @@ public:
 	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(mesh); }
 	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(material); }
 
-	void setCamera(Camera::SharedPtr camera) { mCamera = camera; }
-	void setCameraController(OrbitCameraController::SharedPtr cameraController) {
-		mCameraController = cameraController;
-	}
+	void setCamera(Camera::SharedPtr camera);
+	void setCameraController(OrbitCameraController::SharedPtr cameraController);
 
 	json getConfig() const { return mConfig; }
 	void setConfig(const json &config, bool update = true);

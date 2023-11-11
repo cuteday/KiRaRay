@@ -59,10 +59,10 @@ bool SceneImporter::import(const json &j, Scene::SharedPtr scene, SceneGraphNode
 	}
 
 	if (j.contains("camera")) {
-		scene->mCamera = std::make_shared<Camera>(j.at("camera"));
-		scene->mCameraController =
-			std::make_shared<OrbitCameraController>(j.at("cameraController"));
-		scene->mCameraController->setCamera(scene->mCamera);
+		scene->setCamera(std::make_shared<Camera>(j.at("camera")));
+		scene->setCameraController(
+			std::make_shared<OrbitCameraController>(j.at("cameraController")));
+		scene->getCameraController()->setCamera(scene->mCamera);
 	}
 
 	if (j.contains("model")) {

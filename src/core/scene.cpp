@@ -16,13 +16,22 @@ Scene::Scene() {
 
 bool Scene::update(size_t frameIndex, double currentTime) {
 	bool hasChanges = false;
-	if (mCameraController) hasChanges |= mCameraController->update();
-	if (mCamera) hasChanges |= mCamera->update();
 	if (mEnableAnimation) mGraph->animate(currentTime);
 	mGraph->update(frameIndex);
+	if (mCameraController) hasChanges |= mCameraController->update();
+	if (mCamera) hasChanges |= mCamera->update();
 	if (mSceneRT) mSceneRT->update();
 	if (mSceneVK) mSceneVK->update();
 	return mHasChanges = hasChanges;
+}
+
+void Scene::setCamera(Camera::SharedPtr camera) {
+	mCamera = camera;
+	camera->setScene(shared_from_this());
+}
+
+void Scene::setCameraController(OrbitCameraController::SharedPtr cameraController) {
+	mCameraController = cameraController;
 }
 
 void Scene::renderUI() {

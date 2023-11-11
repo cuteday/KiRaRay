@@ -40,7 +40,7 @@ struct LaunchParameters<MegakernelPathTracer> {
 	int spp				 = 1;
 	int lightSamples	 = 1;
 	// scene
-	Camera::CameraData camera;
+	rt::CameraData camera;
 	LightSampler lightSampler;
 	rt::SceneData sceneData;
 	const RGBColorSpace *colorSpace;

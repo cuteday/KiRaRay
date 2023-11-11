@@ -151,7 +151,7 @@ public:
 	KRR_CALLABLE float maxValue() const { return scale * rsp.maxValue(); }
 
 	KRR_CALLABLE RGBUnboundedSpectrum(): rsp(0, 0, 0), scale(0) {}
-	KRR_CALLABLE RGBUnboundedSpectrum::RGBUnboundedSpectrum(RGB rgb, const RGBColorSpace &cs);
+	KRR_CALLABLE RGBUnboundedSpectrum(RGB rgb, const RGBColorSpace &cs);
 
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
 		SampledSpectrum result;

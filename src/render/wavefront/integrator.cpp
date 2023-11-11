@@ -36,7 +36,7 @@ void WavefrontPathTracer::initialize() {
 		else mediumScatterQueue = alloc.new_object<MediumScatterQueue>(maxQueueSize, alloc);
 	}
 	cudaDeviceSynchronize();
-	if (!camera) camera = alloc.new_object<Camera::CameraData>();
+	if (!camera) camera = alloc.new_object<rt::CameraData>();
 	CUDA_SYNC_CHECK();
 }
 
@@ -199,7 +199,7 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 void WavefrontPathTracer::beginFrame(RenderContext* context) {
 	if (!mScene || !maxQueueSize) return;
 	PROFILE("Begin frame");
-	cudaMemcpyAsync(camera, &mScene->getCamera()->getCameraData(), sizeof(Camera::CameraData),
+	cudaMemcpyAsync(camera, &mScene->getCamera()->getCameraData(), sizeof(rt::CameraData),
 			   cudaMemcpyHostToDevice, 0);
 	size_t frameIndex = getFrameIndex();
 	auto frameSize = getFrameSize();

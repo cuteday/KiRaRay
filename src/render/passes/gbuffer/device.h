@@ -14,7 +14,7 @@ struct LaunchParameters<GBufferPass> {
 	size_t frameIndex;
 
 	rt::SceneData sceneData;
-	Camera::CameraData cameraData;
+	rt::CameraData cameraData;
 	OptixTraversableHandle traversable;
 };
 

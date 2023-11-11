@@ -22,7 +22,7 @@ public:
 
 	SceneGraphNode *getNode() const { return mNode.lock().get(); }
 	std::shared_ptr<SceneGraphNode> getNodeSharedPtr() const { return mNode.lock(); }
-	virtual AABB getLocalBoundingBox() const { return AABB(); }
+	virtual AABB getLocalBoundingBox() const { return AABB(0, 0); }
 	virtual std::shared_ptr<SceneGraphLeaf> clone() = 0;
 	virtual void renderUI() {}
 
