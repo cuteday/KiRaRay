@@ -16,15 +16,19 @@ bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene,
 		scene->getSceneGraph()->setRoot(node);
 	}
 	
-	auto sigma_a		 = params.value<Array3f>("sigma_a", Array3f{1, 1, 1});
-	auto sigma_s		 = params.value<Array3f>("sigma_s", Array3f{0, 0, 0});
-	auto key_density	 = params.value<string>("key_density", "density");
-	auto key_temperature = params.value<string>("key_temperature", "temperature");
-	float g				 = params.value<float>("g", 0);
+	auto sigma_a			= params.value<Array3f>("sigma_a", Array3f{1, 1, 1});
+	auto sigma_s			= params.value<Array3f>("sigma_s", Array3f{0, 0, 0});
+	auto key_density		= params.value<string>("key_density", "density");
+	auto key_temperature	= params.value<string>("key_temperature", "temperature");
+	float g					= params.value<float>("g", 0);
+	float temperaetureScale = params.value<float>("scale_temperature", 1);
+	float temperatureOffset = params.value<float>("offset_temperature", 0);
+	float LeScale			= params.value<float>("scale_le", 1);
 
 	NanoVDBGrid::SharedPtr densityGrid	   = loadNanoVDB(filepath, key_density);
 	NanoVDBGrid::SharedPtr temperatureGrid = loadNanoVDB(filepath, key_temperature);
-	auto volume = std::make_shared<VDBVolume>(sigma_a, sigma_s, g, densityGrid, temperatureGrid);
+	auto volume = std::make_shared<VDBVolume>(sigma_a, sigma_s, g, densityGrid, temperatureGrid,
+											  LeScale, temperaetureScale, temperatureOffset);
 
 	auto mesh	  = std::make_shared<Mesh>();
 	auto instance = std::make_shared<MeshInstance>(mesh);

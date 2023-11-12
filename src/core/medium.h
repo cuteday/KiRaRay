@@ -36,8 +36,6 @@ class Medium : public TaggedPointer<HomogeneousMedium, NanoVDBMedium> {
 public:
 	using TaggedPointer::TaggedPointer;
 
-	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths& lambda) const;
-
 	KRR_CALLABLE bool isEmissive() const;
 
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const;

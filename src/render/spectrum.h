@@ -9,8 +9,8 @@
 
 KRR_NAMESPACE_BEGIN
 
-class RGBColorSpace;
 class BlackbodySpectrum;
+class RGBColorSpace;
 class RGBBoundedSpectrum;
 class RGBUnboundedSpectrum;
 class DenselySampledSpectrum;
@@ -18,6 +18,7 @@ class PiecewiseLinearSpectrum;
 
 class SampledWavelengths {
 public:
+	using ArrayType = Array<float, nSpectrumSamples>;
 	SampledWavelengths() = default;
 
 	KRR_CALLABLE bool operator==(const SampledWavelengths& swl) const {
@@ -56,10 +57,11 @@ public:
 	KRR_CALLABLE float operator[](int i) const { return lambda[i]; }
 	KRR_CALLABLE float &operator[](int i) { return lambda[i]; }
 
-	KRR_CALLABLE Array<float, nSpectrumSamples> pdf() const { return pdfs; }
+	KRR_CALLABLE ArrayType pdf() const { return pdfs; }
+	KRR_CALLABLE ArrayType wavelengths() const { return lambda; }
 
 private:
-	Array<float, nSpectrumSamples> lambda, pdfs;
+	ArrayType lambda, pdfs;
 };
 
 class SampledSpectrum : public Array<float, nSpectrumSamples> {
@@ -89,41 +91,36 @@ public:
 };
 
 class BlackbodySpectrum {
+
 public:
-	KRR_CALLABLE BlackbodySpectrum(float T) : T(T) {
-		// Compute blackbody normalization constant for given temperature
-		float lambdaMax		= 2.8977721e-3f / T;
-		normalizationFactor = 1 / blackbody(lambdaMax * 1e9f, T);
-	}
+	KRR_CALLABLE BlackbodySpectrum(float T) : T(T) {}
 
 	KRR_CALLABLE float operator()(float lambda) const { 
-		return blackbody(lambda, T) * normalizationFactor; 
+		constexpr float c  = 2.99792458e+8f;  // Speed of light
+		constexpr float h  = 6.62607004e-34f; // Planck constant
+		constexpr float k  = 1.38064852e-23f; // Boltzmann constant
+		constexpr float c0 = 2 * h * c * c;
+		constexpr float c1 = h * c / k;
+
+		float l			   = lambda * 1e-9f;
+		return 1e-9f * c0 / (pow5(l) * (expf(c1 / (l * T)) - 1.f));
 	}
 
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
-		SampledSpectrum s;
-		for (int i = 0; i < SampledSpectrum::dim; ++i)
-			s[i] = blackbody(lambda[i], T) * normalizationFactor;
-		return s;
+		constexpr float c  = 2.99792458e+8f;  // Speed of light
+		constexpr float h  = 6.62607004e-34f; // Planck constant
+		constexpr float k  = 1.38064852e-23f; // Boltzmann constant
+		constexpr float c0 = 2 * h * c * c;
+		constexpr float c1 = h * c / k;
+
+		SampledWavelengths::ArrayType l = lambda.wavelengths() * 1e-9f;
+		return 1e-9f * c0 / (l.pow(5) * ((c1 / (l * T)).exp() - 1.f));
 	}
 
 	KRR_CALLABLE float maxValue() const { return 1.f; }
 
-	static KRR_CALLABLE float blackbody(float lambda, float T) {
-		if (T <= 0) return 0;
-		const float c  = 299792458.f;
-		const float h  = 6.62606957e-34f;
-		const float kb = 1.3806488e-23f;
-		// Return emitted radiance for blackbody at wavelength _lambda_
-		float l	 = lambda * 1e-9f;
-		float Le = (2 * h * c * c) / (pow5(l) * (expf((h * c) / (l * kb * T)) - 1));
-		DCHECK(!isnan(Le));
-		return Le;
-	}
-
 private:
 	float T;
-	float normalizationFactor;
 };
 
 class RGBBoundedSpectrum {

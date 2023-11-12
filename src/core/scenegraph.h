@@ -166,8 +166,10 @@ public:
 	using SharedPtr = std::shared_ptr<VDBVolume>;
 
 	VDBVolume(RGB sigma_a, RGB sigma_s, float g, 
-		NanoVDBGrid::SharedPtr density, NanoVDBGrid::SharedPtr temperature = nullptr) :
-		sigma_a(sigma_a), sigma_s(sigma_s), g(g), densityGrid(density), temperatureGrid(temperature) {}
+		NanoVDBGrid::SharedPtr density, NanoVDBGrid::SharedPtr temperature = nullptr, 
+		float LeScale = 1, float temperatureScale = 1, float temperatureOffset = 0) :
+		sigma_a(sigma_a), sigma_s(sigma_s), g(g), densityGrid(density), temperatureGrid(temperature), 
+		LeScale(LeScale), temperatureScale(temperatureScale), temperatureOffset(temperatureOffset) {}
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual AABB getLocalBoundingBox() const override { return densityGrid->getBounds(); }
@@ -176,6 +178,9 @@ public:
 	RGB sigma_a;
 	RGB sigma_s;
 	float g;
+	float LeScale;
+	float temperatureScale;
+	float temperatureOffset;
 	NanoVDBGrid::SharedPtr densityGrid;
 	NanoVDBGrid::SharedPtr temperatureGrid;
 

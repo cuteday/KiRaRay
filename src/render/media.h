@@ -110,10 +110,6 @@ public:
 
 	KRR_CALLABLE bool isEmissive() const { return L_e.any(); }
 
-	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const { 
-		return Spectrum::fromRGB(L_e, SpectrumType::RGBIlluminant, lambda, *colorSpace);
-	}
-	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const {
 		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace),
 				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace), 
@@ -132,24 +128,22 @@ public:
 	RGB sigma_a, sigma_s, L_e;
 	HGPhaseFunction phase;
 	const RGBColorSpace *colorSpace;
+
+protected:
+	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const {
+		return Spectrum::fromRGB(L_e, SpectrumType::RGBIlluminant, lambda, *colorSpace);
+	}
 };
 
 class NanoVDBMedium {
 public:
 	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g, NanoVDBGrid density,
-				  NanoVDBGrid temperature, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
+				  NanoVDBGrid temperature, float LeScale, float temperatureScale, float temperatureOffset,
+				  const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
 
 	KRR_HOST void initializeFromHost();
 
 	KRR_CALLABLE bool isEmissive() const { return false; }
-
-	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const {
-		if (!temperatureGrid) return Spectrum::Zero();
-		p = inverseTransform * p;
-		float temp = temperatureGrid.getDensity(p);
-		if (temp <= 100.f) return SampledSpectrum(0);
-		return BlackbodySpectrum(temp).sample(lambda);
-	}
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const { 
 		p = inverseTransform * p;
@@ -178,15 +172,25 @@ public:
 	Affine3f transform, inverseTransform;
 	HGPhaseFunction phase;
 	RGB sigma_a, sigma_s;
+	float temperatureScale, temperatureOffset;
+	float LeScale;
 	const RGBColorSpace *colorSpace;
+
+protected:
+	/* Le() should only be called by sampledPoint, and its argument p is in local coords. */
+	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const {
+		if (!temperatureGrid) return Spectrum::Zero();
+		float temp = (temperatureGrid.getDensity(p) - temperatureOffset) * temperatureScale;
+#if KRR_RENDER_SPECTRAL
+		return LeScale * BlackbodySpectrum(temp).sample(lambda);
+#else 
+		return LeScale * BlackbodySpectrum(temp).sample(lambda).toRGB(lambda, *colorSpace);
+#endif
+	}
 };
 
 /* Put these definitions here since the optix kernel will need them... */
 /* Definitions of inline functions should be put into header files. */
-inline Spectrum Medium::Le(Vector3f p, const SampledWavelengths &lambda) const {
-	auto Le = [&](auto ptr) -> Spectrum { return ptr->Le(p, lambda); };
-	return dispatch(Le);
-}
 
 inline bool Medium::isEmissive() const {
 	auto emissive = [&](auto ptr) -> bool { return ptr->isEmissive(); };

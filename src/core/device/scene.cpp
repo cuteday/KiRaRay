@@ -159,6 +159,7 @@ void RTScene::uploadSceneMediumData() {
 										m->g, std::move(*m->densityGrid),
 										m->temperatureGrid ? std::move(*m->temperatureGrid)
 														   : NanoVDBGrid{},
+										m->LeScale, m->temperatureScale, m->temperatureOffset, 
 										KRR_DEFAULT_COLORSPACE);
 			mNanoVDBMedium.back().initializeFromHost();
 		}
