@@ -92,7 +92,8 @@ KRR_HOST_DEVICE void traceTransmittance(const ShadowRayWorkItem& sr, const Surfa
 	Spectrum T_ray(1);
 	Spectrum pu(1), pl(1);
 
-	while (ray.dir.any()) {
+	/* This is only a temporaray workaround to avoid the null-material overlaps the light. */
+	while (!ray.dir.isZero(KRR_RAY_EPS * 2)) {
 		bool visible = trace(ray, tMax);
 		if (!visible && intr.material != nullptr) {
 			/* Hit opaque surface, goodbye... */
