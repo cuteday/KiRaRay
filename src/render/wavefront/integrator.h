@@ -35,7 +35,7 @@ public:
 	void render(RenderContext *context) override;
 	void renderUI() override;
 
-	void initialize();
+	void initialize() override;
 
 	string getName() const override { return "WavefrontPathTracer"; }
 

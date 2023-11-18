@@ -65,8 +65,7 @@ void WavefrontPathTracer::traceShadow() {
 	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
 	params.shadowRayQueue	   = shadowRayQueue;
 	params.pixelState		   = pixelState;
-	if(enableMedium) backend->launch(params, "ShadowTr", maxQueueSize, 1, 1);
-	else backend->launch(params, "Shadow", maxQueueSize, 1, 1);
+	backend->launch(params, enableMedium ? "ShadowTr" : "Shadow", maxQueueSize, 1, 1);
 }
 
 void WavefrontPathTracer::handleHit() {
@@ -80,25 +79,25 @@ void WavefrontPathTracer::handleHit() {
 				Le /= (w.pl * lightPdf + w.pu).mean();
 			} else Le /= w.pu.mean();
 			pixelState->addRadiance(w.pixelId, Le);
-		});
+		}, gpContext->cudaStream);
 }
 
 void WavefrontPathTracer::handleMiss() {
 	PROFILE("Process escaped rays");
-	const rt::SceneData &sceneData = mScene->mSceneRT->getSceneData();
+	const auto &infiniteLights = backend->getSceneData().infiniteLights;
 	ForAllQueued(
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
 			Spectrum L		  = {};
 			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
 			Interaction intr(w.ray.origin);
-			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
+			for (const rt::InfiniteLight &light : infiniteLights) {
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
 					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
 					L += light.Li(w.ray.dir, lambda) / (w.pu + w.pl * lightPdf).mean();
 				} else L += light.Li(w.ray.dir, lambda) / w.pu.mean();	
 			}
 			pixelState->addRadiance(w.pixelId, w.thp * L);
-		});
+		}, gpContext->cudaStream);
 }
 
 void WavefrontPathTracer::generateScatterRays(int depth) {
@@ -155,7 +154,7 @@ void WavefrontPathTracer::generateScatterRays(int depth) {
 				r.thp			 = w.thp * sample.f * fabs(sample.wi[2]) / sample.pdf;
 				if (any(r.thp)) nextRayQueue(depth)->push(r);
 			}
-		});
+		}, gpContext->cudaStream);
 }
 
 void WavefrontPathTracer::generateCameraRays(int sampleId) {
