@@ -199,7 +199,7 @@ void WavefrontPathTracer::beginFrame(RenderContext* context) {
 	if (!mScene || !maxQueueSize) return;
 	PROFILE("Begin frame");
 	cudaMemcpyAsync(camera, &mScene->getCamera()->getCameraData(), sizeof(rt::CameraData),
-			   cudaMemcpyHostToDevice, 0);
+					cudaMemcpyHostToDevice, gpContext->cudaStream);
 	size_t frameIndex = getFrameIndex();
 	auto frameSize = getFrameSize();
 	GPUParallelFor(
@@ -237,16 +237,14 @@ void WavefrontPathTracer::render(RenderContext *context) {
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);
 			// [STEP#2.2] sample medium interaction, and optionally sample in-volume scattering events
-			if (enableMedium) {
-				sampleMediumInteraction(depth);
-				sampleMediumScattering(depth);
-			}
+			if (enableMedium) sampleMediumInteraction(depth);			
 			// [STEP#2.3] handle hit and missed rays, contribute to pixels
 			handleHit();
 			handleMiss();
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
 			// [STEP#2.4] evaluate materials & bsdfs, and generate shadow rays
+			if (enableMedium) sampleMediumScattering(depth);
 			generateScatterRays(depth);
 			// [STEP#2.5] trace shadow rays (next event estimation)
 			if (enableNEE) traceShadow();
@@ -273,7 +271,7 @@ void WavefrontPathTracer::renderUI() {
 	ui::Checkbox("Enable NEE", &enableNEE);
 	// If MIS is disabled while NEE is enabled,
 	// The paths that hits the lights will not contribute.
-	if (mScene->getMedia().size())
+	if (mScene->getMedia().size()) 
 		if (ui::Checkbox("Enable medium", &enableMedium)) initialize();
 	ui::Text("Debugging");
 	ui::Checkbox("Debug output", &debugOutput);

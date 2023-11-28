@@ -15,7 +15,7 @@ void ErrorMeasurePass::beginFrame(RenderContext* context) {
 }
 
 void ErrorMeasurePass::render(RenderContext *context) {
-	if (mNeedsEvaluate && mReferenceImage->isValid()) {
+	if (mNeedsEvaluate && mReferenceImage && mReferenceImage->isValid()) {
 		PROFILE("Metric calculation");
 		CHECK_LOG(mReferenceImage->getSize() == getFrameSize(),
 				  "ErrorMeasure::Reference image size does not match frame size!");
@@ -67,7 +67,7 @@ void ErrorMeasurePass::renderUI() {
 		if (ui::Button("Load")) {
 			loadReferenceImage(referencePath);
 		}
-		if (mReferenceImage->isValid()) {
+		if (mReferenceImage && mReferenceImage->isValid()) {
 			ui::Text("Reference image: %s", mReferenceImagePath.c_str());
 			ui::Checkbox("Continuous evaluate", &mContinuousEvaluate);
 			if (mContinuousEvaluate)

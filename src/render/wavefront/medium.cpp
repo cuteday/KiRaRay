@@ -82,7 +82,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 				return;
 			}
 
-			// [You can not see me] The surface do not pocess a material (usually an interface?)
+			// [You can not see me] The surface do not possess a material (usually an interface?)
 			if (!w.intr.material) {	
 				/* Just let it go (use *argument* _depth_ here (not w.depth). ) */
 				nextRayQueue(depth)->push(w.intr.spawnRayTowards(ray.dir), w.ctx, thp, pu, pl,
