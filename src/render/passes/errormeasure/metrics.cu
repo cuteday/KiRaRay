@@ -9,13 +9,15 @@
 #include <thrust/execution_policy.h>
 
 #define METRIC_IN_SRGB					0
-#define ERROR_EPS						1e-3f
 #define CLAMP_PIXEL_ERROR				0 
-#define CLAMP_PIXEL_ERROR_THRESHOLD		10.f
-#define DISCARD_FIREFLIES				0
-#define DISCARD_FIREFLIES_PRECENTAGE	0.0001f
+#define DISCARD_FIREFLIES				1
+
 
 KRR_NAMESPACE_BEGIN
+
+KRR_DEVICE constexpr float ERROR_EPS					= 0;
+KRR_DEVICE constexpr float CLAMP_PIXEL_ERROR_THRESHOLD	= 10;
+KRR_DEVICE constexpr float DISCARD_FIREFLIES_PRECENTAGE = 0.0001;
 
 namespace {
 TypedBuffer<float> intermediateResult;
@@ -70,11 +72,14 @@ KRR_CALLABLE float smape(const RGB &y, const RGB &ref) {
 
 // is in fact MRSE...
 KRR_CALLABLE float rel_mse(const RGB &y, const RGB &ref) {
-	return ((y - ref) / (ref + ERROR_EPS)).square().mean();
-	//RGB ret{}, diff = (y - ref).abs();
-	//for (int ch = 0; ch < RGB::dim; ch++)
-	//	ret[ch] = ref[ch] == 0.f ? 0.f : pow2(diff[ch] / (ref[ch]));
-	//return ret.mean();
+	if constexpr (ERROR_EPS)
+		return ((y - ref) / (ref + ERROR_EPS)).square().mean();
+	else {
+		RGB ret{}, diff = (y - ref).abs();
+		for (int ch = 0; ch < RGB::dim; ch++)
+			ret[ch] = ref[ch] == 0.f ? 0.f : pow2(diff[ch] / ref[ch]);
+		return ret.mean();
+	}
 }
 
 float calc_metric(const CudaRenderTarget & frame, const RGBA *reference, 

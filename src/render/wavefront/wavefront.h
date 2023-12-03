@@ -101,7 +101,7 @@ KRR_HOST_DEVICE void traceTransmittance(const ShadowRayWorkItem& sr, const Surfa
 			break;
 		}
 		if (ray.medium) {
-			float tEnd = visible ? tMax : (intr.p - ray.origin).norm() / ray.dir.norm();
+			float tEnd	   = visible ? tMax : (intr.p - ray.origin).norm() / ray.dir.norm();
 			Spectrum T_maj =
 				sampleT_maj(ray, tEnd, sampler, lambda,
 					[&](Vector3f p, MediumProperties mp, Spectrum sigma_maj, Spectrum T_maj) {

@@ -53,6 +53,7 @@ CMakeSettings.json
 temp
 tmp
 enc_temp_folder
+profiler
 /common/outputs
 /common/configs/test*
 /common/assets/textures/local

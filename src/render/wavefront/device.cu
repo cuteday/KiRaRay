@@ -79,8 +79,7 @@ extern "C" __global__ void KRR_RT_RG(Closest)() {
 	if (getRayId() >= launchParams.currentRayQueue->size()) return;
 	RayWorkItem r = getRayWorkItem();
 	SurfaceInteraction intr = {};
-	traceRay(launchParams.traversable, r.ray, M_FLOAT_INF,
-		0, OPTIX_RAY_FLAG_NONE, (void*)&intr);
+	traceRay(launchParams.traversable, r.ray, M_FLOAT_INF, 0, OPTIX_RAY_FLAG_NONE, (void *) &intr);
 }
 
 extern "C" __global__ void KRR_RT_AH(Shadow)() { 

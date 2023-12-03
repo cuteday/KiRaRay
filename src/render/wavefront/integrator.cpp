@@ -229,10 +229,8 @@ void WavefrontPathTracer::render(RenderContext *context) {
 				missRayQueue->reset();
 				shadowRayQueue->reset();
 				scatterRayQueue->reset();
-				if (enableMedium) {
-					mediumSampleQueue->reset();
-					mediumScatterQueue->reset();
-				}
+				if (enableMedium) mediumSampleQueue->reset();
+				if (enableMedium) mediumScatterQueue->reset();
 			}, gpContext->cudaStream);
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);

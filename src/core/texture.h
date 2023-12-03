@@ -95,7 +95,7 @@ public:
 	}
 	Image::SharedPtr getImage() const { return mImage; }
 	RGBA getConstant() const { return mValue; }
-	std::string getFilemame() const { return mFilename; }
+	std::string getFilename() const { return mFilename; }
 	bool hasImage() const { return mImage && mImage->isValid(); }
 
 	static Texture::SharedPtr createFromFile(const fs::path &filepath, bool flip = false,
