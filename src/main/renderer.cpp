@@ -83,6 +83,7 @@ void RenderApp::render() {
 	mpUIRenderer->beginFrame(getRenderContext());
 	for (auto it : mRenderPasses) it->beginFrame(getRenderContext());
 	for (auto it : mRenderPasses) {
+		if (!it->enabled()) continue;
 		if (it->isCudaPass()) getRenderContext()->sychronizeCuda();
 		it->render(getRenderContext());
 		if (it->isCudaPass()) getRenderContext()->sychronizeVulkan();

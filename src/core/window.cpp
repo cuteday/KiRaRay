@@ -417,6 +417,7 @@ void DeviceManager::render() {
 	beginFrame();
 	for (auto it : mRenderPasses) it->beginFrame(mRenderContext.get());
 	for (auto it : mRenderPasses) {
+		if (!it->enabled()) continue;
 		if (it->isCudaPass()) mRenderContext->sychronizeCuda();
 		it->render(mRenderContext.get());
 		if (it->isCudaPass()) mRenderContext->sychronizeVulkan();

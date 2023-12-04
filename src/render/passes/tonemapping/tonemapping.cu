@@ -55,7 +55,6 @@ void ToneMappingPass::renderUI() {
 }
 
 void ToneMappingPass::render(RenderContext *context) {
-	if (!mEnable) return;
 	PROFILE("Tong mapping pass");
 	CUstream &stream = gpContext->cudaStream;
 	RGB colorTransform = RGB(mExposureCompensation);

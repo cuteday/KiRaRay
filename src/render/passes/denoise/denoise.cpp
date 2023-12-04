@@ -131,7 +131,6 @@ void DenoiseBackend::setPixelFormat(PixelFormat format) {
 }
 
 void DenoisePass::render(RenderContext *context) {
-	if (!mEnable) return;
 	PROFILE("Denoise");
 	auto size				   = context->getRenderTarget()->getSize();
 	CudaRenderTarget cudaFrame = context->getColorTexture()->getCudaRenderTarget();
@@ -148,7 +147,6 @@ void DenoisePass::render(RenderContext *context) {
 
 void DenoisePass::renderUI() { 
 	ui::Checkbox("Enabled", &mEnable);
-	if (!mEnable) return;
 	if (ui::Checkbox("Use geometry buffer", &mUseGeometry)) {
 		Log(Fatal, "Denoising guided by geometry features is not implemented yet TaT");
 		mBackend.setHaveGeometry(mUseGeometry);

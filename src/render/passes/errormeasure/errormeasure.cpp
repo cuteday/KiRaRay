@@ -15,8 +15,8 @@ void ErrorMeasurePass::beginFrame(RenderContext* context) {
 }
 
 void ErrorMeasurePass::render(RenderContext *context) {
+	PROFILE("Metric calculation");
 	if (mNeedsEvaluate && mReferenceImage && mReferenceImage->isValid()) {
-		PROFILE("Metric calculation");
 		CHECK_LOG(mReferenceImage->getSize() == getFrameSize(),
 				  "ErrorMeasure::Reference image size does not match frame size!");
 		size_t n_elememts = getFrameSize()[0] * getFrameSize()[1];

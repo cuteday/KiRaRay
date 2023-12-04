@@ -13,7 +13,6 @@ void AccumulatePass::reset() {
 }
 
 void AccumulatePass::render(RenderContext *context) {
-	if (!mEnable) return;
 	PROFILE("Accumulate pass");
 	if (mScene->getChanges()) reset();
 	static size_t lastResetFrame = 0;
