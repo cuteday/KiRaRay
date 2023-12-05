@@ -6,6 +6,7 @@
 #include <thrust/execution_policy.h>
 
 #include "common.h"
+#include "device/cuda.h"
 #include "util/check.h"
 
 KRR_NAMESPACE_BEGIN

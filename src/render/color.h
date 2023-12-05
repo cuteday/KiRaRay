@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common.h"
 #include "krrmath/math.h"
 #include "util/math_utils.h"
 

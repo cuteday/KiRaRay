@@ -16,6 +16,7 @@
 
 #include <common.h>
 #include <logger.h>
+#include <device/cuda.h>
 #include <util/check.h>
 
 KRR_NAMESPACE_BEGIN

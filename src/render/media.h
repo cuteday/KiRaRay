@@ -153,8 +153,11 @@ public:
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const { 
 		p = inverseTransform * p;
 		DataType d = densityGrid.getDensity(p);
-		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) * d,
-				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace) * d,
+		Spectrum color;
+		if constexpr (std::is_same_v<DataType, float>) color = Spectrum::Constant(d);
+		else color = Spectrum::fromRGB(d, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) * color,
+				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace) * color,
 				&phase, Le(p, lambda)};
 	}
 
@@ -210,7 +213,7 @@ NanoVDBMedium<DataType>::NanoVDBMedium(const Affine3f &transform, RGB sigma_a, R
 template <typename DataType> 
 void NanoVDBMedium<DataType>::initializeFromHost() {
 	densityGrid.toDevice();
-	initializeMajorantGrid(majorantGrid, densityGrid.getFloatGrid());
+	initializeMajorantGrid(majorantGrid, densityGrid.getNativeGrid());
 }
 
 /* Put these definitions here since the optix kernel will need them... */

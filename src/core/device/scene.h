@@ -1,11 +1,14 @@
 #pragma once
+#include <optix.h>
+#include <optix_stubs.h>
+
 #include "common.h"
 #include "mesh.h"
 #include "light.h"
 #include "camera.h"
 #include "texture.h"
-#include "device/gpustd.h"
 
+#include "device/gpustd.h"
 #include "device/buffer.h"
 #include "device/memory.h"
 #include "render/lightsampler.h"
