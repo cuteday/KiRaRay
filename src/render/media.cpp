@@ -58,23 +58,6 @@ void initializeMajorantGrid(MajorantGrid& majorantGrid,
 		}, 0);
 }
 
-NanoVDBMedium::NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g,
-							 NanoVDBGrid density, NanoVDBGrid temperature, float LeScale,
-							 float temperatureScale, float temperatureOffset, 
-							 const RGBColorSpace *colorSpace) :
-	transform(transform), phase(g), sigma_a(sigma_a), sigma_s(sigma_s), densityGrid(std::move(density)), 
-	temperatureGrid(std::move(temperature)), LeScale(LeScale), temperatureScale(temperatureScale), 
-	temperatureOffset(temperatureOffset), colorSpace(colorSpace) {
-	inverseTransform = transform.inverse();
-	const Vector3f majorantGridRes{64, 64, 64};
-	majorantGrid	 = MajorantGrid(densityGrid.getBounds(), majorantGridRes);
-}
-
-void NanoVDBMedium::initializeFromHost() {
-	densityGrid.toDevice();
-	initializeMajorantGrid(majorantGrid, densityGrid.getFloatGrid());
-}
-
 KRR_HOST_DEVICE PhaseFunctionSample HGPhaseFunction::sample(const Vector3f &wo,
 														 const Vector2f &u) const {
 	float g = clamp(this->g, -.99f, .99f);

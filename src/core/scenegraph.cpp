@@ -47,10 +47,6 @@ SceneGraphLeaf::SharedPtr HomogeneousVolume::clone() {
 	return std::make_shared<HomogeneousVolume>(sigma_a, sigma_s, g, Le);
 }
 
-SceneGraphLeaf::SharedPtr VDBVolume::clone() {
-	return std::make_shared<VDBVolume>(sigma_a, sigma_s, g, densityGrid, temperatureGrid);
-}
-
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
 								  const Vector3f *scaling) {
 	if (scaling) mScaling = *scaling;
@@ -611,12 +607,11 @@ void HomogeneousVolume::renderUI() {
 	if (isEmissive()) ui::Text("Le: %s", Le.string().c_str());
 }
 
-void VDBVolume::renderUI() {
-	ui::Text("VDB volume"); 
+void Volume::renderUI() {
+	ui::Text("Volume Data");
 	ui::Text(("Sigma_a: " + sigma_a.string()).c_str());
 	ui::Text(("Sigma_s: " + sigma_s.string()).c_str());
 	ui::Text("g: %f", g);
-	ui::Text("Max density: %f", densityGrid->getMaxDensity());
 }
 
 void SceneGraphNode::renderUI() { 

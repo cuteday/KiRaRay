@@ -77,8 +77,8 @@ private:
 
 	std::vector<HomogeneousMedium> mHomogeneousMedium;
 	TypedBuffer<HomogeneousMedium> mHomogeneousMediumBuffer;
-	std::vector<NanoVDBMedium> mNanoVDBMedium;
-	TypedBuffer<NanoVDBMedium> mNanoVDBMediumBuffer;
+	std::vector<NanoVDBMedium<float>> mNanoVDBMedium;
+	TypedBuffer<NanoVDBMedium<float>> mNanoVDBMediumBuffer;
 
 	std::vector<Medium> mMedium;
 	TypedBuffer<Medium> mMediumBuffer;

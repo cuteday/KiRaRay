@@ -17,7 +17,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path, std::string key) {
+NanoVDBGrid<float>::SharedPtr loadNanoVDB(std::filesystem::path path, string key) {
 	openvdb::initialize();
 	Log(Info, "Loading openvdb file from %s", path.string().c_str());
 	openvdb::io::File file(path.generic_string());
@@ -39,7 +39,7 @@ NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path, std::string key) 
 	if (metadata->gridType() != nanovdb::GridType::Float) Log(Fatal, "only support float grid!");
 	float minValue, maxValue;
 	grid->evalMinMax(minValue, maxValue);
-	return std::make_shared<NanoVDBGrid>(std::move(handle), maxValue);
+	return std::make_shared<NanoVDBGrid<float>>(std::move(handle), maxValue);
 }
 
 KRR_NAMESPACE_END

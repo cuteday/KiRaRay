@@ -131,10 +131,15 @@ class Volume : public SceneGraphLeaf {
 public:
 	using SharedPtr = std::shared_ptr<Volume>;
 	Volume()		= default;
+	Volume(RGB sigma_a, RGB sigma_s, float g) : sigma_a(sigma_a), sigma_s(sigma_s), g(g) {}
 
 	int getMediumId() const { return mediumId; }
 	void setMediumId(int id) { mediumId = id; }
+	virtual void renderUI() override;
 
+	RGB sigma_a;
+	RGB sigma_s;
+	float g;
 protected:
 	friend class SceneGraph;
 	int mediumId{-1};
@@ -145,48 +150,47 @@ public:
 	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
 
 	HomogeneousVolume(RGB sigma_a, RGB sigma_s, float g, RGB Le = RGB::Zero()) :
-		sigma_a(sigma_a), sigma_s(sigma_s), g(g), Le(Le) {}
+		Volume(sigma_a, sigma_s, g), Le(Le) {}
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual void renderUI() override;
 
 	bool isEmissive() const { return !Le.isZero(); }
 
-	RGB sigma_a;
-	RGB sigma_s;
 	RGB Le;
-	float g;
-
 private:
 	friend class SceneGraph;
 };
 
+template <typename DataType>
 class VDBVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<VDBVolume>;
 
 	VDBVolume(RGB sigma_a, RGB sigma_s, float g, 
-		NanoVDBGrid::SharedPtr density, NanoVDBGrid::SharedPtr temperature = nullptr, 
+		std::shared_ptr<NanoVDBGrid<DataType>> density,
+			  std::shared_ptr<NanoVDBGrid<DataType>> temperature = nullptr, 
 		float LeScale = 1, float temperatureScale = 1, float temperatureOffset = 0) :
-		sigma_a(sigma_a), sigma_s(sigma_s), g(g), densityGrid(density), temperatureGrid(temperature), 
+		Volume(sigma_a, sigma_s, g), densityGrid(density), temperatureGrid(temperature), 
 		LeScale(LeScale), temperatureScale(temperatureScale), temperatureOffset(temperatureOffset) {}
 
-	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+	virtual SceneGraphLeaf::SharedPtr clone() override;
 	virtual AABB getLocalBoundingBox() const override { return densityGrid->getBounds(); }
-	virtual void renderUI() override;
 
-	RGB sigma_a;
-	RGB sigma_s;
-	float g;
 	float LeScale;
 	float temperatureScale;
 	float temperatureOffset;
-	NanoVDBGrid::SharedPtr densityGrid;
-	NanoVDBGrid::SharedPtr temperatureGrid;
+	std::shared_ptr<NanoVDBGrid<DataType>> densityGrid;
+	std::shared_ptr<NanoVDBGrid<DataType>> temperatureGrid;
 
 protected:
 	friend class SceneGraph;
 };
+
+template <typename DataType> 
+SceneGraphLeaf::SharedPtr VDBVolume<DataType>::clone() {
+	return std::make_shared<VDBVolume>(sigma_a, sigma_s, g, densityGrid, temperatureGrid);
+}
 
 class SceneGraphNode final : public std::enable_shared_from_this<SceneGraphNode> {
 public:

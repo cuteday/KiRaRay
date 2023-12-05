@@ -33,6 +33,8 @@ public:
 	AABB3f bounds;
 };
 
+void initializeMajorantGrid(MajorantGrid &majorantGrid, nanovdb::FloatGrid *floatGrid);
+
 class MajorantIterator {
 public:
 	MajorantIterator() = default;
@@ -135,8 +137,11 @@ protected:
 	}
 };
 
+template <typename DataType>
 class NanoVDBMedium {
 public:
+	using NanoVDBGrid = NanoVDBGrid<DataType>;
+
 	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g, NanoVDBGrid density,
 				  NanoVDBGrid temperature, float LeScale, float temperatureScale, float temperatureOffset,
 				  const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
@@ -147,7 +152,7 @@ public:
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const { 
 		p = inverseTransform * p;
-		float d = densityGrid.getDensity(p);
+		DataType d = densityGrid.getDensity(p);
 		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) * d,
 				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace) * d,
 				&phase, Le(p, lambda)};
@@ -188,6 +193,25 @@ protected:
 #endif
 	}
 };
+
+template <typename DataType>
+NanoVDBMedium<DataType>::NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g,
+							 NanoVDBGrid density, NanoVDBGrid temperature, float LeScale,
+							 float temperatureScale, float temperatureOffset, 
+							 const RGBColorSpace *colorSpace) :
+	transform(transform), phase(g), sigma_a(sigma_a), sigma_s(sigma_s), densityGrid(std::move(density)), 
+	temperatureGrid(std::move(temperature)), LeScale(LeScale), temperatureScale(temperatureScale), 
+	temperatureOffset(temperatureOffset), colorSpace(colorSpace) {
+	inverseTransform = transform.inverse();
+	const Vector3f majorantGridRes{64, 64, 64};
+	majorantGrid	 = MajorantGrid(densityGrid.getBounds(), majorantGridRes);
+}
+
+template <typename DataType> 
+void NanoVDBMedium<DataType>::initializeFromHost() {
+	densityGrid.toDevice();
+	initializeMajorantGrid(majorantGrid, densityGrid.getFloatGrid());
+}
 
 /* Put these definitions here since the optix kernel will need them... */
 /* Definitions of inline functions should be put into header files. */
