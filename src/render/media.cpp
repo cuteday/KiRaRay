@@ -8,8 +8,8 @@
 KRR_NAMESPACE_BEGIN
 /* Note that the function qualifier (e.g. inline) should be consistent between declaration and definition. */
 
-void initializeMajorantGrid(MajorantGrid& majorantGrid,
-							nanovdb::FloatGrid *floatGrid) {
+template <typename GridType>
+void initializeMajorantGrid(MajorantGrid &majorantGrid, GridType *densityGrid) {
 	auto res = majorantGrid.res;
 	cudaDeviceSynchronize();
 	// [TODO] This device memory is not properly freed
@@ -30,14 +30,14 @@ void initializeMajorantGrid(MajorantGrid& majorantGrid,
 														float(z + 1) / majorantGrid.res.z())));
 
 			// Compute corresponding NanoVDB index-space bounds in floating-point.
-			nanovdb::Vec3R i0 = floatGrid->worldToIndexF(
+			nanovdb::Vec3R i0 = densityGrid->worldToIndexF(
 				nanovdb::Vec3R(wb.min().x(), wb.min().y(), wb.min().z()));
-			nanovdb::Vec3R i1 = floatGrid->worldToIndexF(
+			nanovdb::Vec3R i1 = densityGrid->worldToIndexF(
 				nanovdb::Vec3R(wb.max().x(), wb.max().y(), wb.max().z()));
 
 			// Now find integer index-space bounds, accounting for both
 			// filtering and the overall index bounding box.
-			auto bbox	= floatGrid->indexBBox();
+			auto bbox	= densityGrid->indexBBox();
 			float delta = 1.f; // Filter slop
 			int nx0		= max(int(i0[0] - delta), bbox.min()[0]);
 			int nx1		= min(int(i1[0] + delta), bbox.max()[0]);
@@ -47,16 +47,30 @@ void initializeMajorantGrid(MajorantGrid& majorantGrid,
 			int nz1		= min(int(i1[2] + delta), bbox.max()[2]);
 
 			float maxValue = 0;
-			auto accessor  = floatGrid->getAccessor();
+			auto accessor  = densityGrid->getAccessor();
 
 			for (int nz = nz0; nz <= nz1; ++nz)
 				for (int ny = ny0; ny <= ny1; ++ny)
 					for (int nx = nx0; nx <= nx1; ++nx)
-						maxValue = max(maxValue, accessor.getValue({nx, ny, nz}));
-
+						if constexpr (std::is_same_v<GridType, nanovdb::FloatGrid>) {
+							maxValue = max(maxValue, accessor.getValue({nx, ny, nz}));
+						} else if constexpr (std::is_same_v<GridType, nanovdb::Vec3fGrid>) {
+							auto value = accessor.getValue({nx, ny, nz});
+							RGB color  = {value[0], value[1], value[2]};
+							RGBUnboundedSpectrum spectrum(color, *KRR_DEFAULT_COLORSPACE_GPU);
+							maxValue = max(maxValue, spectrum.maxValue());
+						} else {
+							static_assert(false, "Unsupported grid type!");
+						}
 			majorantGrid.set(x, y, z, maxValue);
 		}, 0);
 }
+
+// explicit instantiation of enable data types of vdb grids
+template void initializeMajorantGrid<nanovdb::FloatGrid>(MajorantGrid &majorantGrid,
+														 nanovdb::FloatGrid *densityGrid);
+template void initializeMajorantGrid<nanovdb::Vec3fGrid>(MajorantGrid &majorantGrid,
+														 nanovdb::Vec3fGrid *densityGrid);
 
 KRR_HOST_DEVICE PhaseFunctionSample HGPhaseFunction::sample(const Vector3f &wo,
 														 const Vector2f &u) const {

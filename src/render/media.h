@@ -33,7 +33,8 @@ public:
 	AABB3f bounds;
 };
 
-void initializeMajorantGrid(MajorantGrid &majorantGrid, nanovdb::FloatGrid *floatGrid);
+template <typename GridType>
+void initializeMajorantGrid(MajorantGrid &majorantGrid, GridType *floatGrid);
 
 class MajorantIterator {
 public:

@@ -99,7 +99,7 @@ public:
 
 	NanoVDBGrid() = default;
 
-	NanoVDBGrid(nanovdb::GridHandle<nanovdb::CudaDeviceBuffer>&& density, float maxDensity) :
+	NanoVDBGrid(nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> &&density, Array3f maxDensity) :
 		NanoVDBGridBaseImpl(std::move(density), maxDensity) {
 		densityGrid						   = densityHandle.grid<NativeType>();
 		nanovdb::BBox<nanovdb::Vec3R> bbox = densityGrid->worldBBox();

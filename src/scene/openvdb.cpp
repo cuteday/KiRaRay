@@ -25,7 +25,7 @@ bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene,
 	float temperatureOffset = params.value<float>("offset_temperature", 0);
 	float LeScale			= params.value<float>("scale_le", 1);
 
-	auto densityGrid	 = std::dynamic_pointer_cast<NanoVDBGrid<float>>(loadNanoVDB(filepath, key_density));
+	auto densityGrid	 = loadNanoVDB(filepath, key_density);
 	auto temperatureGrid = std::dynamic_pointer_cast<NanoVDBGrid<float>>(loadNanoVDB(filepath, key_temperature));
 	auto volume = std::make_shared<VDBVolume>(sigma_a, sigma_s, g, densityGrid, temperatureGrid,
 											  LeScale, temperaetureScale, temperatureOffset);
