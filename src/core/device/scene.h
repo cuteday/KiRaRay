@@ -82,6 +82,8 @@ private:
 	TypedBuffer<HomogeneousMedium> mHomogeneousMediumBuffer;
 	std::vector<NanoVDBMedium<float>> mNanoVDBMedium;
 	TypedBuffer<NanoVDBMedium<float>> mNanoVDBMediumBuffer;
+	std::vector<NanoVDBMedium<Array3f>> mNanoVDBRGBMedium;
+	TypedBuffer<NanoVDBMedium<Array3f>> mNanoVDBRGBMediumBuffer;
 
 	std::vector<Medium> mMedium;
 	TypedBuffer<Medium> mMediumBuffer;

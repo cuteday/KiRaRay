@@ -47,6 +47,10 @@ SceneGraphLeaf::SharedPtr HomogeneousVolume::clone() {
 	return std::make_shared<HomogeneousVolume>(sigma_a, sigma_s, g, Le);
 }
 
+SceneGraphLeaf::SharedPtr VDBVolume::clone() {
+	return std::make_shared<VDBVolume>(sigma_a, sigma_s, g, densityGrid, temperatureGrid);
+}
+
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
 								  const Vector3f *scaling) {
 	if (scaling) mScaling = *scaling;

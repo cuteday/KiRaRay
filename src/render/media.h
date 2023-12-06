@@ -140,10 +140,8 @@ protected:
 template <typename DataType>
 class NanoVDBMedium {
 public:
-	using NanoVDBGrid = NanoVDBGrid<DataType>;
-
-	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g, NanoVDBGrid density,
-				  NanoVDBGrid temperature, float LeScale, float temperatureScale, float temperatureOffset,
+	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g, NanoVDBGrid<DataType> density,
+				  NanoVDBGrid<float> temperature, float LeScale, float temperatureScale, float temperatureOffset,
 				  const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
 
 	KRR_HOST void initializeFromHost();
@@ -174,8 +172,8 @@ public:
 			&majorantGrid};
 	}
 
-	NanoVDBGrid densityGrid;
-	NanoVDBGrid temperatureGrid;
+	NanoVDBGrid<DataType> densityGrid;
+	NanoVDBGrid<float> temperatureGrid;
 	MajorantGrid majorantGrid;
 	Affine3f transform, inverseTransform;
 	HGPhaseFunction phase;
@@ -199,7 +197,7 @@ protected:
 
 template <typename DataType>
 NanoVDBMedium<DataType>::NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g,
-							 NanoVDBGrid density, NanoVDBGrid temperature, float LeScale,
+							 NanoVDBGrid<DataType> density, NanoVDBGrid<float> temperature, float LeScale,
 							 float temperatureScale, float temperatureOffset, 
 							 const RGBColorSpace *colorSpace) :
 	transform(transform), phase(g), sigma_a(sigma_a), sigma_s(sigma_s), densityGrid(std::move(density)), 

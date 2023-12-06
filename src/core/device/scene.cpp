@@ -153,28 +153,43 @@ void RTScene::uploadSceneMediumData() {
 		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) {
 			HomogeneousMedium gMedium(m->sigma_a, m->sigma_s, m->Le, m->g, KRR_DEFAULT_COLORSPACE);
 			mHomogeneousMedium.push_back(gMedium);
-		} else if (auto m = std::dynamic_pointer_cast<VDBVolume<float>>(medium)) {
-			float maxDensity{0};
-			mNanoVDBMedium.emplace_back(m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s,
-										m->g, std::move(*m->densityGrid),
-										m->temperatureGrid ? std::move(*m->temperatureGrid)
-														   : NanoVDBGrid<float>{},
-										m->LeScale, m->temperatureScale, m->temperatureOffset, 
-										KRR_DEFAULT_COLORSPACE);
+		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
+			if (std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)) {
+				mNanoVDBMedium.emplace_back(
+					m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s, m->g,
+					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)),
+					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
+					m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
+			} else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)) {
+				mNanoVDBRGBMedium.emplace_back(
+					m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s, m->g,
+					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)),
+					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
+					m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
+			} else {
+				Log(Error, "Unsupported heterogeneous VDB medium data type");
+				continue;
+			}
 			mNanoVDBMedium.back().initializeFromHost();
-		}
+		} else
+			Log(Error, "Unknown medium type not uploaded to device memory.");
 	}
 	mHomogeneousMediumBuffer.alloc_and_copy_from_host(mHomogeneousMedium);
 	mNanoVDBMediumBuffer.alloc_and_copy_from_host(mNanoVDBMedium);
+	mNanoVDBRGBMediumBuffer.alloc_and_copy_from_host(mNanoVDBRGBMedium);
 
 	size_t homogeneousId = 0;
 	size_t nanoVDBId	 = 0;
+	size_t nanoVDBRGBId	 = 0;
 	for (auto medium : mScene.lock()->getMedia()) {
 		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) 
 			mMedium.push_back(Medium(&mHomogeneousMediumBuffer[homogeneousId++]));
-		else if (auto m = std::dynamic_pointer_cast<VDBVolume<float>>(medium))
-			mMedium.push_back(Medium(&mNanoVDBMediumBuffer[nanoVDBId++]));
-		else Log(Error, "Unknown medium type not uploaded to device memory.");
+		else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
+			if (std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid))
+				mMedium.push_back(Medium(&mNanoVDBMediumBuffer[nanoVDBId++]));
+			else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid))
+				mMedium.push_back(Medium(&mNanoVDBRGBMediumBuffer[nanoVDBRGBId++]));
+		}
 	}
 	mMediumBuffer.alloc_and_copy_from_host(mMedium);
 }

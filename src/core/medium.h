@@ -32,7 +32,7 @@ struct MediumProperties {
 	Spectrum Le;
 };
 
-class Medium : public TaggedPointer<HomogeneousMedium, NanoVDBMedium<float>> {
+class Medium : public TaggedPointer<HomogeneousMedium, NanoVDBMedium<float>, NanoVDBMedium<Array3f>> {
 public:
 	using TaggedPointer::TaggedPointer;
 

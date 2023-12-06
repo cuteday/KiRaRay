@@ -17,7 +17,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-NanoVDBGrid<float>::SharedPtr loadNanoVDB(std::filesystem::path path, string key) {
+NanoVDBGridBase::SharedPtr loadNanoVDB(std::filesystem::path path, string key) {
 	openvdb::initialize();
 	Log(Info, "Loading openvdb file from %s", path.string().c_str());
 	openvdb::io::File file(path.generic_string());
