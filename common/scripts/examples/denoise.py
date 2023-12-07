@@ -9,13 +9,13 @@ try: import numpy as np
 except: raise Exception("Install numpy for manipulating arrays.")
 
 from krr import *
+import pykrr
 
 def denoise(rgb, normals:np.array=None, albedo:np.array=None)->np.array:
-	import pykrr
 	if normals is not None: 
-		assert (img_albedo.shape == img_rgb.shape)
+		assert (normals.shape == rgb.shape)
 	if albedo is not None: 
-		assert (img_normals.shape == img_rgb.shape)
+		assert (albedo.shape == rgb.shape)
 	return pykrr.denoise(rgb.astype(np.float32), normals, albedo)
 
 if __name__ == "__main__":

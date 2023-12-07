@@ -2,7 +2,8 @@
 # GAPI dependencies
 ###############################################################################
 INCLUDE (${KRR_RENDER_ROOT}/common/build/FindOptiX.cmake)
-find_package(Vulkan REQUIRED)
+INCLUDE (${KRR_RENDER_ROOT}/common/build/FindPyTorch.cmake)
+FIND_PACKAGE(Vulkan REQUIRED)
 
 ###############################################################################
 # third party libraries
@@ -90,6 +91,10 @@ TARGET_LINK_LIBRARIES(krr_ext INTERFACE
 	Vulkan-Headers
 	openvdb
 )
+
+if (KRR_ENABLE_PYTORCH)
+TARGET_LINK_LIBRARIES(krr_ext INTERFACE torch_lib)
+endif()
 
 # shaderc for runtime compilation of glsl(shaderc) and hlsl(dxc) shaders
 # add_library(shaderc UNKNOWN IMPORTED) # shaderc is not used currently.

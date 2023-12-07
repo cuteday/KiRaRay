@@ -1,4 +1,9 @@
 #include "common.h"
+#if KRR_ENABLE_PYTORCH
+#define TORCH_API_INCLUDE_EXTENSION_H
+#include <torch/script.h>
+#include <torch/torch.h>
+#endif
 
 #include "main/renderer.h"
 #include "scene/importer.h"
@@ -14,7 +19,7 @@
 KRR_NAMESPACE_BEGIN
 
 void run(const json& config) {
-	if (!gpContext) gpContext = std::make_unique<Context>();
+	if (!gpContext) gpContext = std::make_unique<Context>(); 
 	{
 		RenderApp app;
 		app.loadConfig(config);
@@ -71,6 +76,15 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 	return result;
 }
 
+#if KRR_ENABLE_PYTORCH
+torch::Tensor denoise_torch_tensor(torch::Tensor rgb, 
+	std::optional<torch::Tensor> normals, 
+	std::optional<torch::Tensor> albedo) {
+	auto result = torch::empty_like(rgb);
+	return result;
+}	
+#endif
+
 PYBIND11_MODULE(pykrr, m) { 
 	m.doc() = "KiRaRay python binding!";
 
@@ -81,6 +95,11 @@ PYBIND11_MODULE(pykrr, m) {
 	m.def("denoise", &denoise, 
 		"Denoise the hdr image using optix's builtin denoiser", "rgb"_a,
 		  "normals"_a = py::none(), "albedo"_a = py::none());
+#if KRR_ENABLE_PYTORCH
+	m.def("denoise_torch_tensor", &denoise_torch_tensor, 
+		"Denoise the hdr image in tensor using optix's builtin denoiser", "rgb"_a,
+		  "normals"_a = py::none(), "albedo"_a = py::none());
+#endif
 }
 
 KRR_NAMESPACE_END

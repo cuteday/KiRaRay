@@ -6,6 +6,7 @@
 
 #cmakedefine01	KRR_BUILD_STARLIGHT
 #cmakedefine01	KRR_RENDER_SPECTRAL
+#cmakedefine01  KRR_ENABLE_PYTORCH
 
 #define KRR_ENABLE_PROFILE	1
 

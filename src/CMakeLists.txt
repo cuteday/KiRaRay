@@ -23,6 +23,7 @@ ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 SET(KRR_SECONDARY_LIBS_ALL
 	${KRR_SECONDARY_LIBS_ALL}
 	cuda 
+	cudart
 	cublas
 	krr_ext
 	${CUDA_LIBRARIES}
