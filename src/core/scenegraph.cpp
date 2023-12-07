@@ -611,12 +611,11 @@ void HomogeneousVolume::renderUI() {
 	if (isEmissive()) ui::Text("Le: %s", Le.string().c_str());
 }
 
-void VDBVolume::renderUI() {
-	ui::Text("VDB volume"); 
+void Volume::renderUI() {
+	ui::Text("Volume Data");
 	ui::Text(("Sigma_a: " + sigma_a.string()).c_str());
 	ui::Text(("Sigma_s: " + sigma_s.string()).c_str());
 	ui::Text("g: %f", g);
-	ui::Text("Max density: %f", densityGrid->getMaxDensity());
 }
 
 void SceneGraphNode::renderUI() { 

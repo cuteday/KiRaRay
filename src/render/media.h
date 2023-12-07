@@ -33,6 +33,9 @@ public:
 	AABB3f bounds;
 };
 
+template <typename GridType>
+void initializeMajorantGrid(MajorantGrid &majorantGrid, GridType *floatGrid);
+
 class MajorantIterator {
 public:
 	MajorantIterator() = default;
@@ -135,10 +138,11 @@ protected:
 	}
 };
 
+template <typename DataType>
 class NanoVDBMedium {
 public:
-	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g, NanoVDBGrid density,
-				  NanoVDBGrid temperature, float LeScale, float temperatureScale, float temperatureOffset,
+	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g, NanoVDBGrid<DataType> density,
+				  NanoVDBGrid<float> temperature, float LeScale, float temperatureScale, float temperatureOffset,
 				  const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
 
 	KRR_HOST void initializeFromHost();
@@ -147,9 +151,12 @@ public:
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const { 
 		p = inverseTransform * p;
-		float d = densityGrid.getDensity(p);
-		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) * d,
-				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace) * d,
+		DataType d = densityGrid.getDensity(p);
+		Spectrum color;
+		if constexpr (std::is_same_v<DataType, float>) color = Spectrum::Constant(d);
+		else color = Spectrum::fromRGB(d, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) * color,
+				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace) * color,
 				&phase, Le(p, lambda)};
 	}
 
@@ -166,8 +173,8 @@ public:
 			&majorantGrid};
 	}
 
-	NanoVDBGrid densityGrid;
-	NanoVDBGrid temperatureGrid;
+	NanoVDBGrid<DataType> densityGrid;
+	NanoVDBGrid<float> temperatureGrid;
 	MajorantGrid majorantGrid;
 	Affine3f transform, inverseTransform;
 	HGPhaseFunction phase;
@@ -188,6 +195,25 @@ protected:
 #endif
 	}
 };
+
+template <typename DataType>
+NanoVDBMedium<DataType>::NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g,
+							 NanoVDBGrid<DataType> density, NanoVDBGrid<float> temperature, float LeScale,
+							 float temperatureScale, float temperatureOffset, 
+							 const RGBColorSpace *colorSpace) :
+	transform(transform), phase(g), sigma_a(sigma_a), sigma_s(sigma_s), densityGrid(std::move(density)), 
+	temperatureGrid(std::move(temperature)), LeScale(LeScale), temperatureScale(temperatureScale), 
+	temperatureOffset(temperatureOffset), colorSpace(colorSpace) {
+	inverseTransform = transform.inverse();
+	const Vector3f majorantGridRes{64, 64, 64};
+	majorantGrid	 = MajorantGrid(densityGrid.getBounds(), majorantGridRes);
+}
+
+template <typename DataType> 
+void NanoVDBMedium<DataType>::initializeFromHost() {
+	densityGrid.toDevice();
+	initializeMajorantGrid(majorantGrid, densityGrid.getNativeGrid());
+}
 
 /* Put these definitions here since the optix kernel will need them... */
 /* Definitions of inline functions should be put into header files. */

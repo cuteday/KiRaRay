@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "util/check.h"
+#include "cuda.h"
 #include "logger.h"
 #include "common.h"
 

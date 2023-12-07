@@ -1,30 +1,9 @@
 #pragma once
 
 #include "common.h"
-#include <cuda.h>
-#include <optix.h>
-#include <optix_stubs.h>
 #include "logger.h"
 
 KRR_NAMESPACE_BEGIN
-
-#define OPTIX_CHECK(call)                                                                          \
-	do {                                                                                           \
-		OptixResult res = call;                                                                    \
-		if (res != OPTIX_SUCCESS) {                                                                \
-			Log(Fatal, "Optix call (%s) failed with code %d (line %d)\n", #call, res,              \
-					__LINE__);                                                                     \
-		}                                                                                          \
-	} while (false)
-
-#define OPTIX_CHECK_WITH_LOG(EXPR, LOG)                                                            \
-	do {                                                                                           \
-		OptixResult res = EXPR;                                                                    \
-		if (res != OPTIX_SUCCESS) {                                                                \
-			Log(Fatal, "Optix call " #EXPR " failed with code %d: \"%s\"\nLogs: %s",               \
-					int(res), optixGetErrorString(res), LOG);                                      \
-		}                                                                                          \
-	} while (false) /* eat semicolon */
 
 #define CUDA_CHECK(call)                                                                           \
 	do {                                                                                           \
@@ -52,6 +31,25 @@ KRR_NAMESPACE_BEGIN
 				cudaGetErrorString(error));                                                        \
 		}                                                                                          \
 	} while (0)
+
+#define OPTIX_CHECK(call)                                                                          \
+	do {                                                                                           \
+		OptixResult res = call;                                                                    \
+		if (res != OPTIX_SUCCESS) {                                                                \
+			Log(Fatal, "Optix call (%s) failed with code %d (line %d)\n", #call, res,              \
+					__LINE__);                                                                     \
+		}                                                                                          \
+	} while (false)
+
+#define OPTIX_CHECK_WITH_LOG(EXPR, LOG)                                                            \
+	do {                                                                                           \
+		OptixResult res = EXPR;                                                                    \
+		if (res != OPTIX_SUCCESS) {                                                                \
+			Log(Fatal, "Optix call " #EXPR " failed with code %d: \"%s\"\nLogs: %s",               \
+					int(res), optixGetErrorString(res), LOG);                                      \
+		}                                                                                          \
+	} while (false) /* eat semicolon */
+
 
 #define CHECK_LOG(EXPR, LOG, ...)                                                                  \
 	do {                                                                                           \

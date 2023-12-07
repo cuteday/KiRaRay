@@ -11,9 +11,9 @@ class Ray;
 class HGPhaseFunction;
 class PhaseFunctionSample;
 class HomogeneousMedium;
-class NanoVDBMedium;
 class MediumProperties;
 class MajorantIterator;
+template <typename DataType> class NanoVDBMedium;
 
 class PhaseFunction : public TaggedPointer<HGPhaseFunction> {
 public:
@@ -32,7 +32,7 @@ struct MediumProperties {
 	Spectrum Le;
 };
 
-class Medium : public TaggedPointer<HomogeneousMedium, NanoVDBMedium> {
+class Medium : public TaggedPointer<HomogeneousMedium, NanoVDBMedium<float>, NanoVDBMedium<Array3f>> {
 public:
 	using TaggedPointer::TaggedPointer;
 

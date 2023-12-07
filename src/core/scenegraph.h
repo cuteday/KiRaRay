@@ -131,10 +131,15 @@ class Volume : public SceneGraphLeaf {
 public:
 	using SharedPtr = std::shared_ptr<Volume>;
 	Volume()		= default;
+	Volume(RGB sigma_a, RGB sigma_s, float g) : sigma_a(sigma_a), sigma_s(sigma_s), g(g) {}
 
 	int getMediumId() const { return mediumId; }
 	void setMediumId(int id) { mediumId = id; }
+	virtual void renderUI() override;
 
+	RGB sigma_a;
+	RGB sigma_s;
+	float g;
 protected:
 	friend class SceneGraph;
 	int mediumId{-1};
@@ -145,18 +150,14 @@ public:
 	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
 
 	HomogeneousVolume(RGB sigma_a, RGB sigma_s, float g, RGB Le = RGB::Zero()) :
-		sigma_a(sigma_a), sigma_s(sigma_s), g(g), Le(Le) {}
+		Volume(sigma_a, sigma_s, g), Le(Le) {}
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual void renderUI() override;
 
 	bool isEmissive() const { return !Le.isZero(); }
 
-	RGB sigma_a;
-	RGB sigma_s;
 	RGB Le;
-	float g;
-
 private:
 	friend class SceneGraph;
 };
@@ -165,24 +166,20 @@ class VDBVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<VDBVolume>;
 
-	VDBVolume(RGB sigma_a, RGB sigma_s, float g, 
-		NanoVDBGrid::SharedPtr density, NanoVDBGrid::SharedPtr temperature = nullptr, 
-		float LeScale = 1, float temperatureScale = 1, float temperatureOffset = 0) :
-		sigma_a(sigma_a), sigma_s(sigma_s), g(g), densityGrid(density), temperatureGrid(temperature), 
+	VDBVolume(RGB sigma_a, RGB sigma_s, float g, NanoVDBGridBase::SharedPtr density,
+			  NanoVDBGrid<float>::SharedPtr temperature = nullptr, float LeScale = 1,
+			  float temperatureScale = 1, float temperatureOffset = 0) :
+		Volume(sigma_a, sigma_s, g), densityGrid(density), temperatureGrid(temperature),
 		LeScale(LeScale), temperatureScale(temperatureScale), temperatureOffset(temperatureOffset) {}
 
-	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+	virtual SceneGraphLeaf::SharedPtr clone() override;
 	virtual AABB getLocalBoundingBox() const override { return densityGrid->getBounds(); }
-	virtual void renderUI() override;
 
-	RGB sigma_a;
-	RGB sigma_s;
-	float g;
 	float LeScale;
 	float temperatureScale;
 	float temperatureOffset;
-	NanoVDBGrid::SharedPtr densityGrid;
-	NanoVDBGrid::SharedPtr temperatureGrid;
+	NanoVDBGridBase::SharedPtr densityGrid;
+	NanoVDBGrid<float>::SharedPtr temperatureGrid;
 
 protected:
 	friend class SceneGraph;

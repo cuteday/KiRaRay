@@ -1,11 +1,14 @@
 #pragma once
+#include <optix.h>
+#include <optix_stubs.h>
+
 #include "common.h"
 #include "mesh.h"
 #include "light.h"
 #include "camera.h"
 #include "texture.h"
-#include "device/gpustd.h"
 
+#include "device/gpustd.h"
 #include "device/buffer.h"
 #include "device/memory.h"
 #include "render/lightsampler.h"
@@ -77,8 +80,10 @@ private:
 
 	std::vector<HomogeneousMedium> mHomogeneousMedium;
 	TypedBuffer<HomogeneousMedium> mHomogeneousMediumBuffer;
-	std::vector<NanoVDBMedium> mNanoVDBMedium;
-	TypedBuffer<NanoVDBMedium> mNanoVDBMediumBuffer;
+	std::vector<NanoVDBMedium<float>> mNanoVDBMedium;
+	TypedBuffer<NanoVDBMedium<float>> mNanoVDBMediumBuffer;
+	std::vector<NanoVDBMedium<Array3f>> mNanoVDBRGBMedium;
+	TypedBuffer<NanoVDBMedium<Array3f>> mNanoVDBRGBMediumBuffer;
 
 	std::vector<Medium> mMedium;
 	TypedBuffer<Medium> mMediumBuffer;

@@ -12,9 +12,6 @@
 #include <sstream>
 #include <vector>
 
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <cuda_runtime_api.h>
 #include <json.hpp>
 
 #include "config.h"	
@@ -82,6 +79,8 @@ typedef unsigned char uchar;
 # define KRR_DEVICE_LAMBDA(...) [ =, *this ] KRR_DEVICE(__VA_ARGS__) mutable 
 
 #if !defined(__CUDA_ARCH__)
+struct uint3;
+struct dim3;
 extern const uint3 threadIdx, blockIdx;
 extern const dim3 blockDim, gridDim;
 #endif	// eliminate intellisense warnings for these kernel built-in variables

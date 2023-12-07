@@ -17,7 +17,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path, std::string key) {
+NanoVDBGridBase::SharedPtr loadNanoVDB(std::filesystem::path path, string key) {
 	openvdb::initialize();
 	Log(Info, "Loading openvdb file from %s", path.string().c_str());
 	openvdb::io::File file(path.generic_string());
@@ -32,14 +32,24 @@ NanoVDBGrid::SharedPtr loadNanoVDB(std::filesystem::path path, std::string key) 
 		return nullptr;
 	}
 
-	auto grid							  = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
-	auto transform						  = grid->transform();
-	auto handle							  = nanovdb::openToNanoVDB<nanovdb::CudaDeviceBuffer>(grid);
+	auto transform						  = baseGrid->transform();
+	auto handle = nanovdb::openToNanoVDB<nanovdb::CudaDeviceBuffer>(baseGrid);
 	const nanovdb::GridMetaData *metadata = handle.gridMetaData();
-	if (metadata->gridType() != nanovdb::GridType::Float) Log(Fatal, "only support float grid!");
-	float minValue, maxValue;
-	grid->evalMinMax(minValue, maxValue);
-	return std::make_shared<NanoVDBGrid>(std::move(handle), maxValue);
+	if (metadata->gridType() == nanovdb::GridType::Float) {
+		float minValue, maxValue;
+		auto grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+		grid->evalMinMax(minValue, maxValue);
+		return std::make_shared<NanoVDBGrid<float>>(std::move(handle), maxValue);
+	} else if (metadata->gridType() == nanovdb::GridType::Vec3f) {
+		auto grid = openvdb::gridPtrCast<openvdb::Vec3fGrid>(baseGrid);
+		openvdb::Vec3f minValue, maxValue;
+		grid->evalMinMax(minValue, maxValue);
+		return std::make_shared<NanoVDBGrid<Array3f>>(std::move(handle), 
+			Array3f{maxValue[0], maxValue[1], maxValue[2]});
+	} else {
+		Log(Fatal, "Unsupported data type for openvdb grid!");
+		return nullptr;
+	}
 }
 
 KRR_NAMESPACE_END

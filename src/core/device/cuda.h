@@ -1,9 +1,12 @@
 #pragma once
 
-#include <cuda.h>
 #include <map>
 #include <typeinfo>
 #include <typeindex>
+
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
 
 #include "common.h"
 #include "render/color.h"
