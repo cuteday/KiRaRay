@@ -67,10 +67,13 @@ copy_post_build(krr_lib "$<TARGET_FILE:IlmBase::Half>")
 ADD_SUBDIRECTORY (${KRR_RENDER_SOURCE_DIR}/misc)
 
 IF (KRR_ENABLE_PYTHON)
-	ADD_LIBRARY(pykrr SHARED ${KRR_RENDER_SOURCE_DIR}/core/python/py.cpp)
-	TARGET_INCLUDE_DIRECTORIES(pykrr SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${pybind11_INCLUDE_DIR} ${PYTHON_INCLUDE_DIRS})
-	TARGET_LINK_LIBRARIES(pykrr PUBLIC ${KRR_LIBRARIES} ${PYTHON_LIBRARIES} pybind11::module -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
+	#pybind11_add_module(pykrr ${KRR_RENDER_SOURCE_DIR}/core/python/py.cpp)
+	add_library(pykrr MODULE ${KRR_RENDER_SOURCE_DIR}/core/python/py.cpp)
+	TARGET_LINK_LIBRARIES(pykrr PUBLIC ${KRR_LIBRARIES} -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>
+		pybind11::module pybind11::lto pybind11::windows_extras)
 	pybind11_extension(pykrr)
+	set_target_properties(pykrr PROPERTIES CXX_VISIBILITY_PRESET "hidden"
+                                         CUDA_VISIBILITY_PRESET "hidden")
 ENDIF()
 
 ADD_EXECUTABLE ( kiraray ${CMAKE_CURRENT_SOURCE_DIR}/main/kiraray.cpp)

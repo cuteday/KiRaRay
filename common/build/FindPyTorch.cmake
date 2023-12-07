@@ -5,7 +5,7 @@ else()
 	set( PYTORCH_ROOT ${TORCH_INSTALL_DIR} CACHE PATH "PyTorch installation directory.")
 endif()
 message(STATUS "Found PyTorch installation at ${PYTORCH_ROOT}.")
-SET(KRR_ENABLE_PYTORCH ON CACHE INTERNAL "Enable pytorch-interop support.")
+SET(KRR_ENABLE_PYTORCH OFF CACHE INTERNAL "Enable pytorch-interop support.")
 else()
 message(STATUS "Did not find pytorch. If you want to enable pytorch-interop support, specify its installation location via TORCH_INSTALL_DIR.")
 SET(KRR_ENABLE_PYTORCH OFF CACHE INTERNAL "Enable pytorch-interop support.")
@@ -21,8 +21,6 @@ set(TORCH_LIBS
 	${TORCH_BIN_DIR}/torch.lib
 	${TORCH_BIN_DIR}/torch_cpu.lib
 	${TORCH_BIN_DIR}/torch_cuda.lib
-	${TORCH_BIN_DIR}/torch_cuda_cu.lib
-	${TORCH_BIN_DIR}/torch_cuda_cpp.lib
 	${TORCH_BIN_DIR}/torch_python.lib
 )
 set(TORCH_INCLUDE_DIRS 

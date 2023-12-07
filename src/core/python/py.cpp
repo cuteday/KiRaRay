@@ -1,7 +1,6 @@
 #include "common.h"
 #if KRR_ENABLE_PYTORCH
 #define TORCH_API_INCLUDE_EXTENSION_H
-#include <torch/script.h>
 #include <torch/torch.h>
 #endif
 
