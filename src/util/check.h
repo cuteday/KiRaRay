@@ -58,7 +58,9 @@ KRR_NAMESPACE_BEGIN
 		}                                                                                          \
 	} while (0)
 
-	
+#ifdef	CHECK
+#undef	CHECK 
+#endif
 #define CHECK(x) assert(x)
 #define CHECK_IMPL(a, b, op) assert((a)op(b))
 

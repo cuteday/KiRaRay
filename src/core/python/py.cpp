@@ -1,4 +1,8 @@
 #include "common.h"
+#if KRR_ENABLE_PYTORCH
+#define TORCH_API_INCLUDE_EXTENSION_H
+#include <torch/torch.h>
+#endif
 
 #include "main/renderer.h"
 #include "scene/importer.h"
@@ -14,7 +18,7 @@
 KRR_NAMESPACE_BEGIN
 
 void run(const json& config) {
-	if (!gpContext) gpContext = std::make_unique<Context>();
+	if (!gpContext) gpContext = std::make_unique<Context>(); 
 	{
 		RenderApp app;
 		app.loadConfig(config);
@@ -71,6 +75,37 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 	return result;
 }
 
+#if KRR_ENABLE_PYTORCH
+torch::Tensor denoise_torch_tensor(torch::Tensor rgb, 
+	std::optional<torch::Tensor> normals, 
+	std::optional<torch::Tensor> albedo) {
+	static bool initialized{};
+	static DenoiseBackend denoiser;
+	if (!gpContext) gpContext = std::make_unique<Context>();
+
+	Vector2i size = {(int) rgb.size(1), (int) rgb.size(0)};
+	Log(Info, "Processing image with %lld channels...", rgb.size(2));
+	if (rgb.size(2) != 3 && rgb.size(2) != 4) logError("Incorrect image color channels (not 3)!");
+
+	DenoiseBackend::PixelFormat pixelFormat = rgb.size(2) == 3
+												  ? DenoiseBackend::PixelFormat::FLOAT3
+												  : DenoiseBackend::PixelFormat::FLOAT4;
+
+	bool hasGeometry = normals.has_value() && albedo.has_value();
+	auto result = torch::empty_like(rgb);
+
+	denoiser.resize(size);
+	denoiser.setPixelFormat(pixelFormat);
+	denoiser.setHaveGeometry(hasGeometry);
+
+	denoiser.denoise((CUstream) 0, (float *) rgb.data_ptr(), 
+			hasGeometry ? (float *) normals.value().data_ptr() : nullptr,
+			hasGeometry ? (float *) albedo.value().data_ptr() : nullptr, 
+			(float *) result.data_ptr());
+	return result;
+}	
+#endif
+
 PYBIND11_MODULE(pykrr, m) { 
 	m.doc() = "KiRaRay python binding!";
 
@@ -81,6 +116,11 @@ PYBIND11_MODULE(pykrr, m) {
 	m.def("denoise", &denoise, 
 		"Denoise the hdr image using optix's builtin denoiser", "rgb"_a,
 		  "normals"_a = py::none(), "albedo"_a = py::none());
+#if KRR_ENABLE_PYTORCH
+	m.def("denoise_torch_tensor", &denoise_torch_tensor, 
+		"Denoise the hdr image in tensor using optix's builtin denoiser", "rgb"_a,
+		  "normals"_a = py::none(), "albedo"_a = py::none());
+#endif
 }
 
 KRR_NAMESPACE_END

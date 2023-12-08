@@ -64,7 +64,6 @@ add_compile_definitions ("$<$<CONFIG:Debug>:KRR_DEBUG_BUILD>")
 ###############################################################################
 
 enable_language (CUDA)
-find_package (CUDA REQUIRED)
 
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
@@ -138,13 +137,15 @@ target_compile_options (
 # python3 (for building python binding)
 ###############################################################################
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/pybind11/tools")
-find_package(PythonLibsNew)
-if (PYTHONLIBS_FOUND)
+set(KRR_PYTHON_EXECUTABLE "" CACHE STRING "Path to selected python executable")
+set(Python_ROOT_DIR ${KRR_PYTHON_EXECUTABLE})
+find_package(Python COMPONENTS Interpreter Development)
+if (Python_FOUND)
 	set(KRR_ENABLE_PYTHON ON)
-	set(PYBIND11_PYTHON_VERSION ${PYTHON_VERSION})
-	message("Find python at ${PYTHON_INCLUDE_DIRS}, selected version: ${PYTHON_VERSION}")
+	set(PYBIND11_PYTHON_VERSION ${Python_VERSION})
+	message("Find python at ${Python_INCLUDE_DIRS} : ${Python_LIBRARIES}, selected version: ${Python_VERSION}")
 else()
-	message("Do not find python, disable python binding")
+	message("Did not find python, disable python binding")
 endif()
 
 # Resolve the atlbase.h issue when building with IDEs other than Visual Studio
