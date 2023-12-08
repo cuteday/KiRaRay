@@ -8,6 +8,7 @@ MESSAGE ("Source directory: ${KRR_RENDER_SOURCE_DIR}")
 MESSAGE ("Build output directory: ${CMAKE_BINARY_DIR}")
 MESSAGE ("CUDA include directory: ${CUDA_INCLUDE_DIRS}")
 MESSAGE ("Optix include directory: ${OptiX_INCLUDE_DIR}")
+MESSAGE ("Vulkan SDK directory: ${KRR_VULKAN_ROOT}")
 
 INCLUDE (${KRR_RENDER_ROOT}/common/build/source.cmake)
 
@@ -67,7 +68,7 @@ copy_post_build(krr_lib "$<TARGET_FILE:IlmBase::Half>")
 ADD_SUBDIRECTORY (${KRR_RENDER_SOURCE_DIR}/misc)
 
 IF (KRR_ENABLE_PYTHON)
-	#pybind11_add_module(pykrr ${KRR_RENDER_SOURCE_DIR}/core/python/py.cpp)
+	pybind11_add_module(pykrr_common ${KRR_RENDER_SOURCE_DIR}/core/python/common.cpp) 
 	add_library(pykrr MODULE ${KRR_RENDER_SOURCE_DIR}/core/python/py.cpp)
 	TARGET_LINK_LIBRARIES(pykrr PUBLIC ${KRR_LIBRARIES} -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>
 		pybind11::module pybind11::lto pybind11::windows_extras)

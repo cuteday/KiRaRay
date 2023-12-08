@@ -4,6 +4,8 @@
 INCLUDE (${KRR_RENDER_ROOT}/common/build/FindOptiX.cmake)
 INCLUDE (${KRR_RENDER_ROOT}/common/build/FindPyTorch.cmake)
 FIND_PACKAGE(Vulkan REQUIRED)
+CMAKE_PATH(GET Vulkan_INCLUDE_DIR PARENT_PATH VULKAN_ROOT)
+SET(KRR_VULKAN_ROOT ${VULKAN_ROOT} CACHE PATH "Path to dected vulkan installation.")
 
 ###############################################################################
 # third party libraries

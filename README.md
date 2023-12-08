@@ -60,7 +60,7 @@ build/src/kiraray.exe common/configs/example_cbox.json
 
 **Camera controlling.** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
 
-**Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11), see [scripts](common/scripts) for details.
+**Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11), including a OptiX denoiser wrapper for denoising NumPy or PyTorch tensors, see [scripts](common/scripts) for details.
 
 ### Galleries
 
