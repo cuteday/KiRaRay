@@ -1,5 +1,8 @@
 # KiRaRay Python Binding
 
+> After Python 3.8, the search paths of DLL dependencies has been reset. Only the system paths, the directory containing the DLL or PYD file are searched for load-time dependencies. Instead, a new function os.add_dll_directory() was added to supply additional search paths. 
+Necessary DLL paths are exported from `pykrr_common`, see [krr.py](krr.py) for details.
+
 ### Start from script
 
 You can start *KiRaRay* from python script with specified configuration. The configuration should be a python dict object. 
