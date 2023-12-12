@@ -42,7 +42,13 @@ git clone --recursive https://github.com/cuteday/KiRaRay.git
 
 #### Building
 
-This project uses cmake to build, Make sure cuda is installed and added to PATH, and `OptiX_INSTALL_DIR` environment variable points to the OptiX installation directory.
+This project uses cmake to build, make sure CUDA is installed and added to PATH. Several optional variables are available for building configuration.
+
+| Variable                | Default     | Description                                                  |
+| ----------------------- | ----------- | ------------------------------------------------------------ |
+| `OptiX_INSTALL_DIR`     | auto-detect | When auto-detection failed to find the correct OptiX path, this variable needs to be manually specified to point to the OptiX installation. |
+| `KRR_RENDER_SPECTRAL`   | ON          | Whether to build spectral render. If turned OFF, the RGB renderer is build. |
+| `KRR_PYTHON_PATH` | auto-detect | Manually specify this to enable Python binding for a specific version of Python. |
 
 #### Running
 
@@ -53,8 +59,6 @@ build/src/kiraray.exe common/configs/example_cbox.json
 ~~~
 
 > The two necessary entries in the configuration are `model` (specifying the relative path to the scene file) and `passes` (describing the render pipeline). Once compiled, directly run `kiraray` without specifying configuration (this [example configuration](common/configs/example_cbox.json) will be used) to get a feel for this toy renderer.
-
-</details>
 
 #### Usage
 

@@ -157,42 +157,45 @@ public:
 	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
 								   TransportMode mode = TransportMode::Radiance) const {
 		BSDFSample sample{};
-		float comp = sg.get1D();
-		if (comp < pDiffuse) {
-			Vector3f wi = cosineSampleHemisphere(sg.get2D());
-			if (wo[2] < 0)
-				wi[2] *= -1;
-			sample.pdf	 = pdf(wo, wi, mode);
-			sample.f	 = f(wo, wi, mode);
-			sample.wi	 = wi;
-			sample.flags = BSDF_DIFFUSE_REFLECTION;
-		} else if (comp < pDiffuse + pMetal) {
-			sample = metalBrdf.sample(wo, sg, mode);
-			sample.pdf *= pMetal;
-			if (pDiffuse > 0) {
-				sample.f += weightDiffuse * disneyDiffuse.f(wo, sample.wi);
-				sample.f += weightDiffuse * disneyRetro.f(wo, sample.wi);
-				sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
-			}
-			if (pGlass > 0) {
-				sample.f += weightGlass * glassBsdf.f(wo, sample.wi, mode);
-				sample.pdf += pGlass * glassBsdf.pdf(wo, sample.wi, mode);
-			}
-		} else if (pGlass > 0) {
-			sample = glassBsdf.sample(wo, sg);
-			if (!sample.f.any() || sample.pdf == 0)
-				return {};
-			sample.pdf *= pGlass;
-			if (SameHemisphere(wo, sample.wi)) {
+		int comp = sampleDiscrete({pDiffuse, pMetal, pGlass}, sg.get1D());
+		switch (comp) {
+			case 0: {
+				Vector3f wi = cosineSampleHemisphere(sg.get2D());
+				if (wo[2] < 0) wi[2] *= -1;
+				sample.pdf	 = pdf(wo, wi, mode);
+				sample.f	 = f(wo, wi, mode);
+				sample.wi	 = wi;
+				sample.flags = BSDF_DIFFUSE_REFLECTION;
+				break;
+			} case 1: {
+				sample = metalBrdf.sample(wo, sg, mode);
+				sample.pdf *= pMetal;
 				if (pDiffuse > 0) {
 					sample.f += weightDiffuse * disneyDiffuse.f(wo, sample.wi);
 					sample.f += weightDiffuse * disneyRetro.f(wo, sample.wi);
 					sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
 				}
-				if (pMetal > 0) {
-					sample.f += weightMetal * metalBrdf.f(wo, sample.wi, mode);
-					sample.pdf += pMetal * metalBrdf.pdf(wo, sample.wi, mode);
+				if (pGlass > 0) {
+					sample.f += weightGlass * glassBsdf.f(wo, sample.wi, mode);
+					sample.pdf += pGlass * glassBsdf.pdf(wo, sample.wi, mode);
 				}
+				break;
+			} case 2: {
+				sample = glassBsdf.sample(wo, sg);
+				if (!sample.f.any() || sample.pdf == 0) return {};
+				sample.pdf *= pGlass;
+				if (SameHemisphere(wo, sample.wi)) {
+					if (pDiffuse > 0) {
+						sample.f += weightDiffuse * disneyDiffuse.f(wo, sample.wi);
+						sample.f += weightDiffuse * disneyRetro.f(wo, sample.wi);
+						sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
+					}
+					if (pMetal > 0) {
+						sample.f += weightMetal * metalBrdf.f(wo, sample.wi, mode);
+						sample.pdf += pMetal * metalBrdf.pdf(wo, sample.wi, mode);
+					}
+				}
+				break;
 			}
 		}
 		return sample;

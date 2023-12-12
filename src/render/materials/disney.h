@@ -4,6 +4,7 @@
 #include "common.h"
 
 #include "render/shared.h"
+#include "render/sampling.h"
 
 #include "util/math_utils.h"
 
@@ -301,26 +302,31 @@ public:
 	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
 								   TransportMode mode = TransportMode::Radiance) const {
 		BSDFSample sample;
-		float comp = sg.get1D();
-		if (comp < pDiffuse) {
-			Vector3f wi = cosineSampleHemisphere(sg.get2D());
-			if (wo[2] < 0) wi[2] *= -1;
-			sample.pdf	 = pdf(wo, wi);
-			sample.f	 = f(wo, wi);
-			sample.wi	 = wi;
-			sample.flags = BSDF_DIFFUSE_REFLECTION;
-		} else if (comp < pDiffuse + pSpecRefl) {
-			sample = microfacetBrdf.sample(wo, sg, mode);
-			sample.pdf *= pSpecRefl;
-			if (pDiffuse && sample.isNonSpecular()) {
-				// TODO: validate if you should disable other components when sampled an delta component.
-				sample.f += disneyDiffuse.f(wo, sample.wi);
-				sample.f += disneyRetro.f(wo, sample.wi);
-				sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
+		int comp = sampleDiscrete({pDiffuse, pSpecRefl, pSpecTrans}, sg.get1D());
+		switch (comp) {
+			case 0: {
+				Vector3f wi = cosineSampleHemisphere(sg.get2D());
+				if (wo[2] < 0) wi[2] *= -1;
+				sample.pdf	 = pdf(wo, wi);
+				sample.f	 = f(wo, wi);
+				sample.wi	 = wi;
+				sample.flags = BSDF_DIFFUSE_REFLECTION;
+				break;
+			} case 1: {
+				sample = microfacetBrdf.sample(wo, sg, mode);
+				sample.pdf *= pSpecRefl;
+				if (pDiffuse && sample.isNonSpecular()) {
+					// NOTE: disable other components when sampled an delta component.
+					sample.f += disneyDiffuse.f(wo, sample.wi);
+					sample.f += disneyRetro.f(wo, sample.wi);
+					sample.pdf += pDiffuse * AbsCosTheta(sample.wi) * M_INV_PI;
+				}
+				break;
+			} case 2: {
+				sample = microfacetBtdf.sample(wo, sg, mode);
+				sample.pdf *= pSpecTrans;
+				break;
 			}
-		} else if (pSpecTrans > 0) {
-			sample = microfacetBtdf.sample(wo, sg, mode);
-			sample.pdf *= pSpecTrans;
 		}
 		return sample;
 	}

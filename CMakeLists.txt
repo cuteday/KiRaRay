@@ -137,8 +137,8 @@ target_compile_options (
 # python3 (for building python binding)
 ###############################################################################
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/pybind11/tools")
-set(KRR_PYTHON_EXECUTABLE "" CACHE STRING "Path to selected python executable")
-set(Python_ROOT_DIR ${KRR_PYTHON_EXECUTABLE})
+set(KRR_PYTHON_PATH "" CACHE STRING "Path to selected python executable")
+set(Python_ROOT_DIR ${KRR_PYTHON_PATH})
 find_package(Python COMPONENTS Interpreter Development)
 if (Python_FOUND)
 	set(KRR_ENABLE_PYTHON ON)
