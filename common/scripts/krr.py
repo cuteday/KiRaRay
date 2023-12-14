@@ -12,8 +12,6 @@ sys.path += [os.path.dirname(pyd) for pyd in glob.iglob(os.path.join(ROOT_DIR, "
 sys.path += [os.path.dirname(pyd) for pyd in glob.iglob(os.path.join(ROOT_DIR, "out*", "**/*.so"), recursive=True)]
 
 import pykrr_common
-print("Vulkan root: ", pykrr_common.vulkan_root)
-print("PyTorch root: ", pykrr_common.pytorch_root)
 
 os.add_dll_directory(os.path.join(pykrr_common.vulkan_root, "Bin"))
 os.add_dll_directory(os.path.join(pykrr_common.pytorch_root, "lib"))
