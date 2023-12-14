@@ -46,6 +46,9 @@ public:
 	KRR_HOST NanoVDBGridBaseImpl(nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> &&density,
 		DataType maxDensity) : NanoVDBGridBase(std::move(density)), maxDensity(maxDensity) {}
 
+	KRR_HOST NanoVDBGridBaseImpl(nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> &&density) :
+		NanoVDBGridBase(std::move(density)) { evalMaxDensity(); }
+
 	KRR_CALLABLE DataType getMaxDensity() const { return maxDensity; }
 
 protected:
@@ -57,6 +60,7 @@ class NanoVDBGrid : public NanoVDBGridBaseImpl<DataType> {};
 
 template<> class NanoVDBGrid<float> : public NanoVDBGridBaseImpl<float> {
 public:
+	using NativeType = float;
 	using SharedPtr  = std::shared_ptr<NanoVDBGrid<float>>;
 	using VDBSampler = nanovdb::SampleFromVoxels<nanovdb::FloatGrid::TreeType, 1, false>;
 
@@ -129,6 +133,6 @@ protected:
 	nanovdb::Vec3fGrid *densityGrid{nullptr};
 };
 
-NanoVDBGridBase::SharedPtr loadNanoVDB(std::filesystem::path path, std::string key);
+NanoVDBGridBase::SharedPtr loadOpenVDB(std::filesystem::path path, std::string key);
 
 KRR_NAMESPACE_END
