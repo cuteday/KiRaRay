@@ -60,11 +60,6 @@ macro(copy_post_build target dll)
     $<TARGET_FILE_DIR:${target}>)                 
 endmacro()
 
-copy_post_build(krr_lib
-      "${KRR_RENDER_SOURCE_DIR}/ext/openvdb/openvdb/bin/$<IF:$<CONFIG:Debug>,openvdb_d,openvdb>.dll")
-copy_post_build(krr_lib
-      "${KRR_RENDER_SOURCE_DIR}/ext/openvdb/tbb/lib/$<IF:$<CONFIG:Debug>,debug/tbb_debug.dll,tbb.dll>")
-copy_post_build(krr_lib "$<TARGET_FILE:IlmBase::Half>")
 ADD_SUBDIRECTORY (${KRR_RENDER_SOURCE_DIR}/misc)
 
 IF (KRR_ENABLE_PYTHON)
@@ -80,5 +75,12 @@ ENDIF()
 ADD_EXECUTABLE ( kiraray ${CMAKE_CURRENT_SOURCE_DIR}/main/kiraray.cpp)
 # -WHOLEARCHIVE assures that static variables are instantiated before main(), by linking all object files
 TARGET_LINK_LIBRARIES (kiraray PUBLIC ${KRR_LIBRARIES} -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
+
+copy_post_build(kiraray
+      "${KRR_RENDER_SOURCE_DIR}/ext/openvdb/openvdb/bin/$<IF:$<CONFIG:Debug>,openvdb_d,openvdb>.dll")
+copy_post_build(kiraray
+      "${KRR_RENDER_SOURCE_DIR}/ext/openvdb/tbb/lib/$<IF:$<CONFIG:Debug>,debug/tbb_debug.dll,tbb.dll>")
+copy_post_build(kiraray "$<TARGET_FILE:IlmBase::Half>")
+
 SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE)
 SET (KRR_LIBRARIES ${KRR_LIBRARIES} PARENT_SCOPE)
