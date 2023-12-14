@@ -160,17 +160,18 @@ void RTScene::uploadSceneMediumData() {
 					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)),
 					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
 					m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
+				mNanoVDBMedium.back().initializeFromHost();
 			} else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)) {
 				mNanoVDBRGBMedium.emplace_back(
 					m->getNode()->getGlobalTransform(), m->sigma_a, m->sigma_s, m->g,
 					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)),
 					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
 					m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
+				mNanoVDBRGBMedium.back().initializeFromHost();
 			} else {
 				Log(Error, "Unsupported heterogeneous VDB medium data type");
 				continue;
 			}
-			mNanoVDBMedium.back().initializeFromHost();
 		} else
 			Log(Error, "Unknown medium type not uploaded to device memory.");
 	}

@@ -175,6 +175,7 @@ public:
 
 	NanoVDBGrid<DataType> densityGrid;
 	NanoVDBGrid<float> temperatureGrid;
+	NanoVDBGrid<Array3f> albedoGrid;
 	MajorantGrid majorantGrid;
 	Affine3f transform, inverseTransform;
 	HGPhaseFunction phase;
