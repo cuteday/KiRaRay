@@ -131,14 +131,14 @@ class Volume : public SceneGraphLeaf {
 public:
 	using SharedPtr = std::shared_ptr<Volume>;
 	Volume()		= default;
-	Volume(RGB sigma_a, RGB sigma_s, float g) : sigma_a(sigma_a), sigma_s(sigma_s), g(g) {}
+	Volume(RGB sigma_t, RGB albedo, float g) : sigma_t(sigma_t), albedo(albedo), g(g) {}
 
 	int getMediumId() const { return mediumId; }
 	void setMediumId(int id) { mediumId = id; }
 	virtual void renderUI() override;
 
-	RGB sigma_a;
-	RGB sigma_s;
+	RGB sigma_t;
+	RGB albedo;
 	float g;
 protected:
 	friend class SceneGraph;
@@ -149,8 +149,8 @@ class HomogeneousVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
 
-	HomogeneousVolume(RGB sigma_a, RGB sigma_s, float g, RGB Le = RGB::Zero()) :
-		Volume(sigma_a, sigma_s, g), Le(Le) {}
+	HomogeneousVolume(RGB sigma_t, RGB albedo, float g, RGB Le = RGB::Zero()) :
+		Volume(sigma_t, albedo, g), Le(Le) {}
 
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual void renderUI() override;
@@ -166,20 +166,26 @@ class VDBVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<VDBVolume>;
 
-	VDBVolume(RGB sigma_a, RGB sigma_s, float g, NanoVDBGridBase::SharedPtr density,
-			  NanoVDBGrid<float>::SharedPtr temperature = nullptr, float LeScale = 1,
-			  float temperatureScale = 1, float temperatureOffset = 0) :
-		Volume(sigma_a, sigma_s, g), densityGrid(density), temperatureGrid(temperature),
-		LeScale(LeScale), temperatureScale(temperatureScale), temperatureOffset(temperatureOffset) {}
+	VDBVolume(RGB sigma_t, RGB albedo, float g, NanoVDBGridBase::SharedPtr density,
+			  NanoVDBGrid<float>::SharedPtr temperature	 = nullptr,
+			  NanoVDBGrid<Array3f>::SharedPtr albedoGrid = nullptr, float scale = 1,
+			  float LeScale = 1, float temperatureScale = 1, float temperatureOffset = 0) :
+		Volume(sigma_t, albedo, g),
+		densityGrid(density),
+		temperatureGrid(temperature),
+		albedoGrid(albedoGrid),
+		LeScale(LeScale),
+		temperatureScale(temperatureScale),
+		temperatureOffset(temperatureOffset) {}
 
 	virtual SceneGraphLeaf::SharedPtr clone() override;
 	virtual AABB getLocalBoundingBox() const override { return densityGrid->getBounds(); }
 
-	float LeScale;
-	float temperatureScale;
-	float temperatureOffset;
+	float scale, LeScale;
+	float temperatureScale, temperatureOffset;
 	NanoVDBGridBase::SharedPtr densityGrid;
 	NanoVDBGrid<float>::SharedPtr temperatureGrid;
+	NanoVDBGrid<Array3f>::SharedPtr albedoGrid;
 
 protected:
 	friend class SceneGraph;
