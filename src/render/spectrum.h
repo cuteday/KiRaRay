@@ -451,7 +451,6 @@ KRR_CALLABLE SampledSpectrum SampledSpectrum::fromRGB(const RGB &rgb, SpectrumTy
 			return RGBUnboundedSpectrum(rgb, colorSpace).sample(lambda) *
 				   colorSpace.illuminant.sample(lambda);
 		case SpectrumType::RGBUnbounded:
-		[[fallthrough]]
 		default:
 			return RGBUnboundedSpectrum(rgb, colorSpace).sample(lambda);
 	}
