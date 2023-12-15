@@ -45,7 +45,7 @@ NanoVDBGridBase::SharedPtr loadNanoVDB(std::filesystem::path path) {
 
 NanoVDBGridBase::SharedPtr loadOpenVDB(std::filesystem::path path, string key) {
 	openvdb::initialize();
-	Log(Info, "Loading openvdb file from %s", path.string().c_str());
+	Log(Info, "Loading openvdb grid %s from file %s", key.c_str(), path.string().c_str());
 	openvdb::io::File file(path.generic_string());
 	if (!file.open())
 		Log(Fatal, "Failed to open vdb file %s", path.string().c_str());

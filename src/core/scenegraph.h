@@ -135,7 +135,6 @@ public:
 
 	int getMediumId() const { return mediumId; }
 	void setMediumId(int id) { mediumId = id; }
-	virtual void renderUI() override;
 
 	RGB sigma_t;
 	RGB albedo;
@@ -174,11 +173,14 @@ public:
 		densityGrid(density),
 		temperatureGrid(temperature),
 		albedoGrid(albedoGrid),
+		scale(scale),
 		LeScale(LeScale),
 		temperatureScale(temperatureScale),
 		temperatureOffset(temperatureOffset) {}
 
 	virtual SceneGraphLeaf::SharedPtr clone() override;
+	virtual void renderUI() override;
+
 	virtual AABB getLocalBoundingBox() const override { return densityGrid->getBounds(); }
 
 	float scale, LeScale;

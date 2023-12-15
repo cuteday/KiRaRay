@@ -114,18 +114,16 @@ public:
 	KRR_CALLABLE bool isEmissive() const { return L_e.any(); }
 
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const {
-		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace),
-				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace), 
-				&phase, Le(p, lambda)};
+		Spectrum sigma_t_spec = Spectrum::fromRGB(sigma_t, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		Spectrum sigma_s_spec =
+			sigma_t_spec * Spectrum::fromRGB(albedo, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		return {sigma_t_spec - sigma_s_spec, sigma_s_spec, &phase, Le(p, lambda)};
 	}
 
 	KRR_CALLABLE MajorantIterator sampleRay(const Ray &ray, float tMax,
 											const SampledWavelengths &lambda) const {
-		return MajorantIterator{
-			ray, 0, tMax,
-			Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) +
-				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace),
-			nullptr};
+		return MajorantIterator{ ray, 0, tMax,
+			Spectrum::fromRGB(sigma_t, SpectrumType::RGBUnbounded, lambda, *colorSpace), nullptr};
 	}
 
 	RGB sigma_t, albedo, L_e;
@@ -152,13 +150,15 @@ public:
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const { 
 		p = inverseTransform * p;
-		DataType d = densityGrid.getDensity(p);
-		Spectrum color;
-		if constexpr (std::is_same_v<DataType, float>) color = Spectrum::Constant(d);
-		else color = Spectrum::fromRGB(d, SpectrumType::RGBUnbounded, lambda, *colorSpace);
-		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) * color,
-				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace) * color,
-				&phase, Le(p, lambda)};
+		Spectrum sigma_t_spec;
+		if constexpr (std::is_same_v<DataType, float>)
+			sigma_t_spec = densityGrid.getValue(p) * scale *
+				Spectrum::fromRGB(sigma_t, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		else sigma_t_spec = Spectrum::fromRGB(densityGrid.getValue(p), SpectrumType::RGBUnbounded,
+										lambda, *colorSpace) * scale;
+		Spectrum sigma_s_spec = sigma_t_spec * Spectrum::fromRGB(
+			albedoGrid ? albedoGrid.getValue(p) : albedo, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		return {sigma_t_spec - sigma_s_spec, sigma_s_spec, &phase, Le(p, lambda)};
 	}
 
 	KRR_CALLABLE MajorantIterator sampleRay(const Ray &ray, float raytMax,
@@ -167,11 +167,11 @@ public:
 		AABB3f box	 = densityGrid.getBounds();
 		Ray localRay = inverseTransform * ray;
 		if(!box.intersect(localRay.origin, localRay.dir, raytMax, &tMin, &tMax)) return {};
-		return MajorantIterator{
-			localRay, tMin, tMax,
-			Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) +
-				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace),
-			&majorantGrid};
+		if (std::is_same_v<DataType, float>)
+			return MajorantIterator{localRay, tMin, tMax, scale * 
+			Spectrum::fromRGB(sigma_t, SpectrumType::RGBUnbounded, lambda, *colorSpace), &majorantGrid};
+		else 
+			return MajorantIterator{localRay, tMin, tMax, Spectrum::Constant(scale), &majorantGrid};
 	}
 
 	NanoVDBGrid<DataType> densityGrid;
@@ -189,7 +189,7 @@ protected:
 	/* Le() should only be called by sampledPoint, and its argument p is in local coords. */
 	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const {
 		if (!temperatureGrid) return Spectrum::Zero();
-		float temp = (temperatureGrid.getDensity(p) - temperatureOffset) * temperatureScale;
+		float temp = (temperatureGrid.getValue(p) - temperatureOffset) * temperatureScale;
 #if KRR_RENDER_SPECTRAL
 		return LeScale * BlackbodySpectrum(temp).sample(lambda);
 #else 
@@ -212,6 +212,9 @@ NanoVDBMedium<DataType>::NanoVDBMedium(const Affine3f &transform, RGB sigma_t, R
 	inverseTransform = transform.inverse();
 	const Vector3f majorantGridRes{64, 64, 64};
 	majorantGrid	 = MajorantGrid(densityGrid.getBounds(), majorantGridRes);
+	if (albedoGrid) albedo = 1;	// albedo is deprecated if albedoGrid is provided
+	if constexpr (std::is_same_v<DataType, Array3f>) sigma_t = 1;	// sigma_t is deprecated if densityGrid is RGB
+
 }
 
 template <typename DataType> 

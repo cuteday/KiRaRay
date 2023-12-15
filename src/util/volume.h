@@ -83,7 +83,7 @@ public:
 
 	KRR_CALLABLE operator bool() const { return densityGrid != nullptr; }
 
-	KRR_CALLABLE float getDensity(const Vector3f &p) const {
+	KRR_CALLABLE float getValue(const Vector3f &p) const {
 		nanovdb::Vec3<float> pIndex =
 			densityGrid->worldToIndexF(nanovdb::Vec3<float>(p.x(), p.y(), p.z()));
 		return VDBSampler(densityGrid->tree())(pIndex);
@@ -120,7 +120,7 @@ public:
 
 	KRR_CALLABLE operator bool() const { return densityGrid != nullptr; }
 
-	KRR_CALLABLE Array3f getDensity(const Vector3f &p) const {
+	KRR_CALLABLE Array3f getValue(const Vector3f &p) const {
 		nanovdb::Vec3<float> pIndex =
 			densityGrid->worldToIndexF(nanovdb::Vec3<float>(p.x(), p.y(), p.z()));
 		auto color = VDBSampler(densityGrid->tree())(pIndex);
