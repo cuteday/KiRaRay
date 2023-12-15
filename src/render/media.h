@@ -96,7 +96,7 @@ public:
 	}
 
 private:
-	Spectrum sigma_t;
+	Spectrum sigma_t;	// used as sigma_majorant if grid is nullptr
 	float tMin = M_FLOAT_INF, tMax = -M_FLOAT_INF;
 	const MajorantGrid *grid = nullptr;
 	Array3f nextCrossingT, deltaT;
@@ -107,28 +107,26 @@ class HomogeneousMedium {
 public:
 	HomogeneousMedium() = default;
 
-	HomogeneousMedium(RGB sigma_a, RGB sigma_s, RGB L_e, float g, 
+	HomogeneousMedium(RGB sigma_t, RGB albedo, RGB L_e, float g, 
 		const RGBColorSpace* colorSpace = KRR_DEFAULT_COLORSPACE) :
-		sigma_a(sigma_a), sigma_s(sigma_s), L_e(L_e), phase(g), colorSpace(colorSpace) {}
+		sigma_t(sigma_t), albedo(albedo), L_e(L_e), phase(g), colorSpace(colorSpace) {}
 
 	KRR_CALLABLE bool isEmissive() const { return L_e.any(); }
 
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const {
-		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace),
-				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace), 
-				&phase, Le(p, lambda)};
+		Spectrum sigma_t_spec = Spectrum::fromRGB(sigma_t, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		Spectrum sigma_s_spec =
+			sigma_t_spec * Spectrum::fromRGB(albedo, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		return {sigma_t_spec - sigma_s_spec, sigma_s_spec, &phase, Le(p, lambda)};
 	}
 
 	KRR_CALLABLE MajorantIterator sampleRay(const Ray &ray, float tMax,
 											const SampledWavelengths &lambda) const {
-		return MajorantIterator{
-			ray, 0, tMax,
-			Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) +
-				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace),
-			nullptr};
+		return MajorantIterator{ ray, 0, tMax,
+			Spectrum::fromRGB(sigma_t, SpectrumType::RGBUnbounded, lambda, *colorSpace), nullptr};
 	}
 
-	RGB sigma_a, sigma_s, L_e;
+	RGB sigma_t, albedo, L_e;
 	HGPhaseFunction phase;
 	const RGBColorSpace *colorSpace;
 
@@ -141,9 +139,10 @@ protected:
 template <typename DataType>
 class NanoVDBMedium {
 public:
-	NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g, NanoVDBGrid<DataType> density,
-				  NanoVDBGrid<float> temperature, float LeScale, float temperatureScale, float temperatureOffset,
-				  const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
+	NanoVDBMedium(const Affine3f &transform, RGB sigma_t, RGB albedo, float g, 
+		NanoVDBGrid<DataType> density, NanoVDBGrid<float> temperature, NanoVDBGrid<Array3f> albedoGrid,
+		float scale, float LeScale, float temperatureScale, float temperatureOffset,
+		const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE);
 
 	KRR_HOST void initializeFromHost();
 
@@ -151,13 +150,15 @@ public:
 	
 	KRR_CALLABLE MediumProperties samplePoint(Vector3f p, const SampledWavelengths &lambda) const { 
 		p = inverseTransform * p;
-		DataType d = densityGrid.getDensity(p);
-		Spectrum color;
-		if constexpr (std::is_same_v<DataType, float>) color = Spectrum::Constant(d);
-		else color = Spectrum::fromRGB(d, SpectrumType::RGBUnbounded, lambda, *colorSpace);
-		return {Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) * color,
-				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace) * color,
-				&phase, Le(p, lambda)};
+		Spectrum sigma_t_spec;
+		if constexpr (std::is_same_v<DataType, float>)
+			sigma_t_spec = densityGrid.getValue(p) * scale *
+				Spectrum::fromRGB(sigma_t, SpectrumType::RGBUnbounded, lambda, *colorSpace);
+		else sigma_t_spec = Spectrum::fromRGB(densityGrid.getValue(p), SpectrumType::RGBUnbounded,
+										lambda, *colorSpace) * scale;
+		Spectrum sigma_s_spec = sigma_t_spec * Spectrum::fromRGB(
+			albedoGrid ? albedoGrid.getValue(p) : albedo, SpectrumType::RGBBounded, lambda, *colorSpace);
+		return {sigma_t_spec - sigma_s_spec, sigma_s_spec, &phase, Le(p, lambda)};
 	}
 
 	KRR_CALLABLE MajorantIterator sampleRay(const Ray &ray, float raytMax,
@@ -166,11 +167,11 @@ public:
 		AABB3f box	 = densityGrid.getBounds();
 		Ray localRay = inverseTransform * ray;
 		if(!box.intersect(localRay.origin, localRay.dir, raytMax, &tMin, &tMax)) return {};
-		return MajorantIterator{
-			localRay, tMin, tMax,
-			Spectrum::fromRGB(sigma_a, SpectrumType::RGBUnbounded, lambda, *colorSpace) +
-				Spectrum::fromRGB(sigma_s, SpectrumType::RGBUnbounded, lambda, *colorSpace),
-			&majorantGrid};
+		if (std::is_same_v<DataType, float>)
+			return MajorantIterator{localRay, tMin, tMax, scale * 
+			Spectrum::fromRGB(sigma_t, SpectrumType::RGBUnbounded, lambda, *colorSpace), &majorantGrid};
+		else 
+			return MajorantIterator{localRay, tMin, tMax, Spectrum::Constant(scale), &majorantGrid};
 	}
 
 	NanoVDBGrid<DataType> densityGrid;
@@ -179,16 +180,16 @@ public:
 	MajorantGrid majorantGrid;
 	Affine3f transform, inverseTransform;
 	HGPhaseFunction phase;
-	RGB sigma_a, sigma_s;
+	RGB sigma_t, albedo;
 	float temperatureScale, temperatureOffset;
-	float LeScale;
+	float LeScale, scale;
 	const RGBColorSpace *colorSpace;
 
 protected:
 	/* Le() should only be called by sampledPoint, and its argument p is in local coords. */
 	KRR_CALLABLE Spectrum Le(Vector3f p, const SampledWavelengths &lambda) const {
 		if (!temperatureGrid) return Spectrum::Zero();
-		float temp = (temperatureGrid.getDensity(p) - temperatureOffset) * temperatureScale;
+		float temp = (temperatureGrid.getValue(p) - temperatureOffset) * temperatureScale;
 #if KRR_RENDER_SPECTRAL
 		return LeScale * BlackbodySpectrum(temp).sample(lambda);
 #else 
@@ -198,16 +199,22 @@ protected:
 };
 
 template <typename DataType>
-NanoVDBMedium<DataType>::NanoVDBMedium(const Affine3f &transform, RGB sigma_a, RGB sigma_s, float g,
-							 NanoVDBGrid<DataType> density, NanoVDBGrid<float> temperature, float LeScale,
-							 float temperatureScale, float temperatureOffset, 
-							 const RGBColorSpace *colorSpace) :
-	transform(transform), phase(g), sigma_a(sigma_a), sigma_s(sigma_s), densityGrid(std::move(density)), 
-	temperatureGrid(std::move(temperature)), LeScale(LeScale), temperatureScale(temperatureScale), 
+NanoVDBMedium<DataType>::NanoVDBMedium(const Affine3f &transform, RGB sigma_t, RGB albedo, float g,
+									   NanoVDBGrid<DataType> density,
+									   NanoVDBGrid<float> temperature,
+									   NanoVDBGrid<Array3f> albedoGrid, float scale, float LeScale,
+									   float temperatureScale, float temperatureOffset,
+									   const RGBColorSpace *colorSpace) :
+	transform(transform), phase(g), sigma_t(sigma_t), albedo(albedo), densityGrid(std::move(density)), 
+	temperatureGrid(std::move(temperature)), albedoGrid(std::move(albedoGrid)), 
+	scale(scale), LeScale(LeScale), temperatureScale(temperatureScale), 
 	temperatureOffset(temperatureOffset), colorSpace(colorSpace) {
 	inverseTransform = transform.inverse();
 	const Vector3f majorantGridRes{64, 64, 64};
 	majorantGrid	 = MajorantGrid(densityGrid.getBounds(), majorantGridRes);
+	if (albedoGrid) albedo = 1;	// albedo is deprecated if albedoGrid is provided
+	if constexpr (std::is_same_v<DataType, Array3f>) sigma_t = 1;	// sigma_t is deprecated if densityGrid is RGB
+
 }
 
 template <typename DataType> 

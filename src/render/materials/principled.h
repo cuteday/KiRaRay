@@ -26,7 +26,7 @@ public:
 	KRR_CALLABLE PrincipledDiffuse(const Spectrum &R) : R(R) {}
 	KRR_CALLABLE Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
 		if (!SameHemisphere(wo, wi))
-			return 0;
+			return SampledSpectrum::Zero();
 		float Fo = SchlickWeight(AbsCosTheta(wo)), Fi = SchlickWeight(AbsCosTheta(wi));
 		return R * M_INV_PI * (1 - Fo / 2) * (1 - Fi / 2);
 	}
@@ -43,7 +43,7 @@ public:
 	KRR_CALLABLE Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
 		Vector3f wh = wi + wo;
 		if (wh[0] == 0 && wh[1] == 0 && wh[2] == 0)
-			return Vector3f(0.);
+			return Spectrum::Zero();
 		wh				= normalize(wh);
 		float cosThetaD = dot(wi, wh);
 
@@ -97,8 +97,7 @@ public:
 			disneyRetro = PrincipledRetro(c, roughness);
 		}
 
-		// Create the microfacet distribution for metallic and/or specular
-		// transmission.
+		// Create the microfacet distribution for metallic and/or specular transmission.
 		float aspect = sqrt(1 - intr.sd.anisotropic * .9f);
 		float ax	 = max(1e-3f, pow2(roughness) / aspect);
 		float ay	 = max(1e-3f, pow2(roughness) * aspect);
@@ -205,15 +204,12 @@ public:
 						   TransportMode mode = TransportMode::Radiance) const {
 		float val	 = 0;
 		bool reflect = SameHemisphere(wo, wi);
-		if (pDiffuse > 0 && reflect) {
+		if (pDiffuse > 0 && reflect)
 			val += pDiffuse * AbsCosTheta(wi) * M_INV_PI;
-		}
-		if (pMetal > 0 && reflect) {
+		if (pMetal > 0 && reflect) 
 			val += pMetal * metalBrdf.pdf(wo, wi, mode);
-		}
-		if (pGlass > 0) {
+		if (pGlass > 0) 
 			val += pGlass * glassBsdf.pdf(wo, wi, mode);
-		}
 		return val;
 	}
 
