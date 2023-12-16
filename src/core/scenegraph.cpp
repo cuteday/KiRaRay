@@ -558,9 +558,9 @@ void DirectionalLight::renderUI() {
 	Vector2f sphericalDir = worldToLatLong(getDirection());
 	if (ui::DragFloat3("RGB", (float *) &color, 1e-3, 0, 1)) setColor(color);
 	if (ui::DragFloat("Scale", &scale, 1e-2, 0, 100)) setScale(scale);
-	ui::SliderFloat("Azimuth", &sphericalDir[0], 0, 1);
-	ui::SliderFloat("Altitude", &sphericalDir[1], 0, 1);
-	setDirection(latlongToWorld(sphericalDir));
+	if(ui::SliderFloat("Azimuth", &sphericalDir[0], 0, 1) ||
+		ui::SliderFloat("Altitude", &sphericalDir[1], 0, 1))
+		setDirection(latlongToWorld(sphericalDir));
 }
 
 void SceneAnimationChannel::renderUI() {

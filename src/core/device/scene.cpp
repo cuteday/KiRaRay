@@ -120,7 +120,7 @@ void RTScene::uploadSceneLightData() {
 			rt::TextureData textureData;
 			textureData.initializeFromHost(infiniteLight->getTexture());
 			mInfiniteLights.push_back(
-				rt::InfiniteLight(transform.rotation(), textureData, 1,
+				rt::InfiniteLight(transform.rotation(), textureData, light->getScale(),
 								  mScene.lock()->getBoundingBox().diagonal().norm()));
 		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
 			Log(Warning, "Point light is not yet implemented in ray tracing, skipping...");

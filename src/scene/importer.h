@@ -108,6 +108,8 @@ public:
 						  const json &params			 = json::object());
 	static bool loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr node = nullptr,
 						   const json &params = json::object());
+	static bool loadLight(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr node = nullptr,
+						   const json &params = json::object());
 
 
 private:

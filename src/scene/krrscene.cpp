@@ -23,6 +23,34 @@ bool SceneImporter::loadModel(const fs::path filepath, Scene::SharedPtr pScene,
 	return success;
 }
 
+bool SceneImporter::loadLight(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr node,
+	const json& params) {
+	auto type = params.value("type", "infinite");
+	float scale = params.value<float>("scale", 1.f);
+	RGB color	= params.value<Array3f>("color", Array3f{1, 1, 1});
+	SceneLight::SharedPtr light;
+	if (type == "point") {
+		light	   = std::make_shared<PointLight>(color, scale);
+	} else if (type == "directional") {
+		light	   = std::make_shared<DirectionalLight>(color, scale);
+	} else if (type == "infinite") {
+		light		 = std::make_shared<InfiniteLight>(color, scale);
+		auto texture = params.value<string>("texture", "");
+		if (!texture.empty()) {
+			auto tex = Texture::createFromFile(texture);
+			std::dynamic_pointer_cast<InfiniteLight>(light)->setTexture(tex);
+		}
+	} else {
+		Log(Error, "Unsupported light type: %s", type.c_str());
+		return false;
+	}
+	if (light) 
+		pScene->getSceneGraph()->attachLeaf(node, light);
+	else
+		Log(Error, "Failed to import light from configuration: %s", params.dump().c_str());
+	return light != nullptr;
+}
+
 bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr node,
 								const json& params) {
 	auto type = params.value("type", "homogeneous");
@@ -120,11 +148,11 @@ bool SceneImporter::import(const json &j, Scene::SharedPtr scene, SceneGraphNode
 
 bool SceneImporter::importNode(const json &j, Scene::SharedPtr scene, 
 	SceneGraphNode::SharedPtr node, const json& params) {
-	json::value_t type = j.type();
-	if (type == json::value_t::array) {
+	json::value_t ctype = j.type();
+	if (ctype == json::value_t::array) {
 		for (auto model : j) 
 			importNode(model, scene, node, params);
-	} else if (type == json::value_t::object) {
+	} else if (ctype == json::value_t::object) {
 		// recursively unwrap the config
 		// maybe another json object, an array, or a string indicating the filepath of the model
 		auto child	   = std::make_shared<SceneGraphNode>();
@@ -146,11 +174,13 @@ bool SceneImporter::importNode(const json &j, Scene::SharedPtr scene,
 			// [TODO] support other types of leaf nodes
 			if (type == "medium") {
 				loadMedium(scene, child, j.value("params", json{}));
+			} else if (type == "light") {
+				loadLight(scene, child, j.value("params", json{}));
 			} else {
 				Log(Error, "Unsupported node type: %s", type.c_str());
 			}
 		}
-	} else if (type == json::value_t::string) {
+	} else if (ctype == json::value_t::string) {
 		loadModel(j.get<string>(), scene, node, params);	
 	} else {
 		Log(Error, "Unsupported model type: %s", string(j).c_str());

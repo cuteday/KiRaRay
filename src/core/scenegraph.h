@@ -120,7 +120,7 @@ public:
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 	virtual Type getType() const override { return Type::InfiniteLight; }
 
-	void setTexture(Texture::SharedPtr _texture) { texture = texture; }
+	void setTexture(Texture::SharedPtr _texture) { texture = _texture; }
 	Texture::SharedPtr getTexture() const { return texture; }
 
 protected:
