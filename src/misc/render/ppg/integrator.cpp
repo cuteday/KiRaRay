@@ -513,7 +513,7 @@ void PPGPathTracer::filterFrame(Film *image) {
 	image->getInternalBuffer().copy_to_host(reinterpret_cast<PixelData *>(data), n_pixels);
 
 	constexpr int FILTER_ITERATIONS = 3;
-	constexpr int SPECTRUM_SAMPLES	= nSpectrumSamples;
+	constexpr int SPECTRUM_SAMPLES	= Spectrum::dim;
 
 	for (int i = 0, j = size[0] * size[1]; i < j; ++i) {
 		int isBlack = true;
