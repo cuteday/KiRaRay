@@ -14,7 +14,7 @@ KRR_NAMESPACE_BEGIN
 #define KRR_DEFAULT_COLORSPACE		RGBColorSpace::sRGB
 #define KRR_DEFAULT_COLORSPACE_GPU  spec::RGBColorSpace_sRGB
 constexpr float cLambdaMin = 360, cLambdaMax = 830;
-static constexpr int nSpectrumSamples = KRR_RENDER_SPECTRAL ? 4 : 3;
+static constexpr int nSpectrumSamples = 4;
 
 class RGB;
 class SampledSpectrum;
