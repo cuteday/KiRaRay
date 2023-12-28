@@ -15,7 +15,7 @@ extern "C" __constant__ LaunchParameters<MegakernelPathTracer> launchParams;
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray, float tMax,
 								  int rayType, OptixRayFlags flags, Args &&...payload) {
-	optixTrace(traversable, ray.origin, ray.dir, 0.f, tMax, 0.f, /* ray time val min max */
+	optixTrace(traversable, ray.origin, ray.dir, 0.f, tMax, ray.time, /* ray time val min max */
 			   OptixVisibilityMask(255),						 /* all visible */
 			   flags, rayType, RAY_TYPE_COUNT,					 /* ray type and number of types */
 			   rayType,											 /* miss SBT index */
@@ -135,9 +135,8 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(PathData& path) {
 extern "C" __global__ void KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo			 = getHitInfo();
 	PathData *path			 = getPRD<PathData>();
-	SurfaceInteraction &intr = path->intr;
-	intr.medium				 = path->ray.medium; // if this surface is inside a medium
-	prepareSurfaceInteraction(intr, hitInfo, path->lambda);
+	SurfaceInteraction &intr = path->intr;	
+	prepareSurfaceInteraction(intr, hitInfo, path->ray, path->lambda);
 }
 
 extern "C" __global__ void KRR_RT_AH(Radiance)() {

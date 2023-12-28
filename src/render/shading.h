@@ -80,7 +80,8 @@ KRR_DEVICE_FUNCTION bool alphaKilled(const HitInfo& hitInfo) {
 	return u > alpha;
 }
 
-KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, const HitInfo &hitInfo, const SampledWavelengths& lambda) {
+KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, const HitInfo &hitInfo, 
+	const Ray& ray, const SampledWavelengths& lambda) {
 	// [NOTE] about local shading frame (tangent space, TBN, etc.)
 	// The shading normal intr.n and face normal is always points towards the outside of
 	// the object, we can use this convention to determine whether an incident ray is coming from
@@ -89,8 +90,10 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	const rt::MeshData &mesh		 = hitInfo.getMesh();
 	Vector3f b						 = hitInfo.barycentric;
 	Vector3i v						 = mesh.indices[hitInfo.primitiveId];
-	
-	intr.wo  = normalize(hitInfo.wo);
+
+	intr.medium = ray.medium;			// if this surface is inside a medium
+	intr.time	= ray.time;				// pass down camera sample time
+	intr.wo		= normalize(hitInfo.wo);
 
 	Vector3f p0 = mesh.positions[v[0]], p1 = mesh.positions[v[1]],
 			 p2 = mesh.positions[v[2]];
