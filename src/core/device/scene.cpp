@@ -51,9 +51,7 @@ void RTScene::uploadSceneInstanceData() {
 		const auto &instance   = instances[idx];
 		auto &instanceData	   = mInstances[idx];
 		Affine3f transform	   = instance->getNode()->getGlobalTransform();
-		instanceData.transform = transform;
-		instanceData.transposedInverseTransform =
-			transform.matrix().inverse().transpose().block<3, 3>(0, 0);
+		instanceData.transform = Transformation(transform);
 		instanceData.mesh = &mMeshesBuffer[instance->getMesh()->getMeshId()];
 	}
 	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
@@ -227,9 +225,7 @@ void RTScene::updateSceneData() {
 			const auto &instance   = instances[idx];
 			auto &instanceData	   = mInstances[idx];
 			Affine3f transform	   = instance->getNode()->getGlobalTransform();
-			instanceData.transform = transform;
-			instanceData.transposedInverseTransform =
-				transform.matrix().inverse().transpose().block<3, 3>(0, 0);
+			instanceData.transform = Transformation(transform);
 		}
 		mInstancesBuffer.copy_from_host(mInstances.data(), mInstances.size());
 		lastUpdatedFrame = lastUpdates.frameIndex;

@@ -43,6 +43,15 @@ KRR_DEVICE_FUNCTION T sampleTexture(const rt::TextureData &texture, Vector2f uv,
 	return fallback;
 }
 
+KRR_DEVICE_FUNCTION Transformation getInstanceTransform() {
+	Matrix4f transform{Matrix4f::Identity()}, invTransform{Matrix4f::Identity()}; 
+	optixGetObjectToWorldTransformMatrix(transform.data());
+	optixGetWorldToObjectTransformMatrix(invTransform.data());
+	if constexpr (!Matrix4f::IsRowMajor) 
+		return Transformation(transform.transpose(), invTransform.transpose());
+	else return Transformation(transform, invTransform);
+}
+
 KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	HitInfo hitInfo			 = {};
 	HitgroupSBTData *hitData = (HitgroupSBTData *) optixGetSbtDataPointer();
@@ -129,10 +138,11 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 
 	// transform local interaction to world space
 	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
-	intr.p		   = hitInfo.instance->getTransform() * intr.p;
-	intr.n		   = (hitInfo.instance->getTransposedInverseTransform() * intr.n).normalized();
-	intr.tangent   = (hitInfo.instance->getTransposedInverseTransform() * intr.tangent).normalized();
-	intr.bitangent = (hitInfo.instance->getTransposedInverseTransform() * intr.bitangent).normalized();
+	Transformation transform = getInstanceTransform();
+	intr.p		   = transform.transform() * intr.p;
+	intr.n		   = (transform.transposedInverse() * intr.n).normalized();
+	intr.tangent   = (transform.transposedInverse() * intr.tangent).normalized();
+	intr.bitangent = (transform.transposedInverse() * intr.bitangent).normalized();
 	
 	/* Safely return here since below are all material-related operations. */
 	if (intr.material == nullptr) return;

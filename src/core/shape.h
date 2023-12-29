@@ -28,7 +28,7 @@ public:
 
 	KRR_CALLABLE float area()const {
 		rt::MeshData *mesh = instance->mesh;
-		const Affine3f &transform = instance->transform;
+		const Affine3f &transform = instance->getTransform();
 		Vector3i v = mesh->indices[primId];
 		/* Remember to transform the vertices, in case that the meshes are scaled */
 		Vector3f p0 = transform * mesh->positions[v[0]], 
@@ -41,7 +41,7 @@ public:
 
 	KRR_CALLABLE float solidAngle(Vector3f p) const {
 		rt::MeshData *mesh = instance->mesh;
-		const Affine3f& transform = instance->transform;
+		const Affine3f &transform = instance->getTransform();
 		Vector3i v = mesh->indices[primId];
 		Vector3f p0 = transform * mesh->positions[v[0]], 
 				 p1 = transform * mesh->positions[v[1]],

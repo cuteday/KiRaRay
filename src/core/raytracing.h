@@ -68,6 +68,24 @@ struct Frame {
 	Vector3f B;
 };
 
+class Transformation {
+public:
+	Transformation() = default;
+
+	KRR_CALLABLE Transformation(const Matrix4f& m) : m(m), mInv(m.inverse()) {}
+	KRR_CALLABLE Transformation(const Affine3f &m) : m(m), mInv(m.matrix().inverse()) {}
+	KRR_CALLABLE Transformation(const Matrix4f& m, const Matrix4f& mInv) : m(m), mInv(mInv) {}
+
+	KRR_CALLABLE Matrix4f matrix() const { return m.matrix(); }
+	KRR_CALLABLE Affine3f transform() const { return m; } 
+	KRR_CALLABLE Affine3f inverse() const { return mInv; }
+	KRR_CALLABLE Matrix3f transposedInverse() const {
+		return mInv.matrix().topLeftCorner(3, 3).transpose();
+	}
+
+	Affine3f m, mInv;
+};
+
 KRR_CALLABLE Vector3f
 offsetRayOrigin(const Vector3f &p, const Vector3f &n, const Vector3f &w) {
 	Vector3f offset = n * KRR_RAY_EPS;
