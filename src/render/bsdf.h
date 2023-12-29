@@ -8,7 +8,7 @@
 #include "materials/dielectric.h"
 
 KRR_NAMESPACE_BEGIN
-using namespace shader;
+
 
 class BxDF :public TaggedPointer<DiffuseBrdf, 
 	DielectricBsdf,

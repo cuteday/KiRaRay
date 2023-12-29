@@ -9,7 +9,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace shader;
+
 
 enum {
 	RADIANCE_RAY_TYPE			  = 0,

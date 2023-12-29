@@ -11,7 +11,7 @@
 KRR_NAMESPACE_BEGIN
 
 using namespace bsdf;
-using namespace shader;
+
 
 /* Trowbridge-Reitz distribution */
 class GGXMicrofacetDistribution { 

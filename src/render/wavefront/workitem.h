@@ -7,7 +7,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace shader;
+
 using namespace rt;
 
 /* Remember to copy these definitions to workitem.soa whenever changing them. */
@@ -17,6 +17,7 @@ struct PixelState {
 	RGB pixel;
 	PCGSampler sampler;
 	SampledWavelengths lambda;
+	float time;
 };
 
 struct RayWorkItem {

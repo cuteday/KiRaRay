@@ -7,7 +7,7 @@
 #include <optix_device.h>
 
 KRR_NAMESPACE_BEGIN
-using namespace shader;
+
 using namespace rt;
 
 extern "C" __constant__ LaunchParameters<MegakernelPathTracer> launchParams;

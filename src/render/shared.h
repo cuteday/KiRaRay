@@ -22,8 +22,6 @@
 KRR_NAMESPACE_BEGIN
 
 using namespace utils;
-
-namespace shader {
 using namespace rt;
 	
 struct HitInfo {
@@ -125,6 +123,5 @@ template <typename T> static KRR_DEVICE_FUNCTION T *getPRD() {
 	const uint u1 = optixGetPayload_1();
 	return reinterpret_cast<T *>(unpackPointer(u0, u1));
 }
-} // namespace shader
 
 KRR_NAMESPACE_END

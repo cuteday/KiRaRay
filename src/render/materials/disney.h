@@ -21,7 +21,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace shader;
+
 using namespace bsdf;
 
 KRR_CALLABLE float SchlickR0FromEta(float eta) { return pow2(eta - 1) / pow2(eta + 1); }

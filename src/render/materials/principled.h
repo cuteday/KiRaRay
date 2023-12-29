@@ -17,7 +17,7 @@
 KRR_NAMESPACE_BEGIN
 
 using namespace bsdf;
-using namespace shader;
+
 
 class PrincipledDiffuse {
 public:

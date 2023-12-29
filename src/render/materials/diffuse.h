@@ -12,7 +12,7 @@
 #include "render/shared.h"
 
 KRR_NAMESPACE_BEGIN
-using namespace shader;
+
 using namespace bsdf;
 
 class DiffuseBrdf {

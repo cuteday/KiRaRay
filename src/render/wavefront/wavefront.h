@@ -15,7 +15,7 @@ KRR_NAMESPACE_BEGIN
 class PixelStateBuffer;
 class WavefrontPathTracer;
 
-using namespace shader;
+
 
 template <>
 struct LaunchParameters <WavefrontPathTracer> {

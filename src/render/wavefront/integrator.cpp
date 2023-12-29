@@ -166,6 +166,7 @@ void WavefrontPathTracer::generateCameraRays(int sampleId) {
 			Sampler sampler		= &pixelState->sampler[pixelId];
 			Vector2i pixelCoord = {pixelId % frameSize[0], pixelId / frameSize[0]};
 			Ray cameraRay		= camera->getRay(pixelCoord, frameSize, sampler);
+			pixelState->time[pixelId] = cameraRay.time;
 			cameraRayQueue->pushCameraRay(cameraRay, pixelId);
 		}, gpContext->cudaStream);
 }

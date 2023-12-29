@@ -9,7 +9,7 @@
 
 KRR_NAMESPACE_BEGIN
 
-using namespace shader;
+
 class BDPTIntegrator;
 
 template <> 
