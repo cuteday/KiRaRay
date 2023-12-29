@@ -141,14 +141,10 @@ SET(KRR_SOURCE
 	${KRR_SOURCE}
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/treemanip.cpp
-	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/integrator.cpp
-	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/medium.cpp
 )
 
 SET_SOURCE_FILES_PROPERTIES (
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/integrator.cpp
-	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/integrator.cpp
-	${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/medium.cpp
 	PROPERTIES LANGUAGE CUDA
 )
 
@@ -156,14 +152,9 @@ add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/ppg/guideditem_soa.h
     COMMAND soac ${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/guideditem.soa > ${KRR_RENDER_BINARY_DIR}/include/ppg/guideditem_soa.h
     DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/guideditem.soa)
 
-add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
-    COMMAND soac ${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/guideditem.soa > ${KRR_RENDER_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
-    DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/misc/render/zero_guiding/guideditem.soa)
-
 set (KRR_SOA_GENERATED 
 	${KRR_SOA_GENERATED}
 	${KRR_RENDER_BINARY_DIR}/include/ppg/guideditem_soa.h
-	${KRR_RENDER_BINARY_DIR}/include/zero_guiding/guideditem_soa.h
 )
 
 set(KRR_INCLUDE_ALL
@@ -173,7 +164,6 @@ set(KRR_INCLUDE_ALL
 
 # MISC
 CUDA_COMPILE_EMBED(PPG_PTX ${KRR_SHADER_REL_DIR}misc/render/ppg/device.cu krr-ppg krr_soa_generated)
-CUDA_COMPILE_EMBED(ZEROGUIDING_PTX ${KRR_SHADER_REL_DIR}misc/render/zero_guiding/device.cu krr-zeroguiding krr_soa_generated)
 
 SET(KRR_PTX_FILES # MISC
 	${KRR_PTX_FILES}
