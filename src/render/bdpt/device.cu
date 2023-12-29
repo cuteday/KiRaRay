@@ -34,15 +34,15 @@ KRR_DEVICE_FUNCTION RGB Connect(Vertex* lightVertices, Vertex* cameraVertices,
 	return 0;
 }
 
-extern "C" __global__ void KRR_RT_RG(GenerateCameraSubpath)() {
+KRR_RT_KERNEL KRR_RT_RG(GenerateCameraSubpath)() {
 	uint workId(optixGetLaunchIndex().x);
 }
 
-extern "C" __global__ void KRR_RT_RG(GenerateLightSubpath)() {
+KRR_RT_KERNEL KRR_RT_RG(GenerateLightSubpath)() {
 	uint workId(optixGetLaunchIndex().x);
 }
 
-extern "C" __global__ void KRR_RT_RG(Connect)() {
+KRR_RT_KERNEL KRR_RT_RG(Connect)() {
 	uint workId(optixGetLaunchIndex().x);
 }
 

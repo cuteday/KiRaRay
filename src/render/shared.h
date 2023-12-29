@@ -7,6 +7,7 @@
 #include "raytracing.h"
 #include "device/scene.h"
 
+#define KRR_RT_KERNEL	extern "C" __global__ void
 #define KRR_RT_RG(name) __raygen__##name
 #define KRR_RT_MS(name) __miss__##name
 #define KRR_RT_EX(name) __exception__##name
@@ -16,8 +17,7 @@
 #define KRR_RT_DC(name) __direct_callable__##name
 #define KRR_RT_CC(name) __continuation_callable__##name
 
-#define EMPTY_DECLARE(name)                                                                        \
-	extern "C" __global__ void name() { return; }
+#define EMPTY_DECLARE(name) extern "C" __global__ void name() { return; }
 
 KRR_NAMESPACE_BEGIN
 

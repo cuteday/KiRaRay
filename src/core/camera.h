@@ -15,13 +15,15 @@ struct CameraData {
 	float focalDistance{10};			  // distance from lens to focal point, in scene units (m)
 	float lensRadius{0};				  // aperture radius, in mm
 	float aspectRatio{1.777777f};		  // width divides height
+	float shutterOpen{0};
+	float shutterClose{1};
 
 	Vector3f pos{0, 0, 0};
 	Vector3f target{0, 0, -1};
 	Vector3f up{0, 1, 0};
 
 	Vector3f u{1, 0, 0};  // camera right		[dependent to aspect ratio]
-	Vector3f v{0, 1, 0};  // camera up		[dependent to aspect ratio]
+	Vector3f v{0, 1, 0};  // camera up			[dependent to aspect ratio]
 	Vector3f w{0, 0, -1}; // camera forward
 
 	Medium medium{nullptr}; // the ray is inside the medium
@@ -32,19 +34,19 @@ struct CameraData {
 		Vector2f p =
 			(Vector2f) pixel + Vector2f(0.5f) + sampler.get2D(); // uniform sample + box filter
 		Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
-		if (lensRadius > 0) {												   /*Thin lens*/
+		if (lensRadius > M_EPSILON) {										   /*Thin lens*/
 			/* 2. Sample the lens (uniform) */
-			Vector3f focalPoint = pos + ndc[0] * u + ndc[1] * v + w;
-			Vector2f apertureSample =
-				lensRadius > M_EPSILON ? uniformSampleDisk(sampler.get2D()) : Vector2f::Zero();
-			ray.origin = pos + lensRadius * (apertureSample[0] * normalize(u) +
-											 apertureSample[1] * normalize(v));
-			ray.dir	   = normalize(focalPoint - ray.origin);
+			Vector3f focalPoint		= pos + ndc[0] * u + ndc[1] * v + w;
+			Vector2f apertureSample = uniformSampleDisk(sampler.get2D());
+			ray.origin				= pos + lensRadius * (apertureSample[0] * u.normalized() +
+											  apertureSample[1] * v.normalized());
+			ray.dir					= normalize(focalPoint - ray.origin);
 		} else { /*Pin hole*/
 			ray.origin = pos;
 			ray.dir	   = normalize(ndc[0] * u + ndc[1] * v + w);
 		}
 		ray.medium = medium;
+		ray.time   = lerp(shutterOpen, shutterClose, sampler.get1D());
 		return ray;
 	}
 
@@ -61,25 +63,29 @@ public:
 	bool update();
 	void renderUI();
 
-	KRR_CALLABLE float getAspectRatio() const { return mData.aspectRatio; }
-	KRR_CALLABLE Vector3f getPosition() const { return mData.pos; }
-	KRR_CALLABLE Vector3f getTarget() const { return mData.target; }
-	KRR_CALLABLE Vector3f getForward() const { return normalize(mData.target - mData.pos); }
-	KRR_CALLABLE Vector3f getUp() const { return normalize(mData.v); }
-	KRR_CALLABLE Vector3f getRight() const { return normalize(mData.u); }
-	KRR_CALLABLE Vector2f getFilmSize() const { return mData.filmSize; }
-	KRR_CALLABLE float getFocalDistance() const { return mData.focalDistance; }
-	KRR_CALLABLE float getFocalLength() const { return mData.focalLength; }
-	KRR_CALLABLE const rt::CameraData& getCameraData() const { return mData; }
+	float getAspectRatio() const { return mData.aspectRatio; }
+	Vector3f getPosition() const { return mData.pos; }
+	Vector3f getTarget() const { return mData.target; }
+	Vector3f getForward() const { return normalize(mData.target - mData.pos); }
+	Vector3f getUp() const { return normalize(mData.v); }
+	Vector3f getRight() const { return normalize(mData.u); }
+	Vector2f getFilmSize() const { return mData.filmSize; }
+	float getFocalDistance() const { return mData.focalDistance; }
+	float getFocalLength() const { return mData.focalLength; }
+	float getShutterOpen() const { return mData.shutterOpen; }
+	float getShutterClose() const { return mData.shutterClose; }
+	const rt::CameraData& getCameraData() const { return mData; }
 
-	KRR_CALLABLE void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; }
-	KRR_CALLABLE void setFilmSize(Vector2f& size) { mData.filmSize = size; }
-	KRR_CALLABLE void setFocalDistance(float focalDistance) { mData.focalDistance = focalDistance; }
-	KRR_CALLABLE void setFocalLength(float focalLength) { mData.focalLength = focalLength; }
-	KRR_CALLABLE void setPosition(Vector3f& pos) { mData.pos = pos; }
-	KRR_CALLABLE void setTarget(Vector3f& target) { mData.target = target; }
-	KRR_CALLABLE void setUp(Vector3f& up) { mData.up = up; }
-	KRR_CALLABLE void setScene(std::weak_ptr<Scene> scene) { mScene = scene; }
+	void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; }
+	void setFilmSize(Vector2f& size) { mData.filmSize = size; }
+	void setFocalDistance(float focalDistance) { mData.focalDistance = focalDistance; }
+	void setFocalLength(float focalLength) { mData.focalLength = focalLength; }
+	void setPosition(Vector3f& pos) { mData.pos = pos; }
+	void setTarget(Vector3f& target) { mData.target = target; }
+	void setUp(Vector3f& up) { mData.up = up; }
+	void setShutterOpen(float shutterOpen) { mData.shutterOpen = shutterOpen; }
+	void setShutterClose(float shutterClose) { mData.shutterClose = shutterClose; }
+	void setScene(std::weak_ptr<Scene> scene) { mScene = scene; }
 
 	Matrix4f getViewMatrix() const;
 	Matrix4f getProjectionMatrix() const;
@@ -100,7 +106,7 @@ public:
 	virtual bool update() = 0;
 	virtual bool onMouseEvent(const MouseEvent& mouseEvent) = 0;
 	virtual bool onKeyEvent(const KeyboardEvent& keyEvent) = 0;
-	virtual void renderUI() {};
+	virtual void renderUI() {}
 	virtual void setCamera(const Camera::SharedPtr &pCamera) { mCamera = pCamera; }
 		
 protected:

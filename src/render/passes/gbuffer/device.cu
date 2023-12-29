@@ -20,15 +20,15 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray, f
 			   std::forward<Args>(payload)...);			/* (unpacked pointers to) payloads */
 }
 
-extern "C" __global__ void KRR_RT_CH(Primary)() {
+KRR_RT_KERNEL KRR_RT_CH(Primary)() {
 
 }
 
-extern "C" __global__ void KRR_RT_MS(Primary)() {
+KRR_RT_KERNEL KRR_RT_MS(Primary)() {
 
 }
 
-extern "C" __global__ void KRR_RT_RG(Primary)() {
+KRR_RT_KERNEL KRR_RT_RG(Primary)() {
 	const Vector3ui launchIndex = optixGetLaunchIndex();
 	const Vector2ui pixel		= {launchIndex[0], launchIndex[1]};
 	const uint32_t pixelIndex	= pixel[0] + pixel[1] * launchParams.frameSize[0];

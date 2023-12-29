@@ -132,28 +132,28 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(PathData& path) {
 	return path.throughput.any();
 }
 
-extern "C" __global__ void KRR_RT_CH(Radiance)(){
+KRR_RT_KERNEL KRR_RT_CH(Radiance)(){
 	HitInfo hitInfo			 = getHitInfo();
 	PathData *path			 = getPRD<PathData>();
 	SurfaceInteraction &intr = path->intr;	
 	prepareSurfaceInteraction(intr, hitInfo, path->ray, path->lambda);
 }
 
-extern "C" __global__ void KRR_RT_AH(Radiance)() {
+KRR_RT_KERNEL KRR_RT_AH(Radiance)() {
 	if (alphaKilled(getHitInfo())) optixIgnoreIntersection();
 }
 
-extern "C" __global__ void KRR_RT_MS(Radiance)() {
+KRR_RT_KERNEL KRR_RT_MS(Radiance)() {
 	optixSetPayload_2(1);
 }
 
-extern "C" __global__ void KRR_RT_AH(ShadowRay)() {
+KRR_RT_KERNEL KRR_RT_AH(ShadowRay)() {
 	if (alphaKilled(getHitInfo())) optixIgnoreIntersection();
 }
 
-extern "C" __global__ void KRR_RT_CH(ShadowRay)() {} /* skipped */
+KRR_RT_KERNEL KRR_RT_CH(ShadowRay)() {} /* skipped */
 
-extern "C" __global__ void KRR_RT_MS(ShadowRay)() { optixSetPayload_0(1); }
+KRR_RT_KERNEL KRR_RT_MS(ShadowRay)() { optixSetPayload_0(1); }
 
 KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	for (int &depth = path.depth; true; depth++) {
@@ -177,7 +177,7 @@ KRR_DEVICE_FUNCTION void tracePath(PathData& path) {
 	}
 }
 
-extern "C" __global__ void KRR_RT_RG(Pathtracer)(){
+KRR_RT_KERNEL KRR_RT_RG(Pathtracer)(){
 	Vector3ui launchIndex = optixGetLaunchIndex();
 	Vector2ui pixel		  = {launchIndex[0], launchIndex[1]};
 
