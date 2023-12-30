@@ -22,7 +22,7 @@ OptixPipelineCompileOptions OptixBackend::getPipelineCompileOptions() {
 	// [TODO] check this: currently we want single-level instancing only.
 	pipelineCompileOptions.traversableGraphFlags =
 		OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_LEVEL_INSTANCING;
-	pipelineCompileOptions.usesMotionBlur			   = false;
+	pipelineCompileOptions.usesMotionBlur			   = true;
 	pipelineCompileOptions.numPayloadValues			   = 3; /* This restricts maximum number of payload to 3. */
 	pipelineCompileOptions.numAttributeValues		   = 0;
 	pipelineCompileOptions.exceptionFlags =
