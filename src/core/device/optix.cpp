@@ -19,9 +19,7 @@ OptixTraversableHandle OptixBackend::getRootTraversable() const {
 
 OptixPipelineCompileOptions OptixBackend::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
-	// [TODO] check this: currently we want single-level instancing only.
-	pipelineCompileOptions.traversableGraphFlags =
-		OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_LEVEL_INSTANCING;
+	pipelineCompileOptions.traversableGraphFlags	   = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
 	pipelineCompileOptions.usesMotionBlur			   = true;
 	pipelineCompileOptions.numPayloadValues			   = 3; /* This restricts maximum number of payload to 3. */
 	pipelineCompileOptions.numAttributeValues		   = 0;
@@ -312,25 +310,28 @@ void OptixBackend::setScene(Scene::SharedPtr _scene){
 	buildShaderBindingTable();		// SBT[Instances [RayTypes ...] ...]
 }
 
+void OptixScene::buildMeshGAS() { 
+	const auto &meshes = scene.lock()->getMeshes(); 
+	
+	traversablesGAS.resize(meshes.size());
+	accelBuffersGAS.resize(meshes.size());
+	for (int idx = 0; idx < meshes.size(); idx++) {
+		const auto &mesh	 = meshes[idx];
+		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
+		// build GAS for each mesh
+		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream,
+													meshData, accelBuffersGAS[idx]);
+	}
+}
+
 // [TODO] This routine currently do not support rebuild or dynamic update,
 // check back later.
 void OptixScene::buildAccelStructure() {
 	// this is the first time we met...
 	const auto &graph			= scene.lock()->getSceneGraph();
 	const auto &instances		= scene.lock()->getMeshInstances();
-	const auto &meshes			= scene.lock()->getMeshes();
-	const auto &sceneDataDevice = getSceneData();
 
-	// build GAS for each mesh
-	traversablesGAS.resize(meshes.size());
-	accelBuffersGAS.resize(meshes.size());
-	for (int idx = 0; idx < meshes.size(); idx++) {
-		const auto &mesh = meshes[idx];
-		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
-		// build GAS for each mesh
-		traversablesGAS[idx] =
-			buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream, meshData, accelBuffersGAS[idx]);
-	}
+	buildMeshGAS();		// build GAS for meshes
 
 	// fill optix instance arrays
 	instancesIAS.resize(instances.size());
@@ -359,6 +360,12 @@ void OptixScene::buildAccelStructure() {
 	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
 									   {iasBuildInput}, accelBufferIAS, false);
 	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
+}
+
+void OptixScene::buildMultiLevelAccelStructure() {
+	const auto &graph	  = scene.lock()->getSceneGraph();
+
+	buildMeshGAS(); // build GAS for meshes
 }
 
 // [TODO] Currently supports updating subgraph transforms only.
@@ -397,9 +404,11 @@ void OptixScene::updateAccelStructure() {
 	Log(Debug, "Building root IAS: %zd instances", instances.size());
 
 	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
-									   {iasBuildInput},
-									   accelBufferIAS, false, true);
-	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
+									   {iasBuildInput}, accelBufferIAS, false, true);
+}
+
+void OptixScene::updateMultiLevelAccelStructure() {
+
 }
 
 void OptixBackend::buildShaderBindingTable() {
