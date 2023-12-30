@@ -90,6 +90,7 @@ void SceneGraphNode::setLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
 	mUpdateFlags |= UpdateFlags::Leaf;
 	// A leaf update leads to a subgraph structure change.
 	propagateUpdateFlags(UpdateFlags::SubgraphStructure);
+	propagateContentFlags(leaf->getContentFlags());
 }
 
 void SceneGraphNode::updateLocalTransform() {
@@ -100,6 +101,20 @@ void SceneGraphNode::propagateUpdateFlags(UpdateFlags flags) {
 	SceneGraphWalker walker(this, nullptr);
 	while (walker) {
 		walker->mUpdateFlags |= flags;	
+		walker.up();
+	}
+}
+
+void SceneGraphNode::propagateContentFlags(ContentFlags flags) {
+	SceneGraphWalker walker(this, nullptr);
+	while (walker) {
+		walker->mContentFlags = flags;
+		/*aggregate children contents*/
+		SceneGraphWalker child(walker->getFirstChild(), walker.get());
+		while (child) {
+			walker->mContentFlags |= child->mContentFlags;
+			child.next(false);
+		}
 		walker.up();
 	}
 }
@@ -231,14 +246,13 @@ SceneGraphNode::SharedPtr SceneGraph::attach(const SceneGraphNode::SharedPtr &pa
 
 			copy->mName					   = walker->mName;
 			copy->mParent				   = currentParent;
+			copy->mContentFlags			   = walker->mContentFlags;
 			copy->mGraph				   = weak_from_this();
-			if (walker->mHasLocalTransform) {
+			if (walker->mHasLocalTransform) 
 				copy->setTransform(&walker->getTranslation(), &walker->getRotation(),
 								   &walker->getScaling());
-			}
-			if (walker->mLeaf) {
+			if (walker->mLeaf) 
 				copy->setLeaf(walker->mLeaf->clone());
-			}
 			if (currentParent) {
 				copy->mNextSibling		   = parent->mFirstChild;
 				currentParent->mFirstChild = copy;
@@ -279,6 +293,7 @@ SceneGraphNode::SharedPtr SceneGraph::attach(const SceneGraphNode::SharedPtr &pa
 		}
 		attachedChild = child;
 	}
+	attachedChild->propagateContentFlags(attachedChild->getContentFlags());
 	return attachedChild;
 }
 
@@ -304,6 +319,7 @@ SceneGraphNode::SharedPtr SceneGraph::detach(const SceneGraphNode::SharedPtr& no
 		}
 		if (node->mParent) {
 			node->mParent->propagateUpdateFlags(SceneGraphNode::UpdateFlags::SubgraphStructure);
+			node->mParent->propagateContentFlags(SceneGraphLeaf::ContentFlags::None);
 			SceneGraphNode::SharedPtr* sibling = &node->mParent->mFirstChild;
 			// delete this node from the linked list.
 			while (*sibling && *sibling != node)
@@ -634,6 +650,12 @@ void SceneGraphNode::renderUI() {
 		ui::Text(("Max: " + getGlobalBoundingBox().max().string()).c_str());
 		ui::TreePop();
 	}
+	std::string contents;
+	if (int(getContentFlags() & SceneGraphNode::ContentFlags::Mesh)) contents += "Mesh Instance, ";
+	if (int(getContentFlags() & SceneGraphNode::ContentFlags::Animation)) contents += "Animation, ";
+	if (int(getContentFlags() & SceneGraphNode::ContentFlags::Light)) contents += "Light, ";
+	if (int(getContentFlags() & SceneGraphNode::ContentFlags::Volume)) contents += "Volume, ";
+	ui::Text(("Contents: " + contents).c_str());
 	if (getLeaf()) {
 		ui::Text("Leaf:");
 		if (auto instance = std::dynamic_pointer_cast<MeshInstance>(getLeaf())) {

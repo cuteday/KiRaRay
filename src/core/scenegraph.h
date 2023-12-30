@@ -20,11 +20,22 @@ public:
 	using SharedPtr = std::shared_ptr<SceneGraphLeaf>;
 	virtual ~SceneGraphLeaf() = default;
 
+	enum struct ContentFlags : uint32_t {
+		None			= 0,
+		Mesh			= 1 << 0,
+		Material		= 1 << 1,
+		Animation		= 1 << 2,
+		Light			= 1 << 3,
+		Volume			= 1 << 4,
+		All				= (Mesh | Material | Animation | Light | Volume),
+	};
+
 	SceneGraphNode *getNode() const { return mNode.lock().get(); }
 	std::shared_ptr<SceneGraphNode> getNodeSharedPtr() const { return mNode.lock(); }
 	virtual AABB getLocalBoundingBox() const { return AABB(0, 0); }
 	virtual std::shared_ptr<SceneGraphLeaf> clone() = 0;
 	virtual void renderUI() {}
+	virtual ContentFlags getContentFlags() const { return ContentFlags::None; }
 
 	const std::string &getName() const;
 	void setName(const std::string &name) const;
@@ -53,6 +64,7 @@ public:
 	int getInstanceId() const { return mInstanceId; }
 	virtual AABB getLocalBoundingBox() const override { return mMesh->getBoundingBox(); }
 	virtual void renderUI() override;
+	virtual ContentFlags getContentFlags() const override { return ContentFlags::Mesh; }
 
 private:
 	friend class SceneGraph;
@@ -73,6 +85,7 @@ public:
 	SceneLight(const RGB &color, const float scale) : color(color), scale(scale) {}
 	virtual Type getType() const { return Type::Undefined; }
 	virtual void renderUI() override;
+	virtual ContentFlags getContentFlags() const override { return ContentFlags::Light; }
 
 	void setColor(const RGB &_color) { color = _color; setUpdated();}
 	void setScale(const float _scale) { scale = _scale; setUpdated();}
@@ -135,6 +148,7 @@ public:
 
 	int getMediumId() const { return mediumId; }
 	void setMediumId(int id) { mediumId = id; }
+	virtual ContentFlags getContentFlags() const override { return ContentFlags::Volume; }
 
 	RGB sigma_t;
 	RGB albedo;
@@ -196,7 +210,8 @@ protected:
 class SceneGraphNode final : public std::enable_shared_from_this<SceneGraphNode> {
 public:
 	using SharedPtr = std::shared_ptr<SceneGraphNode>;
-	
+	using ContentFlags = SceneGraphLeaf::ContentFlags;
+
 	enum struct UpdateFlags : uint32_t {
 		None			  = 0,
 		LocalTransform	  = 1 << 0,
@@ -237,8 +252,10 @@ public:
 
 	void updateLocalTransform();
 	void propagateUpdateFlags(UpdateFlags flags);
+	void propagateContentFlags(ContentFlags flags);
 	void reverseChildren();
 	UpdateFlags getUpdateFlags() const { return mUpdateFlags; }
+	ContentFlags getContentFlags() const { return mContentFlags; }
 	
 	// Non-copyable and non-movable
 	SceneGraphNode(const SceneGraphNode &)			   = delete;
@@ -267,9 +284,11 @@ private:
 	bool mHasLocalTransform{false};
 	
 	UpdateFlags mUpdateFlags = UpdateFlags::None;
+	ContentFlags mContentFlags = ContentFlags::None;
 };
 
 KRR_ENUM_OPERATORS(SceneGraphNode::UpdateFlags)
+KRR_ENUM_OPERATORS(SceneGraphLeaf::ContentFlags)
 
 class SceneGraphWalker final {
 public:
@@ -331,6 +350,8 @@ public:
 	bool apply(float time) const;
 	void addChannel(const SceneAnimationChannel::SharedPtr &channel);
 	virtual void renderUI() override;
+	virtual ContentFlags getContentFlags() const override { return ContentFlags::Animation; }
+
 	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
 
 private:
