@@ -310,9 +310,14 @@ void OptixBackend::setScene(Scene::SharedPtr _scene){
 	buildShaderBindingTable();		// SBT[Instances [RayTypes ...] ...]
 }
 
-void OptixScene::buildMeshGAS() { 
-	const auto &meshes = scene.lock()->getMeshes(); 
-	
+// [TODO] This routine currently do not support rebuild or dynamic update,
+// check back later.
+void OptixScene::buildAccelStructure() {
+	// this is the first time we met...
+	const auto &graph			= scene.lock()->getSceneGraph();
+	const auto &instances		= scene.lock()->getMeshInstances();
+	const auto &meshes			= scene.lock()->getMeshes();
+
 	traversablesGAS.resize(meshes.size());
 	accelBuffersGAS.resize(meshes.size());
 	for (int idx = 0; idx < meshes.size(); idx++) {
@@ -322,16 +327,6 @@ void OptixScene::buildMeshGAS() {
 		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream,
 													meshData, accelBuffersGAS[idx]);
 	}
-}
-
-// [TODO] This routine currently do not support rebuild or dynamic update,
-// check back later.
-void OptixScene::buildAccelStructure() {
-	// this is the first time we met...
-	const auto &graph			= scene.lock()->getSceneGraph();
-	const auto &instances		= scene.lock()->getMeshInstances();
-
-	buildMeshGAS();		// build GAS for meshes
 
 	// fill optix instance arrays
 	instancesIAS.resize(instances.size());
@@ -360,12 +355,6 @@ void OptixScene::buildAccelStructure() {
 	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
 									   {iasBuildInput}, accelBufferIAS, false);
 	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
-}
-
-void OptixScene::buildMultiLevelAccelStructure() {
-	const auto &graph	  = scene.lock()->getSceneGraph();
-
-	buildMeshGAS(); // build GAS for meshes
 }
 
 // [TODO] Currently supports updating subgraph transforms only.
@@ -405,10 +394,6 @@ void OptixScene::updateAccelStructure() {
 
 	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
 									   {iasBuildInput}, accelBufferIAS, false, true);
-}
-
-void OptixScene::updateMultiLevelAccelStructure() {
-
 }
 
 void OptixBackend::buildShaderBindingTable() {

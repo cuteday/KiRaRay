@@ -44,12 +44,11 @@ KRR_DEVICE_FUNCTION T sampleTexture(const rt::TextureData &texture, Vector2f uv,
 }
 
 KRR_DEVICE_FUNCTION Transformation getInstanceTransform() {
-	Matrix4f transform{Matrix4f::Identity()}, invTransform{Matrix4f::Identity()}; 
+	/* same layout as Affine3f, quite tricky here... */
+	Affine3f transform, invTransform;
 	optixGetObjectToWorldTransformMatrix(transform.data());
 	optixGetWorldToObjectTransformMatrix(invTransform.data());
-	if constexpr (!Matrix4f::IsRowMajor) 
-		return Transformation(transform.transpose(), invTransform.transpose());
-	else return Transformation(transform, invTransform);
+	return Transformation(transform, invTransform);
 }
 
 KRR_DEVICE_FUNCTION HitInfo getHitInfo() {

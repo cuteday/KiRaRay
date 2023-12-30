@@ -50,12 +50,10 @@ protected:
 	void buildMeshGAS();					// build mesh accel structures
 	void buildAccelStructure();				// build single-level accel structure
 	void updateAccelStructure();			// update single-level accel structure
-	void buildMultiLevelAccelStructure();	// build multi-level accel structure
-	void updateMultiLevelAccelStructure();	// update multi-level accel structure
 
 	std::weak_ptr<Scene> scene;
-	gpu::vector<OptixInstance> instancesIAS;
 
+	gpu::vector<OptixInstance> instancesIAS;
 	std::vector<CUDABuffer> accelBuffersGAS;
 	CUDABuffer accelBufferIAS{};
 
