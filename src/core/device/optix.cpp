@@ -334,8 +334,8 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 		const auto &instance		   = instances[idx];
 		OptixInstance &instanceData	   = instancesIAS[idx];
 		Affine3f transform			   = instance->getNode()->getGlobalTransform();
-		instanceData.instanceId		   = idx;
-		instanceData.sbtOffset		   = idx * OptixBackend::OPTIX_MAX_RAY_TYPES;
+		instanceData.instanceId		   = referencedMeshes.size();
+		instanceData.sbtOffset		   = referencedMeshes.size() * OptixBackend::OPTIX_MAX_RAY_TYPES;
 		instanceData.visibilityMask	   = 255;
 		instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 		instanceData.traversableHandle = traversablesGAS[instance->getMesh()->getMeshId()];
@@ -343,6 +343,7 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 		// [TODO] invoke 1 cudaMemcpy here.
 		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
 				   cudaMemcpyHostToDevice);
+		referencedMeshes.push_back(instance);
 	}
 
 	// build IAS
@@ -396,6 +397,11 @@ void OptixSceneSingleLevel::updateAccelStructure() {
 									   {iasBuildInput}, accelBufferIAS, false, true);
 }
 
+
+std::shared_ptr<OptixScene> OptixBackend::getOptixScene() const { 
+	return scene->getSceneRT()->getOptixScene(); 
+}
+
 void OptixBackend::buildShaderBindingTable() {
 	size_t nRayTypes = optixParameters.rayTypes.size();
 	if (OPTIX_MAX_RAY_TYPES < nRayTypes)
@@ -415,18 +421,17 @@ void OptixBackend::buildShaderBindingTable() {
 		missRecords.push_back(missRecord);
 	}
 
-	const auto &instances	 = scene->getMeshInstances();
-	rt::SceneData sceneData = scene->mSceneRT->getSceneData();
-	for (uint instanceId = 0; instanceId < instances.size(); instanceId++) {
-		for (uint rayType = 0; rayType < nRayTypes; rayType++) {
-			HitgroupRecord hitgroupRecord = {};
-			rt::InstanceData *instance	  = &sceneData.instances[instanceId];
+	const auto &referencedMeshes = getOptixScene()->getReferencedMeshes();
+	rt::SceneData sceneData		 = scene->getSceneRT()->getSceneData();
+	for (auto instance : referencedMeshes) {
+		/* Pad up to OPTIX_MAX_RAY_TYPES for correct layout... */
+		for (uint rayType = 0; rayType < OPTIX_MAX_RAY_TYPES; rayType++) {
+			HitgroupRecord hitgroupRecord  = {};
+			rt::InstanceData *instanceData = &sceneData.instances[instance.lock()->getInstanceId()];
 			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayType], &hitgroupRecord));
-			hitgroupRecord.data = {instance};
+			hitgroupRecord.data = {instanceData};
 			hitgroupRecords.push_back(hitgroupRecord);
 		}
-		for (int rayType = nRayTypes; rayType < OPTIX_MAX_RAY_TYPES; rayType++)
-			hitgroupRecords.push_back({});
 	}
 
 	for (const auto [raygenEntry, index] : entryPoints) {

@@ -11,6 +11,9 @@
 
 KRR_NAMESPACE_BEGIN
 
+class SceneGraphNode;
+class MeshInstance;
+
 /*! SBT record for a raygen program */
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord {
 	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
@@ -41,9 +44,9 @@ public:
 													   const rt::MeshData &mesh,
 													   CUDABuffer &accelBuffer);
 
-	std::shared_ptr<Scene> getScene() const;
 	rt::SceneData getSceneData() const;
 	virtual OptixTraversableHandle getRootTraversable() const = 0;
+	virtual std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const = 0;
 	virtual void update() = 0;
 
 protected:
@@ -59,22 +62,33 @@ public:
 	OptixSceneSingleLevel(std::shared_ptr<Scene> scene);
 
 	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
+	std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const override { return referencedMeshes; }
 	void update() override;
 
 protected:
 	void buildAccelStructure() override; // build single-level accel structure
 	void updateAccelStructure() override; // update single-level accel structure
 
+	std::vector<std::weak_ptr<MeshInstance>> referencedMeshes;
 	gpu::vector<OptixInstance> instancesIAS;
-	std::vector<CUDABuffer> accelBuffersGAS;
 	CUDABuffer accelBufferIAS{};
 
 	std::vector<OptixTraversableHandle> traversablesGAS;
+	std::vector<CUDABuffer> accelBuffersGAS;
 	OptixTraversableHandle traversableIAS;
 };
 
 class OptixSceneMultiLevel : public OptixScene {
 public:
+	struct InstanceBuildInput {
+		InstanceBuildInput() = default;
+		~InstanceBuildInput() { accelBuffer.free(); }
+
+		CUDABuffer accelBuffer;
+		gpu::vector<OptixInstance> instances;
+		std::weak_ptr<SceneGraphNode> node;
+	};
+
 	using SharedPtr = std::shared_ptr<OptixSceneMultiLevel>;
 	OptixSceneMultiLevel(std::shared_ptr<Scene> scene);
 
@@ -137,6 +151,7 @@ public:
 	}
 
 	std::shared_ptr<Scene> getScene() const { return scene; }
+	std::shared_ptr<OptixScene> getOptixScene() const;
 	rt::SceneData getSceneData() const;
 	std::vector<string> getRayTypes() const { return optixParameters.rayTypes; }
 	std::vector<string> getRaygenEntries() const { return optixParameters.raygenEntries; }
