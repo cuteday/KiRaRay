@@ -310,6 +310,17 @@ void OptixBackend::setScene(Scene::SharedPtr _scene){
 	buildShaderBindingTable();		// SBT[Instances [RayTypes ...] ...]
 }
 
+// [TODO] Currently supports updating subgraph transforms only.
+void OptixScene::update() {
+	static size_t lastUpdatedFrame = 0;
+	auto lastUpdates			   = scene.lock()->getSceneGraph()->getLastUpdateRecord();
+	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphUpdates)
+		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {		
+		updateAccelStructure();
+		lastUpdatedFrame = lastUpdates.frameIndex;
+	}
+}
+
 // [TODO] This routine currently do not support rebuild or dynamic update,
 // check back later.
 void OptixSceneSingleLevel::buildAccelStructure() {
@@ -334,7 +345,6 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 		const auto &instance		   = instances[idx];
 		OptixInstance &instanceData	   = instancesIAS[idx];
 		Affine3f transform			   = instance->getNode()->getGlobalTransform();
-		instanceData.instanceId		   = referencedMeshes.size();
 		instanceData.sbtOffset		   = referencedMeshes.size() * OptixBackend::OPTIX_MAX_RAY_TYPES;
 		instanceData.visibilityMask	   = 255;
 		instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
@@ -358,15 +368,81 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
 }
 
-// [TODO] Currently supports updating subgraph transforms only.
-void OptixSceneSingleLevel::update() {
-	static size_t lastUpdatedFrame = 0;
-	auto lastUpdates			   = scene.lock()->getSceneGraph()->getLastUpdateRecord();
-	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphUpdates)
-		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {		
-		updateAccelStructure();
-		lastUpdatedFrame = lastUpdates.frameIndex;
+OptixTraversableHandle OptixSceneMultiLevel::buildIASForNode(SceneGraphNode* node) {
+	auto buildInput = std::make_shared<InstanceBuildInput>();
+	SceneGraphWalker child(node->getFirstChild(), node);
+	while (child) {
+		if (int(child->getContentFlags() & SceneGraphLeaf::ContentFlags::Mesh)) {
+			buildInput->instances.emplace_back();
+			buildInput->nodes.push_back(child.get());
+			OptixInstance &instanceData = buildInput->instances.back();
+			Affine3f transform			   = child->getLocalTransform();
+			instanceData.sbtOffset		   = referencedMeshes.size() * OptixBackend::OPTIX_MAX_RAY_TYPES;
+			instanceData.visibilityMask	   = 255;
+			instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
+			instanceData.traversableHandle = buildIASForNode(child.get());
+			cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+					   cudaMemcpyHostToDevice);
+		}
+		child.next(false);	// next sibling within this subgraph
 	}
+	/* Finally, add the instanced mesh (with 1 HG record, if eligible) to this instance input. */
+	if (auto meshInstance = std::dynamic_pointer_cast<MeshInstance>(node->getLeaf())) {
+		buildInput->instances.emplace_back();
+		OptixInstance &instanceData = buildInput->instances.back();
+		Affine3f transform			= Affine3f::Identity();
+		instanceData.sbtOffset		= referencedMeshes.size() * OptixBackend::OPTIX_MAX_RAY_TYPES;
+		instanceData.visibilityMask = 255;
+		instanceData.flags			= OPTIX_INSTANCE_FLAG_NONE;
+		instanceData.traversableHandle = traversablesGAS[meshInstance->getMesh()->getMeshId()];
+		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+							   cudaMemcpyHostToDevice);
+		referencedMeshes.push_back(meshInstance);
+	}
+	instanceBuildInputs.push_back(buildInput);
+
+	OptixBuildInput iasBuildInput			 = {};
+	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+	iasBuildInput.instanceArray.numInstances = buildInput->instances.size();
+	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) buildInput->instances.data();
+	return buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+												{iasBuildInput}, buildInput->accelBuffer, false);
+}
+
+void OptixSceneMultiLevel::buildAccelStructure() {
+	// this is (not) the first time we met...?
+	const auto &graph	  = scene.lock()->getSceneGraph();
+	const auto &instances = scene.lock()->getMeshInstances();
+	const auto &meshes	  = scene.lock()->getMeshes();
+
+	traversablesGAS.resize(meshes.size());
+	accelBuffersGAS.resize(meshes.size());
+	for (int idx = 0; idx < meshes.size(); idx++) {
+		const auto &mesh	 = meshes[idx];
+		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
+		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream,
+													meshData, accelBuffersGAS[idx]);
+	}
+
+	auto root			= graph->getRoot();
+	auto rootBuildInput = std::make_shared<InstanceBuildInput>();
+	rootBuildInput->instances.resize(1);
+	auto &instanceData			   = rootBuildInput->instances[0];
+	Affine3f transform			   = root->getLocalTransform();
+	instanceData.sbtOffset		   = 0;
+	instanceData.visibilityMask	   = 255;
+	instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
+	instanceData.traversableHandle = buildIASForNode(root.get());
+	cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+			   cudaMemcpyHostToDevice);
+	instanceBuildInputs.push_back(rootBuildInput);
+
+	OptixBuildInput iasBuildInput			 = {};
+	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+	iasBuildInput.instanceArray.numInstances = rootBuildInput->instances.size();
+	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) rootBuildInput->instances.data();
+	traversableIAS =  buildASFromInputs(gpContext->optixContext, gpContext->cudaStream, {iasBuildInput},
+							 rootBuildInput->accelBuffer, false);
 }
 
 OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene): 
@@ -374,29 +450,50 @@ OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene):
 	buildAccelStructure();
 }
 
+OptixSceneMultiLevel::OptixSceneMultiLevel(Scene::SharedPtr scene) : 
+	OptixScene (scene) {
+	buildAccelStructure();
+}
+
 void OptixSceneSingleLevel::updateAccelStructure() {
 	PROFILE("Update AS");
-	const auto &instances = scene.lock()->getMeshInstances();
 	// Currently only supports updating subgraph transformations.
-	for (int idx = 0; idx < instances.size(); idx++) {
-		const auto &instance		   = instances[idx];
+	for (int idx = 0; idx < referencedMeshes.size(); idx++) {
+		const auto &instance		   = referencedMeshes[idx].lock();
 		OptixInstance &instanceData	   = instancesIAS[idx];
 		Affine3f transform			   = instance->getNode()->getGlobalTransform();
 		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
 				   cudaMemcpyHostToDevice);
 	}
 
-	// build IAS
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
-	iasBuildInput.instanceArray.numInstances = instances.size();
+	iasBuildInput.instanceArray.numInstances = instancesIAS.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
-	Log(Debug, "Building root IAS: %zd instances", instances.size());
+	Log(Debug, "Updating single-level root IAS with %zd instances", instancesIAS.size());
 
 	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
 									   {iasBuildInput}, accelBufferIAS, false, true);
 }
 
+void OptixSceneMultiLevel::updateAccelStructure() {
+	for (auto instanceInput : instanceBuildInputs) {
+		for (int idx = 0; idx < instanceInput->nodes.size(); idx++) {
+			const auto instance			   = instanceInput->nodes[idx];
+			OptixInstance &instanceData	   = instanceInput->instances[idx];
+			Affine3f transform			   = instance->getLocalTransform();
+			cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+									   cudaMemcpyHostToDevice);
+		}
+
+		OptixBuildInput iasBuildInput			 = {};
+		iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+		iasBuildInput.instanceArray.numInstances = instanceInput->instances.size();
+		iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instanceInput->instances.data();
+		traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+										   {iasBuildInput}, instanceInput->accelBuffer, false, true);
+	}
+}
 
 std::shared_ptr<OptixScene> OptixBackend::getOptixScene() const { 
 	return scene->getSceneRT()->getOptixScene(); 

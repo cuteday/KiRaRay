@@ -47,7 +47,7 @@ public:
 	rt::SceneData getSceneData() const;
 	virtual OptixTraversableHandle getRootTraversable() const = 0;
 	virtual std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const = 0;
-	virtual void update() = 0;
+	virtual void update();
 
 protected:
 	virtual void buildAccelStructure() = 0;				// build single-level accel structure
@@ -63,12 +63,11 @@ public:
 
 	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
 	std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const override { return referencedMeshes; }
-	void update() override;
 
 protected:
 	void buildAccelStructure() override; // build single-level accel structure
 	void updateAccelStructure() override; // update single-level accel structure
-
+private:
 	std::vector<std::weak_ptr<MeshInstance>> referencedMeshes;
 	gpu::vector<OptixInstance> instancesIAS;
 	CUDABuffer accelBufferIAS{};
@@ -86,19 +85,22 @@ public:
 
 		CUDABuffer accelBuffer;
 		gpu::vector<OptixInstance> instances;
-		std::weak_ptr<SceneGraphNode> node;
+		std::vector<SceneGraphNode*> nodes;
 	};
 
 	using SharedPtr = std::shared_ptr<OptixSceneMultiLevel>;
 	OptixSceneMultiLevel(std::shared_ptr<Scene> scene);
 
 	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
-	void update() override;
+	std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const override { return referencedMeshes; }
 
 protected:
 	void buildAccelStructure() override;  // build single-level accel structure
 	void updateAccelStructure() override; // update single-level accel structure
-
+private:
+	OptixTraversableHandle buildIASForNode(SceneGraphNode* node);
+	std::vector<std::weak_ptr<MeshInstance>> referencedMeshes;
+	std::vector<std::shared_ptr<InstanceBuildInput>> instanceBuildInputs;
 	std::vector<CUDABuffer> accelBuffersGAS;
 	std::vector<OptixTraversableHandle> traversablesGAS;
 
