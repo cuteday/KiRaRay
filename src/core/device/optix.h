@@ -30,7 +30,8 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 class OptixScene {
 public:
 	using SharedPtr = std::shared_ptr<OptixScene>;
-	OptixScene(std::shared_ptr<Scene> _scene);
+	OptixScene(std::shared_ptr<Scene> scene) : scene(scene) {}
+	virtual ~OptixScene() = default;
 
 	static OptixTraversableHandle buildASFromInputs(OptixDeviceContext optixContext, 
 		CUstream cudaStream, const std::vector<OptixBuildInput> &buildInputs, 
@@ -41,17 +42,28 @@ public:
 													   CUDABuffer &accelBuffer);
 
 	std::shared_ptr<Scene> getScene() const;
-	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
 	rt::SceneData getSceneData() const;
-	
-	void update();
+	virtual OptixTraversableHandle getRootTraversable() const = 0;
+	virtual void update() = 0;
 
 protected:
-	void buildMeshGAS();					// build mesh accel structures
-	void buildAccelStructure();				// build single-level accel structure
-	void updateAccelStructure();			// update single-level accel structure
+	virtual void buildAccelStructure() = 0;				// build single-level accel structure
+	virtual void updateAccelStructure() = 0;			// update single-level accel structure
 
 	std::weak_ptr<Scene> scene;
+};
+
+class OptixSceneSingleLevel : public OptixScene {
+public:
+	using SharedPtr = std::shared_ptr<OptixSceneSingleLevel>;
+	OptixSceneSingleLevel(std::shared_ptr<Scene> scene);
+
+	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
+	void update() override;
+
+protected:
+	void buildAccelStructure() override; // build single-level accel structure
+	void updateAccelStructure() override; // update single-level accel structure
 
 	gpu::vector<OptixInstance> instancesIAS;
 	std::vector<CUDABuffer> accelBuffersGAS;
@@ -61,14 +73,22 @@ protected:
 	OptixTraversableHandle traversableIAS;
 };
 
-class OptixSceneSingleLevel : public OptixScene {
-public:
-
-};
-
 class OptixSceneMultiLevel : public OptixScene {
 public:
+	using SharedPtr = std::shared_ptr<OptixSceneMultiLevel>;
+	OptixSceneMultiLevel(std::shared_ptr<Scene> scene);
 
+	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
+	void update() override;
+
+protected:
+	void buildAccelStructure() override;  // build single-level accel structure
+	void updateAccelStructure() override; // update single-level accel structure
+
+	std::vector<CUDABuffer> accelBuffersGAS;
+	std::vector<OptixTraversableHandle> traversablesGAS;
+
+	OptixTraversableHandle traversableIAS;
 };
 
 struct OptixInitializeParameters {

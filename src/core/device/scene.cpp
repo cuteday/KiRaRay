@@ -19,7 +19,7 @@ void RTScene::uploadSceneData() {
 	uploadSceneLightData();
 
 	CUDA_SYNC_CHECK();
-	mOptixScene = std::make_shared<OptixScene>(mScene.lock());
+	mOptixScene = std::make_shared<OptixSceneSingleLevel>(mScene.lock());
 }
 
 void RTScene::uploadSceneMeshData() {

@@ -312,7 +312,7 @@ void OptixBackend::setScene(Scene::SharedPtr _scene){
 
 // [TODO] This routine currently do not support rebuild or dynamic update,
 // check back later.
-void OptixScene::buildAccelStructure() {
+void OptixSceneSingleLevel::buildAccelStructure() {
 	// this is the first time we met...
 	const auto &graph			= scene.lock()->getSceneGraph();
 	const auto &instances		= scene.lock()->getMeshInstances();
@@ -358,7 +358,7 @@ void OptixScene::buildAccelStructure() {
 }
 
 // [TODO] Currently supports updating subgraph transforms only.
-void OptixScene::update() {
+void OptixSceneSingleLevel::update() {
 	static size_t lastUpdatedFrame = 0;
 	auto lastUpdates			   = scene.lock()->getSceneGraph()->getLastUpdateRecord();
 	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphUpdates)
@@ -368,12 +368,12 @@ void OptixScene::update() {
 	}
 }
 
-OptixScene::OptixScene(Scene::SharedPtr _scene) {
-	scene = _scene;
+OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene): 
+	OptixScene (scene) {
 	buildAccelStructure();
 }
 
-void OptixScene::updateAccelStructure() {
+void OptixSceneSingleLevel::updateAccelStructure() {
 	PROFILE("Update AS");
 	const auto &instances = scene.lock()->getMeshInstances();
 	// Currently only supports updating subgraph transformations.
@@ -444,3 +444,13 @@ void OptixBackend::buildShaderBindingTable() {
 }
 
 KRR_NAMESPACE_END
+
+/* [Note] for implementation of OptiX motion blur:
+ * OptiX only supports regular time intervals in its motion options. Irregular keys should be 
+ * resampled to fit regular keys, potentially with a much higher number of keys if needed.
+ *
+ * Duplicate motion transforms should not be used as workaround for irregular keys, where each 
+ * key has varying motion beginning and ending times and vanish motion flags set. This 
+ * duplication creates traversal overhead as all copies need to be intersected and their motion 
+ * times compared to the ray's time.
+ */
