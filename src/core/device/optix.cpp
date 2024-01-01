@@ -7,6 +7,7 @@
 #include "util/check.h"
 #include "render/profiler/profiler.h"
 
+/* [TODO] Check OptiX exception switch for better debugging. */
 KRR_NAMESPACE_BEGIN
 
 rt::SceneData OptixScene::getSceneData() const { return scene.lock()->getSceneRT()->getSceneData(); }
@@ -300,7 +301,7 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 	OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the
 											 stack size for */
 										  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024, 
-		2 /* max traversable graph depth */));
+		6 /* max traversable graph depth */));
 	Log(Debug, log);
 }
 
@@ -344,7 +345,7 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 		const auto &instance		   = instances[idx];
 		OptixInstance &instanceData	   = instancesIAS[idx];
 		Affine3f transform			   = instance->getNode()->getGlobalTransform();
-		instanceData.sbtOffset		   = referencedMeshes.size() * OptixBackend::OPTIX_MAX_RAY_TYPES;
+		instanceData.sbtOffset		   = idx * OptixBackend::OPTIX_MAX_RAY_TYPES;
 		instanceData.visibilityMask	   = 255;
 		instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 		instanceData.traversableHandle = traversablesGAS[instance->getMesh()->getMeshId()];
@@ -379,6 +380,9 @@ std::pair<OptixTraversableHandle, int> OptixSceneMultiLevel::buildIASForNode(Sce
 			OptixInstance &instanceData = buildInput->instances.back();
 			Affine3f transform			   = child->getLocalTransform();
 			auto [traversable, records]	   = buildIASForNode(child.get());
+			Log(Info, "The child node \"%s\" of node \"%s\" has %d HG records, "
+				"SBT HG offset start from %d.",
+				child->getName().c_str(), node->getName().c_str(), records, sbtOffset);
 			instanceData.sbtOffset		   = sbtOffset;
 			instanceData.visibilityMask	   = 255;
 			instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
@@ -447,7 +451,7 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
-	iasBuildInput.instanceArray.numInstances = rootBuildInput->instances.size();
+	iasBuildInput.instanceArray.numInstances = 1;  /* the one and only root desu */
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) rootBuildInput->instances.data();
 	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
 									   {iasBuildInput}, rootBuildInput->accelBuffer, false);
@@ -511,8 +515,7 @@ std::shared_ptr<OptixScene> OptixBackend::getOptixScene() const {
 void OptixBackend::buildShaderBindingTable() {
 	size_t nRayTypes = optixParameters.rayTypes.size();
 	if (OPTIX_MAX_RAY_TYPES < nRayTypes)
-		Log(Fatal,
-			"Currently supports no more than %zd ray types only,"
+		Log(Fatal, "Currently supports no more than %zd ray types only,"
 		"but there are %zd ray types", OPTIX_MAX_RAY_TYPES, nRayTypes);
 	else if (nRayTypes == 0) Log(Fatal, "No ray types has been specified!");
 
@@ -539,7 +542,7 @@ void OptixBackend::buildShaderBindingTable() {
 			hitgroupRecords.push_back(hitgroupRecord);
 		}
 	}
-
+	/* All entries use the same shader binding table (and HG records). */
 	for (const auto [raygenEntry, index] : entryPoints) {
 		OptixShaderBindingTable sbt		= {};
 		sbt.raygenRecord				= (CUdeviceptr) &raygenRecords[index];
@@ -551,6 +554,8 @@ void OptixBackend::buildShaderBindingTable() {
 		sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
 		SBT.push_back(sbt);
 	}
+	Log(Info, "Building SBT with %zd raygen entries, %zd miss records, %zd hitgroup records",
+		raygenRecords.size(), missRecords.size(), hitgroupRecords.size());
 	CUDA_SYNC_CHECK();
 }
 

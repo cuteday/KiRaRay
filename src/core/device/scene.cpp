@@ -206,8 +206,6 @@ rt::SceneData RTScene::getSceneData() const {
 }
 
 void RTScene::update() { 
-	static size_t lastUpdatedFrame = 0;
-	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
 	mOptixScene->update();
 	updateSceneData();
 }

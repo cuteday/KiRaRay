@@ -256,8 +256,7 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 									//| aiProcess_FlipWindingOrder 
 									| aiProcess_GenBoundingBoxes
 									| aiProcess_FindInstances
-									| aiProcess_ImproveCacheLocality
-									| aiProcess_SplitLargeMeshes;
+									| aiProcess_ImproveCacheLocality;
 	int removeFlags = aiComponent_COLORS;
 	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS;
 		 uvLayer++)
