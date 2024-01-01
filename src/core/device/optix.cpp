@@ -321,8 +321,7 @@ void OptixScene::update() {
 	}
 }
 
-// [TODO] This routine currently do not support rebuild or dynamic update,
-// check back later.
+// [TODO] This routine currently do not support rebuild or dynamic update.
 void OptixSceneSingleLevel::buildAccelStructure() {
 	// this is the first time we met...
 	const auto &graph			= scene.lock()->getSceneGraph();
@@ -359,7 +358,7 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 	// build IAS
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
-	iasBuildInput.instanceArray.numInstances = instances.size();
+	iasBuildInput.instanceArray.numInstances = instancesIAS.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
 	
 	Log(Info, "Building root IAS: %zd instances", instances.size());
@@ -368,19 +367,23 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
 }
 
-OptixTraversableHandle OptixSceneMultiLevel::buildIASForNode(SceneGraphNode* node) {
+std::pair<OptixTraversableHandle, int> OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node) {
 	auto buildInput = std::make_shared<InstanceBuildInput>();
 	SceneGraphWalker child(node->getFirstChild(), node);
+	int sbtOffset = 0;
+	/* Recursively build all its children */
 	while (child) {
 		if (int(child->getContentFlags() & SceneGraphLeaf::ContentFlags::Mesh)) {
 			buildInput->instances.emplace_back();
 			buildInput->nodes.push_back(child.get());
 			OptixInstance &instanceData = buildInput->instances.back();
 			Affine3f transform			   = child->getLocalTransform();
-			instanceData.sbtOffset		   = referencedMeshes.size() * OptixBackend::OPTIX_MAX_RAY_TYPES;
+			auto [traversable, records]	   = buildIASForNode(child.get());
+			instanceData.sbtOffset		   = sbtOffset;
 			instanceData.visibilityMask	   = 255;
 			instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
-			instanceData.traversableHandle = buildIASForNode(child.get());
+			instanceData.traversableHandle = traversable;
+			sbtOffset += records;
 			cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
 					   cudaMemcpyHostToDevice);
 		}
@@ -391,28 +394,32 @@ OptixTraversableHandle OptixSceneMultiLevel::buildIASForNode(SceneGraphNode* nod
 		buildInput->instances.emplace_back();
 		OptixInstance &instanceData = buildInput->instances.back();
 		Affine3f transform			= Affine3f::Identity();
-		instanceData.sbtOffset		= referencedMeshes.size() * OptixBackend::OPTIX_MAX_RAY_TYPES;
+		instanceData.sbtOffset		= sbtOffset;
 		instanceData.visibilityMask = 255;
 		instanceData.flags			= OPTIX_INSTANCE_FLAG_NONE;
 		instanceData.traversableHandle = traversablesGAS[meshInstance->getMesh()->getMeshId()];
 		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
 							   cudaMemcpyHostToDevice);
+		Log(Info, "The node \"%s\" has a mesh instance %s (#%d)", 
+			node->getName().c_str(), meshInstance->getName().c_str(), referencedMeshes.size());
 		referencedMeshes.push_back(meshInstance);
+		sbtOffset += OptixBackend::OPTIX_MAX_RAY_TYPES;
 	}
 	instanceBuildInputs.push_back(buildInput);
-
+	Log(Info, "Building IAS for node \"%s\": %zd instances", 
+		node->getName().c_str(), buildInput->instances.size());
+	if (buildInput->instances.size() == 0) Log(Error, "Empty instance build input!");
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = buildInput->instances.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) buildInput->instances.data();
-	return buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
-												{iasBuildInput}, buildInput->accelBuffer, false);
+	return {buildASFromInputs(gpContext->optixContext, gpContext->cudaStream, {iasBuildInput},
+							  buildInput->accelBuffer, false), sbtOffset};
 }
 
 void OptixSceneMultiLevel::buildAccelStructure() {
 	// this is (not) the first time we met...?
 	const auto &graph	  = scene.lock()->getSceneGraph();
-	const auto &instances = scene.lock()->getMeshInstances();
 	const auto &meshes	  = scene.lock()->getMeshes();
 
 	traversablesGAS.resize(meshes.size());
@@ -429,10 +436,11 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	rootBuildInput->instances.resize(1);
 	auto &instanceData			   = rootBuildInput->instances[0];
 	Affine3f transform			   = root->getLocalTransform();
+	auto [traversable, records]	   = buildIASForNode(root.get());
 	instanceData.sbtOffset		   = 0;
 	instanceData.visibilityMask	   = 255;
 	instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
-	instanceData.traversableHandle = buildIASForNode(root.get());
+	instanceData.traversableHandle = traversable;
 	cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
 			   cudaMemcpyHostToDevice);
 	instanceBuildInputs.push_back(rootBuildInput);
@@ -441,8 +449,8 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = rootBuildInput->instances.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) rootBuildInput->instances.data();
-	traversableIAS =  buildASFromInputs(gpContext->optixContext, gpContext->cudaStream, {iasBuildInput},
-							 rootBuildInput->accelBuffer, false);
+	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+									   {iasBuildInput}, rootBuildInput->accelBuffer, false);
 }
 
 OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene): 
@@ -456,7 +464,7 @@ OptixSceneMultiLevel::OptixSceneMultiLevel(Scene::SharedPtr scene) :
 }
 
 void OptixSceneSingleLevel::updateAccelStructure() {
-	PROFILE("Update AS");
+	PROFILE("Update Accel Structure");
 	// Currently only supports updating subgraph transformations.
 	for (int idx = 0; idx < referencedMeshes.size(); idx++) {
 		const auto &instance		   = referencedMeshes[idx].lock();
@@ -477,6 +485,7 @@ void OptixSceneSingleLevel::updateAccelStructure() {
 }
 
 void OptixSceneMultiLevel::updateAccelStructure() {
+	PROFILE("Update Accel Structure");
 	for (auto instanceInput : instanceBuildInputs) {
 		for (int idx = 0; idx < instanceInput->nodes.size(); idx++) {
 			const auto instance			   = instanceInput->nodes[idx];

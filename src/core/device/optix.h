@@ -98,7 +98,7 @@ protected:
 	void buildAccelStructure() override;  // build single-level accel structure
 	void updateAccelStructure() override; // update single-level accel structure
 private:
-	OptixTraversableHandle buildIASForNode(SceneGraphNode* node);
+	std::pair<OptixTraversableHandle, int> buildIASForNode(SceneGraphNode* node);
 	std::vector<std::weak_ptr<MeshInstance>> referencedMeshes;
 	std::vector<std::shared_ptr<InstanceBuildInput>> instanceBuildInputs;
 	std::vector<CUDABuffer> accelBuffersGAS;
