@@ -301,11 +301,12 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 	OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the
 											 stack size for */
 										  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024, 
-		6 /* max traversable graph depth */));
+		params.maxTraversableDepth /* max traversable graph depth */));
 	Log(Debug, log);
 }
 
 void OptixBackend::setScene(Scene::SharedPtr _scene){
+	/* Should be called after initialization... */
 	scene = _scene;
 	scene->initializeSceneRT();		// upload bindless scene data to device buffers.
 	buildShaderBindingTable();		// SBT[Instances [RayTypes ...] ...]
@@ -457,13 +458,15 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 									   {iasBuildInput}, rootBuildInput->accelBuffer, false);
 }
 
-OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene): 
-	OptixScene (scene) {
+OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene,
+											 const OptixSceneParameters &config) : 
+	OptixScene (scene, config) {
 	buildAccelStructure();
 }
 
-OptixSceneMultiLevel::OptixSceneMultiLevel(Scene::SharedPtr scene) : 
-	OptixScene (scene) {
+OptixSceneMultiLevel::OptixSceneMultiLevel(Scene::SharedPtr scene,
+										   const OptixSceneParameters &config) : 
+	OptixScene (scene, config) {
 	buildAccelStructure();
 }
 

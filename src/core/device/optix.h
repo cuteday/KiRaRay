@@ -33,7 +33,8 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 class OptixScene {
 public:
 	using SharedPtr = std::shared_ptr<OptixScene>;
-	OptixScene(std::shared_ptr<Scene> scene) : scene(scene) {}
+	OptixScene(std::shared_ptr<Scene> scene, const OptixSceneParameters &config = {}) : 
+		scene(scene), config(config) {}
 	virtual ~OptixScene() = default;
 
 	static OptixTraversableHandle buildASFromInputs(OptixDeviceContext optixContext, 
@@ -54,12 +55,13 @@ protected:
 	virtual void updateAccelStructure() = 0;			// update single-level accel structure
 
 	std::weak_ptr<Scene> scene;
+	OptixSceneParameters config;
 };
 
 class OptixSceneSingleLevel : public OptixScene {
 public:
 	using SharedPtr = std::shared_ptr<OptixSceneSingleLevel>;
-	OptixSceneSingleLevel(std::shared_ptr<Scene> scene);
+	OptixSceneSingleLevel(std::shared_ptr<Scene> scene, const OptixSceneParameters &config = {});
 
 	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
 	std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const override { return referencedMeshes; }
@@ -89,7 +91,7 @@ public:
 	};
 
 	using SharedPtr = std::shared_ptr<OptixSceneMultiLevel>;
-	OptixSceneMultiLevel(std::shared_ptr<Scene> scene);
+	OptixSceneMultiLevel(std::shared_ptr<Scene> scene, const OptixSceneParameters &config = {});
 
 	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
 	std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const override { return referencedMeshes; }
@@ -109,9 +111,15 @@ private:
 
 struct OptixInitializeParameters {
 	char* ptx;
+	unsigned int maxTraversableDepth{5};
 	std::vector<string> raygenEntries;
 	std::vector<string> rayTypes;
 	std::vector<std::tuple<bool, bool, bool>> rayClosestShaders;
+
+	OptixInitializeParameters& setMaxTraversableDepth(unsigned int depth) {
+		maxTraversableDepth = depth;
+		return *this;
+	}
 
 	OptixInitializeParameters& setPTX(char* ptx) {
 		this->ptx = ptx;

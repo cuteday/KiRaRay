@@ -10,7 +10,7 @@ RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {}
 
 std::shared_ptr<Scene> RTScene::getScene() const { return mScene.lock(); }
 
-void RTScene::uploadSceneData() {
+void RTScene::uploadSceneData(const OptixSceneParameters &params) {
 	// The order of upload is unchangeable since some of them are dependent to others.
 	uploadSceneMaterialData();
 	uploadSceneMediumData();
@@ -19,7 +19,9 @@ void RTScene::uploadSceneData() {
 	uploadSceneLightData();
 
 	CUDA_SYNC_CHECK();
-	mOptixScene = std::make_shared<OptixSceneSingleLevel>(mScene.lock());
+	if (params.buildMultilevel) 
+		mOptixScene = std::make_shared<OptixSceneMultiLevel>(mScene.lock(), params);
+	else mOptixScene = std::make_shared<OptixSceneSingleLevel>(mScene.lock(), params);
 }
 
 void RTScene::uploadSceneMeshData() {

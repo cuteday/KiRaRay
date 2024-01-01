@@ -18,7 +18,6 @@ KRR_NAMESPACE_BEGIN
 class Scene;
 
 namespace rt {
-
 class SceneData {
 public:
 	TypedBufferView<rt::MaterialData> materials{};
@@ -30,6 +29,19 @@ public:
 };
 }
 
+struct OptixSceneParameters {
+	bool buildMultilevel{false};
+	bool enableMotionBlur{false};
+	float worldStartTime{0}, worldEndTime{1};
+
+	friend void from_json(const json& j, OptixSceneParameters& p) {
+		p.buildMultilevel = j.value("multilevel", false);
+		p.enableMotionBlur = j.value("motionblur", false);
+		p.worldStartTime = j.value("starttime", 0.f);
+		p.worldEndTime = j.value("endtime", 1.f);
+	}
+};
+
 class OptixScene;
 class RTScene {
 public:
@@ -39,7 +51,7 @@ public:
 	~RTScene() = default;
 
 	void update();
-	void uploadSceneData();
+	void uploadSceneData(const OptixSceneParameters& parameters);
 	void updateSceneData();
 
 	rt::SceneData getSceneData() const;
