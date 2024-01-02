@@ -5,6 +5,7 @@
 #include <optix_stubs.h>
 #include <sstream>
 #include <stdexcept>
+#include <optional>
 
 #include "raytracing.h"
 #include "scene.h"
@@ -81,6 +82,11 @@ private:
 
 class OptixSceneMultiLevel : public OptixScene {
 public:
+	struct MotionKeyframes {
+		std::vector<OptixSRTData> keyframes;
+		float startTime{0}, endTime{0};
+	};
+
 	struct InstanceBuildInput {
 		InstanceBuildInput() = default;
 		~InstanceBuildInput();
@@ -99,6 +105,7 @@ public:
 
 	using SharedPtr = std::shared_ptr<OptixSceneMultiLevel>;
 	OptixSceneMultiLevel(std::shared_ptr<Scene> scene, const OptixSceneParameters &config = {});
+	
 
 	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
 	std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const override { return referencedMeshes; }
@@ -107,7 +114,8 @@ protected:
 	void buildAccelStructure() override;  // build single-level accel structure
 	void updateAccelStructure() override; // update single-level accel structure
 private:
-	std::pair<OptixTraversableHandle, int> buildIASForNode(SceneGraphNode* node);
+	std::optional<MotionKeyframes> getMotionKeyframes(SceneGraphNode* node);
+	std::pair<OptixTraversableHandle, int> buildIASForNode(SceneGraphNode* node, std::optional<MotionKeyframes> motion);
 	std::vector<std::weak_ptr<MeshInstance>> referencedMeshes;
 	std::vector<std::shared_ptr<InstanceBuildInput>> instanceBuildInputs;
 	std::vector<CUDABuffer> accelBuffersGAS;

@@ -608,7 +608,7 @@ void MeshInstance::renderUI() {
 }
 
 void SceneAnimation::renderUI() {
-	ui::Text("End time: %f", getDuration());
+	ui::Text("Time range: [%f - %f]", getStartTime(), getEndTime());
 	ui::Text("Channels: ");
 	static const auto getChannelName = [](const SceneAnimationChannel::SharedPtr &channel)
 	-> std::string{

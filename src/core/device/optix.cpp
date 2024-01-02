@@ -368,7 +368,77 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
 }
 
-std::pair<OptixTraversableHandle, int> OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node) {
+std::optional<OptixSceneMultiLevel::MotionKeyframes>
+OptixSceneMultiLevel::getMotionKeyframes(SceneGraphNode *node) {
+	if (!config.enableMotionBlur) return {};
+	std::vector<std::weak_ptr<anime::Sampler>> scaleSamplers, rotateSamplers, translateSamplers;
+	float startTime = std::numeric_limits<float>::max();
+	float endTime = std::numeric_limits<float>::min();
+	for (const auto animation : scene.lock()->getAnimations()) {
+		for (const auto channel : animation->getChannels()) {
+			if (channel->getTargetNode().get() == node) {
+				if (channel->getAttribute() == anime::AnimationAttribute::Rotation) {
+					rotateSamplers.push_back(channel->getSampler());
+				} else if (channel->getAttribute() == anime::AnimationAttribute::Translation) {
+					translateSamplers.push_back(channel->getSampler());
+				} else if (channel->getAttribute() == anime::AnimationAttribute::Scaling) {
+					scaleSamplers.push_back(channel->getSampler());
+				} else continue;
+				startTime = std::min(startTime, channel->getSampler()->getStartTime());
+				endTime = std::max(endTime, channel->getSampler()->getEndTime());
+			}
+		}
+	}
+	if ((scaleSamplers.empty() && rotateSamplers.empty() && translateSamplers.empty()) ||
+		startTime >= endTime) return {};
+	if (scaleSamplers.size() > 1 || rotateSamplers.size() > 1 || translateSamplers.size() > 1)
+		Log(Warning, "One of the scale/rotate/traslate samplers has more than 1 channel, "
+			"(%zd, %zd, %zd respectively).", scaleSamplers.size(), rotateSamplers.size(), translateSamplers.size());
+	
+	anime::Sampler scaleSampler, rotateSampler, translateSampler;
+	scaleSampler.setInterpolationMode(anime::InterpolationMode::Linear);
+	rotateSampler.setInterpolationMode(anime::InterpolationMode::Slerp);
+	translateSampler.setInterpolationMode(anime::InterpolationMode::Linear);
+
+	/* merge potentially multiple sample channels to one (per attribute). */
+	for (const auto &sampler : scaleSamplers) 
+		scaleSampler.addKeyframes(sampler.lock()->getKeyframes());
+	for (const auto &sampler : rotateSamplers)
+		rotateSampler.addKeyframes(sampler.lock()->getKeyframes());
+	for (const auto &sampler : translateSamplers)
+		translateSampler.addKeyframes(sampler.lock()->getKeyframes());
+
+	/* reample motion keyframes to regular time steps */
+	OptixSceneMultiLevel::MotionKeyframes motion;
+	motion.startTime = startTime, motion.endTime = endTime;
+	unsigned int numKeys =
+		std::max({scaleSampler.getKeyframeCount(), rotateSampler.getKeyframeCount(),
+				  translateSampler.getKeyframeCount()});
+	float timeStep = (endTime - startTime) / (numKeys - 1);
+	for (int idx = 0; idx < numKeys; idx++) {
+		float time = startTime + idx * timeStep;
+		OptixSRTData srt;
+		std::optional<Array4f> v;
+		Vector3f scale, translate;
+		Quaternionf rotate;
+		/* if one attribute has no keyframes, it will return default values. */
+		v		  = scaleSampler.evaluate(time, true);
+		scale	  = v.has_value() ? Vector3f(v->x(), v->y(), v->z()) : node->getScaling();
+		v		  = translateSampler.evaluate(time, true);
+		translate = v.has_value() ? Vector3f(v->x(), v->y(), v->z()) : node->getTranslation();
+		v		  = rotateSampler.evaluate(time, true);
+		rotate	  = v.has_value() ? Quaternionf(v->w(), v->x(), v->y(), v->z()) : node->getRotation();
+		/* cast data to optix srt datatype. */
+		srt.qw = rotate.w(), srt.qx = rotate.x(), srt.qy = rotate.y(), srt.qz = rotate.z();
+		srt.tx = translate.x(), srt.ty = translate.y(), srt.tz = translate.z();
+		srt.sx = scale.x(), srt.sy = scale.y(), srt.sz = scale.z();
+		motion.keyframes.push_back(srt);
+	}
+	return motion;
+}
+
+std::pair<OptixTraversableHandle, int>
+OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node, std::optional<MotionKeyframes> motion) {
 	auto buildInput = std::make_shared<InstanceBuildInput>();
 	SceneGraphWalker child(node->getFirstChild(), node);
 	/* The SBT offset at a GAS is the sum of the offsets of all ancestor instances in graph. */
@@ -379,15 +449,18 @@ std::pair<OptixTraversableHandle, int> OptixSceneMultiLevel::buildIASForNode(Sce
 			buildInput->instances.emplace_back();
 			buildInput->nodes.push_back(child.get());
 			OptixInstance &instanceData = buildInput->instances.back();
-			Affine3f transform			   = child->getLocalTransform();
-			auto [traversable, records]	   = buildIASForNode(child.get());
-			Log(Info, "The child node \"%s\" of node \"%s\" has %d HG records, "
-				"SBT HG offset start from %d.",
-				child->getName().c_str(), node->getName().c_str(), records, sbtOffset);
+			auto childMotion			= getMotionKeyframes(child.get());
+			Affine3f transform =
+				childMotion.has_value() ? Affine3f::Identity() : child->getLocalTransform();
+			auto [traversable, records] = buildIASForNode(child.get(), childMotion);
 			instanceData.sbtOffset		   = sbtOffset;
 			instanceData.visibilityMask	   = 255;
 			instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 			instanceData.traversableHandle = traversable;
+			Log(Info,
+				"The child node \"%s\" of node \"%s\" has %d HG records, "
+				"SBT HG offset start from %d.",
+				child->getName().c_str(), node->getName().c_str(), records, sbtOffset);
 			sbtOffset += records;
 			cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
 					   cudaMemcpyHostToDevice);
@@ -421,6 +494,30 @@ std::pair<OptixTraversableHandle, int> OptixSceneMultiLevel::buildIASForNode(Sce
 	
 	buildInput->traversable = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
 												{iasBuildInput}, buildInput->accelBuffer, false);
+
+	if (motion.has_value()) { 
+		/* wraps the current instance node with a motion transform node. */
+		unsigned int numKeys = motion->keyframes.size();
+		CHECK_LOG(numKeys >= 2, "Motion blur requires at least 2 keyframes, "
+				  "but only %d keyframes are provided.", numKeys);
+		OptixSRTMotionTransform transform = {};
+		transform.child = buildInput->traversable;
+		transform.motionOptions.numKeys	  = motion->keyframes.size();
+		transform.motionOptions.timeBegin = motion->startTime;
+		transform.motionOptions.timeEnd	  = motion->endTime;
+		/* SRT data in OptixSRTMotionTransform have a variable length. */
+		buildInput->transformBuffer.resize(sizeof(OptixSRTMotionTransform) +
+									sizeof(OptixSRTData) * (numKeys - 2));
+		OptixSRTMotionTransform *transform_d =
+			reinterpret_cast<OptixSRTMotionTransform *>(buildInput->transformBuffer.data());
+		cudaMemcpy((void *) transform_d, &transform, sizeof(transform), cudaMemcpyHostToDevice);
+		cudaMemcpy((void *) transform_d->srtData, motion->keyframes.data(),
+				   sizeof(OptixSRTData) * numKeys, cudaMemcpyHostToDevice);
+		optixConvertPointerToTraversableHandle(gpContext->optixContext, (CUdeviceptr) transform_d,
+											   OPTIX_TRAVERSABLE_TYPE_SRT_MOTION_TRANSFORM,
+											   &buildInput->transformTraversable);
+		return {buildInput->transformTraversable, sbtOffset};
+	}
 	return {buildInput->traversable, sbtOffset};
 }
 
@@ -442,8 +539,9 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	rootBuildInput->instances.resize(1);
 	auto &instanceData			   = rootBuildInput->instances[0];
 	/* use motion transform instead of static instancing transform. */
-	Affine3f transform			   = root->getLocalTransform();
-	auto [traversable, records]	   = buildIASForNode(root.get());
+	auto rootMotion				   = getMotionKeyframes(root.get());
+	Affine3f transform = rootMotion.has_value() ? Affine3f::Identity() : root->getLocalTransform();
+	auto [traversable, records]	   = buildIASForNode(root.get(), {});
 	instanceData.sbtOffset		   = 0;
 	instanceData.visibilityMask	   = 255;
 	instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
