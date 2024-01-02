@@ -15,8 +15,8 @@ struct CameraData {
 	float focalDistance{10};			  // distance from lens to focal point, in scene units (m)
 	float lensRadius{0};				  // aperture radius, in mm
 	float aspectRatio{1.777777f};		  // width divides height
-	float shutterOpen{0};
-	float shutterClose{1};
+	float shutterOpen{0};				  // shutter open time
+	float shutterTime{0};				  // shutter time (default disable motion blur)
 
 	Vector3f pos{0, 0, 0};
 	Vector3f target{0, 0, -1};
@@ -46,12 +46,33 @@ struct CameraData {
 			ray.dir	   = normalize(ndc[0] * u + ndc[1] * v + w);
 		}
 		ray.medium = medium;
-		ray.time   = lerp(shutterOpen, shutterClose, sampler.get1D());
+		ray.time   = shutterOpen + shutterTime * sampler.get1D();
 		return ray;
 	}
 
-	KRR_CLASS_DEFINE(CameraData, pos, target, up, focalLength, focalDistance, lensRadius,
-					 aspectRatio);
+	friend void to_json(json& j, const CameraData& camera) {
+		j = json{{"pos", camera.pos},
+				 {"target", camera.target},
+				 {"up", camera.up},
+				 {"focalLength", camera.focalLength},
+				 {"focalDistance", camera.focalDistance},
+				 {"lensRadius", camera.lensRadius},
+				 {"aspectRatio", camera.aspectRatio},
+				 {"shutterOpen", camera.shutterOpen},
+				 {"shutterTime", camera.shutterTime}};
+	}
+
+	friend void from_json(const json& j, CameraData& camera) {
+		camera.pos = j.value("pos", Vector3f{0, 0, 0});
+		camera.target = j.value("target", Vector3f{0, 0, -1});
+		camera.up = j.value("up", Vector3f{0, 1, 0});
+		camera.focalLength = j.value("focalLength", 21.f);
+		camera.focalDistance = j.value("focalDistance", 10.f);
+		camera.lensRadius = j.value("lensRadius", 0.f);
+		camera.aspectRatio = j.value("aspectRatio", 1.777777f);
+		camera.shutterOpen = j.value("shutterOpen", 0.f);
+		camera.shutterTime = j.value("shutterTime", 0.f);
+	}
 };
 } // namespace rt
 
@@ -73,7 +94,7 @@ public:
 	float getFocalDistance() const { return mData.focalDistance; }
 	float getFocalLength() const { return mData.focalLength; }
 	float getShutterOpen() const { return mData.shutterOpen; }
-	float getShutterClose() const { return mData.shutterClose; }
+	float getShutterTime() const { return mData.shutterTime; }
 	const rt::CameraData& getCameraData() const { return mData; }
 
 	void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; }
@@ -84,7 +105,7 @@ public:
 	void setTarget(Vector3f& target) { mData.target = target; }
 	void setUp(Vector3f& up) { mData.up = up; }
 	void setShutterOpen(float shutterOpen) { mData.shutterOpen = shutterOpen; }
-	void setShutterClose(float shutterClose) { mData.shutterClose = shutterClose; }
+	void setShutterTime(float shutterTime) { mData.shutterTime = shutterTime; }
 	void setScene(std::weak_ptr<Scene> scene) { mScene = scene; }
 
 	Matrix4f getViewMatrix() const;

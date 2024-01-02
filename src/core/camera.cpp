@@ -30,6 +30,8 @@ void Camera::renderUI() {
 	ui::DragFloat("Lens radius", &mData.lensRadius, 0.001f, 0.f, 100.f);
 	ui::DragFloat("Focal length", &mData.focalLength, 0.01f, 1.f, 1000.f);
 	ui::DragFloat("Focal distance", &mData.focalDistance, 0.01f, 1.f, 100.f);
+	ui::DragFloat("Shutter open", &mData.shutterOpen, 0.01f, 0.f, 10.f);
+	ui::DragFloat("Shutter time", &mData.shutterTime, 0.01f, 0.f, 10.f);
 }
 
 Matrix4f Camera::getViewMatrix() const {
