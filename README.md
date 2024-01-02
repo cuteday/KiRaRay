@@ -53,7 +53,7 @@ This project uses cmake to build, make sure CUDA is installed and added to PATH.
 
 #### Running
 
-Specify the json configuration file as command line argument to start the renderer, as the example below. Check the [example configurations](common/configs) for some test scenes, including volumetric rendering and animated scenes.
+Specify the json configuration file as command line argument to start the renderer, as the example below. Check the [example configurations](common/configs) for some test scenes, showcasing core features like volumetric rendering, animated scenes and motion blur.
 
 ~~~bash
 build/src/kiraray.exe common/configs/example_cbox.json

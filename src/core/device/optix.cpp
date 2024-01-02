@@ -303,6 +303,11 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 											 stack size for */
 										  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024, 
 		params.maxTraversableDepth * 2 /* max traversable graph depth */));
+	/* [TODO] current setup on maxTraversableDepth is just a temporal workaround, 
+	 * making sure the actual depth (plus motion nodes) would never exceeds 2*graphDepth.
+	 * This is somewhat acceptable since its performace impact seems to be small.
+	 * But hopefully we could find a better solution about the actually depth. 
+	 */
 	Log(Debug, log);
 }
 
