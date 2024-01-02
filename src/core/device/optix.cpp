@@ -302,7 +302,7 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 	OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the
 											 stack size for */
 										  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024, 
-		params.maxTraversableDepth /* max traversable graph depth */));
+		params.maxTraversableDepth * 2 /* max traversable graph depth */));
 	Log(Debug, log);
 }
 
@@ -407,6 +407,9 @@ OptixSceneMultiLevel::getMotionKeyframes(SceneGraphNode *node) {
 		rotateSampler.addKeyframes(sampler.lock()->getKeyframes());
 	for (const auto &sampler : translateSamplers)
 		translateSampler.addKeyframes(sampler.lock()->getKeyframes());
+	scaleSampler.sortKeyframes();
+	rotateSampler.sortKeyframes();
+	translateSampler.sortKeyframes();
 
 	/* reample motion keyframes to regular time steps */
 	OptixSceneMultiLevel::MotionKeyframes motion;
@@ -418,6 +421,7 @@ OptixSceneMultiLevel::getMotionKeyframes(SceneGraphNode *node) {
 	for (int idx = 0; idx < numKeys; idx++) {
 		float time = startTime + idx * timeStep;
 		OptixSRTData srt;
+		memset(&srt, 0, sizeof(OptixSRTData)); /* memset(0) is necessary to initialize the coeffs! */
 		std::optional<Array4f> v;
 		Vector3f scale, translate;
 		Quaternionf rotate;
