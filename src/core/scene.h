@@ -39,6 +39,7 @@ public:
 	Camera::SharedPtr getCamera() { return mCamera; }
 	CameraController::SharedPtr getCameraController() { return mCameraController; }
 	SceneGraph::SharedPtr getSceneGraph() { return mGraph; }
+	unsigned int getMaxGraphDepth() const { return mGraph->evaluateMaxTraversalDepth(); }
 
 	std::vector<Mesh::SharedPtr> &getMeshes() { return mGraph->getMeshes(); }
 	std::vector<Material::SharedPtr> &getMaterials() { return mGraph->getMaterials(); }

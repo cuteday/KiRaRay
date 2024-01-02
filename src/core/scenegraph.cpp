@@ -207,7 +207,8 @@ bool SceneAnimation::apply(float time) const {
 
 void SceneAnimation::addChannel(const SceneAnimationChannel::SharedPtr& channel) {
 	mChannels.push_back(channel);
-	mDuration = max(mDuration, channel->getSampler()->getEndTime());
+	mStartTime = std::min(mStartTime, channel->getSampler()->getStartTime());
+	mEndTime   = std::max(mEndTime, channel->getSampler()->getEndTime());
 }
 
 SceneGraphNode::SharedPtr SceneGraph::setRoot(const SceneGraphNode::SharedPtr &root) {
@@ -517,6 +518,16 @@ void SceneGraph::animate(double currentTime) {
 		float animationTime = std::fmod(currentTime, duration);
 		animation->apply(animationTime);
 	}
+}
+
+unsigned int SceneGraph::evaluateMaxTraversalDepth() const {
+	int depth = 0, maxDepth = 0;
+	SceneGraphWalker walker(mRoot.get());
+	while (walker) {
+		depth += walker.next(true);
+		maxDepth = max(maxDepth, depth);
+	} 
+	return static_cast<unsigned int>(maxDepth);
 }
 
 void SceneLight::setPosition(const Vector3f& position) {

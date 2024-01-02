@@ -345,7 +345,9 @@ public:
 	SceneAnimation() = default;
 
 	const std::vector<SceneAnimationChannel::SharedPtr> &getChannels() const { return mChannels; }
-	float getDuration() const { return mDuration; }
+	float getDuration() const { return std::max(0.f, mEndTime - mStartTime); }
+	float getStartTime() const { return mStartTime; }
+	float getEndTime() const { return mEndTime; }
 	bool isValid() const;
 	bool apply(float time) const;
 	void addChannel(const SceneAnimationChannel::SharedPtr &channel);
@@ -356,7 +358,8 @@ public:
 
 private:
 	std::vector<SceneAnimationChannel::SharedPtr> mChannels;
-	float mDuration = 0.f;
+	float mStartTime = std::numeric_limits<float>::max();
+	float mEndTime	 = std::numeric_limits<float>::min();
 };
 
 class SceneGraph : public std::enable_shared_from_this<SceneGraph> {
@@ -377,6 +380,7 @@ public:
 	std::vector<SceneLight::SharedPtr> &getLights() { return mLights; }
 	std::vector<Volume::SharedPtr> &getMedia() { return mMedia; }
 	UpdateRecord getLastUpdateRecord() const { return mLastUpdateRecord; };
+	unsigned int evaluateMaxTraversalDepth() const;
 	void addMesh(Mesh::SharedPtr mesh);
 	void addMaterial(Material::SharedPtr material);
 

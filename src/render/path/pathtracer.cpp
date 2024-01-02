@@ -15,9 +15,10 @@ void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 		optixBackend = std::make_shared<OptixBackend>();
 		auto params	 = OptixInitializeParameters()
 						  .setPTX(PATHTRACER_PTX)
+						  .addRaygenEntry("Pathtracer")
 						  .addRayType("Radiance", true, true, false)
 						  .addRayType("ShadowRay", true, true, false)
-						  .addRaygenEntry("Pathtracer");
+						  .setMaxTraversableDepth(scene->getMaxGraphDepth());
 		optixBackend->initialize(params);
 	}
 	mScene = scene;

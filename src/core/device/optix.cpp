@@ -298,6 +298,7 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 		optixPipelineCreate(optixContext, &pipelineCompileOptions,
 							&pipelineLinkOptions, allPGs.data(), allPGs.size(),
 							log, &logSize, &optixPipeline), log);
+	
 	OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the
 											 stack size for */
 										  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024, 
@@ -326,14 +327,12 @@ void OptixScene::update() {
 // [TODO] This routine currently do not support rebuild or dynamic update.
 void OptixSceneSingleLevel::buildAccelStructure() {
 	// this is the first time we met...
-	const auto &graph			= scene.lock()->getSceneGraph();
 	const auto &instances		= scene.lock()->getMeshInstances();
 	const auto &meshes			= scene.lock()->getMeshes();
 
 	traversablesGAS.resize(meshes.size());
 	accelBuffersGAS.resize(meshes.size());
 	for (int idx = 0; idx < meshes.size(); idx++) {
-		const auto &mesh	 = meshes[idx];
 		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
 		// build GAS for each mesh
 		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream,
@@ -372,6 +371,7 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 std::pair<OptixTraversableHandle, int> OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node) {
 	auto buildInput = std::make_shared<InstanceBuildInput>();
 	SceneGraphWalker child(node->getFirstChild(), node);
+	/* The SBT offset at a GAS is the sum of the offsets of all ancestor instances in graph. */
 	int sbtOffset = 0;
 	/* Recursively build all its children */
 	while (child) {
@@ -432,7 +432,6 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	traversablesGAS.resize(meshes.size());
 	accelBuffersGAS.resize(meshes.size());
 	for (int idx = 0; idx < meshes.size(); idx++) {
-		const auto &mesh	 = meshes[idx];
 		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
 		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream,
 													meshData, accelBuffersGAS[idx]);
@@ -442,6 +441,7 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	auto rootBuildInput = std::make_shared<InstanceBuildInput>();
 	rootBuildInput->instances.resize(1);
 	auto &instanceData			   = rootBuildInput->instances[0];
+	/* use motion transform instead of static instancing transform. */
 	Affine3f transform			   = root->getLocalTransform();
 	auto [traversable, records]	   = buildIASForNode(root.get());
 	instanceData.sbtOffset		   = 0;
@@ -462,17 +462,25 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 
 OptixSceneMultiLevel::InstanceBuildInput::~InstanceBuildInput() { 
 	accelBuffer.free(); 
+	transformBuffer.free();
 }
 
 OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene,
 											 const OptixSceneParameters &config) : 
 	OptixScene (scene, config) {
+	if (config.enableMotionBlur) 
+		Log(Error, "Single-level scene does not support motion blur!");
 	buildAccelStructure();
 }
 
 OptixSceneMultiLevel::OptixSceneMultiLevel(Scene::SharedPtr scene,
 										   const OptixSceneParameters &config) : 
 	OptixScene (scene, config) {
+	if (config.enableMotionBlur && config.enableAnimation) {
+		Log(Error, "Multi-level scene does not support motion blur with animation!"
+			"Disabling animation.");
+		this->config.enableAnimation = false;
+	}
 	buildAccelStructure();
 }
 
