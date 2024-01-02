@@ -277,7 +277,7 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 	}
 	for (int rayType = 0; rayType < params.rayTypes.size(); rayType++) {
 		string rayTypeName				 = params.rayTypes[rayType];
-		const auto [hasCH, hasAH, hasIS] = params.rayClosestShaders[rayType];
+		const auto& [hasCH, hasAH, hasIS] = params.rayClosestShaders[rayType];
 		// creating MISS PG
 		missPGs.push_back(createMissPG(("__miss__" + rayTypeName).c_str()));
 		// creating CLOSEST PG
@@ -418,8 +418,10 @@ std::pair<OptixTraversableHandle, int> OptixSceneMultiLevel::buildIASForNode(Sce
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = buildInput->instances.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) buildInput->instances.data();
-	return {buildASFromInputs(gpContext->optixContext, gpContext->cudaStream, {iasBuildInput},
-							  buildInput->accelBuffer, false), sbtOffset};
+	
+	buildInput->traversable = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+												{iasBuildInput}, buildInput->accelBuffer, false);
+	return {buildInput->traversable, sbtOffset};
 }
 
 void OptixSceneMultiLevel::buildAccelStructure() {
@@ -456,6 +458,10 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) rootBuildInput->instances.data();
 	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
 									   {iasBuildInput}, rootBuildInput->accelBuffer, false);
+}
+
+OptixSceneMultiLevel::InstanceBuildInput::~InstanceBuildInput() { 
+	accelBuffer.free(); 
 }
 
 OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene,
@@ -536,12 +542,16 @@ void OptixBackend::buildShaderBindingTable() {
 	const auto &referencedMeshes = getOptixScene()->getReferencedMeshes();
 	rt::SceneData sceneData		 = scene->getSceneRT()->getSceneData();
 	for (auto instance : referencedMeshes) {
-		/* Pad up to OPTIX_MAX_RAY_TYPES for correct layout... */
-		for (uint rayType = 0; rayType < OPTIX_MAX_RAY_TYPES; rayType++) {
+		for (uint rayType = 0; rayType < nRayTypes; rayType++) {
 			HitgroupRecord hitgroupRecord  = {};
 			rt::InstanceData *instanceData = &sceneData.instances[instance.lock()->getInstanceId()];
 			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayType], &hitgroupRecord));
 			hitgroupRecord.data = {instanceData};
+			hitgroupRecords.push_back(hitgroupRecord);
+		}
+		for (uint rayType = nRayTypes; rayType < OPTIX_MAX_RAY_TYPES; rayType++) {
+			/* Pad up to OPTIX_MAX_RAY_TYPES for correct layout... */
+			HitgroupRecord hitgroupRecord = {};
 			hitgroupRecords.push_back(hitgroupRecord);
 		}
 	}

@@ -164,6 +164,10 @@ void Scene::initializeSceneRT() {
 void Scene::setConfig(const json& config, bool update) {
 	if (update) mConfig.update(config);
 	else mConfig = config;
+	if (mConfig.contains("options")) {
+		auto options = mConfig["options"];
+		mEnableAnimation = options.value("animated", mEnableAnimation);
+	}
 }
 
 KRR_NAMESPACE_END

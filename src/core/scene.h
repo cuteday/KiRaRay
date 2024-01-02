@@ -52,6 +52,7 @@ public:
 
 	void setCamera(Camera::SharedPtr camera);
 	void setCameraController(OrbitCameraController::SharedPtr cameraController);
+	void setAnimated(bool animated) { mEnableAnimation = animated; }
 
 	json getConfig() const { return mConfig; }
 	void setConfig(const json &config, bool update = true);

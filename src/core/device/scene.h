@@ -30,11 +30,13 @@ public:
 }
 
 struct OptixSceneParameters {
+	bool enableAnimation{false};
 	bool buildMultilevel{false};
 	bool enableMotionBlur{false};
 	float worldStartTime{0}, worldEndTime{1};
 
 	friend void from_json(const json& j, OptixSceneParameters& p) {
+		p.enableAnimation = j.value("animated", false);
 		p.buildMultilevel = j.value("multilevel", false);
 		p.enableMotionBlur = j.value("motionblur", false);
 		p.worldStartTime = j.value("starttime", 0.f);

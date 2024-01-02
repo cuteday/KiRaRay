@@ -8,7 +8,9 @@ KRR_NAMESPACE_BEGIN
 
 extern "C" char PATHTRACER_PTX[];
 
-void MegakernelPathTracer::initialize() {
+void MegakernelPathTracer::initialize() {}
+
+void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 	if (!optixBackend) {
 		optixBackend = std::make_shared<OptixBackend>();
 		auto params	 = OptixInitializeParameters()
@@ -18,10 +20,6 @@ void MegakernelPathTracer::initialize() {
 						  .addRaygenEntry("Pathtracer");
 		optixBackend->initialize(params);
 	}
-}
-
-void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
-	initialize();
 	mScene = scene;
 	optixBackend->setScene(scene);
 }
@@ -33,9 +31,8 @@ void MegakernelPathTracer::renderUI() {
 	ui::InputInt("Max bounces", &launchParams.maxDepth);
 	ui::DragFloat("Radiance clip", &launchParams.clampThreshold, 0.1, 1, 500);
 	ui::Checkbox("Next event estimation", &launchParams.NEE);
-	if (launchParams.NEE) {
+	if (launchParams.NEE) 
 		ui::InputInt("Light sample count", &launchParams.lightSamples);
-	}
 	ui::Text("Debugging");
 	ui::Checkbox("Shader debug output", &launchParams.debugOutput);
 	ui::InputInt2("Debug pixel", (int *) &launchParams.debugPixel);

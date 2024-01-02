@@ -83,10 +83,17 @@ class OptixSceneMultiLevel : public OptixScene {
 public:
 	struct InstanceBuildInput {
 		InstanceBuildInput() = default;
-		~InstanceBuildInput() { accelBuffer.free(); }
+		~InstanceBuildInput();
 
 		CUDABuffer accelBuffer;
 		gpu::vector<OptixInstance> instances;
+		OptixTraversableHandle traversable;
+
+		/* [optional] used if this node has a motion transform, and motion blur is enabled. */
+		CUDABuffer transformBuffer;
+		OptixTraversableHandle transformTraversable;
+
+		/* children instaces that this node references. */
 		std::vector<SceneGraphNode*> nodes;
 	};
 
@@ -111,7 +118,7 @@ private:
 
 struct OptixInitializeParameters {
 	char* ptx;
-	unsigned int maxTraversableDepth{5};
+	unsigned int maxTraversableDepth{6};
 	std::vector<string> raygenEntries;
 	std::vector<string> rayTypes;
 	std::vector<std::tuple<bool, bool, bool>> rayClosestShaders;

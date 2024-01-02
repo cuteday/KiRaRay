@@ -143,6 +143,11 @@ bool SceneImporter::import(const json &j, Scene::SharedPtr scene, SceneGraphNode
 	if (j.contains("model")) {
 		importNode(j.at("model"), scene, node, params);
 	}
+
+	if (j.contains("options")) {
+		auto options = j.at("options");
+		scene->setAnimated(options.value("animated", false));
+	}
 	return true; 
 }
 

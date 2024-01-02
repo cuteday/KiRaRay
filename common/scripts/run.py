@@ -4,7 +4,6 @@ import json
 import argparse
 
 from krr import *
-print(sys.path)
 try:
 	import numpy as np
 except:
