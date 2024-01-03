@@ -204,6 +204,13 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 				roughness) == AI_SUCCESS) {
 			specularParams[1] = roughness;
 		}
+		float transmission;
+		if (pAiMaterial->Get(AI_MATKEY_GLTF_MATERIAL_TRANSMISSION_FACTOR, transmission) ==
+			AI_SUCCESS) {
+			pMaterial->mMaterialParams.specularTransmission = transmission;
+			if (transmission > 1 - M_EPSILON)
+				pMaterial->mBsdfType = MaterialType::Dielectric; 
+		}
 
 		pMaterial->mMaterialParams.specular = specularParams;
 	}

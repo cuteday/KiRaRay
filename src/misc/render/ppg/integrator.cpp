@@ -38,7 +38,8 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 						  .addRaygenEntry("ShadowTr")
 						  .addRayType("Closest", true, true, false)
 						  .addRayType("Shadow", false, true, false)
-						  .addRayType("ShadowTr", true, true, false);
+						  .addRayType("ShadowTr", true, true, false)
+						  .setMaxTraversableDepth(scene->getMaxGraphDepth());
 		backend->initialize(params);
 	}
 	backend->setScene(scene);
