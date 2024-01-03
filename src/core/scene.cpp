@@ -155,12 +155,19 @@ void Scene::initializeSceneRT() {
 		return;
 	}
 	mSceneRT = std::make_shared<RTScene>(shared_from_this()); 
-	mSceneRT->uploadSceneData();
+	OptixSceneParameters optixSceneParameters{};
+	if (mConfig.contains("options"))
+		optixSceneParameters = mConfig["options"].get<OptixSceneParameters>();
+	mSceneRT->uploadSceneData(optixSceneParameters);
 }
 
 void Scene::setConfig(const json& config, bool update) {
 	if (update) mConfig.update(config);
 	else mConfig = config;
+	if (mConfig.contains("options")) {
+		auto options = mConfig["options"];
+		mEnableAnimation = options.value("animated", mEnableAnimation);
+	}
 }
 
 KRR_NAMESPACE_END

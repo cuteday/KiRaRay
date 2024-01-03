@@ -5,11 +5,15 @@
 #include <optix_stubs.h>
 #include <sstream>
 #include <stdexcept>
+#include <optional>
 
 #include "raytracing.h"
 #include "scene.h"
 
 KRR_NAMESPACE_BEGIN
+
+class SceneGraphNode;
+class MeshInstance;
 
 /*! SBT record for a raygen program */
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord {
@@ -30,7 +34,9 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
 class OptixScene {
 public:
 	using SharedPtr = std::shared_ptr<OptixScene>;
-	OptixScene(std::shared_ptr<Scene> _scene);
+	OptixScene(std::shared_ptr<Scene> scene, const OptixSceneParameters &config = {}) : 
+		scene(scene), config(config) {}
+	virtual ~OptixScene() = default;
 
 	static OptixTraversableHandle buildASFromInputs(OptixDeviceContext optixContext, 
 		CUstream cudaStream, const std::vector<OptixBuildInput> &buildInputs, 
@@ -40,31 +46,95 @@ public:
 													   const rt::MeshData &mesh,
 													   CUDABuffer &accelBuffer);
 
-	std::shared_ptr<Scene> getScene() const;
-	OptixTraversableHandle getRootTraversable() const { return traversableIAS; }
 	rt::SceneData getSceneData() const;
-	
-	void update();
+	virtual OptixTraversableHandle getRootTraversable() const = 0;
+	virtual std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const = 0;
+	virtual void update();
 
 protected:
-	void buildAccelStructure();
-	void updateAccelStructure();
+	virtual void buildAccelStructure() = 0;				// build single-level accel structure
+	virtual void updateAccelStructure() = 0;			// update single-level accel structure
 
 	std::weak_ptr<Scene> scene;
-	gpu::vector<OptixInstance> instancesIAS;
+	OptixSceneParameters config;
+};
 
-	std::vector<CUDABuffer> accelBuffersGAS;
+class OptixSceneSingleLevel : public OptixScene {
+public:
+	using SharedPtr = std::shared_ptr<OptixSceneSingleLevel>;
+	OptixSceneSingleLevel(std::shared_ptr<Scene> scene, const OptixSceneParameters &config = {});
+
+	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
+	std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const override { return referencedMeshes; }
+
+protected:
+	void buildAccelStructure() override; // build single-level accel structure
+	void updateAccelStructure() override; // update single-level accel structure
+private:
+	std::vector<std::weak_ptr<MeshInstance>> referencedMeshes;
+	gpu::vector<OptixInstance> instancesIAS;
 	CUDABuffer accelBufferIAS{};
 
 	std::vector<OptixTraversableHandle> traversablesGAS;
+	std::vector<CUDABuffer> accelBuffersGAS;
+	OptixTraversableHandle traversableIAS;
+};
+
+class OptixSceneMultiLevel : public OptixScene {
+public:
+	struct MotionKeyframes {
+		std::vector<OptixSRTData> keyframes;
+		float startTime{0}, endTime{0};
+	};
+
+	struct InstanceBuildInput {
+		InstanceBuildInput() = default;
+		~InstanceBuildInput();
+
+		CUDABuffer accelBuffer;
+		gpu::vector<OptixInstance> instances;
+		OptixTraversableHandle traversable;
+
+		/* [optional] used if this node has a motion transform, and motion blur is enabled. */
+		CUDABuffer transformBuffer;
+		OptixTraversableHandle transformTraversable;
+
+		/* children instaces that this node references. */
+		std::vector<SceneGraphNode*> nodes;
+	};
+
+	using SharedPtr = std::shared_ptr<OptixSceneMultiLevel>;
+	OptixSceneMultiLevel(std::shared_ptr<Scene> scene, const OptixSceneParameters &config = {});
+	
+
+	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
+	std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const override { return referencedMeshes; }
+
+protected:
+	void buildAccelStructure() override;  // build single-level accel structure
+	void updateAccelStructure() override; // update single-level accel structure
+private:
+	std::optional<MotionKeyframes> getMotionKeyframes(SceneGraphNode* node);
+	std::pair<OptixTraversableHandle, int> buildIASForNode(SceneGraphNode* node, std::optional<MotionKeyframes> motion);
+	std::vector<std::weak_ptr<MeshInstance>> referencedMeshes;
+	std::vector<std::shared_ptr<InstanceBuildInput>> instanceBuildInputs;
+	std::vector<CUDABuffer> accelBuffersGAS;
+	std::vector<OptixTraversableHandle> traversablesGAS;
+
 	OptixTraversableHandle traversableIAS;
 };
 
 struct OptixInitializeParameters {
 	char* ptx;
+	unsigned int maxTraversableDepth{6};
 	std::vector<string> raygenEntries;
 	std::vector<string> rayTypes;
 	std::vector<std::tuple<bool, bool, bool>> rayClosestShaders;
+
+	OptixInitializeParameters& setMaxTraversableDepth(unsigned int depth) {
+		maxTraversableDepth = depth;
+		return *this;
+	}
 
 	OptixInitializeParameters& setPTX(char* ptx) {
 		this->ptx = ptx;
@@ -106,6 +176,7 @@ public:
 	}
 
 	std::shared_ptr<Scene> getScene() const { return scene; }
+	std::shared_ptr<OptixScene> getOptixScene() const;
 	rt::SceneData getSceneData() const;
 	std::vector<string> getRayTypes() const { return optixParameters.rayTypes; }
 	std::vector<string> getRaygenEntries() const { return optixParameters.raygenEntries; }

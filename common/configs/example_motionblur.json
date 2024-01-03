@@ -35,6 +35,13 @@
 		}
 	],
     "scene": {
+		"options": {
+			"animated": false,
+			"multilevel": true,
+			"motionblur": true,
+			"starttime": 0,
+			"endtime": 1
+		},
 		"model": [
             {
                 "model": "common/assets/scenes/anime-cube/AnimatedCube.gltf",
@@ -57,6 +64,8 @@
                 "focalDistance": 10.0,
                 "focalLength": 21.0,
                 "lensRadius": 0.0,
+				"shutterOpen": 0.5,
+				"shutterTime": 0.05,
                 "pos": [
                     -3.2098886966705322,
                     2.5321357250213623,

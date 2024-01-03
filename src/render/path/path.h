@@ -9,8 +9,6 @@
 
 KRR_NAMESPACE_BEGIN
 
-
-
 enum {
 	RADIANCE_RAY_TYPE			  = 0,
 	SHADOW_RAY_TYPE				  = 1,

@@ -43,6 +43,7 @@ Array4f interpolate(const InterpolationMode mode, const Keyframe &a, const Keyfr
 	}
 }
 
+/* The behavior of time out of the duration range: the time is clamped to the boundaries. */
 std::optional<Array4f> Sampler::evaluate(float time, bool extrapolateLastValues) const {
 	const size_t count = mKeyframes.size();
 
@@ -80,6 +81,18 @@ std::optional<Array4f> Sampler::evaluate(float time, bool extrapolateLastValues)
 }
 
 void Sampler::addKeyframe(const Keyframe &keyframe) { mKeyframes.push_back(keyframe); }
+
+void Sampler::addKeyframes(const std::vector<Keyframe> &keyframes) {
+	mKeyframes.insert(mKeyframes.end(), keyframes.begin(), keyframes.end());
+}
+
+void Sampler::sortKeyframes() {
+	std::sort(mKeyframes.begin(), mKeyframes.end(), [](const Keyframe &a, const Keyframe &b) {
+		return a.time < b.time;
+	});
+}
+
+void Sampler::clearKeyframes() { mKeyframes.clear(); }
 
 float Sampler::getStartTime() const {
 	if (!mKeyframes.empty()) return mKeyframes.front().time;

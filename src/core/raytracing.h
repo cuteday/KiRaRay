@@ -73,8 +73,9 @@ public:
 	Transformation() = default;
 
 	KRR_CALLABLE Transformation(const Matrix4f& m) : m(m), mInv(m.inverse()) {}
-	KRR_CALLABLE Transformation(const Affine3f &m) : m(m), mInv(m.matrix().inverse()) {}
+	KRR_CALLABLE Transformation(const Affine3f& m) : m(m), mInv(m.matrix().inverse()) {}
 	KRR_CALLABLE Transformation(const Matrix4f& m, const Matrix4f& mInv) : m(m), mInv(mInv) {}
+	KRR_CALLABLE Transformation(const Affine3f& m, const Affine3f& mInv) : m(m), mInv(mInv) {}
 
 	KRR_CALLABLE Matrix4f matrix() const { return m.matrix(); }
 	KRR_CALLABLE Affine3f transform() const { return m; } 

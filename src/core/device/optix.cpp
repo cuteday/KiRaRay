@@ -7,6 +7,7 @@
 #include "util/check.h"
 #include "render/profiler/profiler.h"
 
+/* [TODO] Check OptiX exception switch for better debugging. */
 KRR_NAMESPACE_BEGIN
 
 rt::SceneData OptixScene::getSceneData() const { return scene.lock()->getSceneRT()->getSceneData(); }
@@ -19,10 +20,8 @@ OptixTraversableHandle OptixBackend::getRootTraversable() const {
 
 OptixPipelineCompileOptions OptixBackend::getPipelineCompileOptions() {
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
-	// [TODO] check this: currently we want single-level instancing only.
-	pipelineCompileOptions.traversableGraphFlags =
-		OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_LEVEL_INSTANCING;
-	pipelineCompileOptions.usesMotionBlur			   = false;
+	pipelineCompileOptions.traversableGraphFlags	   = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
+	pipelineCompileOptions.usesMotionBlur			   = true;
 	pipelineCompileOptions.numPayloadValues			   = 3; /* This restricts maximum number of payload to 3. */
 	pipelineCompileOptions.numAttributeValues		   = 0;
 	pipelineCompileOptions.exceptionFlags =
@@ -278,7 +277,7 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 	}
 	for (int rayType = 0; rayType < params.rayTypes.size(); rayType++) {
 		string rayTypeName				 = params.rayTypes[rayType];
-		const auto [hasCH, hasAH, hasIS] = params.rayClosestShaders[rayType];
+		const auto& [hasCH, hasAH, hasIS] = params.rayClosestShaders[rayType];
 		// creating MISS PG
 		missPGs.push_back(createMissPG(("__miss__" + rayTypeName).c_str()));
 		// creating CLOSEST PG
@@ -299,66 +298,24 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 		optixPipelineCreate(optixContext, &pipelineCompileOptions,
 							&pipelineLinkOptions, allPGs.data(), allPGs.size(),
 							log, &logSize, &optixPipeline), log);
+	
 	OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the
 											 stack size for */
 										  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024, 
-		2 /* max traversable graph depth */));
+		params.maxTraversableDepth * 2 /* max traversable graph depth */));
+	/* [TODO] current setup on maxTraversableDepth is just a temporal workaround, 
+	 * making sure the actual depth (plus motion nodes) would never exceeds 2*graphDepth.
+	 * This is somewhat acceptable since its performace impact seems to be small.
+	 * But hopefully we could find a better solution about the actually depth. 
+	 */
 	Log(Debug, log);
 }
 
 void OptixBackend::setScene(Scene::SharedPtr _scene){
+	/* Should be called after initialization... */
 	scene = _scene;
 	scene->initializeSceneRT();		// upload bindless scene data to device buffers.
 	buildShaderBindingTable();		// SBT[Instances [RayTypes ...] ...]
-}
-
-// [TODO] This routine currently do not support rebuild or dynamic update,
-// check back later.
-void OptixScene::buildAccelStructure() {
-	// this is the first time we met...
-	const auto &graph			= scene.lock()->getSceneGraph();
-	const auto &instances		= scene.lock()->getMeshInstances();
-	const auto &meshes			= scene.lock()->getMeshes();
-	const auto &sceneDataDevice = getSceneData();
-
-	// build GAS for each mesh
-	traversablesGAS.resize(meshes.size());
-	accelBuffersGAS.resize(meshes.size());
-	for (int idx = 0; idx < meshes.size(); idx++) {
-		const auto &mesh = meshes[idx];
-		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
-		// build GAS for each mesh
-		traversablesGAS[idx] =
-			buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream, meshData, accelBuffersGAS[idx]);
-	}
-
-	// fill optix instance arrays
-	instancesIAS.resize(instances.size());
-	for (int idx = 0; idx < instances.size(); idx++) {
-		const auto &instance		   = instances[idx];
-		OptixInstance &instanceData	   = instancesIAS[idx];
-		Affine3f transform			   = instance->getNode()->getGlobalTransform();
-		instanceData.instanceId		   = idx;
-		instanceData.sbtOffset		   = idx * OptixBackend::OPTIX_MAX_RAY_TYPES;
-		instanceData.visibilityMask	   = 255;
-		instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
-		instanceData.traversableHandle = traversablesGAS[instance->getMesh()->getMeshId()];
-		// [TODO] Check WHY we should use cudaMemcpy here (instead of memcpy on CPU)? 
-		// [TODO] invoke 1 cudaMemcpy here.
-		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
-				   cudaMemcpyHostToDevice);
-	}
-
-	// build IAS
-	OptixBuildInput iasBuildInput			 = {};
-	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
-	iasBuildInput.instanceArray.numInstances = instances.size();
-	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
-	
-	Log(Info, "Building root IAS: %zd instances", instances.size());
-	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
-									   {iasBuildInput}, accelBufferIAS, false);
-	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
 }
 
 // [TODO] Currently supports updating subgraph transforms only.
@@ -372,41 +329,317 @@ void OptixScene::update() {
 	}
 }
 
-OptixScene::OptixScene(Scene::SharedPtr _scene) {
-	scene = _scene;
+// [TODO] This routine currently do not support rebuild or dynamic update.
+void OptixSceneSingleLevel::buildAccelStructure() {
+	// this is the first time we met...
+	const auto &instances		= scene.lock()->getMeshInstances();
+	const auto &meshes			= scene.lock()->getMeshes();
+
+	traversablesGAS.resize(meshes.size());
+	accelBuffersGAS.resize(meshes.size());
+	for (int idx = 0; idx < meshes.size(); idx++) {
+		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
+		// build GAS for each mesh
+		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream,
+													meshData, accelBuffersGAS[idx]);
+	}
+
+	// fill optix instance arrays
+	instancesIAS.resize(instances.size());
+	for (int idx = 0; idx < instances.size(); idx++) {
+		const auto &instance		   = instances[idx];
+		OptixInstance &instanceData	   = instancesIAS[idx];
+		Affine3f transform			   = instance->getNode()->getGlobalTransform();
+		instanceData.sbtOffset		   = idx * OptixBackend::OPTIX_MAX_RAY_TYPES;
+		instanceData.visibilityMask	   = 255;
+		instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
+		instanceData.traversableHandle = traversablesGAS[instance->getMesh()->getMeshId()];
+		// [TODO] Check WHY we should use cudaMemcpy here (instead of memcpy on CPU)? 
+		// [TODO] invoke 1 cudaMemcpy here.
+		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+				   cudaMemcpyHostToDevice);
+		referencedMeshes.push_back(instance);
+	}
+
+	// build IAS
+	OptixBuildInput iasBuildInput			 = {};
+	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+	iasBuildInput.instanceArray.numInstances = instancesIAS.size();
+	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
+	
+	Log(Info, "Building root IAS: %zd instances", instances.size());
+	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+									   {iasBuildInput}, accelBufferIAS, false);
+	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
+}
+
+std::optional<OptixSceneMultiLevel::MotionKeyframes>
+OptixSceneMultiLevel::getMotionKeyframes(SceneGraphNode *node) {
+	if (!config.enableMotionBlur) return {};
+	std::vector<std::weak_ptr<anime::Sampler>> scaleSamplers, rotateSamplers, translateSamplers;
+	float startTime = std::numeric_limits<float>::max();
+	float endTime = std::numeric_limits<float>::min();
+	for (const auto animation : scene.lock()->getAnimations()) {
+		for (const auto channel : animation->getChannels()) {
+			if (channel->getTargetNode().get() == node) {
+				if (channel->getAttribute() == anime::AnimationAttribute::Rotation) {
+					rotateSamplers.push_back(channel->getSampler());
+				} else if (channel->getAttribute() == anime::AnimationAttribute::Translation) {
+					translateSamplers.push_back(channel->getSampler());
+				} else if (channel->getAttribute() == anime::AnimationAttribute::Scaling) {
+					scaleSamplers.push_back(channel->getSampler());
+				} else continue;
+				startTime = std::min(startTime, channel->getSampler()->getStartTime());
+				endTime = std::max(endTime, channel->getSampler()->getEndTime());
+			}
+		}
+	}
+	if ((scaleSamplers.empty() && rotateSamplers.empty() && translateSamplers.empty()) ||
+		startTime >= endTime) return {};
+	if (scaleSamplers.size() > 1 || rotateSamplers.size() > 1 || translateSamplers.size() > 1)
+		Log(Warning, "One of the scale/rotate/traslate samplers has more than 1 channel, "
+			"(%zd, %zd, %zd respectively).", scaleSamplers.size(), rotateSamplers.size(), translateSamplers.size());
+	
+	anime::Sampler scaleSampler, rotateSampler, translateSampler;
+	scaleSampler.setInterpolationMode(anime::InterpolationMode::Linear);
+	rotateSampler.setInterpolationMode(anime::InterpolationMode::Slerp);
+	translateSampler.setInterpolationMode(anime::InterpolationMode::Linear);
+
+	/* merge potentially multiple sample channels to one (per attribute). */
+	for (const auto &sampler : scaleSamplers) 
+		scaleSampler.addKeyframes(sampler.lock()->getKeyframes());
+	for (const auto &sampler : rotateSamplers)
+		rotateSampler.addKeyframes(sampler.lock()->getKeyframes());
+	for (const auto &sampler : translateSamplers)
+		translateSampler.addKeyframes(sampler.lock()->getKeyframes());
+	scaleSampler.sortKeyframes();
+	rotateSampler.sortKeyframes();
+	translateSampler.sortKeyframes();
+
+	/* reample motion keyframes to regular time steps */
+	OptixSceneMultiLevel::MotionKeyframes motion;
+	motion.startTime = startTime, motion.endTime = endTime;
+	unsigned int numKeys =
+		std::max({scaleSampler.getKeyframeCount(), rotateSampler.getKeyframeCount(),
+				  translateSampler.getKeyframeCount()});
+	float timeStep = (endTime - startTime) / (numKeys - 1);
+	for (int idx = 0; idx < numKeys; idx++) {
+		float time = startTime + idx * timeStep;
+		OptixSRTData srt;
+		memset(&srt, 0, sizeof(OptixSRTData)); /* memset(0) is necessary to initialize the coeffs! */
+		std::optional<Array4f> v;
+		Vector3f scale, translate;
+		Quaternionf rotate;
+		/* if one attribute has no keyframes, it will return default values. */
+		v		  = scaleSampler.evaluate(time, true);
+		scale	  = v.has_value() ? Vector3f(v->x(), v->y(), v->z()) : node->getScaling();
+		v		  = translateSampler.evaluate(time, true);
+		translate = v.has_value() ? Vector3f(v->x(), v->y(), v->z()) : node->getTranslation();
+		v		  = rotateSampler.evaluate(time, true);
+		rotate	  = v.has_value() ? Quaternionf(v->w(), v->x(), v->y(), v->z()) : node->getRotation();
+		/* cast data to optix srt datatype. */
+		srt.qw = rotate.w(), srt.qx = rotate.x(), srt.qy = rotate.y(), srt.qz = rotate.z();
+		srt.tx = translate.x(), srt.ty = translate.y(), srt.tz = translate.z();
+		srt.sx = scale.x(), srt.sy = scale.y(), srt.sz = scale.z();
+		motion.keyframes.push_back(srt);
+	}
+	return motion;
+}
+
+std::pair<OptixTraversableHandle, int>
+OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node, std::optional<MotionKeyframes> motion) {
+	auto buildInput = std::make_shared<InstanceBuildInput>();
+	SceneGraphWalker child(node->getFirstChild(), node);
+	/* The SBT offset at a GAS is the sum of the offsets of all ancestor instances in graph. */
+	int sbtOffset = 0;
+	/* Recursively build all its children */
+	while (child) {
+		if (int(child->getContentFlags() & SceneGraphLeaf::ContentFlags::Mesh)) {
+			buildInput->instances.emplace_back();
+			buildInput->nodes.push_back(child.get());
+			OptixInstance &instanceData = buildInput->instances.back();
+			auto childMotion			= getMotionKeyframes(child.get());
+			Affine3f transform =
+				childMotion.has_value() ? Affine3f::Identity() : child->getLocalTransform();
+			auto [traversable, records] = buildIASForNode(child.get(), childMotion);
+			instanceData.sbtOffset		   = sbtOffset;
+			instanceData.visibilityMask	   = 255;
+			instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
+			instanceData.traversableHandle = traversable;
+			Log(Info,
+				"The child node \"%s\" of node \"%s\" has %d HG records, "
+				"SBT HG offset start from %d.",
+				child->getName().c_str(), node->getName().c_str(), records, sbtOffset);
+			sbtOffset += records;
+			cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+					   cudaMemcpyHostToDevice);
+		}
+		child.next(false);	// next sibling within this subgraph
+	}
+	/* Finally, add the instanced mesh (with 1 HG record, if eligible) to this instance input. */
+	if (auto meshInstance = std::dynamic_pointer_cast<MeshInstance>(node->getLeaf())) {
+		buildInput->instances.emplace_back();
+		OptixInstance &instanceData = buildInput->instances.back();
+		Affine3f transform			= Affine3f::Identity();
+		instanceData.sbtOffset		= sbtOffset;
+		instanceData.visibilityMask = 255;
+		instanceData.flags			= OPTIX_INSTANCE_FLAG_NONE;
+		instanceData.traversableHandle = traversablesGAS[meshInstance->getMesh()->getMeshId()];
+		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+							   cudaMemcpyHostToDevice);
+		Log(Info, "The node \"%s\" has a mesh instance %s (#%d)", 
+			node->getName().c_str(), meshInstance->getName().c_str(), referencedMeshes.size());
+		referencedMeshes.push_back(meshInstance);
+		sbtOffset += OptixBackend::OPTIX_MAX_RAY_TYPES;
+	}
+	instanceBuildInputs.push_back(buildInput);
+	Log(Info, "Building IAS for node \"%s\": %zd instances", 
+		node->getName().c_str(), buildInput->instances.size());
+	if (buildInput->instances.size() == 0) Log(Error, "Empty instance build input!");
+	OptixBuildInput iasBuildInput			 = {};
+	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+	iasBuildInput.instanceArray.numInstances = buildInput->instances.size();
+	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) buildInput->instances.data();
+	
+	buildInput->traversable = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+												{iasBuildInput}, buildInput->accelBuffer, false);
+
+	if (motion.has_value()) { 
+		/* wraps the current instance node with a motion transform node. */
+		unsigned int numKeys = motion->keyframes.size();
+		CHECK_LOG(numKeys >= 2, "Motion blur requires at least 2 keyframes, "
+				  "but only %d keyframes are provided.", numKeys);
+		OptixSRTMotionTransform transform = {};
+		transform.child = buildInput->traversable;
+		transform.motionOptions.numKeys	  = motion->keyframes.size();
+		transform.motionOptions.timeBegin = motion->startTime;
+		transform.motionOptions.timeEnd	  = motion->endTime;
+		/* SRT data in OptixSRTMotionTransform have a variable length. */
+		buildInput->transformBuffer.resize(sizeof(OptixSRTMotionTransform) +
+									sizeof(OptixSRTData) * (numKeys - 2));
+		OptixSRTMotionTransform *transform_d =
+			reinterpret_cast<OptixSRTMotionTransform *>(buildInput->transformBuffer.data());
+		cudaMemcpy((void *) transform_d, &transform, sizeof(transform), cudaMemcpyHostToDevice);
+		cudaMemcpy((void *) transform_d->srtData, motion->keyframes.data(),
+				   sizeof(OptixSRTData) * numKeys, cudaMemcpyHostToDevice);
+		optixConvertPointerToTraversableHandle(gpContext->optixContext, (CUdeviceptr) transform_d,
+											   OPTIX_TRAVERSABLE_TYPE_SRT_MOTION_TRANSFORM,
+											   &buildInput->transformTraversable);
+		return {buildInput->transformTraversable, sbtOffset};
+	}
+	return {buildInput->traversable, sbtOffset};
+}
+
+void OptixSceneMultiLevel::buildAccelStructure() {
+	// this is (not) the first time we met...?
+	const auto &graph	  = scene.lock()->getSceneGraph();
+	const auto &meshes	  = scene.lock()->getMeshes();
+
+	traversablesGAS.resize(meshes.size());
+	accelBuffersGAS.resize(meshes.size());
+	for (int idx = 0; idx < meshes.size(); idx++) {
+		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
+		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream,
+													meshData, accelBuffersGAS[idx]);
+	}
+
+	auto root			= graph->getRoot();
+	auto rootBuildInput = std::make_shared<InstanceBuildInput>();
+	rootBuildInput->instances.resize(1);
+	auto &instanceData			   = rootBuildInput->instances[0];
+	/* use motion transform instead of static instancing transform. */
+	auto rootMotion				   = getMotionKeyframes(root.get());
+	Affine3f transform = rootMotion.has_value() ? Affine3f::Identity() : root->getLocalTransform();
+	auto [traversable, records]	   = buildIASForNode(root.get(), {});
+	instanceData.sbtOffset		   = 0;
+	instanceData.visibilityMask	   = 255;
+	instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
+	instanceData.traversableHandle = traversable;
+	cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+			   cudaMemcpyHostToDevice);
+	instanceBuildInputs.push_back(rootBuildInput);
+
+	OptixBuildInput iasBuildInput			 = {};
+	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+	iasBuildInput.instanceArray.numInstances = 1;  /* the one and only root desu */
+	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) rootBuildInput->instances.data();
+	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+									   {iasBuildInput}, rootBuildInput->accelBuffer, false);
+}
+
+OptixSceneMultiLevel::InstanceBuildInput::~InstanceBuildInput() { 
+	accelBuffer.free(); 
+	transformBuffer.free();
+}
+
+OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene,
+											 const OptixSceneParameters &config) : 
+	OptixScene (scene, config) {
+	if (config.enableMotionBlur) 
+		Log(Error, "Single-level scene does not support motion blur!");
 	buildAccelStructure();
 }
 
-void OptixScene::updateAccelStructure() {
-	PROFILE("Update AS");
-	const auto &instances = scene.lock()->getMeshInstances();
+OptixSceneMultiLevel::OptixSceneMultiLevel(Scene::SharedPtr scene,
+										   const OptixSceneParameters &config) : 
+	OptixScene (scene, config) {
+	if (config.enableMotionBlur && config.enableAnimation) {
+		Log(Error, "Multi-level scene does not support motion blur with animation!"
+			"Disabling animation.");
+		this->config.enableAnimation = false;
+	}
+	buildAccelStructure();
+}
+
+void OptixSceneSingleLevel::updateAccelStructure() {
+	PROFILE("Update Accel Structure");
 	// Currently only supports updating subgraph transformations.
-	for (int idx = 0; idx < instances.size(); idx++) {
-		const auto &instance		   = instances[idx];
+	for (int idx = 0; idx < referencedMeshes.size(); idx++) {
+		const auto &instance		   = referencedMeshes[idx].lock();
 		OptixInstance &instanceData	   = instancesIAS[idx];
 		Affine3f transform			   = instance->getNode()->getGlobalTransform();
 		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
 				   cudaMemcpyHostToDevice);
 	}
 
-	// build IAS
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
-	iasBuildInput.instanceArray.numInstances = instances.size();
+	iasBuildInput.instanceArray.numInstances = instancesIAS.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
-	Log(Debug, "Building root IAS: %zd instances", instances.size());
+	Log(Debug, "Updating single-level root IAS with %zd instances", instancesIAS.size());
 
 	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
-									   {iasBuildInput},
-									   accelBufferIAS, false, true);
-	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
+									   {iasBuildInput}, accelBufferIAS, false, true);
+}
+
+void OptixSceneMultiLevel::updateAccelStructure() {
+	PROFILE("Update Accel Structure");
+	for (auto instanceInput : instanceBuildInputs) {
+		for (int idx = 0; idx < instanceInput->nodes.size(); idx++) {
+			const auto instance			   = instanceInput->nodes[idx];
+			OptixInstance &instanceData	   = instanceInput->instances[idx];
+			Affine3f transform			   = instance->getLocalTransform();
+			cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
+									   cudaMemcpyHostToDevice);
+		}
+
+		OptixBuildInput iasBuildInput			 = {};
+		iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+		iasBuildInput.instanceArray.numInstances = instanceInput->instances.size();
+		iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instanceInput->instances.data();
+		traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+										   {iasBuildInput}, instanceInput->accelBuffer, false, true);
+	}
+}
+
+std::shared_ptr<OptixScene> OptixBackend::getOptixScene() const { 
+	return scene->getSceneRT()->getOptixScene(); 
 }
 
 void OptixBackend::buildShaderBindingTable() {
 	size_t nRayTypes = optixParameters.rayTypes.size();
 	if (OPTIX_MAX_RAY_TYPES < nRayTypes)
-		Log(Fatal,
-			"Currently supports no more than %zd ray types only,"
+		Log(Fatal, "Currently supports no more than %zd ray types only,"
 		"but there are %zd ray types", OPTIX_MAX_RAY_TYPES, nRayTypes);
 	else if (nRayTypes == 0) Log(Fatal, "No ray types has been specified!");
 
@@ -421,20 +654,23 @@ void OptixBackend::buildShaderBindingTable() {
 		missRecords.push_back(missRecord);
 	}
 
-	const auto &instances	 = scene->getMeshInstances();
-	rt::SceneData sceneData = scene->mSceneRT->getSceneData();
-	for (uint instanceId = 0; instanceId < instances.size(); instanceId++) {
+	const auto &referencedMeshes = getOptixScene()->getReferencedMeshes();
+	rt::SceneData sceneData		 = scene->getSceneRT()->getSceneData();
+	for (auto instance : referencedMeshes) {
 		for (uint rayType = 0; rayType < nRayTypes; rayType++) {
-			HitgroupRecord hitgroupRecord = {};
-			rt::InstanceData *instance	  = &sceneData.instances[instanceId];
+			HitgroupRecord hitgroupRecord  = {};
+			rt::InstanceData *instanceData = &sceneData.instances[instance.lock()->getInstanceId()];
 			OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayType], &hitgroupRecord));
-			hitgroupRecord.data = {instance};
+			hitgroupRecord.data = {instanceData};
 			hitgroupRecords.push_back(hitgroupRecord);
 		}
-		for (int rayType = nRayTypes; rayType < OPTIX_MAX_RAY_TYPES; rayType++)
-			hitgroupRecords.push_back({});
+		for (uint rayType = nRayTypes; rayType < OPTIX_MAX_RAY_TYPES; rayType++) {
+			/* Pad up to OPTIX_MAX_RAY_TYPES for correct layout... */
+			HitgroupRecord hitgroupRecord = {};
+			hitgroupRecords.push_back(hitgroupRecord);
+		}
 	}
-
+	/* All entries use the same shader binding table (and HG records). */
 	for (const auto [raygenEntry, index] : entryPoints) {
 		OptixShaderBindingTable sbt		= {};
 		sbt.raygenRecord				= (CUdeviceptr) &raygenRecords[index];
@@ -446,7 +682,19 @@ void OptixBackend::buildShaderBindingTable() {
 		sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
 		SBT.push_back(sbt);
 	}
+	Log(Info, "Building SBT with %zd raygen entries, %zd miss records, %zd hitgroup records",
+		raygenRecords.size(), missRecords.size(), hitgroupRecords.size());
 	CUDA_SYNC_CHECK();
 }
 
 KRR_NAMESPACE_END
+
+/* [Note] for implementation of OptiX motion blur:
+ * OptiX only supports regular time intervals in its motion options. Irregular keys should be 
+ * resampled to fit regular keys, potentially with a much higher number of keys if needed.
+ *
+ * Duplicate motion transforms should not be used as workaround for irregular keys, where each 
+ * key has varying motion beginning and ending times and vanish motion flags set. This 
+ * duplication creates traversal overhead as all copies need to be intersected and their motion 
+ * times compared to the ray's time.
+ */
