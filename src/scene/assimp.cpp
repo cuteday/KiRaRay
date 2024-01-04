@@ -163,13 +163,15 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 		Vector4f specular = Vector4f(color[0], color[1], color[2],
 									 pMaterial->mMaterialParams.specular[3]);
 		pMaterial->mMaterialParams.specular = specular;
-		logDebug("specular : " + to_string(specular[0]) + " " +
-				 to_string(specular[1]) + " " + to_string(specular[2]) + " ");
 	}
 
 	// Emissive color
 	if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
 		RGB emissive = Vector3f(color[0], color[1], color[2]);
+		float strength = 1;
+		if (pAiMaterial->Get(AI_MATKEY_EMISSIVE_INTENSITY, strength) == AI_SUCCESS) {
+			emissive *= strength;
+		}
 		if (emissive.any()) {
 			pMaterial->setConstantTexture(Material::TextureType::Emissive,
 										  RGBA(emissive, 1));
