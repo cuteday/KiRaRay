@@ -466,7 +466,7 @@ OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node, std::optional<Motion
 			instanceData.visibilityMask	   = 255;
 			instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 			instanceData.traversableHandle = traversable;
-			Log(Info,
+			Log(Debug,
 				"The child node \"%s\" of node \"%s\" has %d HG records, "
 				"SBT HG offset start from %d.",
 				child->getName().c_str(), node->getName().c_str(), records, sbtOffset);
@@ -487,13 +487,13 @@ OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node, std::optional<Motion
 		instanceData.traversableHandle = traversablesGAS[meshInstance->getMesh()->getMeshId()];
 		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
 							   cudaMemcpyHostToDevice);
-		Log(Info, "The node \"%s\" has a mesh instance %s (#%d)", 
+		Log(Debug, "The node \"%s\" has a mesh instance %s (#%d)", 
 			node->getName().c_str(), meshInstance->getName().c_str(), referencedMeshes.size());
 		referencedMeshes.push_back(meshInstance);
 		sbtOffset += OptixBackend::OPTIX_MAX_RAY_TYPES;
 	}
 	instanceBuildInputs.push_back(buildInput);
-	Log(Info, "Building IAS for node \"%s\": %zd instances", 
+	Log(Debug, "Building IAS for node \"%s\": %zd instances", 
 		node->getName().c_str(), buildInput->instances.size());
 	if (buildInput->instances.size() == 0) Log(Error, "Empty instance build input!");
 	OptixBuildInput iasBuildInput			 = {};

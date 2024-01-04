@@ -9,14 +9,14 @@
 #include <thrust/execution_policy.h>
 
 #define METRIC_IN_SRGB					0
-#define CLAMP_PIXEL_ERROR				0 
+#define CLAMP_PIXEL_ERROR				1
 #define DISCARD_FIREFLIES				1
 
 
 KRR_NAMESPACE_BEGIN
 
 KRR_DEVICE constexpr float ERROR_EPS					= 0;
-KRR_DEVICE constexpr float CLAMP_PIXEL_ERROR_THRESHOLD	= 10;
+KRR_DEVICE constexpr float CLAMP_PIXEL_ERROR_THRESHOLD	= 100.f;
 KRR_DEVICE constexpr float DISCARD_FIREFLIES_PRECENTAGE = 0.0001;
 
 namespace {
