@@ -1,8 +1,10 @@
 #pragma once
 #include "raytracing.h"
+#include "scenenode.h"
 #include "render/sampling.h"
 #include "sampler.h"
 #include "input.h"
+#include "krrmath/functors.h"
 
 KRR_NAMESPACE_BEGIN
 using namespace io;
@@ -16,45 +18,37 @@ struct CameraData {
 	float lensRadius{0};				  // aperture radius, in mm
 	float aspectRatio{1.777777f};		  // width divides height
 	float shutterOpen{0};				  // shutter open time
-	float shutterTime{0};				  // shutter time (default disable motion blur)
+	float shutterTime{0};				  // shutter time (default 0: disable motion blur)
 
-	Vector3f pos{0, 0, 0};
-	Vector3f target{0, 0, -1};
-	Vector3f up{0, 1, 0};
-
-	Vector3f u{1, 0, 0};  // camera right		[dependent to aspect ratio]
-	Vector3f v{0, 1, 0};  // camera up			[dependent to aspect ratio]
-	Vector3f w{0, 0, -1}; // camera forward
-
+	Transformation transform;
 	Medium medium{nullptr}; // the ray is inside the medium
 
 	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler &sampler) {
-		Ray ray;
+		Ray ray{};
 		/* 1. Statified sample on the film plane (within the fragment) */
-		Vector2f p =
-			(Vector2f) pixel + Vector2f(0.5f) + sampler.get2D(); // uniform sample + box filter
+		Vector2f p	 = (Vector2f) pixel + Vector2f(0.5f) + sampler.get2D();
 		Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
-		if (lensRadius > M_EPSILON) {										   /*Thin lens*/
-			/* 2. Sample the lens (uniform) */
-			Vector3f focalPoint		= pos + ndc[0] * u + ndc[1] * v + w;
-			Vector2f apertureSample = uniformSampleDisk(sampler.get2D());
-			ray.origin				= pos + lensRadius * (apertureSample[0] * u.normalized() +
-											  apertureSample[1] * v.normalized());
-			ray.dir					= normalize(focalPoint - ray.origin);
-		} else { /*Pin hole*/
-			ray.origin = pos;
-			ray.dir	   = normalize(ndc[0] * u + ndc[1] * v + w);
-		}
+		float fov	 = atan2(filmSize[1] * 0.5f, focalLength);
+
 		ray.medium = medium;
 		ray.time   = shutterOpen + shutterTime * sampler.get1D();
-		return ray;
+		Vector3f focalDirection =
+			Vector3f{tan(fov) * aspectRatio * ndc[0], tan(fov) * ndc[1], -1}.normalized();
+
+		if (lensRadius > M_EPSILON) {										   /*Thin lens*/
+			/* 2. Sample the lens (uniform) */
+			Vector2f apertureSample = uniformSampleDisk(sampler.get2D());
+			ray.origin.head<2>()	= lensRadius * apertureSample;
+			ray.dir = (focalDirection * focalDistance - ray.origin).normalized();
+		} else { /*Pin hole*/
+			ray.origin = Vector3f::Zero();
+			ray.dir	   = focalDirection;
+		}
+		return transform(ray);
 	}
 
 	friend void to_json(json& j, const CameraData& camera) {
-		j = json{{"pos", camera.pos},
-				 {"target", camera.target},
-				 {"up", camera.up},
-				 {"focalLength", camera.focalLength},
+		j = json{{"focalLength", camera.focalLength},
 				 {"focalDistance", camera.focalDistance},
 				 {"lensRadius", camera.lensRadius},
 				 {"aspectRatio", camera.aspectRatio},
@@ -63,34 +57,41 @@ struct CameraData {
 	}
 
 	friend void from_json(const json& j, CameraData& camera) {
-		camera.pos = j.value("pos", Vector3f{0, 0, 0});
-		camera.target = j.value("target", Vector3f{0, 0, -1});
-		camera.up = j.value("up", Vector3f{0, 1, 0});
-		camera.focalLength = j.value("focalLength", 21.f);
-		camera.focalDistance = j.value("focalDistance", 10.f);
-		camera.lensRadius = j.value("lensRadius", 0.f);
-		camera.aspectRatio = j.value("aspectRatio", 1.777777f);
-		camera.shutterOpen = j.value("shutterOpen", 0.f);
-		camera.shutterTime = j.value("shutterTime", 0.f);
+		/* only does incremental update */
+		camera.focalLength = j.value("focalLength", camera.focalLength);
+		camera.focalDistance = j.value("focalDistance", camera.focalDistance);
+		camera.lensRadius = j.value("lensRadius", camera.lensRadius);
+		camera.aspectRatio = j.value("aspectRatio", camera.aspectRatio);
+		camera.shutterOpen = j.value("shutterOpen", camera.shutterOpen);
+		camera.shutterTime	 = j.value("shutterTime", camera.shutterTime);
 	}
 };
 } // namespace rt
 
-class Camera {
+class Camera : public SceneGraphLeaf {
 public:
 	using SharedPtr = std::shared_ptr<Camera>;
-	Camera() = default;
+	using CameraData = rt::CameraData;
+	Camera()		= default;
+	Camera(std::weak_ptr<Scene> scene, const CameraData& data):
+		mScene(scene), mData(data) {}
 
 	bool update();
-	void renderUI();
+	void renderUI() override;
+
+	ContentFlags getContentFlags() const override { return ContentFlags::Camera; }
+	std::shared_ptr<SceneGraphLeaf> clone() override;
 
 	float getAspectRatio() const { return mData.aspectRatio; }
-	Vector3f getPosition() const { return mData.pos; }
-	Vector3f getTarget() const { return mData.target; }
-	Vector3f getForward() const { return normalize(mData.target - mData.pos); }
-	Vector3f getUp() const { return normalize(mData.v); }
-	Vector3f getRight() const { return normalize(mData.u); }
+	Vector3f getPosition() const { return getTransform().translation(); }
+	Vector3f getTarget() const { return getPosition() + getForward() * getFocalDistance(); }
+	Vector3f getForward() const { return getRotation() * -Vector3f::UnitZ();; }
+	Vector3f getUp() const { return getRotation() * Vector3f::UnitY(); }
+	Vector3f getRight() const { return getRotation() * Vector3f::UnitX(); }
 	Vector2f getFilmSize() const { return mData.filmSize; }
+	Affine3f getTransform() const { return getNode()->getGlobalTransform(); }
+	Matrix3f getRotation() const { return getTransform().rotation(); }
+	float getLensRadius() const { return mData.lensRadius; }
 	float getFocalDistance() const { return mData.focalDistance; }
 	float getFocalLength() const { return mData.focalLength; }
 	float getShutterOpen() const { return mData.shutterOpen; }
@@ -101,11 +102,10 @@ public:
 	void setFilmSize(Vector2f& size) { mData.filmSize = size; }
 	void setFocalDistance(float focalDistance) { mData.focalDistance = focalDistance; }
 	void setFocalLength(float focalLength) { mData.focalLength = focalLength; }
-	void setPosition(Vector3f& pos) { mData.pos = pos; }
-	void setTarget(Vector3f& target) { mData.target = target; }
-	void setUp(Vector3f& up) { mData.up = up; }
+	void setLensRadius(float lensRadius) { mData.lensRadius = lensRadius; }
 	void setShutterOpen(float shutterOpen) { mData.shutterOpen = shutterOpen; }
 	void setShutterTime(float shutterTime) { mData.shutterTime = shutterTime; }
+	void setChanged() { mHasChanges = true; }
 	void setScene(std::weak_ptr<Scene> scene) { mScene = scene; }
 
 	Matrix4f getViewMatrix() const;
@@ -116,7 +116,7 @@ protected:
 	KRR_CLASS_DEFINE(Camera, mData);
 	std::weak_ptr<Scene> mScene;
 	rt::CameraData mData, mDataPrev;
-	bool mHasChanges = false;
+	bool mHasChanges	 = false;
 	bool mPreserveHeight = true;	// preserve sensor height on aspect ratio changes.
 };
 
@@ -145,7 +145,6 @@ public:
 	using SharedPtr = std::shared_ptr<OrbitCameraController>;
 	struct CameraControllerData{
 		Vector3f target{0, 0, 0};
-		Vector3f up{0, 1, 0};
 		float radius = 5;
 		float pitch	 = 0;
 		float yaw	 = 0;
@@ -155,10 +154,6 @@ public:
 
 	OrbitCameraController() = default;
 	OrbitCameraController(Camera::SharedPtr pCamera): CameraController(pCamera) {}
-	
-	static SharedPtr create(Camera::SharedPtr pCamera){
-		return SharedPtr(new OrbitCameraController(pCamera));
-	}
 	
 	virtual bool update() override;
 	virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;

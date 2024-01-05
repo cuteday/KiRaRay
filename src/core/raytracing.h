@@ -39,8 +39,8 @@ public:
 
 	KRR_CALLABLE Vector3f operator()(float t) const { return origin + dir * t; }
 
-	Vector3f origin;
-	Vector3f dir;
+	Vector3f origin{};
+	Vector3f dir{};
 	float time{0};
 	Medium medium{nullptr};
 };
@@ -82,6 +82,10 @@ public:
 	KRR_CALLABLE Affine3f inverse() const { return mInv; }
 	KRR_CALLABLE Matrix3f transposedInverse() const {
 		return mInv.matrix().topLeftCorner(3, 3).transpose();
+	}
+
+	KRR_CALLABLE Ray operator()(const Ray& ray) const {
+		return Ray{m * ray.origin, m.matrix().topLeftCorner(3, 3) * ray.dir, ray.time, ray.medium};
 	}
 
 	Affine3f m, mInv;

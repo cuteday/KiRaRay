@@ -45,6 +45,7 @@ struct InstanceData {
 	TypedBuffer<Triangle> primitives;		// Only emissive instances have these
 	TypedBuffer<DiffuseAreaLight> lights;
 
+	/* TODO: maybe we can get animated transform(t) by traversable? can we? */
 	Transformation transform;
 	MeshData *mesh = nullptr;
 };

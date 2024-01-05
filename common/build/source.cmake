@@ -12,6 +12,7 @@ SET ( KRR_INCLUDE_ALL
 
 SET ( KRR_CORE_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/core/scene.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/scenenode.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/scenegraph.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/animation.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/camera.cpp

@@ -17,8 +17,8 @@ Scene::Scene() {
 bool Scene::update(size_t frameIndex, double currentTime) {
 	bool hasChanges = false;
 	if (mEnableAnimation) mGraph->animate(currentTime);
-	mGraph->update(frameIndex);
 	if (mCameraController) hasChanges |= mCameraController->update();
+	mGraph->update(frameIndex); /* update graph transform since camera needs global transf. */
 	if (mCamera) hasChanges |= mCamera->update();
 	if (mSceneRT) mSceneRT->update();
 	if (mSceneVK) mSceneVK->update();

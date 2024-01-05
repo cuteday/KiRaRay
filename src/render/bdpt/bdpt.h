@@ -23,8 +23,8 @@ struct LaunchParameters<BDPTIntegrator> {
 	float probRR		 = 0.2;
 	float clampThreshold = 1e4f; 
 
-	Camera camera;
 	LightSampler lightSampler;
+	rt::CameraData camera;
 	rt::SceneData sceneData;
 
 	CudaRenderTarget colorBuffer;
