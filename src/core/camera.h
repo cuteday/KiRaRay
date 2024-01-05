@@ -20,14 +20,6 @@ struct CameraData {
 	float shutterOpen{0};				  // shutter open time
 	float shutterTime{0};				  // shutter time (default 0: disable motion blur)
 
-	Vector3f pos{0, 0, 0};
-	Vector3f target{0, 0, -1};
-	Vector3f up{0, 1, 0};
-
-	Vector3f u{1, 0, 0};  // camera right		[dependent to aspect ratio]
-	Vector3f v{0, 1, 0};  // camera up			[dependent to aspect ratio]
-	Vector3f w{0, 0, -1}; // camera forward
-
 	Transformation transform;
 	Medium medium{nullptr}; // the ray is inside the medium
 
@@ -53,19 +45,6 @@ struct CameraData {
 			ray.dir	   = focalDirection;
 		}
 		return transform(ray);
-	}
-
-	KRR_CALLABLE Matrix4f getViewMatrix() const { 
-		return look_at(pos, target, up);
-	}
-
-	KRR_CALLABLE Matrix4f getProjectionMatrix() const {
-		float fovy = 2 * atan2(filmSize[1] * 0.5f, focalLength);
-		return perspective(fovy, aspectRatio, 0.01f, 1000.f);
-	}
-
-	KRR_CALLABLE Matrix4f getViewProjectionMatrix() const {
-		return getProjectionMatrix() * getViewMatrix();
 	}
 
 	friend void to_json(json& j, const CameraData& camera) {
@@ -104,12 +83,14 @@ public:
 	std::shared_ptr<SceneGraphLeaf> clone() override;
 
 	float getAspectRatio() const { return mData.aspectRatio; }
-	Vector3f getPosition() const { return mData.pos; }
-	Vector3f getTarget() const { return mData.target; }
-	Vector3f getForward() const { return normalize(mData.target - mData.pos); }
-	Vector3f getUp() const { return normalize(mData.v); }
-	Vector3f getRight() const { return normalize(mData.u); }
+	Vector3f getPosition() const { return getTransform().translation(); }
+	Vector3f getTarget() const { return getPosition() + getForward() * getFocalDistance(); }
+	Vector3f getForward() const { return getRotation() * -Vector3f::UnitZ();; }
+	Vector3f getUp() const { return getRotation() * Vector3f::UnitY(); }
+	Vector3f getRight() const { return getRotation() * Vector3f::UnitX(); }
 	Vector2f getFilmSize() const { return mData.filmSize; }
+	Affine3f getTransform() const { return getNode()->getGlobalTransform(); }
+	Matrix3f getRotation() const { return getTransform().rotation(); }
 	float getFocalDistance() const { return mData.focalDistance; }
 	float getFocalLength() const { return mData.focalLength; }
 	float getShutterOpen() const { return mData.shutterOpen; }
@@ -120,9 +101,6 @@ public:
 	void setFilmSize(Vector2f& size) { mData.filmSize = size; }
 	void setFocalDistance(float focalDistance) { mData.focalDistance = focalDistance; }
 	void setFocalLength(float focalLength) { mData.focalLength = focalLength; }
-	void setPosition(Vector3f& pos) { mData.pos = pos; }
-	void setTarget(Vector3f& target) { mData.target = target; }
-	void setUp(Vector3f& up) { mData.up = up; }
 	void setShutterOpen(float shutterOpen) { mData.shutterOpen = shutterOpen; }
 	void setShutterTime(float shutterTime) { mData.shutterTime = shutterTime; }
 	void setScene(std::weak_ptr<Scene> scene) { mScene = scene; }
