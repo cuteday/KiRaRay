@@ -407,6 +407,27 @@ void AssimpImporter::loadMeshes() {
 	}
 }
 
+void AssimpImporter::loadCameras() {
+	if (!mAiScene->HasCameras()) return;
+	auto sceneGraph = mScene->getSceneGraph();
+	auto cameraContainer = std::make_shared<SceneGraphNode>();
+	cameraContainer->setName("Camera Container");
+	sceneGraph->attach(sceneGraph->getRoot(), cameraContainer);
+	for (int i = 0; i < mAiScene->mNumCameras; i++) {
+		aiCamera *pAiCamera = mAiScene->mCameras[i];
+		auto camera = std::make_shared<Camera>();
+		camera->setAspectRatio(pAiCamera->mAspect);
+		camera->setFocalLength(pAiCamera->mHorizontalFOV);
+		camera->setFilmSize(Vector2f(pAiCamera->mAspect, 1));
+		camera->setFocalDistance(pAiCamera->mClipPlaneFar);
+		camera->setScene(mScene);
+		auto cameraNode = std::make_shared<SceneGraphNode>();
+		cameraNode->setName(aiCast(pAiCamera->mName));
+		sceneGraph->attach(cameraContainer, cameraNode);
+		if (!cameraNode->getName().empty()) mNodeMap[cameraNode->getName()] = cameraNode;
+	}
+}
+
 void AssimpImporter::loadAnimations() {
 	auto resetNegativeKeyframeTimes = [](aiNodeAnim *pAiNode) {
 		auto resetTime = [](auto keys, uint32_t count) {
@@ -433,6 +454,10 @@ void AssimpImporter::loadAnimations() {
 
 		for (int ch = 0; ch < pAiAnimation->mNumChannels; ch++) {
 			aiNodeAnim *aiNode = pAiAnimation->mChannels[ch];
+			Log(Info,
+				"Importing animation for node %s with %zd scaling, %zd rotation, %d translation "
+				"keys", aiCast(aiNode->mNodeName).c_str(), aiNode->mNumScalingKeys,
+				aiNode->mNumRotationKeys, aiNode->mNumPositionKeys);
 			auto graphNode = mNodeMap[aiCast(aiNode->mNodeName)];			
 			resetNegativeKeyframeTimes(aiNode);
 		

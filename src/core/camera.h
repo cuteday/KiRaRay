@@ -51,10 +51,7 @@ struct CameraData {
 	}
 
 	friend void to_json(json& j, const CameraData& camera) {
-		j = json{{"pos", camera.pos},
-				 {"target", camera.target},
-				 {"up", camera.up},
-				 {"focalLength", camera.focalLength},
+		j = json{{"focalLength", camera.focalLength},
 				 {"focalDistance", camera.focalDistance},
 				 {"lensRadius", camera.lensRadius},
 				 {"aspectRatio", camera.aspectRatio},
@@ -63,15 +60,13 @@ struct CameraData {
 	}
 
 	friend void from_json(const json& j, CameraData& camera) {
-		camera.pos = j.value("pos", Vector3f{0, 0, 0});
-		camera.target = j.value("target", Vector3f{0, 0, -1});
-		camera.up = j.value("up", Vector3f{0, 1, 0});
-		camera.focalLength = j.value("focalLength", 21.f);
-		camera.focalDistance = j.value("focalDistance", 10.f);
-		camera.lensRadius = j.value("lensRadius", 0.f);
-		camera.aspectRatio = j.value("aspectRatio", 1.777777f);
-		camera.shutterOpen = j.value("shutterOpen", 0.f);
-		camera.shutterTime = j.value("shutterTime", 0.f);
+		/* only does incremental update */
+		camera.focalLength = j.value("focalLength", camera.focalLength);
+		camera.focalDistance = j.value("focalDistance", camera.focalDistance);
+		camera.lensRadius = j.value("lensRadius", camera.lensRadius);
+		camera.aspectRatio = j.value("aspectRatio", camera.aspectRatio);
+		camera.shutterOpen = j.value("shutterOpen", camera.shutterOpen);
+		camera.shutterTime	 = j.value("shutterTime", camera.shutterTime);
 	}
 };
 } // namespace rt

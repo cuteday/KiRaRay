@@ -27,7 +27,8 @@ public:
 		Animation		= 1 << 2,
 		Light			= 1 << 3,
 		Volume			= 1 << 4,
-		All				= (Mesh | Material | Animation | Light | Volume),
+		Camera			= 1 << 5,
+		All				= (Mesh | Material | Animation | Light | Volume | Camera),
 	};
 
 	SceneGraphNode *getNode() const { return mNode.lock().get(); }
