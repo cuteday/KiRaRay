@@ -52,7 +52,7 @@ KRR_CALLABLE Matrix<T, 4, 4, Options> orthogonal(T left, T right, T bottom, T to
 }
 
 template <typename T, int Options = math::ColMajor>
-Matrix<T, 4, 4, Options> look_at(Vector3<T> const &eye, Vector3<T> const &center,
+KRR_CALLABLE Matrix<T, 4, 4, Options> look_at(Vector3<T> const &eye, Vector3<T> const &center,
 								 Vector3<T> const &up) {
 	Vector3<T> const f(normalize(center - eye));
 	Vector3<T> const s(normalize(cross(f, up)));
@@ -116,7 +116,7 @@ KRR_CALLABLE Matrix<T, 4, 4, Options> orthogonal(T left, T right, T bottom, T to
 }
 
 template <typename T, int Options = math::ColMajor>
-Matrix<T, 4, 4, Options> look_at(Vector3<T> const &eye, Vector3<T> const &center,
+KRR_CALLABLE Matrix<T, 4, 4, Options> look_at(Vector3<T> const &eye, Vector3<T> const &center,
 								 Vector3<T> const &up) {
 	Vector3<T> const f(normalize(center - eye));
 	Vector3<T> const s(normalize(cross(up, f)));

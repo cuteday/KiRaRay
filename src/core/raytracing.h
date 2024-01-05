@@ -84,6 +84,10 @@ public:
 		return mInv.matrix().topLeftCorner(3, 3).transpose();
 	}
 
+	KRR_CALLABLE Ray operator()(const Ray& ray) const {
+		return Ray{m * ray.origin, m.matrix().topLeftCorner(3, 3) * ray.dir, ray.time, ray.medium};
+	}
+
 	Affine3f m, mInv;
 };
 
