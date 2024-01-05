@@ -410,8 +410,7 @@ void AssimpImporter::loadMeshes() {
 void AssimpImporter::loadCameras() {
 	if (!mAiScene->HasCameras()) return;
 	auto sceneGraph = mScene->getSceneGraph();
-	auto cameraContainer = std::make_shared<SceneGraphNode>();
-	cameraContainer->setName("Camera Container");
+	auto cameraContainer = std::make_shared<SceneGraphNode>("Camera Container");
 	sceneGraph->attach(sceneGraph->getRoot(), cameraContainer);
 	for (int i = 0; i < mAiScene->mNumCameras; i++) {
 		aiCamera *pAiCamera = mAiScene->mCameras[i];

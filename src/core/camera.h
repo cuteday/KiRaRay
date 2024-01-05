@@ -1,8 +1,10 @@
 #pragma once
 #include "raytracing.h"
+#include "scenenode.h"
 #include "render/sampling.h"
 #include "sampler.h"
 #include "input.h"
+#include "krrmath/functors.h"
 
 KRR_NAMESPACE_BEGIN
 using namespace io;
@@ -16,7 +18,7 @@ struct CameraData {
 	float lensRadius{0};				  // aperture radius, in mm
 	float aspectRatio{1.777777f};		  // width divides height
 	float shutterOpen{0};				  // shutter open time
-	float shutterTime{0};				  // shutter time (default disable motion blur)
+	float shutterTime{0};				  // shutter time (default 0: disable motion blur)
 
 	Vector3f pos{0, 0, 0};
 	Vector3f target{0, 0, -1};
@@ -26,28 +28,50 @@ struct CameraData {
 	Vector3f v{0, 1, 0};  // camera up			[dependent to aspect ratio]
 	Vector3f w{0, 0, -1}; // camera forward
 
+	Transformation transform;
+	Matrix3f rotation;
 	Medium medium{nullptr}; // the ray is inside the medium
 
 	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler &sampler) {
 		Ray ray;
 		/* 1. Statified sample on the film plane (within the fragment) */
-		Vector2f p =
-			(Vector2f) pixel + Vector2f(0.5f) + sampler.get2D(); // uniform sample + box filter
+		Vector2f p	 = (Vector2f) pixel + Vector2f(0.5f) + sampler.get2D();
 		Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
-		if (lensRadius > M_EPSILON) {										   /*Thin lens*/
-			/* 2. Sample the lens (uniform) */
-			Vector3f focalPoint		= pos + ndc[0] * u + ndc[1] * v + w;
-			Vector2f apertureSample = uniformSampleDisk(sampler.get2D());
-			ray.origin				= pos + lensRadius * (apertureSample[0] * u.normalized() +
-											  apertureSample[1] * v.normalized());
-			ray.dir					= normalize(focalPoint - ray.origin);
-		} else { /*Pin hole*/
-			ray.origin = pos;
-			ray.dir	   = normalize(ndc[0] * u + ndc[1] * v + w);
-		}
+		float fov	 = atan2(filmSize.y() * 0.5f, focalLength);
+
 		ray.medium = medium;
 		ray.time   = shutterOpen + shutterTime * sampler.get1D();
+		//if (lensRadius > M_EPSILON) {										   /*Thin lens*/
+		//	/* 2. Sample the lens (uniform) */
+		//	Vector3f focalPoint		= pos + ndc[0] * u + ndc[1] * v + w;
+		//	Vector2f apertureSample = uniformSampleDisk(sampler.get2D());
+		//	ray.origin				= pos + lensRadius * (apertureSample[0] * u.normalized() +
+		//									  apertureSample[1] * v.normalized());
+		//	ray.dir					= normalize(focalPoint - ray.origin);
+		//} else { /*Pin hole*/
+		//ray.origin = pos;
+		//ray.dir	   = normalize(ndc[0] * u + ndc[1] * v + w);
+		//}
+		//return ray;
+
+		ray.origin = Vector3f::Zero();
+		ray.dir	   = Vector3f{fov * aspectRatio * ndc[0], fov * ndc[1], -1}.normalized();
+		ray.origin = transform.transform() * ray.origin;
+		ray.dir	   = rotation * ray.dir;
 		return ray;
+	}
+
+	KRR_CALLABLE Matrix4f getViewMatrix() const { 
+		return look_at(pos, target, up);
+	}
+
+	KRR_CALLABLE Matrix4f getProjectionMatrix() const {
+		float fovy = 2 * atan2(filmSize[1] * 0.5f, focalLength);
+		return perspective(fovy, aspectRatio, 0.01f, 1000.f);
+	}
+
+	KRR_CALLABLE Matrix4f getViewProjectionMatrix() const {
+		return getProjectionMatrix() * getViewMatrix();
 	}
 
 	friend void to_json(json& j, const CameraData& camera) {
@@ -71,13 +95,19 @@ struct CameraData {
 };
 } // namespace rt
 
-class Camera {
+class Camera : public SceneGraphLeaf {
 public:
 	using SharedPtr = std::shared_ptr<Camera>;
-	Camera() = default;
+	using CameraData = rt::CameraData;
+	Camera()		= default;
+	Camera(std::weak_ptr<Scene> scene, const CameraData& data):
+		mScene(scene), mData(data) {}
 
 	bool update();
-	void renderUI();
+	void renderUI() override;
+
+	ContentFlags getContentFlags() const override { return ContentFlags::Camera; }
+	std::shared_ptr<SceneGraphLeaf> clone() override;
 
 	float getAspectRatio() const { return mData.aspectRatio; }
 	Vector3f getPosition() const { return mData.pos; }

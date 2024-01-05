@@ -26,7 +26,7 @@ public:
 
 	SceneGraphNode *getNode() const { return mNode.lock().get(); }
 	std::shared_ptr<SceneGraphNode> getNodeSharedPtr() const { return mNode.lock(); }
-	virtual AABB getLocalBoundingBox() const { return AABB(0, 0); }
+	virtual AABB getLocalBoundingBox() const { return {}; }
 	virtual std::shared_ptr<SceneGraphLeaf> clone() = 0;
 	virtual void renderUI() {}
 	virtual ContentFlags getContentFlags() const { return ContentFlags::None; }
@@ -64,6 +64,7 @@ public:
 	};
 	
 	SceneGraphNode() = default;
+	SceneGraphNode(std::string name) : mName(name) {}
 	~SceneGraphNode() = default;
 	
 	const std::string &getName() const { return mName; }

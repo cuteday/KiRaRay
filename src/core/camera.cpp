@@ -6,22 +6,25 @@ KRR_NAMESPACE_BEGIN
 bool Camera::update(){
 	if (mScene.lock()->getSceneRT()) {
 		/* Ray-tracing enabled, update medium info */
-		for (auto medium : mScene.lock()->getMedia()) {
+		for (auto medium : mScene.lock()->getMedia()) 
 			if (medium->getNode()->getGlobalBoundingBox().contains(getPosition())) {
 				mData.medium =
 					mScene.lock()->getSceneRT()->getMediumData()[medium->getMediumId()];
 			}
-		}
 	}
-	/* Update parameters in data. */
-	if (mPreserveHeight) mData.filmSize[0] = mData.aspectRatio * mData.filmSize[1];
-	else mData.filmSize[1] = mData.filmSize[0] / mData.aspectRatio;
 
-	float fovY = atan2(mData.filmSize[1] * 0.5, mData.focalLength);
-	mData.w = normalize(mData.target - mData.pos) * mData.focalDistance;
-	mData.u = normalize(cross(mData.w, mData.up)) * tan(fovY) * mData.focalDistance * mData.aspectRatio;
-	mData.v = normalize(cross(mData.u, mData.w)) * tan(fovY) * mData.focalDistance;
-	bool hasChanges = (bool)memcmp(&mData, &mDataPrev, sizeof(rt::CameraData));;
+	bool hasChanges = (bool)memcmp(&mData, &mDataPrev, sizeof(rt::CameraData));
+	if (hasChanges) {
+		/* Update parameters in data. */
+		if (mPreserveHeight) mData.filmSize[0] = mData.aspectRatio * mData.filmSize[1];
+		else mData.filmSize[1] = mData.filmSize[0] / mData.aspectRatio;
+		mData.transform = Transformation(getNode()->getGlobalTransform());
+		mData.rotation	= mData.transform.transform().rotation();
+		float fovY = atan2(mData.filmSize[1] * 0.5, mData.focalLength);
+		mData.w = normalize(mData.target - mData.pos) * mData.focalDistance;
+		mData.u = normalize(cross(mData.w, mData.up)) * tan(fovY) * mData.focalDistance * mData.aspectRatio;
+		mData.v = normalize(cross(mData.u, mData.w)) * tan(fovY) * mData.focalDistance;
+	}
 	mDataPrev = mData;
 	return hasChanges;
 }
@@ -35,7 +38,7 @@ void Camera::renderUI() {
 }
 
 Matrix4f Camera::getViewMatrix() const {
-	return look_at(mData.pos, mData.target, Vector3f{0, 1, 0});
+	return look_at(mData.pos, mData.target, mData.up);
 }
 
 Matrix4f Camera::getProjectionMatrix() const {
@@ -47,16 +50,22 @@ Matrix4f Camera::getViewProjectionMatrix() const {
 	return getProjectionMatrix() * getViewMatrix();
 }
 
+std::shared_ptr<SceneGraphLeaf> Camera::clone() { return std::make_shared<Camera>(mScene, mData); }
+
 bool OrbitCameraController::update(){
-	Quaternionf rotate = Quaternionf::fromEuler(mData.yaw, mData.pitch, 0);
-	rotate.normalize();
-	Vector3f forward = rotate * Vector3f(0, 0, -1);
-	Vector3f pos = mData.target - forward * mData.radius;
-
-	mCamera->setPosition(pos);
-	mCamera->setTarget(mData.target);
-
 	bool hasChanges = (bool)memcmp(&mData, &mDataPrev, sizeof(CameraControllerData));
+	if (hasChanges) {
+		Quaternionf rotate = Quaternionf::fromEuler(mData.yaw, mData.pitch, 0);
+		rotate.normalize();
+		Vector3f forward = rotate * -Vector3f::UnitZ();
+		Vector3f pos	 = mData.target - forward * mData.radius;
+
+		mCamera->setPosition(pos);
+		mCamera->setTarget(mData.target);
+
+		mCamera->getNode()->setRotation(rotate);
+		mCamera->getNode()->setTranslation(pos);
+	}
 	mDataPrev = mData;
 	return hasChanges;
 }

@@ -31,6 +31,7 @@ using ::tan;
 using ::sinh;
 using ::cosh;
 using ::tanh;
+using ::atan2;
 using ::fma;
 
 template <typename T> KRR_CALLABLE void swap(T &a, T &b) {

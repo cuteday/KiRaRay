@@ -113,10 +113,11 @@ bool SceneImporter::import(const fs::path filepath, Scene::SharedPtr scene,
 
 bool SceneImporter::import(const json &j, Scene::SharedPtr scene, SceneGraphNode::SharedPtr node,
 						   const json &params) { 
-	node = node ? node : scene->getSceneGraph()->getRoot();
+	auto sceneGraph = scene->getSceneGraph(); 
+	node			= node ? node : sceneGraph->getRoot();
 	if (!node) {
 		node = std::make_shared<SceneGraphNode>();
-		scene->getSceneGraph()->setRoot(node);
+		sceneGraph->setRoot(node);
 	}
 
 	if (scene->getConfig().empty()) {
@@ -128,16 +129,21 @@ bool SceneImporter::import(const json &j, Scene::SharedPtr scene, SceneGraphNode
 		if (!scene) Log(Fatal, "Import a model before doing scene configurations!");
 		string env	 = j["environment"].get<string>();
 		auto texture = Texture::createFromFile(env);
-		auto root	 = scene->getSceneGraph()->getRoot();
+		auto root	 = sceneGraph->getRoot();
 		auto light	 = std::make_shared<InfiniteLight>(texture);
-		scene->getSceneGraph()->attachLeaf(node, light);
+		sceneGraph->attachLeaf(node, light);
 	}
 
 	if (j.contains("camera")) {
-		scene->setCamera(std::make_shared<Camera>(j.value("camera", Camera{})));
+		auto cameraContainer = std::make_shared<SceneGraphNode>("Camera Container");
+		sceneGraph->attach(sceneGraph->getRoot(), cameraContainer);
+		auto camera = std::make_shared<Camera>();
+		from_json(j.value("camera", json{}), *camera);
+		sceneGraph->attachLeaf(cameraContainer, camera);
 		scene->setCameraController(std::make_shared<OrbitCameraController>(
 			j.value("cameraController", OrbitCameraController{})));
-		scene->getCameraController()->setCamera(scene->mCamera);
+		scene->getCameraController()->setCamera(camera);
+		scene->setCamera(camera);  /* default camera */
 	}
 
 	if (j.contains("model")) {
