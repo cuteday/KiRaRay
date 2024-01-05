@@ -19,7 +19,6 @@ bool Camera::update(){
 		if (mPreserveHeight) mData.filmSize[0] = mData.aspectRatio * mData.filmSize[1];
 		else mData.filmSize[1] = mData.filmSize[0] / mData.aspectRatio;
 		mData.transform = Transformation(getNode()->getGlobalTransform());
-		mData.rotation	= mData.transform.transform().rotation();
 		float fovY = atan2(mData.filmSize[1] * 0.5, mData.focalLength);
 		mData.w = normalize(mData.target - mData.pos) * mData.focalDistance;
 		mData.u = normalize(cross(mData.w, mData.up)) * tan(fovY) * mData.focalDistance * mData.aspectRatio;

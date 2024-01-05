@@ -39,8 +39,8 @@ public:
 
 	KRR_CALLABLE Vector3f operator()(float t) const { return origin + dir * t; }
 
-	Vector3f origin;
-	Vector3f dir;
+	Vector3f origin{};
+	Vector3f dir{};
 	float time{0};
 	Medium medium{nullptr};
 };

@@ -29,36 +29,30 @@ struct CameraData {
 	Vector3f w{0, 0, -1}; // camera forward
 
 	Transformation transform;
-	Matrix3f rotation;
 	Medium medium{nullptr}; // the ray is inside the medium
 
 	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler &sampler) {
-		Ray ray;
+		Ray ray{};
 		/* 1. Statified sample on the film plane (within the fragment) */
 		Vector2f p	 = (Vector2f) pixel + Vector2f(0.5f) + sampler.get2D();
 		Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
-		float fov	 = atan2(filmSize.y() * 0.5f, focalLength);
+		float fov	 = atan2(filmSize[1] * 0.5f, focalLength);
 
 		ray.medium = medium;
 		ray.time   = shutterOpen + shutterTime * sampler.get1D();
-		//if (lensRadius > M_EPSILON) {										   /*Thin lens*/
-		//	/* 2. Sample the lens (uniform) */
-		//	Vector3f focalPoint		= pos + ndc[0] * u + ndc[1] * v + w;
-		//	Vector2f apertureSample = uniformSampleDisk(sampler.get2D());
-		//	ray.origin				= pos + lensRadius * (apertureSample[0] * u.normalized() +
-		//									  apertureSample[1] * v.normalized());
-		//	ray.dir					= normalize(focalPoint - ray.origin);
-		//} else { /*Pin hole*/
-		//ray.origin = pos;
-		//ray.dir	   = normalize(ndc[0] * u + ndc[1] * v + w);
-		//}
-		//return ray;
+		Vector3f focalDirection =
+			Vector3f{tan(fov) * aspectRatio * ndc[0], tan(fov) * ndc[1], -1}.normalized();
 
-		ray.origin = Vector3f::Zero();
-		ray.dir	   = Vector3f{fov * aspectRatio * ndc[0], fov * ndc[1], -1}.normalized();
-		ray.origin = transform.transform() * ray.origin;
-		ray.dir	   = rotation * ray.dir;
-		return ray;
+		if (lensRadius > M_EPSILON) {										   /*Thin lens*/
+			/* 2. Sample the lens (uniform) */
+			Vector2f apertureSample = uniformSampleDisk(sampler.get2D());
+			ray.origin.head<2>()	= lensRadius * apertureSample;
+			ray.dir = (focalDirection * focalDistance - ray.origin).normalized();
+		} else { /*Pin hole*/
+			ray.origin = Vector3f::Zero();
+			ray.dir	   = focalDirection;
+		}
+		return transform(ray);
 	}
 
 	KRR_CALLABLE Matrix4f getViewMatrix() const { 
