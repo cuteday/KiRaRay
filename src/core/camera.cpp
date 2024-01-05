@@ -12,14 +12,15 @@ bool Camera::update(){
 					mScene.lock()->getSceneRT()->getMediumData()[medium->getMediumId()];
 	}
 
-	bool hasChanges = (bool)memcmp(&mData, &mDataPrev, sizeof(rt::CameraData));
+	bool hasChanges = mHasChanges || (bool) memcmp(&mData, &mDataPrev, sizeof(rt::CameraData));
 	if (hasChanges) {
 		/* Update parameters in data. */
 		if (mPreserveHeight) mData.filmSize[0] = mData.aspectRatio * mData.filmSize[1];
 		else mData.filmSize[1] = mData.filmSize[0] / mData.aspectRatio;
 		mData.transform = Transformation(getNode()->getGlobalTransform());
+		mDataPrev		= mData;
+		mHasChanges		= false;
 	}
-	mDataPrev = mData;
 	return hasChanges;
 }
 
@@ -52,8 +53,9 @@ bool OrbitCameraController::update(){
 
 		mCamera->getNode()->setRotation(rotate);
 		mCamera->getNode()->setTranslation(pos);
+		mCamera->setChanged();
+		mDataPrev = mData;
 	}
-	mDataPrev = mData;
 	return hasChanges;
 }
 
@@ -110,6 +112,7 @@ void OrbitCameraController::renderUI() {
 	ui::DragFloat("Yaw", &mData.yaw, 1e-2, 0, 2 * M_PI);
 	ui::DragFloat("Pitch", &mData.pitch, 1e-2, -M_PI / 2, M_PI / 2);
 	ui::DragFloat3("Target", (float*)&mData.target, 1e-1, -1e5f, 1e5f);
+	if (ui::Button("Focus to center")) mCamera->setFocalDistance(mData.radius);
 }
 
 void OrbitCameraController::setCamera(const Camera::SharedPtr &pCamera) { 

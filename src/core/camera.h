@@ -91,6 +91,7 @@ public:
 	Vector2f getFilmSize() const { return mData.filmSize; }
 	Affine3f getTransform() const { return getNode()->getGlobalTransform(); }
 	Matrix3f getRotation() const { return getTransform().rotation(); }
+	float getLensRadius() const { return mData.lensRadius; }
 	float getFocalDistance() const { return mData.focalDistance; }
 	float getFocalLength() const { return mData.focalLength; }
 	float getShutterOpen() const { return mData.shutterOpen; }
@@ -101,8 +102,10 @@ public:
 	void setFilmSize(Vector2f& size) { mData.filmSize = size; }
 	void setFocalDistance(float focalDistance) { mData.focalDistance = focalDistance; }
 	void setFocalLength(float focalLength) { mData.focalLength = focalLength; }
+	void setLensRadius(float lensRadius) { mData.lensRadius = lensRadius; }
 	void setShutterOpen(float shutterOpen) { mData.shutterOpen = shutterOpen; }
 	void setShutterTime(float shutterTime) { mData.shutterTime = shutterTime; }
+	void setChanged() { mHasChanges = true; }
 	void setScene(std::weak_ptr<Scene> scene) { mScene = scene; }
 
 	Matrix4f getViewMatrix() const;
@@ -113,7 +116,7 @@ protected:
 	KRR_CLASS_DEFINE(Camera, mData);
 	std::weak_ptr<Scene> mScene;
 	rt::CameraData mData, mDataPrev;
-	bool mHasChanges = false;
+	bool mHasChanges	 = false;
 	bool mPreserveHeight = true;	// preserve sensor height on aspect ratio changes.
 };
 
@@ -142,7 +145,6 @@ public:
 	using SharedPtr = std::shared_ptr<OrbitCameraController>;
 	struct CameraControllerData{
 		Vector3f target{0, 0, 0};
-		Vector3f up{0, 1, 0};
 		float radius = 5;
 		float pitch	 = 0;
 		float yaw	 = 0;
@@ -152,10 +154,6 @@ public:
 
 	OrbitCameraController() = default;
 	OrbitCameraController(Camera::SharedPtr pCamera): CameraController(pCamera) {}
-	
-	static SharedPtr create(Camera::SharedPtr pCamera){
-		return SharedPtr(new OrbitCameraController(pCamera));
-	}
 	
 	virtual bool update() override;
 	virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
