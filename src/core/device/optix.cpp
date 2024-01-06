@@ -593,6 +593,7 @@ OptixSceneMultiLevel::OptixSceneMultiLevel(Scene::SharedPtr scene,
 
 void OptixSceneSingleLevel::updateAccelStructure() {
 	PROFILE("Update Accel Structure");
+	if (!config.enableAnimation) return;
 	// Currently only supports updating subgraph transformations.
 	for (int idx = 0; idx < referencedMeshes.size(); idx++) {
 		const auto &instance		   = referencedMeshes[idx].lock();
@@ -614,6 +615,7 @@ void OptixSceneSingleLevel::updateAccelStructure() {
 
 void OptixSceneMultiLevel::updateAccelStructure() {
 	PROFILE("Update Accel Structure");
+	if (!config.enableAnimation) return;
 	for (auto instanceInput : instanceBuildInputs) {
 		for (int idx = 0; idx < instanceInput->nodes.size(); idx++) {
 			const auto instance			   = instanceInput->nodes[idx];
