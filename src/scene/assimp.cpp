@@ -247,7 +247,7 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 									| aiProcess_CalcTangentSpace
 									| aiProcess_FindDegenerates
 									| aiProcess_OptimizeMeshes
-									| aiProcess_OptimizeGraph
+									//| aiProcess_OptimizeGraph
 									| aiProcess_JoinIdenticalVertices 
 									| aiProcess_FindInvalidData
 									//| aiProcess_MakeLeftHanded
@@ -266,9 +266,10 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 									| aiProcess_GenBoundingBoxes
 									| aiProcess_FindInstances
 									| aiProcess_ImproveCacheLocality;
+	/* [TODO] aiProcess_OptimizeGraph is disabled, since I found sometimes 
+	   it merges different transformations into one... WHY? */
 	int removeFlags = aiComponent_COLORS;
-	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS;
-		 uvLayer++)
+	for (uint32_t uvLayer = 1; uvLayer < AI_MAX_NUMBER_OF_TEXTURECOORDS; uvLayer++)
 		removeFlags |= aiComponent_TEXCOORDSn(uvLayer);
 
 	mFilepath = filepath.string();
@@ -355,28 +356,29 @@ void AssimpImporter::loadMeshes() {
 		aiMesh *pAiMesh = mAiScene->mMeshes[meshId];
 		auto mesh		= std::make_shared<Mesh>();
 		mesh->indices.reserve(pAiMesh->mNumFaces);
-
+		Log(Debug, "Importing mesh %s with %d vertices and %d faces", pAiMesh->mName.C_Str(),
+			pAiMesh->mNumVertices, pAiMesh->mNumFaces);
 		assert(pAiMesh->HasNormals());
 		for (uint vertexId = 0; vertexId < pAiMesh->mNumVertices; vertexId++) {
-			Vector3f normal = normalize(aiCast(pAiMesh->mNormals[vertexId]));
-			Vector3f T, B;
-
+			Vector3f pos	= aiCast(pAiMesh->mVertices[vertexId]);
+			Vector3f normal = aiCast(pAiMesh->mNormals[vertexId]).normalized();
+			mesh->positions.push_back(pos);
+			mesh->normals.push_back(normal);
+			Log(Debug, "Vert#%d: Pos: %s; Normal: %s", vertexId, pos.string().c_str(),
+				normal.string().c_str());
 			if (pAiMesh->HasTangentsAndBitangents() && (pAiMesh->mTangents != NULL)) {
-				T = aiCast(pAiMesh->mTangents[vertexId]);
+				Vector3f T = aiCast(pAiMesh->mTangents[vertexId]);
 				//  in assimp the tangents and bitangents are not necessarily
 				//  orthogonal! however we need them to be orthonormal since we use
 				//  tbn as world-local transformations
-				T = normalize(T - normal * dot(normal, T));
+				T = (T - normal * dot(normal, T)).normalized();
 				mesh->tangents.push_back(T);
 			}
-			mesh->positions.push_back(aiCast(pAiMesh->mVertices[vertexId]));
+			
 			if (pAiMesh->HasTextureCoords(0)) {
 				Vector3f texcoord = Vector3f(aiCast(pAiMesh->mTextureCoords[0][vertexId]));
 				mesh->texcoords.push_back(texcoord);
-			} else {
-				Log(Debug, "Lost UV coords when importing with Assimp");
-			}
-			mesh->normals.push_back(normal);
+			} else Log(Debug, "Lost UV coords when importing with Assimp");
 		}
 
 		for (uint faceId = 0; faceId < pAiMesh->mNumFaces; faceId++) {

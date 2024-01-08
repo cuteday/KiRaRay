@@ -81,11 +81,11 @@ public:
 	KRR_CALLABLE Affine3f transform() const { return m; } 
 	KRR_CALLABLE Affine3f inverse() const { return mInv; }
 	KRR_CALLABLE Matrix3f transposedInverse() const {
-		return mInv.matrix().topLeftCorner(3, 3).transpose();
+		return mInv.matrix().block<3, 3>(0, 0).transpose();
 	}
 
 	KRR_CALLABLE Ray operator()(const Ray& ray) const {
-		return Ray{m * ray.origin, m.matrix().topLeftCorner(3, 3) * ray.dir, ray.time, ray.medium};
+		return Ray{m * ray.origin, m.matrix().block<3, 3>(0, 0) * ray.dir, ray.time, ray.medium};
 	}
 
 	Affine3f m, mInv;
@@ -100,7 +100,7 @@ offsetRayOrigin(const Vector3f &p, const Vector3f &n, const Vector3f &w) {
 
 KRR_CALLABLE Ray operator*(const Affine3f& transform, const Ray& ray) {
 	Vector3f o = transform * ray.origin;
-	Vector3f d = transform.matrix().topLeftCorner(3, 3) * ray.dir;
+	Vector3f d = transform.matrix().block<3, 3>(0, 0) * ray.dir;
 	return Ray{o, d, ray.time, ray.medium};
 }
 
