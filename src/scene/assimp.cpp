@@ -456,7 +456,7 @@ void AssimpImporter::loadAnimations() {
 		for (int ch = 0; ch < pAiAnimation->mNumChannels; ch++) {
 			aiNodeAnim *aiNode = pAiAnimation->mChannels[ch];
 			Log(Info,
-				"Importing animation for node %s with %zd scaling, %zd rotation, %d translation "
+				"Importing animation for node %s with %u scaling, %u rotation, %u translation "
 				"keys", aiCast(aiNode->mNodeName).c_str(), aiNode->mNumScalingKeys,
 				aiNode->mNumRotationKeys, aiNode->mNumPositionKeys);
 			auto graphNode = mNodeMap[aiCast(aiNode->mNodeName)];			

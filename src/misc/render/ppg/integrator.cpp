@@ -230,7 +230,7 @@ void PPGPathTracer::render(RenderContext *context) {
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
 		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); });
-		generateCameraRays(sampleId);
+		generateCameraRays();
 		// [STEP#2] do radiance estimation recursively
 		for (int depth = 0; true; depth++) {
 			GPUCall(KRR_DEVICE_LAMBDA() {
@@ -381,7 +381,7 @@ void PPGPathTracer::nextIteration() {
 			m_pixelEstimate->save(File::outputDir() /
 								  ("iteration_" + std::to_string(m_iter) + ".exr"));
 	}
-
+	// TODO: implement weight by inverse variance.
 	if (m_sampleCombination == ESampleCombination::EDiscardWithAutomaticBudget)
 		m_image->reset();	// discard previous samples each iteration
 	CUDA_SYNC_CHECK();

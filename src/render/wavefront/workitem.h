@@ -17,7 +17,6 @@ struct PixelState {
 	RGB pixel;
 	PCGSampler sampler;
 	SampledWavelengths lambda;
-	float time;
 };
 
 struct RayWorkItem {

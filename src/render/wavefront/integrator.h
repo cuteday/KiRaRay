@@ -41,8 +41,8 @@ public:
 
 	void handleHit();
 	void handleMiss();
+	void generateCameraRays();
 	void generateScatterRays(int depth);
-	void generateCameraRays(int sampleId);
 	void sampleMediumInteraction(int depth);
 	void sampleMediumScattering(int depth);
 	void traceClosest(int depth);

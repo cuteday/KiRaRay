@@ -11,6 +11,12 @@ using namespace io;
 class Scene;
 
 namespace rt {
+struct CameraSample {
+	Vector2f pFilm;
+	Vector2f pLens;
+	float time;
+};
+
 struct CameraData {
 	Vector2f filmSize{42.666667f, 24.0f}; // sensor size in mm [width, height]
 	float focalLength{21};				  // distance from sensor to lens, in mm
@@ -23,28 +29,36 @@ struct CameraData {
 	Transformation transform;
 	Medium medium{nullptr}; // the ray is inside the medium
 
-	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler &sampler) {
+	KRR_CALLABLE CameraSample generateSample(Sampler& sampler) const {
+		return {sampler.get2D(), sampler.get2D(), sampler.get1D()};
+	}
+
+	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, const CameraSample &sample) const {
 		Ray ray{};
 		/* 1. Statified sample on the film plane (within the fragment) */
-		Vector2f p	 = (Vector2f) pixel + Vector2f(0.5f) + sampler.get2D();
+		Vector2f p	 = (Vector2f) pixel + Vector2f(0.5f) + sample.pFilm;
 		Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
 		float fov	 = atan2(filmSize[1] * 0.5f, focalLength);
 
 		ray.medium = medium;
-		ray.time   = shutterOpen + shutterTime * sampler.get1D();
+		ray.time   = shutterOpen + shutterTime * sample.time;
 		Vector3f focalDirection =
 			Vector3f{tan(fov) * aspectRatio * ndc[0], tan(fov) * ndc[1], -1}.normalized();
 
-		if (lensRadius > M_EPSILON) {										   /*Thin lens*/
+		if (lensRadius > M_EPSILON) { /*Thin lens*/
 			/* 2. Sample the lens (uniform) */
-			Vector2f apertureSample = uniformSampleDisk(sampler.get2D());
+			Vector2f apertureSample = uniformSampleDisk(sample.pLens);
 			ray.origin.head<2>()	= lensRadius * apertureSample;
-			ray.dir = (focalDirection * focalDistance - ray.origin).normalized();
+			ray.dir					= (focalDirection * focalDistance - ray.origin).normalized();
 		} else { /*Pin hole*/
 			ray.origin = Vector3f::Zero();
 			ray.dir	   = focalDirection;
 		}
 		return transform(ray);
+	}
+
+	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, Sampler &sampler) const {
+		return getRay(pixel, frameSize, generateSample(sampler));
 	}
 
 	friend void to_json(json& j, const CameraData& camera) {
@@ -58,11 +72,11 @@ struct CameraData {
 
 	friend void from_json(const json& j, CameraData& camera) {
 		/* only does incremental update */
-		camera.focalLength = j.value("focalLength", camera.focalLength);
+		camera.focalLength	 = j.value("focalLength", camera.focalLength);
 		camera.focalDistance = j.value("focalDistance", camera.focalDistance);
-		camera.lensRadius = j.value("lensRadius", camera.lensRadius);
-		camera.aspectRatio = j.value("aspectRatio", camera.aspectRatio);
-		camera.shutterOpen = j.value("shutterOpen", camera.shutterOpen);
+		camera.lensRadius	 = j.value("lensRadius", camera.lensRadius);
+		camera.aspectRatio	 = j.value("aspectRatio", camera.aspectRatio);
+		camera.shutterOpen	 = j.value("shutterOpen", camera.shutterOpen);
 		camera.shutterTime	 = j.value("shutterTime", camera.shutterTime);
 	}
 };

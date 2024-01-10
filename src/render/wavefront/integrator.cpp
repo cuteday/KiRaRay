@@ -157,7 +157,7 @@ void WavefrontPathTracer::generateScatterRays(int depth) {
 		}, gpContext->cudaStream);
 }
 
-void WavefrontPathTracer::generateCameraRays(int sampleId) {
+void WavefrontPathTracer::generateCameraRays() {
 	PROFILE("Generate camera rays");
 	RayQueue *cameraRayQueue = currentRayQueue(0);
 	auto frameSize			 = getFrameSize();
@@ -166,7 +166,6 @@ void WavefrontPathTracer::generateCameraRays(int sampleId) {
 			Sampler sampler		= &pixelState->sampler[pixelId];
 			Vector2i pixelCoord = {pixelId % frameSize[0], pixelId / frameSize[0]};
 			Ray cameraRay		= camera->getRay(pixelCoord, frameSize, sampler);
-			pixelState->time[pixelId] = cameraRay.time;
 			cameraRayQueue->pushCameraRay(cameraRay, pixelId);
 		}, gpContext->cudaStream);
 }
@@ -222,7 +221,7 @@ void WavefrontPathTracer::render(RenderContext *context) {
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
 		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); }, gpContext->cudaStream);
-		generateCameraRays(sampleId);
+		generateCameraRays();
 		// [STEP#2] do radiance estimation recursively
 		for (int depth = 0; true; depth++) {
 			GPUCall(KRR_DEVICE_LAMBDA() {
