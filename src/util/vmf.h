@@ -1,10 +1,7 @@
 #include "common.h"
 
-
-#include "raytracing.h"
-
+#include "krrmath/math.h"
 #include "render/sampling.h"
-#include "render/shared.h"
 
 KRR_NAMESPACE_BEGIN
 
