@@ -35,10 +35,17 @@ struct Ray{
 	Medium medium;
 };
 
+struct CameraSample{
+	Vector2f pFilm;
+	Vector2f pLens;
+	float time;
+};
+
 struct PixelState {
 	Spectrum L;
 	RGB pixel;
 	PCGSampler sampler;
+	CameraSample cameraSample;
 	SampledWavelengths lambda;
 };
 

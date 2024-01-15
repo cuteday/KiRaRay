@@ -165,8 +165,10 @@ void WavefrontPathTracer::generateCameraRays() {
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
 			Sampler sampler		= &pixelState->sampler[pixelId];
 			Vector2i pixelCoord = {pixelId % frameSize[0], pixelId / frameSize[0]};
-			Ray cameraRay		= camera->getRay(pixelCoord, frameSize, sampler);
+			CameraSample cameraSample = camera->generateSample(sampler);
+			Ray cameraRay			  = camera->getRay(pixelCoord, frameSize, cameraSample);
 			cameraRayQueue->pushCameraRay(cameraRay, pixelId);
+			pixelState->cameraSample[pixelId] = cameraSample;
 		}, gpContext->cudaStream);
 }
 

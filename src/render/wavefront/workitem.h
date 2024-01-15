@@ -6,8 +6,6 @@
 #include "render/materials/bxdf.h"
 
 KRR_NAMESPACE_BEGIN
-
-
 using namespace rt;
 
 /* Remember to copy these definitions to workitem.soa whenever changing them. */
@@ -16,6 +14,7 @@ struct PixelState {
 	Spectrum L;
 	RGB pixel;
 	PCGSampler sampler;
+	CameraSample cameraSample;
 	SampledWavelengths lambda;
 };
 
