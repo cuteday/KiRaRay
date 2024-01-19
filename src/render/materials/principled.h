@@ -26,7 +26,7 @@ public:
 	KRR_CALLABLE PrincipledDiffuse(const Spectrum &R) : R(R) {}
 	KRR_CALLABLE Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
 		if (!SameHemisphere(wo, wi))
-			return SampledSpectrum::Zero();
+			return Spectrum::Zero();
 		float Fo = SchlickWeight(AbsCosTheta(wo)), Fi = SchlickWeight(AbsCosTheta(wi));
 		return R * M_INV_PI * (1 - Fo / 2) * (1 - Fi / 2);
 	}

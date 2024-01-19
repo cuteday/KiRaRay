@@ -310,8 +310,8 @@ public:
 
 	static const RGBColorSpace *getNamed(std::string name);
 	static const RGBColorSpace *lookup(Point2f r, Point2f g, Point2f b, Point2f w);
-
-	KRR_CALLABLE float lum(const SampledSpectrum &s, const SampledWavelengths &lambda) const;
+	template <typename SpectrumType>
+	KRR_CALLABLE float lum(const SpectrumType &s, const SampledWavelengths &lambda) const;
 	KRR_CALLABLE XYZ toXYZ(RGB rgb) const { return XYZFromRGB * rgb.matrix(); }
 	KRR_CALLABLE RGB toRGB(XYZ xyz) const { return RGBFromXYZ * xyz.matrix(); }
 	KRR_CALLABLE XYZ toXYZ(SampledSpectrum s, const SampledWavelengths &lambda) const;
@@ -456,10 +456,18 @@ KRR_CALLABLE SampledSpectrum SampledSpectrum::fromRGB(const RGB &rgb, SpectrumTy
 	}
 }
 
-KRR_CALLABLE float RGBColorSpace::lum(const SampledSpectrum& s, const SampledWavelengths& lambda) const {
-	SampledSpectrum Ys	= CIE_Y->sample(lambda);
-	SampledSpectrum pdf = lambda.pdf();
-	return SampledSpectrum(Ys * s).safeDiv(pdf).mean() / CIE_Y_integral;
+template <typename SpectrumType>
+KRR_CALLABLE float RGBColorSpace::lum(const SpectrumType& s, const SampledWavelengths& lambda) const {
+	if constexpr (std::is_same_v<SpectrumType, RGB>) {
+		return Vector3f(s).dot(Vector3f(0.299, 0.587, 0.114));
+	} else if constexpr (std::is_same_v<SpectrumType, SampledSpectrum>) {
+		SampledSpectrum Ys	= CIE_Y->sample(lambda);
+		SampledSpectrum pdf = lambda.pdf();
+		return SampledSpectrum(Ys * s).safeDiv(pdf).mean() / CIE_Y_integral;
+	}
+	else 
+		static_assert(!std::is_same_v<SpectrumType, SpectrumType>, 
+			"SpectrumType must be either RGB or SampledSpectrum");
 }
 
 KRR_CALLABLE float luminance(RGB color) {

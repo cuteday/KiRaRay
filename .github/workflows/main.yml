@@ -21,6 +21,7 @@ jobs:
         cuda: ["11.4.0", "12.1.0"]
         cuda_arch: ["61", "75"]
         os: ["windows-2019"]
+        spectral: ["ON", "OFF"]
         visual_studio: ["Visual Studio 16 2019"]
     
     runs-on: ${{matrix.os}}
@@ -83,7 +84,7 @@ jobs:
       env:
         CUDA_ARCH: ${{matrix.cuda_arch}}
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_CUDA_ARCHITECTURES=${{matrix.cuda_arch}}-virtual -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DOptiX_INSTALL_DIR=${{env.OptiX_INSTALL_DIR}}
+        cmake -B ${{github.workspace}}/build -DCMAKE_CUDA_ARCHITECTURES=${{matrix.cuda_arch}}-virtual -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DOptiX_INSTALL_DIR=${{env.OptiX_INSTALL_DIR}} -DKRR_RENDER_SPECTRAL=${{matrix.spectral}}
       
     - name: Build
       run: | 
