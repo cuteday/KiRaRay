@@ -51,6 +51,9 @@ struct BSDFData {
 	KRR_CALLABLE BSDFType getBsdfType() const {
 		BSDFType type = BSDFType::BSDF_UNSET;
 		switch (bsdfType) {
+			case MaterialType::Null:
+				type = BSDFType::BSDF_NULL;
+				break;
 			case MaterialType::Diffuse:
 				type = BSDFType::BSDF_DIFFUSE_REFLECTION;
 				break;

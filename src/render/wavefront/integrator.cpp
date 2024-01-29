@@ -73,7 +73,7 @@ void WavefrontPathTracer::handleHit() {
 	ForAllQueued(
 		hitLightRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const HitLightWorkItem &w) {
 			Spectrum Le = w.light.L(w.p, w.n, w.uv, w.wo, pixelState->lambda[w.pixelId]) * w.thp;
-			if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
+			if (enableNEE && w.depth && !(w.bsdfType & BSDF_DELTA)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
 				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
 				Le /= (w.pl * lightPdf + w.pu).mean();
@@ -91,7 +91,7 @@ void WavefrontPathTracer::handleMiss() {
 			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : infiniteLights) {
-				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
+				if (enableNEE && w.depth && !(w.bsdfType & BSDF_DELTA)) {
 					float lightPdf = light.pdfLi(intr, w.ctx) * lightSampler.pdf(&light);
 					L += light.Li(w.ray.dir, lambda) / (w.pu + w.pl * lightPdf).mean();
 				} else L += light.Li(w.ray.dir, lambda) / w.pu.mean();	

@@ -38,7 +38,7 @@ public:
 
 	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
 								   TransportMode mode = TransportMode::Radiance) const {
-		if (eta == 1 || distribution.isSpecular()) return Spectrum::Zero();
+		if (eta == 1 || distribution.isDelta()) return Spectrum::Zero();
 		// Evaluate rough dielectric BSDF
 		// Compute generalized half vector _wm_
 		float cosTheta_o = CosTheta(wo), cosTheta_i = CosTheta(wi);
@@ -74,7 +74,7 @@ public:
 
 	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
 								   TransportMode mode = TransportMode::Radiance) const {
-		if (eta == 1 || distribution.isSpecular()) {
+		if (eta == 1 || distribution.isDelta()) {
 			// Sample perfectly specular dielectric BSDF
 			float F = FrDielectric(CosTheta(wo), eta);
 			Spectrum R = baseColor * F, T = baseColor * (1 - F);
@@ -152,7 +152,7 @@ public:
 
 	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
 						   TransportMode mode = TransportMode::Radiance) const {
-		if (eta == 1 || distribution.isSpecular())
+		if (eta == 1 || distribution.isDelta())
 			return 0;
 		// Evaluate sampling PDF of rough dielectric BSDF
 		// Compute generalized half vector _wm_
@@ -196,7 +196,7 @@ public:
 
 	KRR_CALLABLE BSDFType flags() const { 
 		BSDFType type = eta == 1 ? BSDF_TRANSMISSION : (BSDF_REFLECTION | BSDF_TRANSMISSION);
-		return type | (distribution.isSpecular() ? BSDF_SPECULAR : BSDF_GLOSSY);
+		return type | (distribution.isDelta() ? BSDF_SPECULAR : BSDF_GLOSSY);
 	}
 
 private:

@@ -216,7 +216,7 @@ void PPGPathTracer::generateScatterRays(int depth) {
 					if (r.depth <= MAX_TRAIN_DEPTH) {
 						guidedPathState->incrementDepth(r.pixelId, r.ray, dTree, dTreeVoxelSize,
 														r.thp, sample.f, sample.pdf, bsdfPdf, dTreePdf,
-														sample.isSpecular());
+														sample.isDelta());
 					}
 				}
 			}

@@ -1,6 +1,4 @@
 #include "renderer.h"
-#include "render/spectrum.h"
-#include "device/cuda.h"
 
 KRR_NAMESPACE_BEGIN
 
@@ -22,9 +20,13 @@ extern "C" int main(int argc, char *argv[]) {
 		Log(Info, "Using specified config file at %s", configFile.c_str());
 	}
 
-	RenderApp app;
-	app.loadConfigFrom(configFile);
-	app.run();
+	auto app = std::make_shared<RenderApp>();
+	try {
+		app->loadConfigFrom(configFile);
+		app->run();
+	} catch (const std::exception &e) {
+		Log(Error, "Error: %s", e.what());
+	}
 
 	exit(EXIT_SUCCESS);
 }

@@ -3,16 +3,15 @@
 #include "common.h"
 #include "device/taggedptr.h"
 
+#include "materials/null.h"
 #include "materials/diffuse.h"
 #include "materials/disney.h"
 #include "materials/dielectric.h"
 
 KRR_NAMESPACE_BEGIN
 
-
-class BxDF :public TaggedPointer<DiffuseBrdf, 
-	DielectricBsdf,
-	DisneyBsdf>{
+class BxDF :public TaggedPointer<NullBsdf, DiffuseBrdf, 
+	DielectricBsdf, DisneyBsdf>{
 public:
 	using TaggedPointer::TaggedPointer;
 

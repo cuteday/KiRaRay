@@ -21,8 +21,9 @@ typedef struct {
 	rt::InstanceData *instance;
 } HitgroupSBTData;
 
-enum class MaterialType {
-	Diffuse = 0,
+enum class MaterialType : uint32_t{
+	Null = 0,
+	Diffuse,
 	Dielectric,
 	Disney,
 	Count

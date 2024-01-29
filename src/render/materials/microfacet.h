@@ -18,7 +18,7 @@ class GGXMicrofacetDistribution {
 public:
 	GGXMicrofacetDistribution() = default;
 
-	KRR_CALLABLE bool isSpecular() const { return max(alphax, alphay) <= 1e-3f; }
+	KRR_CALLABLE bool isDelta() const { return max(alphax, alphay) <= 1e-3f; }
 
 	static KRR_CALLABLE float RoughnessToAlpha(float roughness) {
 		roughness = max(roughness, (float)1e-3f);
@@ -204,7 +204,7 @@ public:
 
 	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
 						 TransportMode mode = TransportMode::Radiance) const {
-		if (distribution.isSpecular()) return Spectrum::Zero();
+		if (distribution.isDelta()) return Spectrum::Zero();
 		if (!SameHemisphere(wi, wo)) return Spectrum::Zero();
 		
 		float cosThetaO = AbsCosTheta(wo), cosThetaI = AbsCosTheta(wi);
@@ -225,7 +225,7 @@ public:
 		Vector2f u = sg.get2D();
 
 		if (wo[2] == 0) return sample;     
-		if (distribution.isSpecular()) {
+		if (distribution.isDelta()) {
 			return BSDFSample(Fr(wo, Vector3f{ 0, 0, 1 }) / AbsCosTheta(wo), 
 				{ -wo[0], -wo[1], wo[2] }, 
 				1 /* delta pdf */, BSDF_SPECULAR_REFLECTION /* bsdf type */);
@@ -247,7 +247,7 @@ public:
 
 	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
 						   TransportMode mode = TransportMode::Radiance) const {
-		if (distribution.isSpecular()) return 0;
+		if (distribution.isDelta()) return 0;
 		if (!SameHemisphere(wo, wi)) return 0;
 		Vector3f wh = normalize(wo + wi);
 		return distribution.Pdf(wo, wh) / (4 * dot(wo, wh));
@@ -266,7 +266,7 @@ public:
 
 	KRR_CALLABLE BSDFType flags() const {
 		if (!R.any()) return BSDF_UNSET;
-		return distribution.isSpecular() ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
+		return distribution.isDelta() ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
 	}
 	
 	Spectrum R{ 1 };	            // specular reflectance
@@ -302,7 +302,7 @@ public:
 
 	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
 						 TransportMode mode = TransportMode::Radiance) const {
-		if (distribution.isSpecular()) return Spectrum::Zero();
+		if (distribution.isDelta()) return Spectrum::Zero();
 		if (SameHemisphere(wo, wi)) return Spectrum::Zero();
 
 		float cosThetaO = wo[2], cosThetaI = wi[2];
@@ -332,7 +332,7 @@ public:
 		if (wo[2] == 0) return sample;
 
 		float eta;
-		if (distribution.isSpecular()) {
+		if (distribution.isDelta()) {
 			Vector3f wi, wh = { 0, 0, copysignf(1, wo[2]) };
 			if (!Refract(wo, wh, etaT, &eta, &wi))
 				return {};
@@ -356,7 +356,7 @@ public:
 
 	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
 						   TransportMode mode = TransportMode::Radiance) const {
-		if (distribution.isSpecular()) return 0;
+		if (distribution.isDelta()) return 0;
 		if (SameHemisphere(wo, wi)) return 0;
 		float eta = CosTheta(wo) > 0 ? etaT : 1 / etaT;
 		// wh = wo + eta * wi, eta = etaI / etaT
@@ -371,7 +371,7 @@ public:
 
 	KRR_CALLABLE BSDFType flags() const {
 		if (!T.any()) return BSDF_UNSET;
-		return distribution.isSpecular() ? BSDF_SPECULAR_TRANSMISSION : BSDF_GLOSSY_TRANSMISSION;
+		return distribution.isDelta() ? BSDF_SPECULAR_TRANSMISSION : BSDF_GLOSSY_TRANSMISSION;
 	}
 
 	KRR_CALLABLE Spectrum Fr(Vector3f wo, Vector3f wh) const {
