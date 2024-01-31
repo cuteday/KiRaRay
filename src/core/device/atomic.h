@@ -14,7 +14,7 @@
 #endif
 #endif
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 template <typename T> 
 class atomic { 
@@ -91,4 +91,4 @@ private:
 #endif
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

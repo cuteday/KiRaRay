@@ -6,7 +6,7 @@
 
 #include "vector.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 template <typename T, int Rows, int Cols, int Options = Eigen::RowMajor>
 class Matrix : public Eigen::Matrix<T, Rows, Cols, Options> {
@@ -62,4 +62,4 @@ using Matrix2f = Matrixf<2, 2, Eigen::ColMajor>;
 using Matrix3f = Matrixf<3, 3, Eigen::ColMajor>;
 using Matrix4f = Matrixf<4, 4, Eigen::ColMajor>;
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

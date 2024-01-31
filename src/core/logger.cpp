@@ -1,6 +1,6 @@
 #include "logger.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace Log;
 
@@ -100,4 +100,4 @@ void Logger::log(Level level, const string& msg, bool terminate) {
 	if (level < Level::Error || terminate) exit(1);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

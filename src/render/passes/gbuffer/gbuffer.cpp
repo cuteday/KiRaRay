@@ -2,7 +2,7 @@
 #include "window.h"
 #include "render/profiler/profiler.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 extern "C" char GBUFFER_PTX[];
 
@@ -43,4 +43,4 @@ void GBufferPass::renderUI() {
 	ui::Checkbox("Motion", &mEnableMotion);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

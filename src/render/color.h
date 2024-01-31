@@ -4,7 +4,7 @@
 #include "krrmath/math.h"
 #include "util/math_utils.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 #ifdef RGB
 #undef RGB
@@ -160,4 +160,4 @@ inline RGBSigmoidPolynomial RGBToSpectrumTable::operator()(RGB rgb) const {
 	return RGBSigmoidPolynomial(c[0], c[1], c[2]);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

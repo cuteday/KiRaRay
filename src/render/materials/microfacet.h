@@ -8,7 +8,7 @@
 #include "matutils.h"
 #include "fresnel.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace bsdf;
 
@@ -394,4 +394,4 @@ public:
 #endif
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

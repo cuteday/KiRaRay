@@ -8,7 +8,7 @@
 #include "common.h"
 #include "device/timer.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class Profiler {
 public:
@@ -234,4 +234,4 @@ private:
 #define PROFILE(_name)
 #endif
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

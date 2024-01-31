@@ -16,7 +16,7 @@
 
 #include "logger.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 NanoVDBGridBase::SharedPtr loadNanoVDB(std::filesystem::path path) {
 	Log(Info, "Loading nanovdb file from %s", path.string().c_str());
@@ -77,4 +77,4 @@ NanoVDBGridBase::SharedPtr loadOpenVDB(std::filesystem::path path, string key) {
 	}
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

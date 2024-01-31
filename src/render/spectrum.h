@@ -7,7 +7,7 @@
 #include "util/check.h"
 #include "render/color.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class BlackbodySpectrum;
 class RGBColorSpace;
@@ -473,4 +473,4 @@ KRR_CALLABLE float RGBColorSpace::lum(const SpectrumType& s, const SampledWavele
 KRR_CALLABLE float luminance(RGB color) {
 	return dot(Vector3f(color), Vector3f(0.299, 0.587, 0.114));
 }
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

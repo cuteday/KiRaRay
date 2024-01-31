@@ -4,7 +4,7 @@
 #include "config.h"
 #include "logger.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 fs::path File::m_current_working_dir{ KRR_PROJECT_DIR };
 fs::path File::m_output_dir{ KRR_PROJECT_DIR };
@@ -104,4 +104,4 @@ std::shared_ptr<Blob> File::readFile(const fs::path &filepath, bool binary) {
 	return std::make_shared<Blob>(data, size);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -7,7 +7,7 @@
 #include "vulkan/descriptor.h"
 #include "vulkan/helperpass.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class RenderTargets;
 
@@ -76,4 +76,4 @@ private:
 	}
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -21,7 +21,7 @@
 #include "logger.h"
 #include "common.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace gpu {
 
@@ -690,4 +690,4 @@ namespace gpu {
 		bool set = false;
 	};
 } // namespace gpu end
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

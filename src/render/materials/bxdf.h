@@ -5,7 +5,7 @@
 
 #define KRR_USE_DISNEY			1
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 enum BSDFType {
 	BSDF_UNSET					= 0,
@@ -55,4 +55,4 @@ struct BSDFSample {
 						
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -12,7 +12,7 @@
 #include "metrics.h"
 #include "window.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class ErrorMeasurePass : public RenderPass {
 public:
@@ -75,4 +75,4 @@ protected:
 	}
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

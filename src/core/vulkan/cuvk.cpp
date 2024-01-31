@@ -1,6 +1,6 @@
 #include "cuvk.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace cuvk;
 using namespace vkrhi;
@@ -55,4 +55,4 @@ WindowsSecurityAttributes::~WindowsSecurityAttributes() {
 
 #endif /* _WIN64 */
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

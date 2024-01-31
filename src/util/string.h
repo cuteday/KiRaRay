@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <stdexcept>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 // returns file extension with prefix '.'
 inline string getFileExt(string filepath) {
@@ -37,4 +37,4 @@ inline std::string formatString(const std::string &format, Args&& ...args) {
 	return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

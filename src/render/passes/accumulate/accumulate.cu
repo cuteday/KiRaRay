@@ -5,7 +5,7 @@
 #include "device/cuda.h"
 #include "device/context.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 void AccumulatePass::reset() {
 	mAccumCount = 0;
@@ -73,4 +73,4 @@ void AccumulatePass::renderUI() {
 }
 
 KRR_REGISTER_PASS_DEF(AccumulatePass);
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

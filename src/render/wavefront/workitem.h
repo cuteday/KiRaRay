@@ -5,7 +5,7 @@
 #include "render/spectrum.h"
 #include "render/materials/bxdf.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 using namespace rt;
 
 /* Remember to copy these definitions to workitem.soa whenever changing them. */
@@ -98,4 +98,4 @@ struct MediumScatterWorkItem {
 #include "render/wavefront/workitem_soa.h"
 #pragma warning (pop)
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

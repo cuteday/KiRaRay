@@ -10,7 +10,7 @@
 #include "scene.h"
 #include "texture.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace importer {
 
@@ -121,4 +121,4 @@ private:
 	Scene::SharedPtr mScene;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

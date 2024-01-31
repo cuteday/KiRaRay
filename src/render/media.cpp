@@ -5,7 +5,7 @@
 #include "device/cuda.h"
 #include "util/math_utils.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 /* Note that the function qualifier (e.g. inline) should be consistent between declaration and definition. */
 
 template <typename GridType>
@@ -118,4 +118,4 @@ KRR_HOST_DEVICE float PhaseFunction::p(const Vector3f &wo, const Vector3f &wi) c
 }
 
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

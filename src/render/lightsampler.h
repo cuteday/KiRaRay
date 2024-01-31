@@ -6,7 +6,7 @@
 #include "light.h"
 #include "device/taggedptr.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 struct SampledLight {
 	rt::Light light;
@@ -54,4 +54,4 @@ public:
 	}
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

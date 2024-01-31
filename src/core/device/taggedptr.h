@@ -13,7 +13,7 @@
 #include "common.h"
 #include "util/check.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace types {
 
@@ -577,4 +577,4 @@ class TaggedPointer {
 	uintptr_t bits = 0;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -11,7 +11,7 @@
 #include "raytracing.h"
 #include "render/materials/bxdf.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class SceneGraph;
  
@@ -205,4 +205,4 @@ public:
 };
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

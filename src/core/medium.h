@@ -4,7 +4,7 @@
 #include "device/taggedptr.h"
 #include "render/spectrum.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class Ray;
 
@@ -55,4 +55,4 @@ public:
 	Medium inside, outside;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

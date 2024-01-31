@@ -9,7 +9,7 @@
 
 // Adapted from GLM's clip space transform implementation.
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 #if KRR_CLIPSPACE_RIGHTHANDED
 
@@ -140,4 +140,4 @@ KRR_CALLABLE Matrix<T, 4, 4, Options> look_at(Vector3<T> const &eye, Vector3<T> 
 
 #endif
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

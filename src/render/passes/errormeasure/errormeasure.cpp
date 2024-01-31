@@ -2,7 +2,7 @@
 #include "metrics.h"
 #include "render/profiler/profiler.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace {
 static const char *metricNames[] = { "MSE", "MAPE", "SMAPE", "RelMSE" };
@@ -116,4 +116,4 @@ bool ErrorMeasurePass::loadReferenceImage(const string &path) {
 }
 
 KRR_REGISTER_PASS_DEF(ErrorMeasurePass);
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

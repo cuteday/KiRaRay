@@ -10,7 +10,7 @@
 #include "render/lightsampler.h"
 #include "workqueue.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class PixelStateBuffer;
 class WavefrontPathTracer;
@@ -140,4 +140,4 @@ KRR_HOST_DEVICE void traceTransmittance(const ShadowRayWorkItem& sr, const Surfa
 		pixelState->addRadiance(sr.pixelId, sr.Ld * T_ray / (sr.pu * pu + sr.pl * pl).mean());
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

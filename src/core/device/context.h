@@ -8,7 +8,7 @@
 #include "device/gpustd.h"
 #include "renderpass.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class Context{
 public:
@@ -42,4 +42,4 @@ public:
 
 extern std::unique_ptr<Context> gpContext;
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

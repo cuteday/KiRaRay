@@ -3,7 +3,7 @@
 #include "vulkan/scene.h"
 #include "render/profiler/profiler.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class GBufferRenderTargets {
 protected:
@@ -258,4 +258,4 @@ void BindlessRender::resize(const Vector2i &size) {
 }
 
 KRR_REGISTER_PASS_DEF(BindlessRender);
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

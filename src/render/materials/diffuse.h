@@ -11,7 +11,7 @@
 #include "render/sampling.h"
 #include "render/shared.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace bsdf;
 
@@ -56,4 +56,4 @@ public:
 	Spectrum diffuse;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

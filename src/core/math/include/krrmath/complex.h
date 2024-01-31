@@ -6,7 +6,7 @@
 #include <math.h>
 #include <algorithm>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 template <typename T>
 struct Complex {
@@ -72,4 +72,4 @@ template <typename T> KRR_CALLABLE T abs(const Complex<T> &z) { return z.abs(); 
 
 template <typename T> KRR_CALLABLE Complex<T> sqrt(const Complex<T> &z) { return z.sqrt(); }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -10,7 +10,7 @@
 #include "device/context.h"
 #include "render/path/path.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class MegakernelPathTracer: public RenderPass{
 public:
@@ -44,4 +44,4 @@ private:
 	}
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

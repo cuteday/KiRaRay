@@ -6,7 +6,7 @@
 #include "render/color.h"
 #include "render/spectrum.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace gpu;
 std::unique_ptr<Context> gpContext;
@@ -90,4 +90,4 @@ nvrhi::vulkan::IDevice *Context::getDefaultVkDevice() const { return defaultVkDe
 
 void Context::updateGlobalConfig(const json &config) { globalConfig.update(config); }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

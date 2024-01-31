@@ -2,7 +2,7 @@
 // Originally licensed under the Apache License, Version 2.0.
 #include "gpustd.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace gpu {
 
@@ -48,4 +48,4 @@ namespace gpu {
 
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

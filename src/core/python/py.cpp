@@ -15,7 +15,7 @@
 #include <pybind11/stl.h>
 #include <pybind11_json.hpp>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 void run(const json& config) {
 	if (!gpContext) gpContext = std::make_unique<Context>(); 
@@ -123,4 +123,4 @@ PYBIND11_MODULE(pykrr, m) {
 #endif
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -2,7 +2,7 @@
 #include "window.h"
 #include "device/context.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 RenderTexture::RenderTexture(vkrhi::IDevice *device, vkrhi::TextureHandle texture) :
 	mTexture(texture) {
@@ -120,5 +120,5 @@ Vector2i RenderPass::getFrameSize() const {
 	return mDeviceManager->getFrameSize();
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)
 

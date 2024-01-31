@@ -10,7 +10,7 @@
 
 #include <optix_device.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 using namespace rt;
 
 namespace {
@@ -194,4 +194,4 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	intr.lambda		 = lambda;
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

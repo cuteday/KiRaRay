@@ -4,7 +4,7 @@
 #include "../scene.h"
 #include "util/volume.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {}
 
@@ -246,4 +246,4 @@ void RTScene::updateSceneData() {
 	lastUpdatedFrame = lastUpdates.frameIndex;
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

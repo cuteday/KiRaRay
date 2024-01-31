@@ -3,7 +3,7 @@
 #include "common.h"
 
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 /*******************************************************
  * bit tricks
@@ -132,4 +132,4 @@ template <typename... Args> KRR_CALLABLE float HashFloat(Args... args) {
 }
 
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

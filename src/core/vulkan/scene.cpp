@@ -2,7 +2,7 @@
 #include "descriptor.h"
 #include "nvrhi/vulkan/vulkan-backend.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 void Scene::initializeSceneVK(nvrhi::vulkan::IDevice *device, 
 	std::shared_ptr<DescriptorTableManager> descriptorTable) { 
@@ -364,4 +364,4 @@ void VKScene::update() {
 	}
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

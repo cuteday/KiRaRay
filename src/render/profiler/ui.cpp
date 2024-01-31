@@ -3,7 +3,7 @@
 #include "ui.h"
 #include "window.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace
 {
@@ -339,4 +339,4 @@ void ProfilerUI::clearGraphData() {
 	}
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

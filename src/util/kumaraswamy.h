@@ -3,7 +3,7 @@
 
 #include "krrmath/math.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class KumaraswamyDistribution {
 public:
@@ -24,4 +24,4 @@ public:
 	float a = 1, b = 1;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

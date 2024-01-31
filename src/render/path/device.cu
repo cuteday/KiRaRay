@@ -6,7 +6,7 @@
 
 #include <optix_device.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace rt;
 
@@ -207,4 +207,4 @@ KRR_RT_KERNEL KRR_RT_RG(Pathtracer)(){
 	launchParams.colorBuffer.write(RGBA(color, 1.f), fbIndex);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

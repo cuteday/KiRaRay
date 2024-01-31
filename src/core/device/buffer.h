@@ -9,7 +9,7 @@
 #include "device/cuda.h"
 #include "util/check.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 /* simple wrapper for creating, and managing a device-side CUDA buffer */
 class CUDABuffer {
@@ -284,4 +284,4 @@ private:
 	T *d_ptr{nullptr};
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

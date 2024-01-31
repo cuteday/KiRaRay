@@ -4,7 +4,7 @@
 #include <util/check.h>
 #include <device/cuda.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 __global__ void draw_screen(cudaSurfaceObject_t frame, float time, 
 						unsigned int width, unsigned int height) {
@@ -86,4 +86,4 @@ void SineWaveSimulation::stepSimulation(float time, cudaStream_t stream) {
 	CUDA_SYNC_CHECK();
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

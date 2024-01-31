@@ -5,7 +5,7 @@
 #include "common.h"
 #include "device/context.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class CpuTimer {
 public:
@@ -97,4 +97,4 @@ private:
 	cudaEvent_t start, stop;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

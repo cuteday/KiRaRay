@@ -2,7 +2,7 @@
 #include "common.h"
 #include "buffer.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 template <typename T, int Dim> 
 class Grid {
@@ -13,4 +13,4 @@ public:
 	Vector<int, Dim> res;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

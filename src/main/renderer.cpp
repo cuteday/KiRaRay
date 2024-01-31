@@ -1,7 +1,7 @@
 #include "renderer.h"
 #include "common.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace { // status bits
 static bool sShowUI				 = true;
@@ -328,4 +328,4 @@ void RenderApp::finalize() {
 	shutdown();
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

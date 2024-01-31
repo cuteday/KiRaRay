@@ -19,7 +19,7 @@
 // disney clearcoat not supported
 // subsurface scattering not supported
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 
 using namespace bsdf;
@@ -369,4 +369,4 @@ public:
 
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

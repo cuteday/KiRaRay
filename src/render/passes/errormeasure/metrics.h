@@ -2,7 +2,7 @@
 #include "common.h"
 #include "device/cuda.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 enum class ErrorMetric { MSE, MAPE, SMAPE, RelMSE, Count };
 
@@ -15,4 +15,4 @@ KRR_ENUM_DEFINE(ErrorMetric, {
 
 float calc_metric(const CudaRenderTarget& frame, const RGBA *reference, size_t n_elements, ErrorMetric metric);
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -8,7 +8,7 @@
 
 #include <nvrhi/vulkan.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace vkrhi {using namespace nvrhi;}
 
@@ -151,4 +151,4 @@ protected:
 	vkrhi::BufferHandle mInstanceDataBuffer;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

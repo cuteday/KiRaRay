@@ -3,10 +3,10 @@
 
 #include <cmath>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace rt {
 
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

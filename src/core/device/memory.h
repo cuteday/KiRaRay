@@ -15,7 +15,7 @@
 #include "device/gpustd.h"
 #include "util/check.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class CUDAMemory : public gpu::memory_resource {
 	void *do_allocate(size_t size, size_t alignment){
@@ -99,4 +99,4 @@ public:
 	std::unordered_map<void *, size_t> allocations;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

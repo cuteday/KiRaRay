@@ -10,7 +10,7 @@
  *	Max s-tree nodes: 2e32; max s-tree depth is unlimited.
  */
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 KRR_HOST void QuadTreeNode::initialize() {
 	for (size_t i = 0; i < 4/*m_sum.size()*/; ++i) {
@@ -443,4 +443,4 @@ KRR_HOST void STree::gatherStatistics() const {
 	);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

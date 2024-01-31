@@ -7,7 +7,7 @@
 #include "logger.h"
 #include "render/wavefront/workitem.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 constexpr size_t MAX_BDPT_DEPTH = 10;
 
@@ -37,4 +37,4 @@ public:
 		: SOA<BDPTPathState>(n, alloc) {}
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -5,7 +5,7 @@
 
 #include <common.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class BindingCache {
 private:
@@ -23,4 +23,4 @@ public:
 	void Clear();
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

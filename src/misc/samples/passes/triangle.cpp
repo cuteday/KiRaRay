@@ -6,7 +6,7 @@
 #include <vulkan/shader.h>
 #include <renderpass.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 static const char *g_WindowTitle = "Hello Triangle";
 
@@ -76,4 +76,4 @@ extern "C" int main(int argc, const char *argv[]) {
 	exit(EXIT_SUCCESS);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -6,7 +6,7 @@
 #include "common.h"
 #include "vector.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 	
 template <typename T, int Size>
 class AxisAligned : public Eigen::AlignedBox<T, Size> {
@@ -90,4 +90,4 @@ public:
 
 using AABB3f = AxisAligned<float, 3>;
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

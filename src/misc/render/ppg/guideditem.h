@@ -4,7 +4,7 @@
 #include "render/wavefront/workqueue.h"
 #include "tree.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 constexpr int MAX_GUIDED_DEPTH = 10;
 constexpr int MAX_TRAIN_DEPTH = 10;
@@ -164,4 +164,4 @@ public:
 	}
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

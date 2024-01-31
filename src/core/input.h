@@ -9,7 +9,7 @@
 
 #include "common.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace io {
 	/** Input modifiers used with some events
@@ -316,4 +316,4 @@ namespace io {
 	};
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

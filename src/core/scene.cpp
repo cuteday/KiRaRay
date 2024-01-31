@@ -6,7 +6,7 @@
 #include "scene.h"
 #include "vulkan/scene.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 Scene::Scene() {
 	mGraph			  = std::make_shared<SceneGraph>();
@@ -170,4 +170,4 @@ void Scene::setConfig(const json& config, bool update) {
 	}
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

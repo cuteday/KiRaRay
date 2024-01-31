@@ -8,7 +8,7 @@
 #include "device/timer.h"
 #include "util/ema.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class FrameRate {
 public:
@@ -54,4 +54,4 @@ private:
 	static const uint64_t sFrameWindow = 20;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

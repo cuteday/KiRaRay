@@ -7,7 +7,7 @@
 #include "device/memory.h"
 #include "device/buffer.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class Triangle;
 class Volume;
@@ -81,4 +81,4 @@ public:
 	RGB Le{};		/* A mesh-specific area light, used when importing pbrt formats. */
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

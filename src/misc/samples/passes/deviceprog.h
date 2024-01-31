@@ -5,7 +5,7 @@
 
 #include <common.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 void drawScreen(CUstream stream, cudaSurfaceObject_t frame, float time, unsigned int width,
 							unsigned int height);
@@ -27,4 +27,4 @@ public:
 	size_t getHeight() const { return m_height; }
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -6,7 +6,7 @@
 #include "render/wavefront/integrator.h"
 #include "util/task.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class Film;
 
@@ -132,4 +132,4 @@ KRR_ENUM_DEFINE(PPGPathTracer::RenderMode, {
 	{PPGPathTracer::RenderMode::Offline, "offline"},
 })
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

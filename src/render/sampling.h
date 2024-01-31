@@ -7,7 +7,7 @@
 
 #define MIS_POWER_HEURISTIC 1 // 0 for balance heuristic
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace utils;
 
@@ -107,4 +107,4 @@ KRR_CALLABLE int sampleDiscrete(gpu::span<const float> weights, float u, float *
 }
 
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -5,8 +5,7 @@
 
 #include <optix_device.h>
 
-using namespace krr;
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 extern "C" __constant__ LaunchParameters <WavefrontPathTracer> launchParams;
 
@@ -128,4 +127,4 @@ KRR_RT_KERNEL KRR_RT_RG(ShadowTr)() {
 	});
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

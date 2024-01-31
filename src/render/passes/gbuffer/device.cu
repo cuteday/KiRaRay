@@ -4,8 +4,7 @@
 
 #include <optix_device.h>
 
-using namespace krr;
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 extern "C" __constant__ LaunchParameters <GBufferPass> launchParams;
 
@@ -43,4 +42,4 @@ KRR_RT_KERNEL KRR_RT_RG(Primary)() {
 	traceRay(launchParams.traversable, ray, M_FLOAT_INF, 0, OPTIX_RAY_FLAG_DISABLE_ANYHIT);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

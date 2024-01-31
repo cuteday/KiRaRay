@@ -14,7 +14,7 @@
 #include "scene/importer.h"
 #include "util/string.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace fs = std::filesystem;
 using namespace importer;
@@ -502,4 +502,4 @@ void AssimpImporter::loadAnimations() {
 	}
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

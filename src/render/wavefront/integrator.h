@@ -11,7 +11,7 @@
 #include "device/cuda.h"
 #include "workqueue.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 #ifdef KRR_DEBUG_BUILD 
 #define DEBUG_PRINT(pixel, fmt, ...)                              \
@@ -104,4 +104,4 @@ public:
 	}
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -11,7 +11,7 @@
 #include "render/sampling.h"
 #include "render/shared.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace bsdf;
 
@@ -46,4 +46,4 @@ public:
 	KRR_CALLABLE BSDFType flags() const { return BSDF_NULL; }
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

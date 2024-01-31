@@ -6,7 +6,7 @@
 #include "input.h"
 #include "krrmath/functors.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 using namespace io;
 class Scene;
 
@@ -187,4 +187,4 @@ private:
 	float mZoomSpeed  = 0.1;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

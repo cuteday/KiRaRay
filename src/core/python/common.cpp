@@ -1,7 +1,7 @@
 #include "py.h"
 #include "common.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 PYBIND11_MODULE(pykrr_common, m) {
 	// used to find necessary dlls...
@@ -9,4 +9,4 @@ PYBIND11_MODULE(pykrr_common, m) {
 	m.attr("pytorch_root") = KRR_PYTORCH_ROOT;
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

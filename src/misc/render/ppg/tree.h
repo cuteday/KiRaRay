@@ -13,7 +13,7 @@
 
 #include "util/check.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using AtomicType = double;	/* The type used for storing atomic data, e.g., per-node irradiance. */
 
@@ -635,4 +635,4 @@ private:
 	AABB m_aabb;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

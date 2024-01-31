@@ -3,7 +3,7 @@
 #include <filesystem>
 #include "common.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace fs = std::filesystem;
 
@@ -46,4 +46,4 @@ private:
 	static fs::path m_output_dir;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

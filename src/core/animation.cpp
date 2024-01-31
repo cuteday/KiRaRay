@@ -1,7 +1,7 @@
 #include "animation.h"
 #include "logger.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 namespace anime {
 
 Array4f interpolate(const InterpolationMode mode, const Keyframe &a, const Keyframe &b,
@@ -124,4 +124,4 @@ void Sequence::addTrack(const std::string &name, Sampler::SharedPtr track) {
 }
 
 } // namespace anime
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -11,7 +11,7 @@
 #include "vulkan/shader.h"
 #include "vulkan/cuvk.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace vkrhi;
 using namespace cuvk;
@@ -234,4 +234,4 @@ extern "C" int main(int argc, const char *argv[]) {
 	exit(EXIT_SUCCESS);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -3,7 +3,7 @@
 #include "common.h"
 #include "logger.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 #define CUDA_CHECK(call)                                                                           \
 	do {                                                                                           \
@@ -100,4 +100,4 @@ KRR_NAMESPACE_BEGIN
 #endif
 
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

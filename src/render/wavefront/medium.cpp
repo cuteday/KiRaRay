@@ -8,7 +8,7 @@
 #include "render/media.h"
 #include "render/profiler/profiler.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 	PROFILE("Sample medium interaction");
@@ -152,4 +152,4 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 	}, gpContext->cudaStream);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

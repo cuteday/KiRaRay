@@ -6,8 +6,7 @@
 
 #include <optix_device.h>
 
-using namespace krr;	
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray, float tMax,
@@ -46,4 +45,4 @@ KRR_RT_KERNEL KRR_RT_RG(Connect)() {
 	uint workId(optixGetLaunchIndex().x);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

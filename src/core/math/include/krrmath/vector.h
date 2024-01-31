@@ -3,7 +3,7 @@
 #include "common.h"
 #include <Eigen/Dense>
 
-KRR_NAMESPACE_BEGIN																				
+NAMESPACE_BEGIN(krr)																				
 
 template <typename T, int Size>
 class Vector : public Eigen::Vector<T, Size> {
@@ -241,4 +241,4 @@ using Vector4f = Vector4<float>;
 using Vector4i = Vector4<int>;
 using Vector4ui = Vector4<uint>;
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

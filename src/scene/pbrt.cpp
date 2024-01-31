@@ -5,7 +5,7 @@
 #include "render/materials/fresnel.h"
 #include "importer.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace importer;
 
@@ -373,4 +373,4 @@ string PbrtImporter::resolve(string path) {
 	return (fs::path(mBasepath) / path).string();
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

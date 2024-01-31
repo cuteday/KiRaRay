@@ -3,7 +3,7 @@
 #include "shape.h"
 #include "window.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 AABB Mesh::computeBoundingBox() {
 	aabb = {};
@@ -41,4 +41,4 @@ void Mesh::renderUI() {
 	}
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

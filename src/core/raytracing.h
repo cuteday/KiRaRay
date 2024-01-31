@@ -9,7 +9,7 @@
 
 #define KRR_RAY_EPS		(1e-4f)
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace rt {
 class MeshData;
@@ -168,4 +168,4 @@ struct Interaction{
 	Medium medium{nullptr};
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -1,7 +1,7 @@
 #include "importer.h"
 #include "util/volume.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 namespace importer {
 
 /* Construct an axis-aligned bounding box with null-material as the container of the volume. */
@@ -66,4 +66,4 @@ bool OpenVDBImporter::import(const fs::path filepath, Scene::SharedPtr scene,
 }
 
 } // namespace importer
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

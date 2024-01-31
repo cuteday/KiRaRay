@@ -4,7 +4,7 @@
 #include "quaternion.h"
 #include <Eigen/Dense>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 template <typename T, int Size>
 class Array : public Eigen::Array<T, Size, 1> {
@@ -234,4 +234,4 @@ using Array3ui = Array3<uint>;
 using Array4i = Array4<int>;
 using Array4f = Array4<float>;
 using Array4ui = Array4<uint>;
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

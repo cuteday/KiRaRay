@@ -5,7 +5,7 @@
 #include "matutils.h"
 #include "device/taggedptr.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace bsdf {
 	
@@ -67,4 +67,4 @@ namespace bsdf {
 	}
 
 }
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

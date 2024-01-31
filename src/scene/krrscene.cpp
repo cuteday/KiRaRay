@@ -1,6 +1,6 @@
 #include "importer.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 using namespace importer;
 
 bool SceneImporter::loadModel(const fs::path filepath, Scene::SharedPtr pScene,
@@ -200,4 +200,4 @@ bool SceneImporter::importNode(const json &j, Scene::SharedPtr scene,
 	return true;
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

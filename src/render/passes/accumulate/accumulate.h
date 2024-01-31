@@ -8,7 +8,7 @@
 #include "device/timer.h"
 #include "device/buffer.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class AccumulatePass : public RenderPass {
 public:
@@ -47,4 +47,4 @@ KRR_ENUM_DEFINE(AccumulatePass::Mode, {
 	{AccumulatePass::Mode::MovingAverage, "moving average"}	
 })
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

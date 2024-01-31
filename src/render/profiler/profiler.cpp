@@ -3,7 +3,7 @@
 
 
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace {
 	// With sigma = 0.98, then after 100 frames, a given value's contribution is down to ~1.7% of
@@ -244,4 +244,4 @@ Profiler::Event* Profiler::findEvent(const std::string& name) {
 	return (event == mEvents.end()) ? nullptr : event->second.get();
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -4,7 +4,7 @@
 
 #include "common.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class Ema {
 public:
@@ -58,4 +58,4 @@ private:
 	std::chrono::time_point<std::chrono::steady_clock> mCreationTime;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

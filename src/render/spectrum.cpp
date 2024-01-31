@@ -1,7 +1,7 @@
 #include "spectrum.h"
 #include "util/math_utils.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace {
 #include "data/named_spectrum.cpp"
@@ -363,4 +363,4 @@ void RGBColorSpace::init(Allocator alloc) {
 								  sizeof(RGBColorSpace_ACES2065_1)));
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

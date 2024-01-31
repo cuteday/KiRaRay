@@ -7,7 +7,7 @@
 
 #include "pathstate.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 
 class BDPTIntegrator;
@@ -59,4 +59,4 @@ private:
 	Type *target, backup;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

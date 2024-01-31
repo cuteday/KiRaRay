@@ -1,6 +1,6 @@
 #include "descriptor.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 DescriptorHandle::DescriptorHandle() : m_DescriptorIndex(-1) {}
 
@@ -107,4 +107,4 @@ DescriptorTableManager::~DescriptorTableManager() {
 	}
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

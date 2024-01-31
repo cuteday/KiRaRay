@@ -19,7 +19,7 @@
 #   include <unistd.h>
 #endif
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace Log {
 
@@ -92,4 +92,4 @@ namespace Log {
 	}
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

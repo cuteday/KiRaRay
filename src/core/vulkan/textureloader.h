@@ -14,7 +14,7 @@
 #include <file.h>
 #include <texture.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class CommonRenderPasses;
 
@@ -189,4 +189,4 @@ public:
 	Iterator end() { return Iterator(m_LoadedTexturesMutex, m_LoadedTextures.end()); }
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -10,7 +10,7 @@
 #include "device/context.h"
 #include "render/bdpt/bdpt.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class BDPTIntegrator: public RenderPass{
 public:
@@ -36,4 +36,4 @@ private:
 	LaunchParameters<BDPTIntegrator> launchParams;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

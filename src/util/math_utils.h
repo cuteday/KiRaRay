@@ -5,7 +5,7 @@
 #include "util/check.h"
 #include "util/hash.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace utils {
 /*******************************************************
@@ -291,4 +291,4 @@ KRR_CALLABLE uint32_t Compact1By2(uint32_t x) {
 }
 } // namespace utils
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

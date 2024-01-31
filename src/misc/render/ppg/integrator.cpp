@@ -10,7 +10,7 @@
 #include "integrator.h"
 #include "render/profiler/profiler.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 extern "C" char PPG_PTX[];
 
 namespace {
@@ -574,4 +574,4 @@ void PPGPathTracer::filterFrame(Film *image) {
 }
 
 KRR_REGISTER_PASS_DEF(PPGPathTracer);
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -4,7 +4,7 @@
 #include "device/context.h"
 #include "device/cuda.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 void DenoiseBackend::initialize() {
 	CUcontext cudaContext;
@@ -160,4 +160,4 @@ void DenoisePass::resize(const Vector2i& size) {
 }
 
 KRR_REGISTER_PASS_DEF(DenoisePass);
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

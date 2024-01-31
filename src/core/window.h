@@ -15,7 +15,7 @@
 #include "vulkan/helperpass.h"
 #include "renderpass.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace ui = ImGui;
 
@@ -334,4 +334,4 @@ private:
 	std::string mWindowTitle;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

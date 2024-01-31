@@ -12,7 +12,7 @@
 
 #include "common.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 #ifndef M_PI
 #define M_PI			3.14159265358979323846f
@@ -31,7 +31,7 @@ KRR_NAMESPACE_BEGIN
 #define M_FLOAT_EPS		std::numeric_limits<float>::epsilon()
 #define M_FLOAT_INF		std::numeric_limits<float>::infinity()
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)
 
 #ifdef min
 #undef max

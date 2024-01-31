@@ -5,7 +5,7 @@
 #include "krrmath/math.h"
 #include "device/buffer.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class Film {
 public:
@@ -82,4 +82,4 @@ private:
 	Vector2i m_size{};
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -27,8 +27,14 @@ using nlohmann::json;
 typedef uint32_t uint;
 typedef unsigned char uchar;
 
-#define KRR_NAMESPACE_BEGIN namespace krr {
-#define KRR_NAMESPACE_END }
+#if !defined(NAMESPACE_BEGIN)
+#define NAMESPACE_BEGIN(name) namespace name {
+#endif
+#if !defined(NAMESPACE_END)
+#define NAMESPACE_END(name) }
+#endif
+
+#define KRR_COMMON_H
 
 #ifdef KRR_DEBUG_BUILD
 #   define KRR_DEBUG_SELECT(A, B) A
@@ -120,7 +126,7 @@ extern const dim3 blockDim, gridDim;
 
 #include "krrmath/math.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace gpu {
 	template <typename T>
@@ -129,4 +135,4 @@ namespace gpu {
 // this allocator uses gpu memory by default.
 using Allocator = gpu::polymorphic_allocator<std::byte>;
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -15,10 +15,10 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using Point2f = Vector2f;
 using Point3f = Vector3f;
 using AABB = AABB3f;
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

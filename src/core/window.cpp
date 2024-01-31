@@ -17,7 +17,7 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace {
 using namespace krr::io;
@@ -1315,4 +1315,4 @@ void DeviceManager::present() {
 	}
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

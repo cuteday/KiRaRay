@@ -5,7 +5,7 @@
 #include <memory>
 #include <unordered_map>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class BindingCache;
 class ShaderLoader;
@@ -96,4 +96,4 @@ public:
 					 nvrhi::ITexture *sourceTexture, BindingCache *bindingCache = nullptr);
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

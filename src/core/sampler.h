@@ -6,7 +6,7 @@
 #include "util/lowdiscrepancy.h"
 #include "util/hash.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class PCGSampler {
 #define PCG32_DEFAULT_STATE 0x853c49e6748fea9bULL
@@ -221,4 +221,4 @@ public:
 	};
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

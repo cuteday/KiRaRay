@@ -6,7 +6,7 @@
 #include "render/spectrum.h"
 #include "device/taggedptr.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 namespace rt {
 
 struct LightSample {
@@ -242,4 +242,4 @@ public:
 
 /* You only have OneShot. */
 } // namespace rt
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

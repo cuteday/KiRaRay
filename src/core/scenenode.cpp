@@ -1,7 +1,7 @@
 #include "scenenode.h"
 #include "logger.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 const string& SceneGraphLeaf::getName() const { 
 	auto node = getNode();
@@ -114,4 +114,4 @@ int SceneGraphWalker::up() {
 }
 
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

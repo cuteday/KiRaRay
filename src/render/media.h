@@ -8,7 +8,7 @@
 #include "device/container.h"
 #include "device/gpustd.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 struct MajorantSegment {
 	float tMin, tMax;
@@ -243,4 +243,4 @@ inline MajorantIterator Medium::sampleRay(const Ray &ray, float tMax,
 }
 
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -12,7 +12,7 @@
 #include "common.h"
 #include "krrmath/math.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 /* We did not use virtual device functions for VDB grids on purpose.
 	For cuda device routines to access virtual functions, the class (i.e. virtual table)
@@ -135,4 +135,4 @@ protected:
 
 NanoVDBGridBase::SharedPtr loadOpenVDB(std::filesystem::path path, std::string key);
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

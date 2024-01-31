@@ -8,7 +8,7 @@
 #include "render/profiler/profiler.h"
 
 /* [TODO] Check OptiX exception switch for better debugging. */
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 rt::SceneData OptixScene::getSceneData() const { return scene.lock()->getSceneRT()->getSceneData(); }
 
@@ -689,7 +689,7 @@ void OptixBackend::buildShaderBindingTable() {
 	CUDA_SYNC_CHECK();
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)
 
 /* [Note] for implementation of OptiX motion blur:
  * OptiX only supports regular time intervals in its motion options. Irregular keys should be 

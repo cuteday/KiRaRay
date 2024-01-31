@@ -4,7 +4,7 @@
 #include "device/scene.h"
 #include "device/optix.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class GBufferPass;
 
@@ -18,4 +18,4 @@ struct LaunchParameters<GBufferPass> {
 	OptixTraversableHandle traversable;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

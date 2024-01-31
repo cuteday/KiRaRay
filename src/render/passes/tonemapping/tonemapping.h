@@ -7,7 +7,7 @@
 
 #include "device/buffer.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class ToneMappingPass: public RenderPass {
 public:
@@ -62,4 +62,4 @@ KRR_ENUM_DEFINE(ToneMappingPass::Operator, {
 	{ ToneMappingPass::Operator::HejiHable, "hejihable" },
 })
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -5,7 +5,7 @@
 #include "uirender.h"
 #include "shader.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 bool UIRenderer::onMouseEvent(const io::MouseEvent &mouseEvent) {
 	auto &io = ImGui::GetIO();
@@ -448,4 +448,4 @@ void UIRenderer::render(RenderContext *context) {
 void UIRenderer::resizing() { pso = nullptr; }
 
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

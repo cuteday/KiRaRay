@@ -13,7 +13,7 @@
 #define DISCARD_FIREFLIES				1
 
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 KRR_DEVICE constexpr float ERROR_EPS					= 0;
 KRR_DEVICE constexpr float CLAMP_PIXEL_ERROR_THRESHOLD	= 100.f;
@@ -125,4 +125,4 @@ float calc_metric(const CudaRenderTarget & frame, const RGBA *reference,
 				}, 0.f, thrust::plus<float>()) / n_elements;
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

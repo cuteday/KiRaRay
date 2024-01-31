@@ -12,7 +12,7 @@
 #include "render/color.h"
 #include "device/taggedptr.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class CudaRenderTarget {
 public:
@@ -123,4 +123,4 @@ inline void LinearKernel(K kernel, cudaStream_t stream, T n_elements, Types... a
 }
 #endif
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

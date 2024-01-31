@@ -8,7 +8,7 @@
 #include "render/color.h"
 #include "util/math_utils.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace tinyexr {
 	
@@ -435,4 +435,4 @@ fail:
 }
 } // namespace pfm
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -7,7 +7,7 @@
 #include "render/spectrum.h"
 #include "render/lightsampler.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 enum {
 	RADIANCE_RAY_TYPE			  = 0,
@@ -60,4 +60,4 @@ struct PathData {
 	Ray ray;				   // The last scattered ray
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

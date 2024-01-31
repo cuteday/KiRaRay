@@ -1,6 +1,6 @@
 #include "renderer.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 extern "C" int main(int argc, char *argv[]) {
 	gpContext = std::make_unique<Context>();
@@ -31,4 +31,4 @@ extern "C" int main(int argc, char *argv[]) {
 	exit(EXIT_SUCCESS);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

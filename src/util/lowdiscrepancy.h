@@ -11,7 +11,7 @@
 #include "tables.h"
 #include "util/math_utils.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 using namespace utils;
 
 KRR_CALLABLE int PermutationElement(uint32_t i, uint32_t l, uint32_t p) {
@@ -234,4 +234,4 @@ struct OwenScrambler {
 // RandomizeStrategy Definition
 enum class RandomizeStrategy { None, PermuteDigits, FastOwen, Owen };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

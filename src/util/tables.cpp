@@ -1,6 +1,6 @@
 #include "tables.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 KRR_DEVICE const int Primes[PrimeTableSize] = {
     2, 3, 5, 7, 11,
@@ -74,4 +74,4 @@ KRR_DEVICE const int Primes[PrimeTableSize] = {
     7691, 7699, 7703, 7717, 7723, 7727, 7741, 7753, 7757, 7759, 7789, 7793, 7817, 7823,
     7829, 7841, 7853, 7867, 7873, 7877, 7879, 7883, 7901, 7907, 7919 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

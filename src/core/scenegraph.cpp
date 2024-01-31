@@ -2,7 +2,7 @@
 #include "window.h"
 #include "render/profiler/profiler.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 SceneGraphLeaf::SharedPtr MeshInstance::clone() {
 	return std::make_shared<MeshInstance>(mMesh);
@@ -608,4 +608,4 @@ void SceneGraph::renderUI() {
 	}
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

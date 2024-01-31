@@ -14,7 +14,7 @@
 #include "render/sampling.h"
 #include "render/shared.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace bsdf;
 
@@ -231,4 +231,4 @@ private:
 	float pDiffuse{ 0 }, pMetal{ 0 }, pGlass{ 0 };
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

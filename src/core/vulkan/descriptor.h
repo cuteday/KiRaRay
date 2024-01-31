@@ -6,7 +6,7 @@
 
 #include "common.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class DescriptorTableManager;
 typedef int DescriptorIndex;
@@ -87,4 +87,4 @@ public:
 	void ReleaseDescriptor(DescriptorIndex index);
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

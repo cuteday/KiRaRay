@@ -3,7 +3,7 @@
 #include "device/taggedptr.h"
 #include "krrmath/math.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 struct PhaseFunctionSample {
 	Vector3f wi;
@@ -26,4 +26,4 @@ private:
 	float g;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

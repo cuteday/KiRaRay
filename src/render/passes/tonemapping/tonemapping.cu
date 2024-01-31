@@ -5,7 +5,7 @@
 #include "util/math_utils.h"
 #include "render/profiler/profiler.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace {
 KRR_CALLABLE RGB toneMapAces(RGB color) {
@@ -85,4 +85,4 @@ void ToneMappingPass::render(RenderContext *context) {
 }
 
 KRR_REGISTER_PASS_DEF(ToneMappingPass);
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

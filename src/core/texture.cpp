@@ -15,7 +15,7 @@
 #include "logger.h"
 #include "util/image.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 Image::Image(Vector2i size, Format format, bool srgb) : 
 	mSrgb(srgb), mFormat(format), mSize(size) {
@@ -259,4 +259,4 @@ void MaterialData::initializeFromHost(Material::SharedPtr material) {
 
 } // namespace rt
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

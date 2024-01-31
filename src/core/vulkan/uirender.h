@@ -10,7 +10,7 @@
 #include <imgui.h>
 #include <nvrhi/vulkan.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class UIRenderer: public RenderPass {
 private:
@@ -67,4 +67,4 @@ protected:
 	bool updateGeometry(nvrhi::ICommandList *commandList);
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -8,7 +8,7 @@
 #include "logger.h"
 #include "workitem.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class PixelStateBuffer : public SOA<PixelState> {
 public:
@@ -288,4 +288,4 @@ public:
 };
 
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

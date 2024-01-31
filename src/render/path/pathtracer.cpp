@@ -4,7 +4,7 @@
 #include "pathtracer.h"
 #include "render/profiler/profiler.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 extern "C" char PATHTRACER_PTX[];
 
@@ -57,4 +57,4 @@ void MegakernelPathTracer::render(RenderContext *context) {
 }
 
 KRR_REGISTER_PASS_DEF(MegakernelPathTracer);
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

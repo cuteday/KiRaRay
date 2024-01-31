@@ -14,7 +14,7 @@
 
 #include <nvrhi/vulkan.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace io;
 
@@ -84,4 +84,4 @@ public:
 	std::shared_ptr<VKScene> getSceneVK() const { return mSceneVK; }
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -4,7 +4,7 @@
 
 #include <filesystem>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class RGBA;
 
@@ -20,4 +20,4 @@ RGBA *ReadImagePFM(const std::string &filename, int *xres, int *yres);
 } // namespace pfm
 
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

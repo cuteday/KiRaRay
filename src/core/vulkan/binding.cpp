@@ -1,6 +1,6 @@
 #include "binding.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 nvrhi::BindingSetHandle BindingCache::GetCachedBindingSet(const nvrhi::BindingSetDesc &desc,
 														  nvrhi::IBindingLayout *layout) {
@@ -65,4 +65,4 @@ void BindingCache::Clear() {
 	m_Mutex.unlock();
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -8,7 +8,7 @@
 #include "renderpass.h"
 #include "window.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class DenoiseBackend {
 public:
@@ -57,4 +57,4 @@ private:
 	DenoiseBackend mBackend;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

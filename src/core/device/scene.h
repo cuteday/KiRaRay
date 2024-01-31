@@ -14,7 +14,7 @@
 #include "render/lightsampler.h"
 #include "render/media.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 class Scene;
 
 namespace rt {
@@ -112,4 +112,4 @@ private:
 template <typename Integrator> 
 struct LaunchParameters {};
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -3,7 +3,7 @@
 #include "common.h"
 #include "krrmath/math.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class SceneGraph;
 class SceneGraphNode;
@@ -160,4 +160,4 @@ private:
 	SceneGraphNode *mScope{nullptr};
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

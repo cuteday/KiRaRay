@@ -9,7 +9,7 @@
 #include <chrono>
 #include <regex>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 TextureCache::TextureCache(nvrhi::IDevice *device,
 						   std::shared_ptr<DescriptorTableManager> descriptorTable) :
@@ -426,4 +426,4 @@ bool TextureCache::UnloadTexture(const std::shared_ptr<LoadedTexture> &texture) 
 	return true;
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

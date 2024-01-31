@@ -20,7 +20,7 @@
 		throw std::runtime_error{msg};                                                             \
 	}
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 struct ShaderMacro {
 	std::string name;
@@ -194,4 +194,4 @@ public:
 	}
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

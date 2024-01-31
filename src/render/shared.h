@@ -19,7 +19,7 @@
 
 #define EMPTY_DECLARE(name) extern "C" __global__ void name() { return; }
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 using namespace utils;
 using namespace rt;
@@ -127,4 +127,4 @@ template <typename T> static KRR_DEVICE_FUNCTION T *getPRD() {
 	return reinterpret_cast<T *>(unpackPointer(u0, u1));
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

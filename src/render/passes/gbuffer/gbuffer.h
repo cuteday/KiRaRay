@@ -4,7 +4,7 @@
 #include "renderpass.h"
 #include "device/optix.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class GBufferPass : public RenderPass {
 public:
@@ -30,4 +30,4 @@ private:
 	bool mEnableMotion{};
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

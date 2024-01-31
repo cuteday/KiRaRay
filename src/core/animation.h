@@ -4,7 +4,7 @@
 #include "common.h"
 #include "krrmath/math.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 namespace anime {
 
 enum class AnimationAttribute {
@@ -82,4 +82,4 @@ protected:
 };
 
 }
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

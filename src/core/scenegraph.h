@@ -9,7 +9,7 @@
 #include "krrmath/math.h"
 #include "util/volume.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class SceneGraph;
 
@@ -264,4 +264,4 @@ private:
 	UpdateRecord mLastUpdateRecord;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

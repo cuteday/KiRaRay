@@ -11,13 +11,17 @@
 
 #include <Eigen/Core>
 
-#ifndef KRR_NAMESPACE_BEGIN
+#ifndef KRR_COMMON_H
 
 typedef uint32_t uint;
 typedef unsigned char uchar;
 
-#define KRR_NAMESPACE_BEGIN namespace krr {
-#define KRR_NAMESPACE_END }
+#if !defined(NAMESPACE_BEGIN)
+#define NAMESPACE_BEGIN(name) namespace name {
+#endif
+#if !defined(NAMESPACE_END)
+#define NAMESPACE_END(name) }
+#endif
 
 #if defined(__CUDA_ARCH__)
 #define KRR_DEVICE_CODE
@@ -49,8 +53,8 @@ typedef unsigned char uchar;
 #define KRR_MATH_JSON
 #endif
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace math = Eigen;
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

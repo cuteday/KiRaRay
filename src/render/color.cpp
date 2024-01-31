@@ -3,7 +3,7 @@
 #include "device/gpustd.h"
 #include "util/math_utils.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 RGBColorSpace::RGBColorSpace(Point2f r, Point2f g, Point2f b, Spectra illuminant,
 							 const RGBToSpectrumTable *rgbToSpectrumTable,
@@ -102,4 +102,4 @@ void RGBToSpectrumTable::init(Allocator alloc) {
 	return;
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

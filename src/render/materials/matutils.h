@@ -34,7 +34,7 @@
 		return bsdf.flags();                                                                       \
 	}
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 
 
@@ -136,4 +136,4 @@ namespace bsdf{
 
 
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -12,7 +12,7 @@
 #include "render/profiler/ui.h"
 #include "render/profiler/fps.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class RenderApp : public DeviceManager{
 public:
@@ -49,4 +49,4 @@ private:
 	string mConfigPath{};
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

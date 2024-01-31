@@ -19,7 +19,7 @@
 #include <device/cuda.h>
 #include <util/check.h>
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace cuvk {
 #ifdef _WIN64
@@ -642,4 +642,4 @@ private:
 	
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -8,14 +8,14 @@
 #include "render/profiler/profiler.h"
 #include "workqueue.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 extern "C" char WAVEFRONT_PTX[];
 
 void WavefrontPathTracer::initialize() {
 	/* [TODO] Disable missRayQueue if no environment light exist. */
 	Allocator &alloc = *gpContext->alloc;
 	maxQueueSize	 = getFrameSize()[0] * getFrameSize()[1];
-	CUDA_SYNC_CHECK(); // necessary, preventing kernel accessing memories tobe free'ed...
+	cudaDeviceSynchronize(); // necessary, preventing kernel accessing memories tobe free'ed...
 	for (int i = 0; i < 2; i++) 
 		if (rayQueue[i]) rayQueue[i]->resize(maxQueueSize, alloc);
 		else rayQueue[i] = alloc.new_object<RayQueue>(maxQueueSize, alloc);
@@ -35,7 +35,6 @@ void WavefrontPathTracer::initialize() {
 		if (mediumScatterQueue) mediumScatterQueue->resize(maxQueueSize, alloc);
 		else mediumScatterQueue = alloc.new_object<MediumScatterQueue>(maxQueueSize, alloc);
 	}
-	cudaDeviceSynchronize();
 	if (!camera) camera = alloc.new_object<rt::CameraData>();
 	CUDA_SYNC_CHECK();
 }
@@ -284,4 +283,4 @@ void WavefrontPathTracer::renderUI() {
 }
 
 KRR_REGISTER_PASS_DEF(WavefrontPathTracer);
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

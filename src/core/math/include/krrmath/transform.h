@@ -7,7 +7,7 @@
 #include "vector.h"
 #include "constants.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 template <typename T, int Dim, int Mode, int Options = Eigen::RowMajor>
 class Transform : public Eigen::Transform<T, Dim, Mode, Options> {
@@ -63,4 +63,4 @@ using Affinef = Transformf<Dim, Eigen::Affine, Options>;
 using Affine2f = Affinef<2, Eigen::RowMajor>;
 using Affine3f = Affinef<3, Eigen::RowMajor>;
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

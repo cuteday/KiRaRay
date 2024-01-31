@@ -3,7 +3,7 @@
 #include "krrmath/math.h"
 #include "render/sampling.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 // von Mise-Fisher distribution in S2
 class VMFDistribution {
@@ -71,4 +71,4 @@ private:
 	float m_kappa{};
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

@@ -6,7 +6,7 @@
 #include "matrix.h"
 #include "constants.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 #ifdef KRR_DEVICE_CODE
 using ::abs;
@@ -149,4 +149,4 @@ KRR_CALLABLE float radians(const float degree) { return degree * M_PI / 180.f; }
 template <typename T> KRR_CALLABLE 
 T lerp(T x, T y, T weight) { return (1.f - weight) * x + weight * y; }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

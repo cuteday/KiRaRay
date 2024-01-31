@@ -10,7 +10,7 @@
 #include "raytracing.h"
 #include "scene.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class SceneGraphNode;
 class MeshInstance;
@@ -219,4 +219,4 @@ public:
 		const char* closest, const char* any, const char* intersect);
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

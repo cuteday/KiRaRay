@@ -3,7 +3,7 @@
 
 struct ImVec2;
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class ProfilerUI {
 public:
@@ -86,4 +86,4 @@ private:
 	size_t mHighlightIndex = -1;            ///< Highlighted event index.
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

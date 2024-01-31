@@ -3,7 +3,7 @@
 #include "window.h"
 #include "device/timer.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 enum class BudgetType { None = 0, Spp, Time }; /* For benchmarking. */
 
@@ -89,4 +89,4 @@ private:
 	}
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

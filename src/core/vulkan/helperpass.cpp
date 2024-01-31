@@ -2,7 +2,7 @@
 #include "binding.h"
 #include "shader.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 struct BlitConstants {
 	Vector2f sourceOrigin;
@@ -282,4 +282,4 @@ void CommonRenderPasses::BlitTexture(nvrhi::ICommandList *commandList,
 	BlitTexture(commandList, params, bindingCache);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

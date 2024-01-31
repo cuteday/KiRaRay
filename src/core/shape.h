@@ -8,7 +8,7 @@
 #include "raytracing.h"
 #include "mesh.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 struct ShapeSample {
 	Interaction intr;
@@ -162,4 +162,4 @@ public:
 	}
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

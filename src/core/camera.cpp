@@ -1,7 +1,7 @@
 #include "camera.h"
 #include "window.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 bool Camera::update(){
 	if (mScene.lock()->getSceneRT()) {
@@ -120,4 +120,4 @@ void OrbitCameraController::setCamera(const Camera::SharedPtr &pCamera) {
 	update();
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

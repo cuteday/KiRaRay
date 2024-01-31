@@ -2,7 +2,7 @@
 #include "render/wavefront/wavefront.h"
 #include "guideditem.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 class PPGPathTracer;
 
@@ -24,4 +24,4 @@ struct LaunchParameters<PPGPathTracer> {
 	OptixTraversableHandle traversable;
 };
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

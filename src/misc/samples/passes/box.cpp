@@ -10,7 +10,7 @@
 #include "vulkan/textureloader.h"
 #include "vulkan/shader.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 static const char *g_WindowTitle = "Box-Shii-s";
 
@@ -295,4 +295,4 @@ extern "C" int main(int argc, const char *argv[]) {
 	exit(EXIT_SUCCESS);
 }
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)

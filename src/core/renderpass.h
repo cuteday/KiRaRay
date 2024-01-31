@@ -11,7 +11,7 @@
 #include "device/optix.h"
 #include "scene.h"
 
-KRR_NAMESPACE_BEGIN
+NAMESPACE_BEGIN(krr)
 
 namespace vkrhi { using namespace nvrhi; }
 
@@ -273,4 +273,4 @@ private:
 #define KRR_REGISTER_PASS_DEC(name) static RenderPassRegister<name> reg;
 #define KRR_REGISTER_PASS_DEF(name)	RenderPassRegister<name> name::reg(#name);
 
-KRR_NAMESPACE_END
+NAMESPACE_END(krr)
