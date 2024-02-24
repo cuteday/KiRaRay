@@ -18,12 +18,12 @@ public:
 	using SharedPtr = std::shared_ptr<MeshInstance>;
 	explicit MeshInstance(Mesh::SharedPtr mesh) : mMesh(mesh){};
 
-	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+	std::shared_ptr<SceneGraphLeaf> clone() override;
 	const Mesh::SharedPtr &getMesh() const { return mMesh; }
 	int getInstanceId() const { return mInstanceId; }
-	virtual AABB getLocalBoundingBox() const override { return mMesh->getBoundingBox(); }
-	virtual void renderUI() override;
-	virtual ContentFlags getContentFlags() const override { return ContentFlags::Mesh; }
+	AABB getLocalBoundingBox() const override { return mMesh->getBoundingBox(); }
+	void renderUI() override;
+	ContentFlags getContentFlags() const override { return ContentFlags::Mesh; }
 
 private:
 	friend class SceneGraph;
@@ -43,8 +43,8 @@ public:
 	SceneLight()		= default;
 	SceneLight(const RGB &color, const float scale) : color(color), scale(scale) {}
 	virtual Type getType() const { return Type::Undefined; }
-	virtual void renderUI() override;
-	virtual ContentFlags getContentFlags() const override { return ContentFlags::Light; }
+	void renderUI() override;
+	ContentFlags getContentFlags() const override { return ContentFlags::Light; }
 
 	void setColor(const RGB &_color) { color = _color; setUpdated();}
 	void setScale(const float _scale) { scale = _scale; setUpdated();}
@@ -68,8 +68,8 @@ public:
 	using SharedPtr = std::shared_ptr<PointLight>;
 	using SceneLight::SceneLight;
 
-	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
-	virtual Type getType() const override { return Type::PointLight; }
+	std::shared_ptr<SceneGraphLeaf> clone() override;
+	Type getType() const override { return Type::PointLight; }
 };
 
 class DirectionalLight : public SceneLight {
@@ -77,9 +77,9 @@ public:
 	using SharedPtr = std::shared_ptr<DirectionalLight>;
 	using SceneLight::SceneLight;
 
-	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
-	virtual Type getType() const override { return Type::DirectionalLight; }
-	virtual void renderUI() override;
+	std::shared_ptr<SceneGraphLeaf> clone() override;
+	Type getType() const override { return Type::DirectionalLight; }
+	void renderUI() override;
 };
 
 class InfiniteLight : public SceneLight {
@@ -89,8 +89,8 @@ public:
 	InfiniteLight(Texture::SharedPtr texture, const float scale = 1) :
 		SceneLight(RGB::Ones(), 1), texture(texture) {}
 
-	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
-	virtual Type getType() const override { return Type::InfiniteLight; }
+	std::shared_ptr<SceneGraphLeaf> clone() override;
+	Type getType() const override { return Type::InfiniteLight; }
 
 	void setTexture(Texture::SharedPtr _texture) { texture = _texture; }
 	Texture::SharedPtr getTexture() const { return texture; }
@@ -107,7 +107,7 @@ public:
 
 	int getMediumId() const { return mediumId; }
 	void setMediumId(int id) { mediumId = id; }
-	virtual ContentFlags getContentFlags() const override { return ContentFlags::Volume; }
+	ContentFlags getContentFlags() const override { return ContentFlags::Volume; }
 
 	RGB sigma_t;
 	RGB albedo;
@@ -121,15 +121,20 @@ class HomogeneousVolume : public Volume {
 public:
 	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
 
-	HomogeneousVolume(RGB sigma_t, RGB albedo, float g, RGB Le = RGB::Zero()) :
-		Volume(sigma_t, albedo, g), Le(Le) {}
+	HomogeneousVolume(RGB sigma_t, RGB albedo, float g, RGB Le = RGB::Zero(), 
+		AABB boundingBox = AABB{std::numeric_limits<float>::min(),
+								std::numeric_limits<float>::max()}) :
+		Volume(sigma_t, albedo, g), Le(Le), boundingBox(boundingBox) {}
 
-	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
-	virtual void renderUI() override;
+	std::shared_ptr<SceneGraphLeaf> clone() override;
+	void renderUI() override;
 
+	AABB getLocalBoundingBox() const override { return boundingBox; }
 	bool isEmissive() const { return !Le.isZero(); }
 
 	RGB Le;
+	AABB boundingBox;
+
 private:
 	friend class SceneGraph;
 };
@@ -151,10 +156,10 @@ public:
 		temperatureScale(temperatureScale),
 		temperatureOffset(temperatureOffset) {}
 
-	virtual SceneGraphLeaf::SharedPtr clone() override;
-	virtual void renderUI() override;
+	SceneGraphLeaf::SharedPtr clone() override;
+	void renderUI() override;
 
-	virtual AABB getLocalBoundingBox() const override { return densityGrid->getBounds(); }
+	AABB getLocalBoundingBox() const override { return densityGrid->getBounds(); }
 
 	float scale, LeScale;
 	float temperatureScale, temperatureOffset;
@@ -200,10 +205,10 @@ public:
 	bool isValid() const;
 	bool apply(float time) const;
 	void addChannel(const SceneAnimationChannel::SharedPtr &channel);
-	virtual void renderUI() override;
-	virtual ContentFlags getContentFlags() const override { return ContentFlags::Animation; }
+	void renderUI() override;
+	ContentFlags getContentFlags() const override { return ContentFlags::Animation; }
 
-	virtual std::shared_ptr<SceneGraphLeaf> clone() override;
+	std::shared_ptr<SceneGraphLeaf> clone() override;
 
 private:
 	std::vector<SceneAnimationChannel::SharedPtr> mChannels;

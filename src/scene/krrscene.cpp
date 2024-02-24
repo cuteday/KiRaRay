@@ -55,15 +55,23 @@ bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPt
 								const json& params) {
 	auto type = params.value("type", "homogeneous");
 	if (type == "homogeneous") {
-		auto sigma_a = params.value<Array3f>("sigma_a", Array3f{1, 1, 1});
-		auto sigma_s = params.value<Array3f>("sigma_s", Array3f{0, 0, 0});
+		auto sigma_t = params.value<Array3f>("sigma_t", Array3f{1, 1, 1});
+		auto albedo	 = params.value<Array3f>("albedo", Array3f{0.5, 0.5, 0.5});
 		auto g		 = params.value<float>("g", 0.f);
 		auto Le		 = params.value<Array3f>("Le", Array3f{0, 0, 0});
 		auto aabb	 = params.value<AABB3f>("bound", AABB3f{0, 0});
 
+		if (params.contains("sigma_a") || params.contains("sigma_s")) {
+			// backward compatibility
+			auto sigma_a = params.value<Array3f>("sigma_a", Array3f{0.5, 0.5, 0.5});
+			auto sigma_s = params.value<Array3f>("sigma_s", Array3f{0.5, 0.5, 0.5});
+			sigma_t		 = sigma_a + sigma_s;
+			albedo		 = sigma_s / sigma_t;
+		}
+
 		auto mesh		= std::make_shared<Mesh>();
 		auto instance	= std::make_shared<MeshInstance>(mesh);
-		auto volume		= std::make_shared<HomogeneousVolume>(sigma_a, sigma_s, g, Le);
+		auto volume		= std::make_shared<HomogeneousVolume>(sigma_t, albedo, g, Le, aabb);
 		mesh->indices	= {{4, 2, 0}, {2, 7, 3}, {6, 5, 7}, {1, 7, 5}, {0, 3, 1}, {4, 1, 5},
 						   {4, 6, 2}, {2, 6, 7}, {6, 4, 5}, {1, 3, 7}, {0, 2, 3}, {4, 0, 1}};
 		mesh->positions = {

@@ -6,6 +6,7 @@ NAMESPACE_BEGIN(krr)
 bool Camera::update(){
 	if (mScene.lock()->getSceneRT()) {
 		/* Ray-tracing enabled, update medium info */
+		mData.medium = nullptr;
 		for (auto medium : mScene.lock()->getMedia()) 
 			if (medium->getNode()->getGlobalBoundingBox().contains(getPosition())) 
 				mData.medium =
