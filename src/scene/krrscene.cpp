@@ -175,11 +175,12 @@ bool SceneImporter::importNode(const json &j, Scene::SharedPtr scene,
 		// recursively unwrap the config
 		// maybe another json object, an array, or a string indicating the filepath of the model
 		auto child	   = std::make_shared<SceneGraphNode>();
-		auto name	   = j.value<string>("name", "");
+		auto name	   = j.value<string>("name", "Untitled");	// Wah wah world!
 		auto type	   = j.value<string>("type", "model");
 		auto translate = j.value<Vector3f>("translate", Vector3f::Zero());
 		auto rotate	   = j.value<Quaternionf>("rotate", Quaternionf::Identity());
 		auto scale	   = j.value<Vector3f>("scale", Vector3f::Ones());
+		auto params	   = j.value<json>("params", json{});
 			
 		child->setName(name);
 		child->setScaling(scale);
@@ -188,13 +189,13 @@ bool SceneImporter::importNode(const json &j, Scene::SharedPtr scene,
 		scene->getSceneGraph()->attach(node, child);
 
 		if (j.contains("model"))
-			importNode(j["model"], scene, child, j.value("params", json{}));
+			importNode(j["model"], scene, child, params);
 		else {
 			// [TODO] support other types of leaf nodes
 			if (type == "medium") {
-				loadMedium(scene, child, j.value("params", json{}));
+				loadMedium(scene, child, params);
 			} else if (type == "light") {
-				loadLight(scene, child, j.value("params", json{}));
+				loadLight(scene, child, params);
 			} else {
 				Log(Error, "Unsupported node type: %s", type.c_str());
 			}

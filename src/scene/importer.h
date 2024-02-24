@@ -54,8 +54,11 @@ private:
 	ImportMode mImportMode = ImportMode::Default;
 	std::map<string, SceneGraphNode::SharedPtr> mNodeMap; // unique node name
 	string mFilepath;
+	std::vector<Mesh::SharedPtr> mMeshes;
+	std::vector<Material::SharedPtr> mMaterials;
 	aiScene *mAiScene = nullptr;
 	Scene::SharedPtr mScene;
+	SceneGraphNode::SharedPtr mRootNode;
 };
 
 class PbrtImporter {

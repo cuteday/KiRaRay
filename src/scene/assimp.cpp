@@ -307,6 +307,7 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 	auto node = std::make_shared<SceneGraphNode>();
 	node->setName(filepath.filename().string());
 	scene->getSceneGraph()->attach(root, node);
+	mRootNode = root;
 
 	loadMaterials(modelFolder);
 	loadMeshes();
@@ -326,7 +327,7 @@ void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr 
 	graphNode->setTranslation(transform.translation());
 	for (int i = 0; i < assimpNode->mNumMeshes; i++) {
 		// add this mesh into scenegraph
-		Mesh::SharedPtr mesh = mScene->getMeshes()[assimpNode->mMeshes[i]];
+		Mesh::SharedPtr mesh = mMeshes[assimpNode->mMeshes[i]];
 		auto meshInstance = std::make_shared<MeshInstance>(mesh);
 		mScene->getSceneGraph()->attachLeaf(graphNode, meshInstance);
 	}
@@ -339,6 +340,7 @@ void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr 
 
 void AssimpImporter::loadMaterials(const string &modelFolder) {
 	auto defaultMaterial = std::make_shared<Material>("default material");
+	mMaterials.push_back(defaultMaterial);
 	mScene->addMaterial(defaultMaterial);
 	for (uint i = 0; i < mAiScene->mNumMaterials; i++) {
 		const aiMaterial *aiMaterial = mAiScene->mMaterials[i];
@@ -347,6 +349,7 @@ void AssimpImporter::loadMaterials(const string &modelFolder) {
 			logError("Failed to create material...");
 			return;
 		}
+		mMaterials.push_back(pMaterial);
 		mScene->addMaterial(pMaterial);
 	}
 }
@@ -396,10 +399,12 @@ void AssimpImporter::loadMeshes() {
 			mesh->indices.push_back(indices);
 		}
 
-		mesh->material = mScene->getMaterials()[pAiMesh->mMaterialIndex + 1];
+		mesh->material = mMaterials[pAiMesh->mMaterialIndex + 1];
 		mesh->aabb	   = aiCast(pAiMesh->mAABB);
 		mesh->setName(std::string(pAiMesh->mName.C_Str()));
-		mScene->getSceneGraph()->addMesh(mesh);
+
+		mMeshes.push_back(mesh);
+		mScene->addMesh(mesh);
 
 		if (mesh->material->hasTexture(Material::TextureType::Normal) &&
 			mesh->material->getTexture(Material::TextureType::Normal)->hasImage() &&
@@ -413,7 +418,7 @@ void AssimpImporter::loadCameras() {
 	if (!mAiScene->HasCameras()) return;
 	auto sceneGraph = mScene->getSceneGraph();
 	auto cameraContainer = std::make_shared<SceneGraphNode>("Camera Container");
-	sceneGraph->attach(sceneGraph->getRoot(), cameraContainer);
+	sceneGraph->attach(mRootNode, cameraContainer);
 	for (int i = 0; i < mAiScene->mNumCameras; i++) {
 		aiCamera *pAiCamera = mAiScene->mCameras[i];
 		auto camera = std::make_shared<Camera>();
@@ -444,7 +449,7 @@ void AssimpImporter::loadAnimations() {
 	auto sceneGraph			= mScene->getSceneGraph();
 	auto animationContainer = std::make_shared<SceneGraphNode>();
 	animationContainer->setName("Animation Container");
-	sceneGraph->attach(sceneGraph->getRoot(), animationContainer);
+	sceneGraph->attach(mRootNode, animationContainer);
 	
 	for (int i = 0; i < mAiScene->mNumAnimations; i++) {
 		aiAnimation *pAiAnimation = mAiScene->mAnimations[i];
