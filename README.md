@@ -76,7 +76,7 @@ build/src/kiraray.exe common/configs/example_cbox.json
 
 #### Performance
 
-Currently, the renderer runs extremely slow on *Debug* build for unknown reasons. Please switch to *Release* build for normal performance.
+This toy renderer is not carefully unoptimized. Additionally, the renderer runs extremely slow on *Debug* build for unknown reasons. Please switch to *Release* build for normal performance.
 
 #### Writing new render passes.
 
@@ -86,9 +86,21 @@ It is possible to write your own render pass, see the examples [here](src/misc/s
 
 *Kiraray* provided limited support for importing scenes like OBJ, glTF2 using [Assimp](https://github.com/assimp/assimp.git). Animations in glTF2 models could be correctly imported, but skeleton animation is not yet supported. [pbrt-parser](https://github.com/ingowald/pbrt-parser) is used to import [pbrt-v3](https://github.com/mmp/pbrt-v3/) scenes (get some [here](https://benedikt-bitterli.me/resources/), modify the file url to download the pbrt-v3 format models).
 
-### Epilogue
+<details>
+  <summary>Epilogue</summary>
+
+<p align="center">
+  <a href="https://github.com/cuteday/KiRaRay">
+    <img src="https://github.com/cuteday/KiRaRay/assets/31754324/cd762df1-daae-48ca-bae1-0c5ac5c4ae91">
+  </a>
+
+  <p align="center">Be happy today!
+  </p>
+</p>
 
 Although the main purpose of this project is to let me (a beginner) learn c++ and optix, I really wish to add more features and make it a fully-functional renderer with support for both ray-tracing and rasterization based techniques, combined via vulkan-cuda interopration. However, it may be a long process and I don't know if I will continue to do it.  Since in reality i am so lazy, trying to sleep as more as possible (\*/ω＼\*).
+
+</details>
 
 ### Credits
 - The great optix tutorial for beginners: [optix7course](https://github.com/ingowald/optix7course).
