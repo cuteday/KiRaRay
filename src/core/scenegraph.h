@@ -122,8 +122,8 @@ public:
 	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
 
 	HomogeneousVolume(RGB sigma_t, RGB albedo, float g, RGB Le = RGB::Zero(), 
-		AABB boundingBox = AABB{std::numeric_limits<float>::min(),
-								std::numeric_limits<float>::max()}) :
+		AABB boundingBox = AABB{std::numeric_limits<float>::max(),
+								std::numeric_limits<float>::min()}) :
 		Volume(sigma_t, albedo, g), Le(Le), boundingBox(boundingBox) {}
 
 	std::shared_ptr<SceneGraphLeaf> clone() override;
