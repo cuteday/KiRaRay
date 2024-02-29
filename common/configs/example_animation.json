@@ -35,6 +35,10 @@
 		}
 	],
     "scene": {
+        "options": {
+			"animated": true,
+			"multilevel": true
+		},
 		"model": [
             {
                 "model": "common/assets/scenes/anime-cube/AnimatedCube.gltf",
