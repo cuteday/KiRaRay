@@ -65,14 +65,12 @@ public:
 	std::vector<rt::InstanceData> &getInstanceData() { return mInstances; }
 	std::vector<rt::Light> &getLightData() { return mLights; }
 	std::vector<Medium> &getMediumData() { return mMedium; }
-	std::vector<rt::InfiniteLight> &getInfiniteLightData() { return mInfiniteLights; }
 
 	TypedBuffer<rt::MaterialData> &getMaterialBuffer() { return mMaterialsBuffer; }
 	TypedBuffer<rt::MeshData> &getMeshBuffer() { return mMeshesBuffer; }
 	TypedBuffer<rt::InstanceData> &getInstanceBuffer() { return mInstancesBuffer; }
 	TypedBuffer<rt::Light> &getLightBuffer() { return mLightsBuffer; }
 	TypedBuffer<Medium> &getMediumBuffer() { return mMediumBuffer; }
-	TypedBuffer<rt::InfiniteLight> &getInfiniteLightBuffer() { return mInfiniteLightsBuffer; }
 
 private:
 	void uploadSceneMaterialData();

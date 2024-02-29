@@ -60,7 +60,7 @@ template <typename T>
 class MultiWorkQueue;
 
 template <typename... Ts> 
-class MultiWorkQueue<types::TypePack<Ts...>> {
+class MultiWorkQueue<TypePack<Ts...>> {
 public:
 	template <typename T> 
 	KRR_CALLABLE WorkQueue<T>* get() {
