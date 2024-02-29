@@ -4,15 +4,6 @@
 NAMESPACE_BEGIN(krr)
 
 bool Camera::update(){
-	if (mScene.lock()->getSceneRT()) {
-		/* Ray-tracing enabled, update medium info */
-		mData.medium = nullptr;
-		for (auto medium : mScene.lock()->getMedia()) 
-			if (medium->getNode()->getGlobalBoundingBox().contains(getPosition())) 
-				mData.medium =
-					mScene.lock()->getSceneRT()->getMediumData()[medium->getMediumId()];
-	}
-
 	bool hasChanges = mHasChanges || (bool) memcmp(&mData, &mDataPrev, sizeof(rt::CameraData));
 	if (hasChanges) {
 		/* Update parameters in data. */
@@ -22,6 +13,15 @@ bool Camera::update(){
 		mDataPrev		= mData;
 		mHasChanges		= false;
 	}
+	if (mScene.lock()->getSceneRT()) {
+		/* Ray-tracing enabled, update medium info */
+		mData.medium = nullptr;
+		for (auto medium : mScene.lock()->getMedia())
+			if (medium->getNode()->getGlobalBoundingBox().contains(getPosition())) {
+				cudaDeviceSynchronize();
+				mData.medium = mScene.lock()->getSceneRT()->getMediumData()[medium->getMediumId()];
+			}
+		}
 	return hasChanges;
 }
 

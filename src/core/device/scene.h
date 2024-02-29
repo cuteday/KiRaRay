@@ -20,23 +20,23 @@ class Scene;
 namespace rt {
 class SceneData {
 public:
-	TypedBufferView<rt::MaterialData> materials{};
-	TypedBufferView<rt::MeshData> meshes{};
-	TypedBufferView<rt::InstanceData> instances{};
-	TypedBufferView<rt::Light> lights{};
-	TypedBufferView<rt::InfiniteLight> infiniteLights{};
+	TypedBufferView<MaterialData> materials{};
+	TypedBufferView<MeshData> meshes{};
+	TypedBufferView<InstanceData> instances{};
+	TypedBufferView<Light> lights{};
+	TypedBufferView<InfiniteLight> infiniteLights{};
 	LightSampler lightSampler;
 };
 }
 
 struct OptixSceneParameters {
-	bool enableAnimation{false};
+	bool enableAnimation{true};
 	bool buildMultilevel{false};
 	bool enableMotionBlur{false};
 	float worldStartTime{0}, worldEndTime{1};
 
 	friend void from_json(const json& j, OptixSceneParameters& p) {
-		p.enableAnimation = j.value("animated", false);
+		p.enableAnimation = j.value("animated", true);
 		p.buildMultilevel = j.value("multilevel", false);
 		p.enableMotionBlur = j.value("motionblur", false);
 		p.worldStartTime = j.value("starttime", 0.f);
@@ -56,21 +56,15 @@ public:
 	void uploadSceneData(const OptixSceneParameters& parameters);
 	void updateSceneData();
 
-	rt::SceneData getSceneData() const;
+	rt::SceneData getSceneData();
 	std::shared_ptr<Scene> getScene() const;
 	std::shared_ptr<OptixScene> getOptixScene() const { return mOptixScene; }
 
-	std::vector<rt::MaterialData> &getMaterialData() { return mMaterials; }
-	std::vector<rt::MeshData> &getMeshData() { return mMeshes; }
-	std::vector<rt::InstanceData> &getInstanceData() { return mInstances; }
-	std::vector<rt::Light> &getLightData() { return mLights; }
-	std::vector<Medium> &getMediumData() { return mMedium; }
-
-	TypedBuffer<rt::MaterialData> &getMaterialBuffer() { return mMaterialsBuffer; }
-	TypedBuffer<rt::MeshData> &getMeshBuffer() { return mMeshesBuffer; }
-	TypedBuffer<rt::InstanceData> &getInstanceBuffer() { return mInstancesBuffer; }
-	TypedBuffer<rt::Light> &getLightBuffer() { return mLightsBuffer; }
-	TypedBuffer<Medium> &getMediumBuffer() { return mMediumBuffer; }
+	gpu::vector<rt::MaterialData> &getMaterialData() { return mMaterials; }
+	gpu::vector<rt::MeshData> &getMeshData() { return mMeshes; }
+	gpu::vector<rt::InstanceData> &getInstanceData() { return mInstances; }
+	gpu::vector<rt::Light> &getLightData() { return mLights; }
+	gpu::vector<Medium> &getMediumData() { return mMedium; }
 
 private:
 	void uploadSceneMaterialData();
@@ -79,26 +73,16 @@ private:
 	void uploadSceneLightData();
 	void uploadSceneMediumData();
 
-	std::vector<rt::MaterialData> mMaterials;
-	TypedBuffer<rt::MaterialData> mMaterialsBuffer;
-	std::vector<rt::MeshData> mMeshes;
-	TypedBuffer<rt::MeshData> mMeshesBuffer;
-	std::vector<rt::InstanceData> mInstances;
-	TypedBuffer<rt::InstanceData> mInstancesBuffer;
-	std::vector<rt::Light> mLights;
-	TypedBuffer<rt::Light> mLightsBuffer;
-	std::vector<rt::InfiniteLight> mInfiniteLights; 
-	TypedBuffer<rt::InfiniteLight> mInfiniteLightsBuffer;
+	gpu::vector<rt::MaterialData> mMaterials;
+	gpu::vector<rt::MeshData> mMeshes;
+	gpu::vector<rt::InstanceData> mInstances;
+	gpu::vector<rt::Light> mLights;
+	gpu::vector<rt::InfiniteLight> mInfiniteLights;
 
-	std::vector<HomogeneousMedium> mHomogeneousMedium;
-	TypedBuffer<HomogeneousMedium> mHomogeneousMediumBuffer;
-	std::vector<NanoVDBMedium<float>> mNanoVDBMedium;
-	TypedBuffer<NanoVDBMedium<float>> mNanoVDBMediumBuffer;
-	std::vector<NanoVDBMedium<Array3f>> mNanoVDBRGBMedium;
-	TypedBuffer<NanoVDBMedium<Array3f>> mNanoVDBRGBMediumBuffer;
-
-	std::vector<Medium> mMedium;
-	TypedBuffer<Medium> mMediumBuffer;
+	gpu::vector<HomogeneousMedium> mHomogeneousMedium;
+	gpu::vector<NanoVDBMedium<float>> mNanoVDBMedium;
+	gpu::vector<NanoVDBMedium<Array3f>> mNanoVDBRGBMedium;
+	gpu::vector<Medium> mMedium;
 
 	UniformLightSampler mLightSampler;
 	TypedBuffer<UniformLightSampler> mLightSamplerBuffer;
