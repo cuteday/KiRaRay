@@ -255,11 +255,11 @@ private:
 
 template <typename T> class TypedBufferView {
 public:
-	using value_type	  = T;
-	using reference		  = value_type &;
-	using const_reference = const value_type &;
-	using const_pointer = const T*;
-	using iterator		  = T *;
+	using value_type			 = T;
+	using reference				 = value_type &;
+	using const_reference		 = const value_type &;
+	using const_pointer			 = const T *;
+	using iterator				 = T *;
 	using const_iterator		 = const T *;
 	using reverse_iterator		 = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const iterator>;
