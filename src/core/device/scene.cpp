@@ -38,9 +38,9 @@ void RTScene::uploadSceneMeshData() {
 		mMeshes[idx].material =
 			mesh->getMaterial() ? &mMaterials[mesh->getMaterial()->getMaterialId()] : nullptr;
 		if (mesh->inside) 
-			mMeshes[idx].mediumInterface.inside = mMedium[mesh->inside->getMediumId()];
+			mMeshes[idx].mediumInterface.inside = mMediumStorage.getPointer(mesh->inside);
 		if (mesh->outside)
-			mMeshes[idx].mediumInterface.outside = mMedium[mesh->outside->getMediumId()];
+			mMeshes[idx].mediumInterface.outside = mMediumStorage.getPointer(mesh->outside);
 	}
 }
 
@@ -68,8 +68,6 @@ void RTScene::uploadSceneMaterialData() {
 }
 
 void RTScene::uploadSceneLightData() {
-	mLights.clear();
-
 	auto createTrianglePrimitives = [](Mesh::SharedPtr mesh, rt::InstanceData* instance) 
 		-> std::vector<Triangle> {
 		uint nTriangles = mesh->indices.size();
@@ -106,7 +104,7 @@ void RTScene::uploadSceneLightData() {
 			}
 			instanceData.lights.alloc_and_copy_from_host(lights);
 			for (size_t triId = 0; triId < n_primitives; triId++) 
-				mLights.push_back(rt::Light(&instanceData.lights[triId]));
+				mLightStorage.addPointer(&instanceData.lights[triId]);
 		}
 	}
 
@@ -116,27 +114,25 @@ void RTScene::uploadSceneLightData() {
 		if (auto infiniteLight = std::dynamic_pointer_cast<InfiniteLight>(light)) {
 			rt::TextureData textureData;
 			textureData.initializeFromHost(infiniteLight->getTexture());
-			mInfiniteLights.push_back(
-				rt::InfiniteLight(transform.rotation(), textureData, light->getScale(),
-								  mScene.lock()->getBoundingBox().diagonal().norm()));
+			mLightStorage.emplaceEntity<rt::InfiniteLight>(
+				light, transform.rotation(), textureData, light->getScale(),
+				mScene.lock()->getBoundingBox().diagonal().norm());
 		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
 			Log(Warning, "Point light is not yet implemented in ray tracing, skipping...");
 		} else if (auto directionalLight = std::dynamic_pointer_cast<DirectionalLight>(light)) {
 			Log(Warning, "Directional light is not yet implemented in ray tracing, skipping...");
 		}
 	}
-
-	/* Upload infinite lights (a.k.a. environment lights). */
-	for (int idx = 0; idx < mInfiniteLights.size(); idx++)
-		mLights.push_back(rt::Light(&mInfiniteLights[idx]));
+	
+	mLightStorage.addPointers(mScene.lock()->getLights());
 
 	/* Upload main constant light buffer and light sampler. */
-	Log(Info, "A total of %zd light(s) processed!", mLights.size());
-	if (!mLights.size())
+	Log(Info, "A total of %zd light(s) processed!", mLightStorage.getPointers().size());
+	if (!mLightStorage.getPointers().size())
 		Log(Error, "There's no light source in the scene! "
 			"Image will be dark, and may even cause crash...");
-	mLightSampler = UniformLightSampler(mLights);
-	mLightSamplerBuffer.alloc_and_copy_from_host(&mLightSampler, 1);
+	auto lightSampler = UniformLightSampler(mLightStorage.getPointers());
+	mLightSamplerBuffer.alloc_and_copy_from_host(&lightSampler, 1);
 	// [Workaround] Since the area light hit depends on light buffer pointed from instance...
 	CUDA_SYNC_CHECK();
 }
@@ -172,19 +168,7 @@ void RTScene::uploadSceneMediumData() {
 			Log(Error, "Unknown medium type not uploaded to device memory.");
 	}
 
-	cudaDeviceSynchronize();
-	mMedium.reserve(mScene.lock()->getMedia().size());
-	for (auto medium : mScene.lock()->getMedia()) {
-		CUdeviceptr ptr = mMediumStorage.getPointer(medium);
-		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) 
-			mMedium.push_back(Medium((HomogeneousMedium*) ptr));
-		else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
-			if (std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid))
-				mMedium.push_back(Medium((NanoVDBMedium<float>*) ptr));
-			else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid))
-				mMedium.push_back(Medium((NanoVDBMedium<Array3f>*) ptr));
-		}
-	}
+	mMediumStorage.addPointers(mScene.lock()->getMedia());
 	CUDA_SYNC_CHECK();
 }
 
@@ -193,8 +177,8 @@ rt::SceneData RTScene::getSceneData() {
 	sceneData.meshes		 = mMeshes;
 	sceneData.instances		 = mInstances;
 	sceneData.materials		 = mMaterials;
-	sceneData.lights		 = mLights;
-	sceneData.infiniteLights = mInfiniteLights;
+	sceneData.lights		 = mLightStorage.getPointers();
+	sceneData.infiniteLights = mLightStorage.getData<rt::InfiniteLight>();
 	sceneData.lightSampler	 = mLightSamplerBuffer.data();
 	return sceneData;
 }

@@ -17,6 +17,7 @@
 
 NAMESPACE_BEGIN(krr)
 class Scene;
+class SceneLight;
 
 namespace rt {
 class SceneData {
@@ -61,29 +62,40 @@ public:
 	SceneStorage() = default;
 	virtual ~SceneStorage() = default;
 
+	void clear() {
+		mRecords.clear();
+		mPointers.clear();
+		mData.clear();
+	}
+
 	template <typename T> 
 	gpu::vector<T> &getData() { 
 		return *mData.template get<T>();
 	}
 
-	CUdeviceptr getPointer(std::weak_ptr<CpuType> entity) { 
-		Record record		= mRecords[entity];
-		CUdeviceptr basePtr = *reinterpret_cast<CUdeviceptr *>(record.base);
-		return basePtr + record.size * record.index;
+	void addPointer(GpuType entity) {
+		mPointers.emplace_back(entity);
 	}
 
 	void addPointers(const std::vector<std::shared_ptr<CpuType>> entities) {
-		mPointers.clear();
-		mPointers.reserve(entities.size());
+		mPointers.reserve(mPointers.size() + entities.size());
+		cudaDeviceSynchronize();
 		for (auto entity : entities) {
-			Record record		= mRecords[entity];
+			Record record		  = mRecords[entity];
 			CUdeviceptr devicePtr =
 				*reinterpret_cast<CUdeviceptr *>(record.base) + record.size * record.index;
 			mPointers.emplace_back(reinterpret_cast<void *>(devicePtr), record.type);
 		}
 	}
 
-	gpu::vector<GpuType> &getDevicePointers() { return mPointers; }
+	GpuType getPointer(std::weak_ptr<CpuType> entity) {
+		Record record		  = mRecords[entity];
+		CUdeviceptr devicePtr =
+			*reinterpret_cast<CUdeviceptr *>(record.base) + record.size * record.index;
+		return GpuType(reinterpret_cast<void *>(devicePtr), record.type);
+	}
+
+	gpu::vector<GpuType> &getPointers() { return mPointers; }
 
 	template <typename T>
 	void pushEntity(std::weak_ptr<CpuType> entity, const T& data) {
@@ -127,8 +139,8 @@ public:
 	gpu::vector<rt::MaterialData> &getMaterialData() { return mMaterials; }
 	gpu::vector<rt::MeshData> &getMeshData() { return mMeshes; }
 	gpu::vector<rt::InstanceData> &getInstanceData() { return mInstances; }
-	gpu::vector<rt::Light> &getLightData() { return mLights; }
-	gpu::vector<Medium> &getMediumData() { return mMedium; }
+	gpu::vector<rt::Light> &getLightData() { return mLightStorage.getPointers(); }
+	gpu::vector<Medium> &getMediumData() { return mMediumStorage.getPointers(); }
 
 private:
 	void uploadSceneMaterialData();
@@ -140,13 +152,10 @@ private:
 	gpu::vector<rt::MaterialData> mMaterials;
 	gpu::vector<rt::MeshData> mMeshes;
 	gpu::vector<rt::InstanceData> mInstances;
-	gpu::vector<rt::Light> mLights;
-	gpu::vector<rt::InfiniteLight> mInfiniteLights;
 	
-	gpu::vector<Medium> mMedium;
 	SceneStorage<Volume, Medium, Medium::Types> mMediumStorage;
+	SceneStorage<SceneLight, rt::Light, rt::Light::Types> mLightStorage;
 
-	UniformLightSampler mLightSampler;
 	TypedBuffer<UniformLightSampler> mLightSamplerBuffer;
 
 	std::weak_ptr<Scene> mScene;
