@@ -11,6 +11,7 @@
 #include "device/gpustd.h"
 #include "device/buffer.h"
 #include "device/memory.h"
+#include "device/container.h"
 #include "render/lightsampler.h"
 #include "render/media.h"
 
@@ -43,6 +44,48 @@ struct OptixSceneParameters {
 		p.worldEndTime = j.value("endtime", 1.f);
 	}
 };
+
+template <typename T, typename Tp>
+class SceneStorage;
+
+template <typename CpuType, typename ...GpuTypes> 
+class SceneStorage<CpuType, TypePack<GpuTypes...>> {
+public:
+	using Types = TypePack<GpuTypes...>;
+	using GpuRecord = std::pair<char*, int>;
+	SceneStorage() = default;
+	virtual ~SceneStorage() = default;
+
+	template <typename T> 
+	gpu::vector<T> &getData() { 
+		return *mData.template get<T>();
+	}
+
+	CUdeviceptr getPointer(std::weak_ptr<CpuType> entity) { 
+		CUdeviceptr basePtr = reinterpret_cast<CUdeviceptr>(
+			mRecords[entity].first + offsetof(gpu::vector<char>, ptr));
+		return basePtr + mRecords[entity].second;
+	}
+
+	template <typename T>
+	void pushEntity(std::weak_ptr<CpuType> entity, T&& data) {
+		auto ptr = mData.template get<T>();
+		mRecords[entity] = std::make_pair(ptr->data(), ptr->size() * sizeof(T));
+		ptr->push_back(std::forward<T>(data));
+	}
+
+	template <typename T, typename ...Args>
+	void emplaceEntity(std::weak_ptr<CpuType> entity, Args&&... args) {
+		auto ptr		 = mData.template get<T>();
+		mRecords[entity] = std::make_pair(ptr->data(), ptr->size() * sizeof(T));
+		ptr->emplace_back(std::forward<Args>(args)...);
+	}
+
+private:
+	std::map<std::weak_ptr<CpuType>, GpuRecord> mRecords;
+	gpu::multi_vector<Types> mData;
+};
+
 
 class OptixScene;
 class RTScene {
@@ -83,6 +126,8 @@ private:
 	gpu::vector<NanoVDBMedium<float>> mNanoVDBMedium;
 	gpu::vector<NanoVDBMedium<Array3f>> mNanoVDBRGBMedium;
 	gpu::vector<Medium> mMedium;
+
+	SceneStorage<Volume, Medium::Types> mMediumStorage;
 
 	UniformLightSampler mLightSampler;
 	TypedBuffer<UniformLightSampler> mLightSamplerBuffer;

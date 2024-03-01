@@ -212,9 +212,9 @@ void RTScene::updateSceneData() {
 	// Currently we only support updating instance transformations...
 	static size_t lastUpdatedFrame = 0;
 	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
-	cudaDeviceSynchronize();
 	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)
 		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
+		cudaDeviceSynchronize();
 		auto &instances = mScene.lock()->getMeshInstances();
 		for (size_t idx = 0; idx < instances.size(); idx++) {
 			const auto &instance   = instances[idx];
@@ -227,6 +227,7 @@ void RTScene::updateSceneData() {
 	bool materialsChanged{false};
 	for (const auto &material : mScene.lock()->getMaterials()) {
 		if (material->isUpdated()) {
+			cudaDeviceSynchronize();
 			materialsChanged |= material->isUpdated();
 			rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
 			materialData.mBsdfType		   = material->mBsdfType;

@@ -18,18 +18,20 @@ public:
 namespace gpu {
 template <typename T> class multi_vector;
 
-template <typename... Ts> 
+template <typename... Ts>
 class multi_vector<TypePack<Ts...>> {
 public:
 	template <typename T> 
 	KRR_CALLABLE gpu::vector<T> *get() {
-		return &gpu::get<gpu::vector<T>>(m_queues);
+		return &gpu::get<gpu::vector<T>>(m_vectors);
 	}
 
-	multi_vector(int n, Allocator alloc, gpu::span<const bool> haveType) {
-		int index = 0;
-		((*get<Ts>() = gpu::vector<Ts>(haveType[index++] ? n : 1, alloc)), ...);
+	template <int index>
+	KRR_CALLABLE auto get() {
+		return &gpu::get<index>(m_vectors);
 	}
+
+	multi_vector() { ((*get<Ts>() = gpu::vector<Ts, polymorphic_allocator<Ts>>()), ...); }
 
 	template <typename T> 
 	KRR_CALLABLE int size() const { return get<T>()->size(); }
@@ -47,7 +49,7 @@ public:
 	KRR_CALLABLE void clear() { (get<Ts>()->clear(), ...); }
 
 private:
-	gpu::tuple<gpu::vector<Ts>...> m_queues;
+	gpu::tuple<gpu::vector<Ts>...> m_vectors;
 };
 }
 

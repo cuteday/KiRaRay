@@ -50,7 +50,7 @@ public:
 	template <typename ...Args>
 	KRR_CALLABLE int emplace(Args&&... args) {
 		int index = allocateEntry();
-		(*this)[index] = WorkItem(std::forward<Args>(args)...);
+		new (&(*this)[index]) WorkItem(std::forward<Args>(args)...);
 		return index;
 	}
 
