@@ -111,16 +111,21 @@ void RTScene::uploadSceneLightData() {
 	/* Process other lights (environment lights and those analytical ones). */
 	for (auto light : mScene.lock()->getLights()) {
 		auto transform = light->getNode()->getGlobalTransform();
+		float sceneRadius = mScene.lock()->getBoundingBox().diagonal().norm();
 		if (auto infiniteLight = std::dynamic_pointer_cast<InfiniteLight>(light)) {
 			rt::TextureData textureData;
 			textureData.initializeFromHost(infiniteLight->getTexture());
 			mLightStorage.emplaceEntity<rt::InfiniteLight>(
-				light, transform.rotation(), textureData, light->getScale(),
-				mScene.lock()->getBoundingBox().diagonal().norm());
+				light, transform.rotation(), textureData, light->getScale(), sceneRadius);
 		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
-			Log(Warning, "Point light is not yet implemented in ray tracing, skipping...");
+			mLightStorage.emplaceEntity<rt::PointLight>(
+				light, transform.translation(), pointLight->getColor(), pointLight->getScale());
 		} else if (auto directionalLight = std::dynamic_pointer_cast<DirectionalLight>(light)) {
-			Log(Warning, "Directional light is not yet implemented in ray tracing, skipping...");
+			mLightStorage.emplaceEntity<rt::DirectionalLight>(
+				light, transform.rotation(), directionalLight->getColor(),
+				directionalLight->getScale(), sceneRadius);
+		} else {
+			Log(Error, "Unsupported light type not uploaded to device memory.");
 		}
 	}
 	

@@ -31,17 +31,16 @@ class PointLight {
 public:
 	PointLight() = default;
 
-	PointLight(const Affine3f &transform, const RGB &I, float scale = 1, 
+	PointLight(const Vector3f &translation, const RGB &I, float scale = 1, 
 		const RGBColorSpace* colorSpace = KRR_DEFAULT_COLORSPACE) :
-		transform(transform), I(I), scale(scale), colorSpace(colorSpace) {}
+		position(translation), I(I), scale(scale), colorSpace(colorSpace) {}
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
 									const SampledWavelengths &lambda) const {
-		Vector3f p	= transform.translation();
-		Vector3f wi = (p - ctx.p).normalized();
+		Vector3f wi = (position - ctx.p).normalized();
 		Spectrum Li = Spectrum::fromRGB(I, SpectrumType::RGBIlluminant, lambda, *colorSpace);
-		Li*= scale / (p - ctx.p).squaredNorm();
-		return LightSample{Interaction{p}, Li, 1};
+		Li *= scale / (position - ctx.p).squaredNorm();
+		return LightSample{Interaction{position}, Li, 1};
 	}
 
 	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
@@ -58,7 +57,7 @@ public:
 private:
 	RGB I;
 	float scale;
-	Affine3f transform;
+	Vector3f position;
 	const RGBColorSpace *colorSpace;
 };
 
