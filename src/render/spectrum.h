@@ -48,8 +48,8 @@ public:
 #if KRR_RENDER_SPECTRAL
 		return 0;
 #else
-		return clamp(int((lambda[0] - lambdaMin) / (lambdaMax - lambdaMin) * nSpectrumSamples),
-					 0, nSpectrumSamples - 1);
+		return clamp(int((lambda[0] - lambdaMin) / (lambdaMax - lambdaMin) * Spectrum::dim), 0,
+					 Spectrum::dim - 1);
 #endif
 	}
 
@@ -67,7 +67,6 @@ private:
 class SampledSpectrum : public Array<float, nSpectrumSamples> {
 public:
 	using Array<float, nSpectrumSamples>::Array;
-	//SampledSpectrum() = default;
 	KRR_CALLABLE explicit SampledSpectrum(float c) : Array(c) {}
 
 	KRR_CALLABLE explicit operator bool() const { return this->any(); }
