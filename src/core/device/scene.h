@@ -45,14 +45,19 @@ struct OptixSceneParameters {
 	}
 };
 
-template <typename T, typename Tp>
+template <typename T1, typename T2, typename Tp>
 class SceneStorage;
 
-template <typename CpuType, typename ...GpuTypes> 
-class SceneStorage<CpuType, TypePack<GpuTypes...>> {
+template <typename CpuType, typename GpuType, typename ...GpuTypes> 
+class SceneStorage<CpuType, GpuType, TypePack<GpuTypes...>> {
 public:
 	using Types = TypePack<GpuTypes...>;
-	using GpuRecord = std::pair<char*, int>;
+	struct Record {
+		char *base;
+		size_t index;
+		size_t size;
+		unsigned int type;
+	};
 	SceneStorage() = default;
 	virtual ~SceneStorage() = default;
 
@@ -62,27 +67,43 @@ public:
 	}
 
 	CUdeviceptr getPointer(std::weak_ptr<CpuType> entity) { 
-		CUdeviceptr basePtr = reinterpret_cast<CUdeviceptr>(
-			mRecords[entity].first + offsetof(gpu::vector<char>, ptr));
-		return basePtr + mRecords[entity].second;
+		Record record		= mRecords[entity];
+		CUdeviceptr basePtr = *reinterpret_cast<CUdeviceptr *>(record.base);
+		return basePtr + record.size * record.index;
 	}
 
+	void addPointers(const std::vector<std::shared_ptr<CpuType>> entities) {
+		mPointers.clear();
+		mPointers.reserve(entities.size());
+		for (auto entity : entities) {
+			Record record		= mRecords[entity];
+			CUdeviceptr devicePtr =
+				*reinterpret_cast<CUdeviceptr *>(record.base) + record.size * record.index;
+			mPointers.emplace_back(reinterpret_cast<void *>(devicePtr), record.type);
+		}
+	}
+
+	gpu::vector<GpuType> &getDevicePointers() { return mPointers; }
+
 	template <typename T>
-	void pushEntity(std::weak_ptr<CpuType> entity, T&& data) {
-		auto ptr = mData.template get<T>();
-		mRecords[entity] = std::make_pair(ptr->data(), ptr->size() * sizeof(T));
-		ptr->push_back(std::forward<T>(data));
+	void pushEntity(std::weak_ptr<CpuType> entity, const T& data) {
+		auto ptr		 = mData.template get<T>();
+		mRecords[entity] = {reinterpret_cast<char *>(ptr), ptr->size(), sizeof(T),
+							IndexOf<T, Types>::count + 1};	// type 0 means null
+		ptr->push_back(data);
 	}
 
 	template <typename T, typename ...Args>
 	void emplaceEntity(std::weak_ptr<CpuType> entity, Args&&... args) {
 		auto ptr		 = mData.template get<T>();
-		mRecords[entity] = std::make_pair(ptr->data(), ptr->size() * sizeof(T));
+		mRecords[entity] = {reinterpret_cast<char *>(ptr), ptr->size(), sizeof(T),
+							IndexOf<T, Types>::count + 1};
 		ptr->emplace_back(std::forward<Args>(args)...);
 	}
 
 private:
-	std::map<std::weak_ptr<CpuType>, GpuRecord> mRecords;
+	std::map<std::weak_ptr<CpuType>, Record, std::owner_less<std::weak_ptr<CpuType>>> mRecords;
+	gpu::vector<GpuType> mPointers;
 	gpu::multi_vector<Types> mData;
 };
 
@@ -121,13 +142,9 @@ private:
 	gpu::vector<rt::InstanceData> mInstances;
 	gpu::vector<rt::Light> mLights;
 	gpu::vector<rt::InfiniteLight> mInfiniteLights;
-
-	gpu::vector<HomogeneousMedium> mHomogeneousMedium;
-	gpu::vector<NanoVDBMedium<float>> mNanoVDBMedium;
-	gpu::vector<NanoVDBMedium<Array3f>> mNanoVDBRGBMedium;
+	
 	gpu::vector<Medium> mMedium;
-
-	SceneStorage<Volume, Medium::Types> mMediumStorage;
+	SceneStorage<Volume, Medium, Medium::Types> mMediumStorage;
 
 	UniformLightSampler mLightSampler;
 	TypedBuffer<UniformLightSampler> mLightSamplerBuffer;

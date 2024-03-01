@@ -15,8 +15,6 @@ NAMESPACE_BEGIN(krr)
 class PixelStateBuffer;
 class WavefrontPathTracer;
 
-
-
 template <>
 struct LaunchParameters <WavefrontPathTracer> {
 	RayQueue* currentRayQueue;

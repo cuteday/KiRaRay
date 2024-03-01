@@ -24,6 +24,13 @@ class TaggedPointer {
 		bits = iptr | ((uintptr_t)type << tagShift);
 	}
 
+	KRR_CALLABLE TaggedPointer(void* ptr, unsigned int type) {
+		uintptr_t iptr = reinterpret_cast<uintptr_t>(ptr);
+		DCHECK_EQ(iptr & ptrMask, iptr);
+		DCHECK_LE(type, maxTag());
+		bits = iptr | ((uintptr_t)type << tagShift);
+	}
+
 	KRR_CALLABLE TaggedPointer(std::nullptr_t np) {}
 
 	KRR_CALLABLE TaggedPointer(const TaggedPointer &t) { bits = t.bits; }

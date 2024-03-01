@@ -146,24 +146,24 @@ void RTScene::uploadSceneMediumData() {
 	cudaDeviceSynchronize();
 	for (auto medium : mScene.lock()->getMedia()) {
 		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) {
-			mHomogeneousMedium.emplace_back(m->sigma_t, m->albedo, m->Le, m->g, KRR_DEFAULT_COLORSPACE);
+			mMediumStorage.emplaceEntity<HomogeneousMedium>(medium, m->sigma_t, m->albedo, m->Le, m->g, KRR_DEFAULT_COLORSPACE);
 		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
 			if (std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)) {
-				mNanoVDBMedium.emplace_back(
+				mMediumStorage.emplaceEntity<NanoVDBMedium<float>>(medium,
 					m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
 					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)),
 					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
 					m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{},
 					m->scale, m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
-				mNanoVDBMedium.back().initializeFromHost();
+				mMediumStorage.getData<NanoVDBMedium<float>>().back().initializeFromHost();
 			} else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)) {
-				mNanoVDBRGBMedium.emplace_back(
+				mMediumStorage.emplaceEntity<NanoVDBMedium<Array3f>>(medium,
 					m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
 					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)),
 					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
 					m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{},
 					m->scale, m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
-				mNanoVDBRGBMedium.back().initializeFromHost();
+				mMediumStorage.getData<NanoVDBMedium<Array3f>>().back().initializeFromHost();
 			} else {
 				Log(Error, "Unsupported heterogeneous VDB medium data type");
 				continue;
@@ -172,19 +172,17 @@ void RTScene::uploadSceneMediumData() {
 			Log(Error, "Unknown medium type not uploaded to device memory.");
 	}
 
-	size_t homogeneousId = 0;
-	size_t nanoVDBId	 = 0;
-	size_t nanoVDBRGBId	 = 0;
 	cudaDeviceSynchronize();
 	mMedium.reserve(mScene.lock()->getMedia().size());
 	for (auto medium : mScene.lock()->getMedia()) {
+		CUdeviceptr ptr = mMediumStorage.getPointer(medium);
 		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) 
-			mMedium.push_back(Medium(&mHomogeneousMedium[homogeneousId++]));
+			mMedium.push_back(Medium((HomogeneousMedium*) ptr));
 		else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
 			if (std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid))
-				mMedium.push_back(Medium(&mNanoVDBMedium[nanoVDBId++]));
+				mMedium.push_back(Medium((NanoVDBMedium<float>*) ptr));
 			else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid))
-				mMedium.push_back(Medium(&mNanoVDBRGBMedium[nanoVDBRGBId++]));
+				mMedium.push_back(Medium((NanoVDBMedium<Array3f>*) ptr));
 		}
 	}
 	CUDA_SYNC_CHECK();
