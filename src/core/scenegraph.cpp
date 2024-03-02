@@ -439,6 +439,7 @@ Vector3f SceneLight::getPosition() const {
 	else return Vector3f::Zero();
 }
 
+/* direction needs not to be normalized. */
 void SceneLight::setDirection(const Vector3f& direction) {
 	if (auto node = getNode()) {
 		Affine3f globalTransform = Affine3f::Identity();
@@ -473,6 +474,7 @@ void SceneLight::renderUI() {
 void DirectionalLight::renderUI() {
 	RGB color	= getColor();
 	float scale = getScale();
+	ui::Text("Direction: %s", getDirection().string().c_str());
 	Vector2f sphericalDir = worldToLatLong(getDirection());
 	if (ui::DragFloat3("RGB", (float *) &color, 1e-3, 0, 1)) setColor(color);
 	if (ui::DragFloat("Scale", &scale, 1e-2, 0, 100)) setScale(scale);

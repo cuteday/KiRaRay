@@ -599,8 +599,8 @@ void OptixSceneSingleLevel::updateAccelStructure() {
 		const auto &instance		   = referencedMeshes[idx].lock();
 		OptixInstance &instanceData	   = instancesIAS[idx];
 		Affine3f transform			   = instance->getNode()->getGlobalTransform();
-		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
-				   cudaMemcpyHostToDevice);
+		cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
+				   cudaMemcpyHostToDevice, gpContext->cudaStream);
 	}
 
 	OptixBuildInput iasBuildInput			 = {};
@@ -621,8 +621,8 @@ void OptixSceneMultiLevel::updateAccelStructure() {
 			const auto instance			   = instanceInput->nodes[idx];
 			OptixInstance &instanceData	   = instanceInput->instances[idx];
 			Affine3f transform			   = instance->getLocalTransform();
-			cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
-									   cudaMemcpyHostToDevice);
+			cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
+							cudaMemcpyHostToDevice, gpContext->cudaStream);
 		}
 
 		OptixBuildInput iasBuildInput			 = {};

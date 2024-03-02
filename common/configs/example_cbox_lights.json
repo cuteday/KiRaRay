@@ -1,25 +1,40 @@
 {
-	"model": "common/assets/scenes/cbox/cbox.obj",
-	"resolution": [
-		750,
-		750
-	],
-	"passes": [
+    "passes": [
 		{
 			"enable": true,
-			"name": "BindlessRender",
-			"params": {}
+			"name": "WavefrontPathTracer",
+			"params": {
+				"nee": true,
+				"rr": 0.8,
+				"max_depth": 10
+			}
+		},
+		{
+			"enable": true,
+			"name": "AccumulatePass",
+			"params": {
+				"spp": 0,
+				"mode": "accumulate"
+			}
+		},
+		{
+			"enable": false,
+			"name": "DenoisePass"
 		},
 		{
 			"enable": true,
 			"name": "ToneMappingPass",
 			"params": {
-				"exposure": 5,
+				"exposure": 0.5,
 				"operator": "aces"
 			}
 		}
-	],
-	"scene": {
+    ],
+    "resolution": [
+        750,
+        750
+    ],
+    "scene": {
 		"camera": {
 			"mData": {
 				"aspectRatio": 1.0,
@@ -55,12 +70,22 @@
 				"yaw": 0.000348508358001709
 			}
 		},
-		"model": [
+        "model": [
             {
                 "model": "common/assets/scenes/cbox/cbox.obj",
                 "name": "Cornell Box",
                 "scale": [1, 1, 1]
             },
+			{
+				"type": "light",
+				"name": "Point Light",
+				"params": {
+					"type": "point",
+					"color": [1.7, 1.2, 0.4],
+					"position": [2.1, 2.05, 1.9],
+					"scale": 30
+				}
+			},
 			{
 				"type": "light",
 				"name": "Sun Light",
@@ -72,5 +97,5 @@
 				}
 			}
         ]
-	}
+    }
 }

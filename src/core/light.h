@@ -74,7 +74,7 @@ public:
 									const SampledWavelengths &lambda) const {
 		/* [NOTE] For shadow rays, if the ray direction is too large, optix trace will have precision problems! 
 		(e.g. the ray will self-intersect on the original surface, even if the ray origin has offset) */
-		Vector3f wi = rotation * Vector3f{0, 0, 1};
+		Vector3f wi = rotation * Vector3f::UnitZ();
 		Vector3f p	= ctx.p + wi * 2 * sceneRadius;
 		Spectrum Li =
 			scale * Spectrum::fromRGB(I, SpectrumType::RGBIlluminant, lambda, *colorSpace);

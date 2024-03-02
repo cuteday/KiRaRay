@@ -30,7 +30,7 @@ bool SceneImporter::loadLight(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr
 	RGB color	= params.value<Array3f>("color", Array3f{1, 1, 1});
 	SceneLight::SharedPtr light;
 	if (type == "point") {
-		light	   = std::make_shared<PointLight>(color, scale);
+		light	   = std::make_shared<PointLight>(color, scale);			
 	} else if (type == "directional") {
 		light	   = std::make_shared<DirectionalLight>(color, scale);
 	} else if (type == "infinite") {
@@ -44,8 +44,17 @@ bool SceneImporter::loadLight(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr
 		Log(Error, "Unsupported light type: %s", type.c_str());
 		return false;
 	}
-	if (light) 
+	if (light) {
 		pScene->getSceneGraph()->attachLeaf(node, light);
+		if (params.contains("position")) {
+			auto position = params.value<Vector3f>("position", Vector3f::Zero());
+			light->setPosition(position);
+		}
+		if (params.contains("direction")) {
+			auto direction = params.value<Vector3f>("direction", -Vector3f::UnitZ());
+			light->setDirection(direction);
+		}
+	}
 	else
 		Log(Error, "Failed to import light from configuration: %s", params.dump().c_str());
 	return light != nullptr;
