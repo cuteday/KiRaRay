@@ -78,6 +78,8 @@ public:
 	KRR_CALLABLE Transformation(const Matrix4f& m, const Matrix4f& mInv) : m(m), mInv(mInv) {}
 	KRR_CALLABLE Transformation(const Affine3f& m, const Affine3f& mInv) : m(m), mInv(mInv) {}
 
+	KRR_CALLABLE Vector3f translation() const { return m.translation(); }
+	KRR_CALLABLE Matrix3f rotation() const {return m.linear(); }
 	KRR_CALLABLE Matrix4f matrix() const { return m.matrix(); }
 	KRR_CALLABLE Affine3f transform() const { return m; } 
 	KRR_CALLABLE Affine3f inverse() const { return mInv; }

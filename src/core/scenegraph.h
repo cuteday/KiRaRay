@@ -38,7 +38,8 @@ public:
 		Undefined		 = 0,
 		PointLight		 = 1,
 		DirectionalLight = 2,
-		InfiniteLight	 = 3
+		SpotLight		 = 3,
+		InfiniteLight	 = 4,
 	};
 	SceneLight()		= default;
 	SceneLight(const RGB &color, const float scale) : color(color), scale(scale) {}
@@ -80,6 +81,26 @@ public:
 	std::shared_ptr<SceneGraphLeaf> clone() override;
 	Type getType() const override { return Type::DirectionalLight; }
 	void renderUI() override;
+};
+
+class SpotLight : public SceneLight {
+public:
+	using SharedPtr = std::shared_ptr<SpotLight>;
+	using SceneLight::SceneLight;
+	SpotLight(const RGB &color, const float scale, float innerConeAngle, float outerConeAngle) :
+		SceneLight(color, scale), innerConeAngle(innerConeAngle), outerConeAngle(outerConeAngle) {}
+
+	std::shared_ptr<SceneGraphLeaf> clone() override;
+	Type getType() const override { return Type::SpotLight; }
+	void renderUI() override;
+
+	float getInnerConeAngle() const { return innerConeAngle; }
+	float getOuterConeAngle() const { return outerConeAngle; }
+
+	void setInnerConeAngle(float angle) { innerConeAngle = angle; }
+	void setOuterConeAngle(float angle) { outerConeAngle = angle; }
+
+	float innerConeAngle{}, outerConeAngle{};
 };
 
 class InfiniteLight : public SceneLight {

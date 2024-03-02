@@ -21,7 +21,11 @@ SceneGraphLeaf::SharedPtr PointLight::clone() {
 }
 
 SceneGraphLeaf::SharedPtr DirectionalLight::clone() {
-	return std::make_shared<PointLight>(color, scale);
+	return std::make_shared<DirectionalLight>(color, scale);
+}
+
+SceneGraphLeaf::SharedPtr SpotLight::clone() {
+	return std::make_shared<SpotLight>(color, scale, innerConeAngle, outerConeAngle);
 }
 
 SceneGraphLeaf::SharedPtr InfiniteLight::clone() {
@@ -468,7 +472,8 @@ void SceneLight::renderUI() {
 	if (ui::DragFloat3("RGB", (float *) &color, 1e-3, 0, 1)) setColor(color);
 	if (ui::DragFloat("Scale", &scale, 1e-2, 0, 100)) setScale(scale);
 	if (ui::DragFloat3("Direction input", (float *) &direction, 1e-3, -1, 1)) setDirection(direction);
-	if (ui::DragFloat3("Position", (float *) &position), 1e-2, -100, 100) setPosition(position);
+	if (ui::DragFloat3("Position", (float *) &position, 1e-2, -100, 100)) 
+		setPosition(position);
 }
 
 void DirectionalLight::renderUI() {
@@ -481,6 +486,27 @@ void DirectionalLight::renderUI() {
 	if(ui::SliderFloat("Azimuth", &sphericalDir[0], 0, 1) ||
 		ui::SliderFloat("Altitude", &sphericalDir[1], 0, 1))
 		setDirection(latlongToWorld(sphericalDir));
+}
+
+void SpotLight::renderUI() {
+	auto direction = getDirection(), position = getPosition();
+	RGB color	= getColor();
+	float scale = getScale();
+	float innerConeAngle = getInnerConeAngle();
+	float outerConeAngle = getOuterConeAngle();
+	ui::Text("Direction: %s", direction.string().c_str());
+	Vector2f sphericalDir = worldToLatLong(getDirection());
+	if (ui::InputFloat3("Position", (float *) &position, "%.2f")) 
+		setPosition(position);
+	if (ui::DragFloat3("RGB", (float *) &color, 1e-3, 0, 1)) setColor(color);
+	if (ui::DragFloat("Scale", &scale, 1e-2, 0, 100)) setScale(scale);
+	if(ui::SliderFloat("Azimuth", &sphericalDir[0], 0, 1) ||
+				ui::SliderFloat("Altitude", &sphericalDir[1], 0, 1))
+		setDirection(latlongToWorld(sphericalDir));
+	if (ui::SliderFloat("Inner cone angle", &innerConeAngle, 0, 1)) 
+		setInnerConeAngle(innerConeAngle);
+	if (ui::SliderFloat("Outer cone angle", &outerConeAngle, 0, 1)) 
+		setOuterConeAngle(outerConeAngle);
 }
 
 void SceneAnimationChannel::renderUI() {

@@ -100,6 +100,48 @@ private:
 	const RGBColorSpace *colorSpace;
 };
 
+class SpotLight {
+
+	SpotLight() = default;
+
+	SpotLight(const Transformation &transform, const RGB &I, float scale, float innerCone,
+			  float outerCone, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
+		transform(transform), Iemit(I), scale(scale), cosInnerCone(std::cos(radians(innerCone))),
+		cosOuterCone(std::cos(radians(outerCone))), colorSpace(colorSpace) {}
+
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
+									const SampledWavelengths &lambda) const {
+		Point3f p		   = transform.translation();
+		Vector3f wLight	   = normalize(transform.inverse() * ctx.p);
+		Spectrum Li		   = I(wLight, lambda) / (p - ctx.p).squaredNorm();
+
+		return LightSample{Interaction{p}, Li, 1};
+	}
+
+	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+						  const SampledWavelengths &lambda) const {
+		return Spectrum::Zero();
+	}
+
+	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const { return 0; }
+
+	KRR_DEVICE LightType type() const { return LightType::DeltaDirection; }
+
+	KRR_DEVICE bool isDeltaLight() const { return true; }
+
+protected:
+	Spectrum I(const Vector3f& w, const SampledWavelengths& lambda) const {
+		return Spectrum::fromRGB(Iemit, SpectrumType::RGBIlluminant, lambda, *colorSpace) * scale
+			* smooth_step(fabs(w.z()), cosInnerCone, cosOuterCone);
+	}
+
+	RGB Iemit;
+	float scale;
+	float cosInnerCone, cosOuterCone;
+	Transformation transform;
+	const RGBColorSpace *colorSpace;
+};
+
 class DiffuseAreaLight {
 public:
 	DiffuseAreaLight() = default;

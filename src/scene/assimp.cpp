@@ -410,8 +410,44 @@ void AssimpImporter::loadMeshes() {
 			mesh->material->getTexture(Material::TextureType::Normal)->hasImage() &&
 			mesh->texcoords.size() == 0)
 			Log(Debug, "Mesh %s has a normal map but has no UV!", mesh->getName());
-
 	}
+}
+
+void AssimpImporter::loadLights() {
+	if (!mAiScene->HasLights()) return;
+	auto sceneGraph = mScene->getSceneGraph();
+	auto lightContainer = std::make_shared<SceneGraphNode>("Light Container");
+	sceneGraph->attach(mRootNode, lightContainer);
+	for (int i = 0; i < mAiScene->mNumLights; i++) {
+		aiLight *pAiLight = mAiScene->mLights[i];
+		SceneLight::SharedPtr light;
+
+		if (pAiLight->mType == aiLightSource_POINT) {
+			light = std::make_shared<PointLight>();
+			light->setPosition(aiCast(pAiLight->mPosition));
+		} else if (pAiLight->mType == aiLightSource_DIRECTIONAL) {
+			light = std::make_shared<DirectionalLight>();
+			light->setDirection(aiCast(pAiLight->mDirection));
+		} else if (pAiLight->mType == aiLightSource_SPOT) {
+			light = std::make_shared<SpotLight>();
+			std::dynamic_pointer_cast<SpotLight>(light)->setInnerConeAngle(
+				pAiLight->mAngleInnerCone);
+			std::dynamic_pointer_cast<SpotLight>(light)->setOuterConeAngle(
+				pAiLight->mAngleOuterCone);
+		} else {
+			Log(Warning, "Unsupported light type: %d", pAiLight->mType);
+			continue;
+		}
+		
+		RGB color = aiCast(pAiLight->mColorDiffuse + pAiLight->mColorSpecular);
+		light->setScale(color.maxCoeff());
+		light->setColor(color / color.maxCoeff());
+		auto lightNode = std::make_shared<SceneGraphNode>();
+		lightNode->setName(aiCast(pAiLight->mName));
+		sceneGraph->attach(lightContainer, lightNode);
+		if (!lightNode->getName().empty()) mNodeMap[lightNode->getName()] = lightNode;
+	}
+
 }
 
 void AssimpImporter::loadCameras() {
