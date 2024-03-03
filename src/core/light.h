@@ -101,7 +101,7 @@ private:
 };
 
 class SpotLight {
-
+public:
 	SpotLight() = default;
 
 	SpotLight(const Transformation &transform, const RGB &I, float scale, float innerCone,
@@ -111,8 +111,9 @@ class SpotLight {
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
 									const SampledWavelengths &lambda) const {
-		Point3f p		   = transform.translation();
+		Point3f p		   = transform.translation();		
 		Vector3f wLight	   = normalize(transform.inverse() * ctx.p);
+		//Vector3f wLight  = (transform.inverse().linear() * -(p - ctx.p)).normalized();
 		Spectrum Li		   = I(wLight, lambda) / (p - ctx.p).squaredNorm();
 
 		return LightSample{Interaction{p}, Li, 1};
@@ -130,9 +131,9 @@ class SpotLight {
 	KRR_DEVICE bool isDeltaLight() const { return true; }
 
 protected:
-	Spectrum I(const Vector3f& w, const SampledWavelengths& lambda) const {
+	KRR_CALLABLE Spectrum I(const Vector3f& w, const SampledWavelengths& lambda) const {
 		return Spectrum::fromRGB(Iemit, SpectrumType::RGBIlluminant, lambda, *colorSpace) * scale
-			* smooth_step(fabs(w.z()), cosInnerCone, cosOuterCone);
+			* smooth_step(fabs(w.z()), cosOuterCone, cosInnerCone);
 	}
 
 	RGB Iemit;
@@ -248,8 +249,8 @@ private:
 };
 
 class Light :
-	public TaggedPointer<rt::PointLight, rt::DirectionalLight, rt::DiffuseAreaLight,
-						 rt::InfiniteLight> {
+	public TaggedPointer<rt::PointLight, rt::DirectionalLight, rt::SpotLight, 
+						rt::DiffuseAreaLight, rt::InfiniteLight> {
 public:
 	using TaggedPointer::TaggedPointer;
 

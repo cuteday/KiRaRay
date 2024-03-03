@@ -124,6 +124,10 @@ void RTScene::uploadSceneLightData() {
 			mLightStorage.emplaceEntity<rt::DirectionalLight>(
 				light, transform.rotation(), directionalLight->getColor(),
 				directionalLight->getScale(), sceneRadius);
+		} else if (auto spotlight = std::dynamic_pointer_cast<SpotLight>(light)) {
+			mLightStorage.emplaceEntity<rt::SpotLight>(
+				light, transform, spotlight->getColor(), spotlight->getScale(),
+				spotlight->getInnerConeAngle(), spotlight->getOuterConeAngle());
 		} else {
 			Log(Error, "Unsupported light type not uploaded to device memory.");
 		}

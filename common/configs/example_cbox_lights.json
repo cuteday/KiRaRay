@@ -25,7 +25,7 @@
 			"enable": true,
 			"name": "ToneMappingPass",
 			"params": {
-				"exposure": 0.5,
+				"exposure": 1,
 				"operator": "aces"
 			}
 		}
@@ -94,6 +94,19 @@
 					"color": [1.7, 1.2, 0.4],
 					"direction": [1, -1, -1],
 					"scale": 5
+				}
+			},
+			{
+				"type": "light",
+				"name": "Spotlight",
+				"params": {
+					"type": "spotlight",
+					"color": [1.0, 0.8, 0.85],
+					"position": [0, 3, 3],
+					"direction": [0, -1, -1],
+					"inner_cone": 1,
+					"outer_cone": 10,
+					"scale": 50
 				}
 			}
         ]

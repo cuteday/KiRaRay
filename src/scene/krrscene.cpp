@@ -33,6 +33,10 @@ bool SceneImporter::loadLight(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr
 		light	   = std::make_shared<PointLight>(color, scale);			
 	} else if (type == "directional") {
 		light	   = std::make_shared<DirectionalLight>(color, scale);
+	} else if (type == "spotlight") {
+		auto innerConeAngle = params.value<float>("inner_cone", 30.f);
+		auto outerConeAngle = params.value<float>("outer_cone", 45.f);
+		light = std::make_shared<SpotLight>(color, scale, innerConeAngle, outerConeAngle);
 	} else if (type == "infinite") {
 		light		 = std::make_shared<InfiniteLight>(color, scale);
 		auto texture = params.value<string>("texture", "");
@@ -45,7 +49,7 @@ bool SceneImporter::loadLight(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr
 		return false;
 	}
 	if (light) {
-		pScene->getSceneGraph()->attachLeaf(node, light);
+		node->setLeaf(light);
 		if (params.contains("position")) {
 			auto position = params.value<Vector3f>("position", Vector3f::Zero());
 			light->setPosition(position);

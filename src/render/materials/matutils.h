@@ -3,40 +3,7 @@
 #include "common.h"
 #include "bxdf.h"
 
-#define _DEFINE_BSDF_INTERNAL_ROUTINES(bsdf_name)                                                  \
-	KRR_CALLABLE static BSDFSample sampleInternal(const SurfaceInteraction &intr, Vector3f wo,     \
-												  Sampler &sg,                                     \
-												  TransportMode mode = TransportMode::Radiance) {  \
-		bsdf_name bsdf;                                                                            \
-		bsdf.setup(intr);                                                                          \
-		return bsdf.sample(wo, sg, mode);                                                          \
-	}                                                                                              \
-                                                                                                   \
-	KRR_CALLABLE static Spectrum fInternal(const SurfaceInteraction &intr, Vector3f wo,     \
-												  Vector3f wi,                                     \
-												  TransportMode mode = TransportMode::Radiance) {  \
-		bsdf_name bsdf;                                                                            \
-		bsdf.setup(intr);                                                                          \
-		return bsdf.f(wo, wi, mode);                                                               \
-	}                                                                                              \
-                                                                                                   \
-	KRR_CALLABLE static float pdfInternal(const SurfaceInteraction &intr, Vector3f wo,             \
-										  Vector3f wi,                                             \
-										  TransportMode mode = TransportMode::Radiance) {          \
-		bsdf_name bsdf;                                                                            \
-		bsdf.setup(intr);                                                                          \
-		return bsdf.pdf(wo, wi, mode);                                                             \
-	}                                                                                              \
-                                                                                                   \
-	KRR_CALLABLE static BSDFType flagsInternal(const SurfaceInteraction &intr) {                   \
-		bsdf_name bsdf;                                                                            \
-		bsdf.setup(intr);                                                                          \
-		return bsdf.flags();                                                                       \
-	}
-
 NAMESPACE_BEGIN(krr)
-
-
 
 namespace bsdf{
 	constexpr float minCosTheta = 1e-6f;
