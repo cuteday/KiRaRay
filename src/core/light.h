@@ -31,17 +31,16 @@ class PointLight {
 public:
 	PointLight() = default;
 
-	PointLight(const Affine3f &transform, const RGB &I, float scale = 1, 
+	PointLight(const Vector3f &translation, const RGB &I, float scale = 1, 
 		const RGBColorSpace* colorSpace = KRR_DEFAULT_COLORSPACE) :
-		transform(transform), I(I), scale(scale), colorSpace(colorSpace) {}
+		position(translation), I(I), scale(scale), colorSpace(colorSpace) {}
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
 									const SampledWavelengths &lambda) const {
-		Vector3f p	= transform.translation();
-		Vector3f wi = (p - ctx.p).normalized();
+		Vector3f wi = (position - ctx.p).normalized();
 		Spectrum Li = Spectrum::fromRGB(I, SpectrumType::RGBIlluminant, lambda, *colorSpace);
-		Li*= scale / (p - ctx.p).squaredNorm();
-		return LightSample{Interaction{p}, Li, 1};
+		Li *= scale / (position - ctx.p).squaredNorm();
+		return LightSample{Interaction{position}, Li, 1};
 	}
 
 	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
@@ -58,7 +57,7 @@ public:
 private:
 	RGB I;
 	float scale;
-	Affine3f transform;
+	Vector3f position;
 	const RGBColorSpace *colorSpace;
 };
 
@@ -75,7 +74,7 @@ public:
 									const SampledWavelengths &lambda) const {
 		/* [NOTE] For shadow rays, if the ray direction is too large, optix trace will have precision problems! 
 		(e.g. the ray will self-intersect on the original surface, even if the ray origin has offset) */
-		Vector3f wi = rotation * Vector3f{0, 0, 1};
+		Vector3f wi = rotation * Vector3f::UnitZ();
 		Vector3f p	= ctx.p + wi * 2 * sceneRadius;
 		Spectrum Li =
 			scale * Spectrum::fromRGB(I, SpectrumType::RGBIlluminant, lambda, *colorSpace);
@@ -98,6 +97,49 @@ private:
 	float scale;
 	float sceneRadius{1e5};
 	Matrix3f rotation;
+	const RGBColorSpace *colorSpace;
+};
+
+class SpotLight {
+public:
+	SpotLight() = default;
+
+	SpotLight(const Transformation &transform, const RGB &I, float scale, float innerCone,
+			  float outerCone, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
+		transform(transform), Iemit(I), scale(scale), cosInnerCone(std::cos(radians(innerCone))),
+		cosOuterCone(std::cos(radians(outerCone))), colorSpace(colorSpace) {}
+
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
+									const SampledWavelengths &lambda) const {
+		Point3f p		   = transform.translation();		
+		Vector3f wLight	   = normalize(transform.inverse() * ctx.p);
+		//Vector3f wLight  = (transform.inverse().linear() * -(p - ctx.p)).normalized();
+		Spectrum Li		   = I(wLight, lambda) / (p - ctx.p).squaredNorm();
+
+		return LightSample{Interaction{p}, Li, 1};
+	}
+
+	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
+						  const SampledWavelengths &lambda) const {
+		return Spectrum::Zero();
+	}
+
+	KRR_DEVICE float pdfLi(const Interaction &p, const LightSampleContext &ctx) const { return 0; }
+
+	KRR_DEVICE LightType type() const { return LightType::DeltaDirection; }
+
+	KRR_DEVICE bool isDeltaLight() const { return true; }
+
+protected:
+	KRR_CALLABLE Spectrum I(const Vector3f& w, const SampledWavelengths& lambda) const {
+		return Spectrum::fromRGB(Iemit, SpectrumType::RGBIlluminant, lambda, *colorSpace) * scale
+			* smooth_step(fabs(w.z()), cosOuterCone, cosInnerCone);
+	}
+
+	RGB Iemit;
+	float scale;
+	float cosInnerCone, cosOuterCone;
+	Transformation transform;
 	const RGBColorSpace *colorSpace;
 };
 
@@ -207,8 +249,8 @@ private:
 };
 
 class Light :
-	public TaggedPointer<rt::PointLight, rt::DirectionalLight, rt::DiffuseAreaLight,
-						 rt::InfiniteLight> {
+	public TaggedPointer<rt::PointLight, rt::DirectionalLight, rt::SpotLight, 
+						rt::DiffuseAreaLight, rt::InfiniteLight> {
 public:
 	using TaggedPointer::TaggedPointer;
 

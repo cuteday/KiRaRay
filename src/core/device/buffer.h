@@ -7,6 +7,7 @@
 
 #include "common.h"
 #include "device/cuda.h"
+#include "device/gpustd.h"
 #include "util/check.h"
 
 NAMESPACE_BEGIN(krr)
@@ -254,11 +255,11 @@ private:
 
 template <typename T> class TypedBufferView {
 public:
-	using value_type	  = T;
-	using reference		  = value_type &;
-	using const_reference = const value_type &;
-	using const_pointer = const T*;
-	using iterator		  = T *;
+	using value_type			 = T;
+	using reference				 = value_type &;
+	using const_reference		 = const value_type &;
+	using const_pointer			 = const T *;
+	using iterator				 = T *;
 	using const_iterator		 = const T *;
 	using reverse_iterator		 = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const iterator>;
@@ -266,7 +267,8 @@ public:
 	TypedBufferView() = default;
 	~TypedBufferView() = default;
 	TypedBufferView(const T *data, const size_t size) : d_ptr(data), m_size(size) {}
-	TypedBufferView(const TypedBuffer<T> &buffer) : d_ptr(buffer.data()), m_size(buffer.size()) {}
+	TypedBufferView(TypedBuffer<T> &buffer) : d_ptr(buffer.data()), m_size(buffer.size()) {}
+	TypedBufferView(gpu::vector<T> &vec) : d_ptr(vec.data()), m_size(vec.size()) {}
 
 	KRR_CALLABLE iterator begin() { return d_ptr; }
 	KRR_CALLABLE iterator end() { return d_ptr + m_size; }

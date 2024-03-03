@@ -536,9 +536,9 @@ namespace gpu {
 		}
 
 	private:
-		Allocator alloc;
 		T* ptr = nullptr;
 		size_t nAlloc = 0, nStored = 0;
+		Allocator alloc;
 	};
 
 	template <typename... Ts> struct tuple;

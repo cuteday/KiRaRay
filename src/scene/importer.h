@@ -48,6 +48,7 @@ private:
 	void traverseNode(aiNode *assimnode, SceneGraphNode::SharedPtr graphNode);
 	void loadMaterials(const string &modelFolder);
 	void loadMeshes();
+	void loadLights();
 	void loadCameras();
 	void loadAnimations();
 

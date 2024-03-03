@@ -132,6 +132,12 @@ template <typename T> KRR_CALLABLE T safe_sqrt(T value) {
 	return sqrt(max((T) 0, value));
 }
 
+template <typename T> KRR_CALLABLE T smooth_step(T x, T a, T b) {
+	if (a == b) return (x < a) ? 0 : 1;
+	T t = clamp((x - a) / (b - a), 0, 1);
+	return t * t * (3 - 2 * t);
+}
+
 KRR_CALLABLE float saturate(const float &f) { return min(1.f, max(0.f, f)); }
 
 KRR_CALLABLE float rcp(float f) { return 1.f / f; }

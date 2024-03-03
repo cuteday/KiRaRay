@@ -47,6 +47,13 @@ public:
 		return index;
 	}
 
+	template <typename ...Args>
+	KRR_CALLABLE int emplace(Args&&... args) {
+		int index = allocateEntry();
+		new (&(*this)[index]) WorkItem(std::forward<Args>(args)...);
+		return index;
+	}
+
 protected:
 	KRR_CALLABLE int allocateEntry() {
 		return m_size.fetch_add(1);
@@ -56,11 +63,10 @@ private:
 	atomic<int> m_size{ 0 };
 };
 
-template <typename T> 
-class MultiWorkQueue;
+template <typename T> class MultiWorkQueue;
 
 template <typename... Ts> 
-class MultiWorkQueue<types::TypePack<Ts...>> {
+class MultiWorkQueue<TypePack<Ts...>> {
 public:
 	template <typename T> 
 	KRR_CALLABLE WorkQueue<T>* get() {
@@ -80,6 +86,11 @@ public:
 	template <typename T>
 	KRR_CALLABLE int push(const T& value) { 
 		return get<T>()->push(value);
+	}
+
+	template <typename T, typename... Args>
+	KRR_CALLABLE int emplace(Args&&... args) {
+		return get<T>()->emplace(std::forward<Args>(args)...);
 	}
 
 	KRR_CALLABLE void reset() { 

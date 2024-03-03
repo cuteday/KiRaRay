@@ -4,7 +4,7 @@
 			"enable": true,
 			"name": "WavefrontPathTracer",
 			"params": {
-				"nee": false,
+				"nee": true,
 				"rr": 0.8,
 				"max_depth": 10
 			}

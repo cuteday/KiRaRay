@@ -13,7 +13,8 @@ void initializeMajorantGrid(MajorantGrid &majorantGrid, GridType *densityGrid) {
 	auto res = majorantGrid.res;
 	cudaDeviceSynchronize();
 	// [TODO] This device memory is not properly freed
-	majorantGrid.voxels = TypedBuffer<float>(res.x() * res.y() * res.z());
+	auto gridBuffer = TypedBuffer<float>(res.x() * res.y() * res.z());
+	majorantGrid.voxels = gridBuffer;
 	GPUParallelFor(res.x() * res.y() * res.z(),
 		[=] KRR_DEVICE(int index) mutable {
 			int x = index % majorantGrid.res.x();

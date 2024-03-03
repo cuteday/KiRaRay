@@ -36,13 +36,12 @@ void RTScene::uploadSceneMeshData() {
 		mMeshes[idx].tangents.alloc_and_copy_from_host(mesh->tangents);
 		mMeshes[idx].indices.alloc_and_copy_from_host(mesh->indices);
 		mMeshes[idx].material =
-			mesh->getMaterial() ? &mMaterialsBuffer[mesh->getMaterial()->getMaterialId()] : nullptr;
+			mesh->getMaterial() ? &mMaterials[mesh->getMaterial()->getMaterialId()] : nullptr;
 		if (mesh->inside) 
-			mMeshes[idx].mediumInterface.inside = mMedium[mesh->inside->getMediumId()];
+			mMeshes[idx].mediumInterface.inside = mMediumStorage.getPointer(mesh->inside);
 		if (mesh->outside)
-			mMeshes[idx].mediumInterface.outside = mMedium[mesh->outside->getMediumId()];
+			mMeshes[idx].mediumInterface.outside = mMediumStorage.getPointer(mesh->outside);
 	}
-	mMeshesBuffer.alloc_and_copy_from_host(mMeshes);
 }
 
 void RTScene::uploadSceneInstanceData() {
@@ -54,9 +53,8 @@ void RTScene::uploadSceneInstanceData() {
 		auto &instanceData	   = mInstances[idx];
 		Affine3f transform	   = instance->getNode()->getGlobalTransform();
 		instanceData.transform = Transformation(transform);
-		instanceData.mesh = &mMeshesBuffer[instance->getMesh()->getMeshId()];
+		instanceData.mesh = &mMeshes[instance->getMesh()->getMeshId()];
 	}
-	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
 }
 
 void RTScene::uploadSceneMaterialData() {
@@ -67,12 +65,9 @@ void RTScene::uploadSceneMaterialData() {
 		const auto &material = materials[idx];
 		mMaterials[idx].initializeFromHost(material);
 	}
-	mMaterialsBuffer.alloc_and_copy_from_host(mMaterials);
 }
 
 void RTScene::uploadSceneLightData() {
-	mLights.clear();
-
 	auto createTrianglePrimitives = [](Mesh::SharedPtr mesh, rt::InstanceData* instance) 
 		-> std::vector<Triangle> {
 		uint nTriangles = mesh->indices.size();
@@ -99,7 +94,7 @@ void RTScene::uploadSceneLightData() {
 			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld", 
 					 " constant emission(?): %f", mesh->indices.size(), luminance(Le));
 			std::vector<Triangle> primitives =
-				createTrianglePrimitives(mesh, &mInstancesBuffer[instance->getInstanceId()]);
+				createTrianglePrimitives(mesh, &mInstances[instance->getInstanceId()]);
 			size_t n_primitives				 = primitives.size();
 			instanceData.primitives.alloc_and_copy_from_host(primitives);
 			std::vector<rt::DiffuseAreaLight> lights(n_primitives);
@@ -109,66 +104,71 @@ void RTScene::uploadSceneLightData() {
 			}
 			instanceData.lights.alloc_and_copy_from_host(lights);
 			for (size_t triId = 0; triId < n_primitives; triId++) 
-				mLights.push_back(rt::Light(&instanceData.lights[triId]));
+				mLightStorage.addPointer(&instanceData.lights[triId]);
 		}
 	}
 
 	/* Process other lights (environment lights and those analytical ones). */
 	for (auto light : mScene.lock()->getLights()) {
 		auto transform = light->getNode()->getGlobalTransform();
+		float sceneRadius = mScene.lock()->getBoundingBox().diagonal().norm();
 		if (auto infiniteLight = std::dynamic_pointer_cast<InfiniteLight>(light)) {
 			rt::TextureData textureData;
 			textureData.initializeFromHost(infiniteLight->getTexture());
-			mInfiniteLights.push_back(
-				rt::InfiniteLight(transform.rotation(), textureData, light->getScale(),
-								  mScene.lock()->getBoundingBox().diagonal().norm()));
+			mLightStorage.emplaceEntity<rt::InfiniteLight>(
+				light, transform.rotation(), textureData, light->getScale(), sceneRadius);
 		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
-			Log(Warning, "Point light is not yet implemented in ray tracing, skipping...");
+			mLightStorage.emplaceEntity<rt::PointLight>(
+				light, transform.translation(), pointLight->getColor(), pointLight->getScale());
 		} else if (auto directionalLight = std::dynamic_pointer_cast<DirectionalLight>(light)) {
-			Log(Warning, "Directional light is not yet implemented in ray tracing, skipping...");
+			mLightStorage.emplaceEntity<rt::DirectionalLight>(
+				light, transform.rotation(), directionalLight->getColor(),
+				directionalLight->getScale(), sceneRadius);
+		} else if (auto spotlight = std::dynamic_pointer_cast<SpotLight>(light)) {
+			mLightStorage.emplaceEntity<rt::SpotLight>(
+				light, transform, spotlight->getColor(), spotlight->getScale(),
+				spotlight->getInnerConeAngle(), spotlight->getOuterConeAngle());
+		} else {
+			Log(Error, "Unsupported light type not uploaded to device memory.");
 		}
 	}
-
-	/* Upload infinite lights (a.k.a. environment lights). */
-	mInfiniteLightsBuffer.alloc_and_copy_from_host(mInfiniteLights);
-	for (int idx = 0; idx < mInfiniteLights.size(); idx++)
-		mLights.push_back(rt::Light(&mInfiniteLightsBuffer[idx]));
+	
+	mLightStorage.addPointers(mScene.lock()->getLights());
 
 	/* Upload main constant light buffer and light sampler. */
-	mLightsBuffer.alloc_and_copy_from_host(mLights);
-	Log(Info, "A total of %zd light(s) processed!", mLights.size());
-	if (!mLights.size())
+	Log(Info, "A total of %zd light(s) processed!", mLightStorage.getPointers().size());
+	if (!mLightStorage.getPointers().size())
 		Log(Error, "There's no light source in the scene! "
 			"Image will be dark, and may even cause crash...");
-	mLightSampler = UniformLightSampler(mLightsBuffer);
-	mLightSamplerBuffer.alloc_and_copy_from_host(&mLightSampler, 1);
+	auto lightSampler = UniformLightSampler(mLightStorage.getPointers());
+	mLightSamplerBuffer.alloc_and_copy_from_host(&lightSampler, 1);
 	// [Workaround] Since the area light hit depends on light buffer pointed from instance...
-	mInstancesBuffer.alloc_and_copy_from_host(mInstances);
 	CUDA_SYNC_CHECK();
 }
 
 void RTScene::uploadSceneMediumData() {
 	// For a medium, its index in mediumBuffer is the same as medium->getMediumId();
+	cudaDeviceSynchronize();
 	for (auto medium : mScene.lock()->getMedia()) {
 		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) {
-			mHomogeneousMedium.emplace_back(m->sigma_t, m->albedo, m->Le, m->g, KRR_DEFAULT_COLORSPACE);
+			mMediumStorage.emplaceEntity<HomogeneousMedium>(medium, m->sigma_t, m->albedo, m->Le, m->g, KRR_DEFAULT_COLORSPACE);
 		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
 			if (std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)) {
-				mNanoVDBMedium.emplace_back(
+				mMediumStorage.emplaceEntity<NanoVDBMedium<float>>(medium,
 					m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
 					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)),
 					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
 					m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{},
 					m->scale, m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
-				mNanoVDBMedium.back().initializeFromHost();
+				mMediumStorage.getData<NanoVDBMedium<float>>().back().initializeFromHost();
 			} else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)) {
-				mNanoVDBRGBMedium.emplace_back(
+				mMediumStorage.emplaceEntity<NanoVDBMedium<Array3f>>(medium,
 					m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
 					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)),
 					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
 					m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{},
 					m->scale, m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
-				mNanoVDBRGBMedium.back().initializeFromHost();
+				mMediumStorage.getData<NanoVDBMedium<Array3f>>().back().initializeFromHost();
 			} else {
 				Log(Error, "Unsupported heterogeneous VDB medium data type");
 				continue;
@@ -176,33 +176,18 @@ void RTScene::uploadSceneMediumData() {
 		} else
 			Log(Error, "Unknown medium type not uploaded to device memory.");
 	}
-	mHomogeneousMediumBuffer.alloc_and_copy_from_host(mHomogeneousMedium);
-	mNanoVDBMediumBuffer.alloc_and_copy_from_host(mNanoVDBMedium);
-	mNanoVDBRGBMediumBuffer.alloc_and_copy_from_host(mNanoVDBRGBMedium);
 
-	size_t homogeneousId = 0;
-	size_t nanoVDBId	 = 0;
-	size_t nanoVDBRGBId	 = 0;
-	for (auto medium : mScene.lock()->getMedia()) {
-		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) 
-			mMedium.push_back(Medium(&mHomogeneousMediumBuffer[homogeneousId++]));
-		else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
-			if (std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid))
-				mMedium.push_back(Medium(&mNanoVDBMediumBuffer[nanoVDBId++]));
-			else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid))
-				mMedium.push_back(Medium(&mNanoVDBRGBMediumBuffer[nanoVDBRGBId++]));
-		}
-	}
-	mMediumBuffer.alloc_and_copy_from_host(mMedium);
+	mMediumStorage.addPointers(mScene.lock()->getMedia());
+	CUDA_SYNC_CHECK();
 }
 
-rt::SceneData RTScene::getSceneData() const {
+rt::SceneData RTScene::getSceneData() {
 	rt::SceneData sceneData {};
-	sceneData.meshes		 = mMeshesBuffer;
-	sceneData.instances		 = mInstancesBuffer;
-	sceneData.materials		 = mMaterialsBuffer;
-	sceneData.lights		 = mLightsBuffer;
-	sceneData.infiniteLights = mInfiniteLightsBuffer;
+	sceneData.meshes		 = mMeshes;
+	sceneData.instances		 = mInstances;
+	sceneData.materials		 = mMaterials;
+	sceneData.lights		 = mLightStorage.getPointers();
+	sceneData.infiniteLights = mLightStorage.getData<rt::InfiniteLight>();
 	sceneData.lightSampler	 = mLightSamplerBuffer.data();
 	return sceneData;
 }
@@ -220,6 +205,7 @@ void RTScene::updateSceneData() {
 	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
 	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)
 		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
+		cudaDeviceSynchronize();
 		auto &instances = mScene.lock()->getMeshInstances();
 		for (size_t idx = 0; idx < instances.size(); idx++) {
 			const auto &instance   = instances[idx];
@@ -227,12 +213,12 @@ void RTScene::updateSceneData() {
 			Affine3f transform	   = instance->getNode()->getGlobalTransform();
 			instanceData.transform = Transformation(transform);
 		}
-		mInstancesBuffer.copy_from_host(mInstances.data(), mInstances.size());
 		lastUpdatedFrame = lastUpdates.frameIndex;
 	}
 	bool materialsChanged{false};
 	for (const auto &material : mScene.lock()->getMaterials()) {
 		if (material->isUpdated()) {
+			cudaDeviceSynchronize();
 			materialsChanged |= material->isUpdated();
 			rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
 			materialData.mBsdfType		   = material->mBsdfType;
@@ -241,9 +227,8 @@ void RTScene::updateSceneData() {
 			material->setUpdated(false);
 		}
 	}
-	if (materialsChanged) 
-		mMaterialsBuffer.copy_from_host(mMaterials.data(), mMaterials.size());	
 	lastUpdatedFrame = lastUpdates.frameIndex;
+
 }
 
 NAMESPACE_END(krr)

@@ -11,38 +11,114 @@
 #include "device/gpustd.h"
 #include "device/buffer.h"
 #include "device/memory.h"
+#include "device/container.h"
 #include "render/lightsampler.h"
 #include "render/media.h"
 
 NAMESPACE_BEGIN(krr)
 class Scene;
+class SceneLight;
 
 namespace rt {
 class SceneData {
 public:
-	TypedBufferView<rt::MaterialData> materials{};
-	TypedBufferView<rt::MeshData> meshes{};
-	TypedBufferView<rt::InstanceData> instances{};
-	TypedBufferView<rt::Light> lights{};
-	TypedBufferView<rt::InfiniteLight> infiniteLights{};
+	TypedBufferView<MaterialData> materials{};
+	TypedBufferView<MeshData> meshes{};
+	TypedBufferView<InstanceData> instances{};
+	TypedBufferView<Light> lights{};
+	TypedBufferView<InfiniteLight> infiniteLights{};
 	LightSampler lightSampler;
 };
 }
 
 struct OptixSceneParameters {
-	bool enableAnimation{false};
+	bool enableAnimation{true};
 	bool buildMultilevel{false};
 	bool enableMotionBlur{false};
 	float worldStartTime{0}, worldEndTime{1};
 
 	friend void from_json(const json& j, OptixSceneParameters& p) {
-		p.enableAnimation = j.value("animated", false);
+		p.enableAnimation = j.value("animated", true);
 		p.buildMultilevel = j.value("multilevel", false);
 		p.enableMotionBlur = j.value("motionblur", false);
 		p.worldStartTime = j.value("starttime", 0.f);
 		p.worldEndTime = j.value("endtime", 1.f);
 	}
 };
+
+template <typename T1, typename T2, typename Tp>
+class SceneStorage;
+
+template <typename CpuType, typename GpuType, typename ...GpuTypes> 
+class SceneStorage<CpuType, GpuType, TypePack<GpuTypes...>> {
+public:
+	using Types = TypePack<GpuTypes...>;
+	struct Record {
+		char *base;
+		size_t index;
+		size_t size;
+		unsigned int type;
+	};
+	SceneStorage() = default;
+	virtual ~SceneStorage() = default;
+
+	void clear() {
+		mRecords.clear();
+		mPointers.clear();
+		mData.clear();
+	}
+
+	template <typename T> 
+	gpu::vector<T> &getData() { 
+		return *mData.template get<T>();
+	}
+
+	void addPointer(GpuType entity) {
+		mPointers.emplace_back(entity);
+	}
+
+	void addPointers(const std::vector<std::shared_ptr<CpuType>> entities) {
+		mPointers.reserve(mPointers.size() + entities.size());
+		cudaDeviceSynchronize();
+		for (auto entity : entities) {
+			Record record		  = mRecords[entity];
+			CUdeviceptr devicePtr =
+				*reinterpret_cast<CUdeviceptr *>(record.base) + record.size * record.index;
+			mPointers.emplace_back(reinterpret_cast<void *>(devicePtr), record.type);
+		}
+	}
+
+	GpuType getPointer(std::weak_ptr<CpuType> entity) {
+		Record record		  = mRecords[entity];
+		CUdeviceptr devicePtr =
+			*reinterpret_cast<CUdeviceptr *>(record.base) + record.size * record.index;
+		return GpuType(reinterpret_cast<void *>(devicePtr), record.type);
+	}
+
+	gpu::vector<GpuType> &getPointers() { return mPointers; }
+
+	template <typename T>
+	void pushEntity(std::weak_ptr<CpuType> entity, const T& data) {
+		auto ptr		 = mData.template get<T>();
+		mRecords[entity] = {reinterpret_cast<char *>(ptr), ptr->size(), sizeof(T),
+							IndexOf<T, Types>::count + 1};	// type 0 means null
+		ptr->push_back(data);
+	}
+
+	template <typename T, typename ...Args>
+	void emplaceEntity(std::weak_ptr<CpuType> entity, Args&&... args) {
+		auto ptr		 = mData.template get<T>();
+		mRecords[entity] = {reinterpret_cast<char *>(ptr), ptr->size(), sizeof(T),
+							IndexOf<T, Types>::count + 1};
+		ptr->emplace_back(std::forward<Args>(args)...);
+	}
+
+private:
+	std::map<std::weak_ptr<CpuType>, Record, std::owner_less<std::weak_ptr<CpuType>>> mRecords;
+	gpu::vector<GpuType> mPointers;
+	gpu::multi_vector<Types> mData;
+};
+
 
 class OptixScene;
 class RTScene {
@@ -56,23 +132,15 @@ public:
 	void uploadSceneData(const OptixSceneParameters& parameters);
 	void updateSceneData();
 
-	rt::SceneData getSceneData() const;
+	rt::SceneData getSceneData();
 	std::shared_ptr<Scene> getScene() const;
 	std::shared_ptr<OptixScene> getOptixScene() const { return mOptixScene; }
 
-	std::vector<rt::MaterialData> &getMaterialData() { return mMaterials; }
-	std::vector<rt::MeshData> &getMeshData() { return mMeshes; }
-	std::vector<rt::InstanceData> &getInstanceData() { return mInstances; }
-	std::vector<rt::Light> &getLightData() { return mLights; }
-	std::vector<Medium> &getMediumData() { return mMedium; }
-	std::vector<rt::InfiniteLight> &getInfiniteLightData() { return mInfiniteLights; }
-
-	TypedBuffer<rt::MaterialData> &getMaterialBuffer() { return mMaterialsBuffer; }
-	TypedBuffer<rt::MeshData> &getMeshBuffer() { return mMeshesBuffer; }
-	TypedBuffer<rt::InstanceData> &getInstanceBuffer() { return mInstancesBuffer; }
-	TypedBuffer<rt::Light> &getLightBuffer() { return mLightsBuffer; }
-	TypedBuffer<Medium> &getMediumBuffer() { return mMediumBuffer; }
-	TypedBuffer<rt::InfiniteLight> &getInfiniteLightBuffer() { return mInfiniteLightsBuffer; }
+	gpu::vector<rt::MaterialData> &getMaterialData() { return mMaterials; }
+	gpu::vector<rt::MeshData> &getMeshData() { return mMeshes; }
+	gpu::vector<rt::InstanceData> &getInstanceData() { return mInstances; }
+	gpu::vector<rt::Light> &getLightData() { return mLightStorage.getPointers(); }
+	gpu::vector<Medium> &getMediumData() { return mMediumStorage.getPointers(); }
 
 private:
 	void uploadSceneMaterialData();
@@ -81,28 +149,13 @@ private:
 	void uploadSceneLightData();
 	void uploadSceneMediumData();
 
-	std::vector<rt::MaterialData> mMaterials;
-	TypedBuffer<rt::MaterialData> mMaterialsBuffer;
-	std::vector<rt::MeshData> mMeshes;
-	TypedBuffer<rt::MeshData> mMeshesBuffer;
-	std::vector<rt::InstanceData> mInstances;
-	TypedBuffer<rt::InstanceData> mInstancesBuffer;
-	std::vector<rt::Light> mLights;
-	TypedBuffer<rt::Light> mLightsBuffer;
-	std::vector<rt::InfiniteLight> mInfiniteLights; 
-	TypedBuffer<rt::InfiniteLight> mInfiniteLightsBuffer;
+	gpu::vector<rt::MaterialData> mMaterials;
+	gpu::vector<rt::MeshData> mMeshes;
+	gpu::vector<rt::InstanceData> mInstances;
+	
+	SceneStorage<Volume, Medium, Medium::Types> mMediumStorage;
+	SceneStorage<SceneLight, rt::Light, rt::Light::Types> mLightStorage;
 
-	std::vector<HomogeneousMedium> mHomogeneousMedium;
-	TypedBuffer<HomogeneousMedium> mHomogeneousMediumBuffer;
-	std::vector<NanoVDBMedium<float>> mNanoVDBMedium;
-	TypedBuffer<NanoVDBMedium<float>> mNanoVDBMediumBuffer;
-	std::vector<NanoVDBMedium<Array3f>> mNanoVDBRGBMedium;
-	TypedBuffer<NanoVDBMedium<Array3f>> mNanoVDBRGBMediumBuffer;
-
-	std::vector<Medium> mMedium;
-	TypedBuffer<Medium> mMediumBuffer;
-
-	UniformLightSampler mLightSampler;
 	TypedBuffer<UniformLightSampler> mLightSamplerBuffer;
 
 	std::weak_ptr<Scene> mScene;

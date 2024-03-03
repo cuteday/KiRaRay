@@ -97,7 +97,7 @@ public:
 
 private:
 	Spectrum sigma_t;	// used as sigma_majorant if grid is nullptr
-	float tMin = M_FLOAT_INF, tMax = -M_FLOAT_INF;
+	float tMin = std::numeric_limits<float>::max(), tMax = std::numeric_limits<float>::min();
 	const MajorantGrid *grid = nullptr;
 	Array3f nextCrossingT, deltaT;
 	Array3i step, voxelLimit, voxel;
