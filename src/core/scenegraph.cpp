@@ -43,6 +43,11 @@ SceneGraphLeaf::SharedPtr VDBVolume::clone() {
 									   scale, LeScale, temperatureScale, temperatureOffset);
 }
 
+SceneGraphLeaf::SharedPtr Material::clone() {
+	// TODO
+	return nullptr;
+}
+
 void SceneGraphNode::setLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
 	auto graph = mGraph.lock();
 
@@ -337,8 +342,8 @@ void SceneGraph::update(size_t frameIndex) {
 			current->mGlobalTransform = current->getLocalTransform();
 		}
 
-		// initialize the global bbox of the current node, start with the leaf (or an empty box if
-		// there is no leaf)
+		// initialize the global bbox of the current node, start with the leaf 
+		// (or an empty box if there is no leaf)
 		if ((current->getUpdateFlags() & (SceneGraphNode::UpdateFlags::SubgraphStructure |
 			SceneGraphNode::UpdateFlags::SubgraphTransform)) != 0 || context.superGraphTransformUpdated){
 			current->mGlobalBoundingBox = AABB{};
@@ -360,8 +365,7 @@ void SceneGraph::update(size_t frameIndex) {
 		if (deltaDepth > 0) { // goes to a child node
 			stack.push_back(context);
 			context.superGraphTransformUpdated |= currentTransformUpdated;
-		} else {	
-			// either goes to a sibling, or a child.
+		} else {	// either goes to a sibling, or a child.
 			if (parent) {	// in either case, the parent's bbox needs to be updated.
 				parent->mGlobalBoundingBox.extend(current->getGlobalBoundingBox());
 				parent->mUpdateFlags = current->getUpdateFlags() & SceneGraphNode::UpdateFlags::SubgraphUpdates;

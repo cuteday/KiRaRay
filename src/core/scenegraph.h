@@ -55,13 +55,10 @@ public:
 	float getScale() const { return scale; }
 	Vector3f getPosition() const;
 	Vector3f getDirection() const;
-	bool isUpdated() const { return updated; }
-	void setUpdated(bool _updated = true) { updated = _updated; }
 
 protected:
 	RGB color;
 	float scale;
-	bool updated{false};
 };
 
 class PointLight : public SceneLight {

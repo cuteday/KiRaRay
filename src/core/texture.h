@@ -8,6 +8,7 @@
 #include "common.h"
 
 #include "file.h"
+#include "scenenode.h"
 #include "raytracing.h"
 #include "render/materials/bxdf.h"
 
@@ -106,7 +107,7 @@ public:
 	string mFilename;
 };
 
-class Material {
+class Material : public SceneGraphLeaf {
 	friend class SceneGraph;
 public:
 	using SharedPtr = std::shared_ptr<Material>;
@@ -149,8 +150,8 @@ public:
 	const string& getName() const { return mName; }
 	int getMaterialId() const { return mMaterialId; }
 	const RGBColorSpace *getColorSpace() const { return spec::getColorSpace(mColorSpace); }
-	bool isUpdated() const { return mUpdated; }
-	void setUpdated(bool updated = true) { mUpdated = updated; }
+	std::shared_ptr<SceneGraphLeaf> clone() override;
+
 	void renderUI();
 
 	MaterialParams mMaterialParams;
@@ -159,7 +160,6 @@ public:
 	ShadingModel mShadingModel{ ShadingModel::SpecularGlossiness };
 	ColorSpaceType mColorSpace{ ColorSpaceType::sRGB };
 	string mName;
-	bool mUpdated{false};
 	int mMaterialId{-1};
 };
 
