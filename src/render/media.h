@@ -139,6 +139,8 @@ protected:
 template <typename DataType>
 class NanoVDBMedium {
 public:
+	NanoVDBMedium() = default;
+
 	NanoVDBMedium(const Affine3f &transform, RGB sigma_t, RGB albedo, float g, 
 		NanoVDBGrid<DataType> density, NanoVDBGrid<float> temperature, NanoVDBGrid<Array3f> albedoGrid,
 		float scale, float LeScale, float temperatureScale, float temperatureOffset,

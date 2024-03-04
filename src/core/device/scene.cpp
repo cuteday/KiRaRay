@@ -6,6 +6,13 @@
 
 NAMESPACE_BEGIN(krr)
 
+void SceneObject::uploadObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data,
+								   bool initialize) {
+	getObjectData(object, data, initialize);
+	cudaMemcpyAsync(ptr(), data->data(), data->size(), cudaMemcpyHostToDevice,
+					gpContext->cudaStream);
+}
+
 RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {}
 
 std::shared_ptr<Scene> RTScene::getScene() const { return mScene.lock(); }

@@ -35,6 +35,8 @@ public:
 		const RGBColorSpace* colorSpace = KRR_DEFAULT_COLORSPACE) :
 		position(translation), I(I), scale(scale), colorSpace(colorSpace) {}
 
+	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize) const;
+
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
 									const SampledWavelengths &lambda) const {
 		Vector3f wi = (position - ctx.p).normalized();
@@ -69,6 +71,8 @@ public:
 					 float sceneRadius				 = 1e5,
 					 const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		rotation(rotation), I(I), scale(scale), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
+
+	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize) const;
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
 									const SampledWavelengths &lambda) const {
@@ -108,6 +112,8 @@ public:
 			  float outerCone, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		transform(transform), Iemit(I), scale(scale), cosInnerCone(std::cos(radians(innerCone))),
 		cosOuterCone(std::cos(radians(outerCone))), colorSpace(colorSpace) {}
+
+	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize) const;
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
 									const SampledWavelengths &lambda) const {
@@ -155,6 +161,8 @@ public:
 					 bool twoSided = false, float scale = 1.f,
 					 const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		shape(shape), texture(texture), Le(Le), twoSided(twoSided), scale(scale), colorSpace(colorSpace) {}
+
+	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize) const;
 
 	KRR_DEVICE LightSample DiffuseAreaLight::sampleLi(Vector2f u, const LightSampleContext &ctx,
 													  const SampledWavelengths &lambda) const {
@@ -209,6 +217,8 @@ public:
 				  float sceneRadius = 1e5f, const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		image(image), tint(RGB::Ones()), scale(scale), rotation(rotation), sceneRadius(sceneRadius), colorSpace(colorSpace) {}
 
+	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize) const;
+
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
 										   const SampledWavelengths &lambda) const {
 		// [TODO] use intensity importance sampling here.
@@ -253,6 +263,11 @@ class Light :
 						rt::DiffuseAreaLight, rt::InfiniteLight> {
 public:
 	using TaggedPointer::TaggedPointer;
+
+	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize) const {
+		auto func = [&](auto ptr) -> void { ptr->getObjectData(object, data, initialize); };
+		return dispatch(func);
+	}
 
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx, 
 									const SampledWavelengths& lambda) const {

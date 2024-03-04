@@ -12,6 +12,7 @@ public:
 	using SharedPtr = std::shared_ptr<Blob>;
 	Blob(size_t size): m_data(std::malloc(size)), m_size(size) {}
 	Blob(void *data, size_t size) : m_data(data), m_size(size) {}
+	operator bool() const { return m_data != nullptr; } 
 	virtual ~Blob() { if (m_data) std::free(m_data); m_data = nullptr;};
 	const void *data() const { return m_data; }
 	size_t size() const { return m_size; }

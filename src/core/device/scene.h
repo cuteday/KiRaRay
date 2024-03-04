@@ -119,6 +119,18 @@ private:
 	gpu::multi_vector<Types> mData;
 };
 
+class SceneObject : public TaggedPointer<rt::Light> {
+public:
+	using TaggedPointer::TaggedPointer;
+
+	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize = false) const {
+		auto func = [&](auto ptr) -> void { ptr->getObjectData(object, data, initialize); };
+		return dispatch(func);
+	}
+
+	void uploadObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data,
+						  bool initialize = false);
+};
 
 class OptixScene;
 class RTScene {
@@ -155,6 +167,9 @@ private:
 	
 	SceneStorage<Volume, Medium, Medium::Types> mMediumStorage;
 	SceneStorage<SceneLight, rt::Light, rt::Light::Types> mLightStorage;
+
+	std::map<std::weak_ptr<SceneGraphLeaf>, SceneObject,
+			 std::owner_less<std::weak_ptr<SceneGraphLeaf>>> mManagedObjects;
 
 	TypedBuffer<UniformLightSampler> mLightSamplerBuffer;
 
