@@ -264,11 +264,6 @@ class Light :
 public:
 	using TaggedPointer::TaggedPointer;
 
-	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize) const {
-		auto func = [&](auto ptr) -> void { ptr->getObjectData(object, data, initialize); };
-		return dispatch(func);
-	}
-
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx, 
 									const SampledWavelengths& lambda) const {
 		auto sampleLi = [&](auto ptr) -> LightSample { return ptr->sampleLi(u, ctx, lambda); };

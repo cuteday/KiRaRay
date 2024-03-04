@@ -94,8 +94,14 @@ public:
 	float getInnerConeAngle() const { return innerConeAngle; }
 	float getOuterConeAngle() const { return outerConeAngle; }
 
-	void setInnerConeAngle(float angle) { innerConeAngle = angle; }
-	void setOuterConeAngle(float angle) { outerConeAngle = angle; }
+	void setInnerConeAngle(float angle) {
+		innerConeAngle = angle;
+		setUpdated(true);
+	}
+	void setOuterConeAngle(float angle) { 
+		outerConeAngle = angle; 
+		setUpdated(true);
+	}
 
 	float innerConeAngle{}, outerConeAngle{};
 };

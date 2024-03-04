@@ -31,7 +31,7 @@ public:
 	virtual void renderUI() {}
 	virtual ContentFlags getContentFlags() const { return ContentFlags::None; }
 
-	virtual void setUpdated(bool updated = true) { mUpdated = updated; }
+	virtual void setUpdated(bool updated = true);
 	virtual bool isUpdated() const { return mUpdated; }
 
 	const std::string &getName() const;

@@ -119,17 +119,21 @@ private:
 	gpu::multi_vector<Types> mData;
 };
 
-class SceneObject : public TaggedPointer<rt::Light> {
+class SceneObject : public TaggedPointer<rt::PointLight, rt::DirectionalLight, rt::SpotLight> {
 public:
-	using TaggedPointer::TaggedPointer;
+	SceneObject() = default;
 
-	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize = false) const {
+	template <typename T> 
+	SceneObject(T *ptr): TaggedPointer(ptr) {
+		data = std::make_shared<Blob>(sizeof(T));
+	}
+
+	void getObjectData(SceneGraphLeaf::SharedPtr object, bool initialize = false) const {
 		auto func = [&](auto ptr) -> void { ptr->getObjectData(object, data, initialize); };
 		return dispatch(func);
 	}
 
-	void uploadObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data,
-						  bool initialize = false);
+	std::shared_ptr<Blob> data;
 };
 
 class OptixScene;
@@ -143,6 +147,8 @@ public:
 	void update();
 	void uploadSceneData(const OptixSceneParameters& parameters);
 	void updateSceneData();
+	void updateManagedObject(SceneGraphLeaf::SharedPtr object);
+	void uploadManagedObject(SceneGraphLeaf::SharedPtr leaf, SceneObject object);
 
 	rt::SceneData getSceneData();
 	std::shared_ptr<Scene> getScene() const;

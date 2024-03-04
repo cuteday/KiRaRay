@@ -6,11 +6,19 @@
 
 NAMESPACE_BEGIN(krr)
 
-void SceneObject::uploadObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data,
-								   bool initialize) {
-	getObjectData(object, data, initialize);
-	cudaMemcpyAsync(ptr(), data->data(), data->size(), cudaMemcpyHostToDevice,
-					gpContext->cudaStream);
+void RTScene::uploadManagedObject(SceneGraphLeaf::SharedPtr leaf, SceneObject object) {
+	mManagedObjects[leaf] = object;
+	object.getObjectData(leaf, true);
+	cudaMemcpy(object.ptr(), object.data->data(), object.data->size(), cudaMemcpyHostToDevice);
+}
+
+void RTScene::updateManagedObject(SceneGraphLeaf::SharedPtr leaf) {
+	if (mManagedObjects.find(leaf) != mManagedObjects.end()) {
+		auto object = mManagedObjects[leaf];
+		object.getObjectData(leaf, false);
+		cudaMemcpyAsync(object.ptr(), object.data->data(), object.data->size(),
+						cudaMemcpyHostToDevice, gpContext->cudaStream);
+	}
 }
 
 RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {}
@@ -125,16 +133,14 @@ void RTScene::uploadSceneLightData() {
 			mLightStorage.emplaceEntity<rt::InfiniteLight>(
 				light, transform.rotation(), textureData, light->getScale(), sceneRadius);
 		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
-			mLightStorage.emplaceEntity<rt::PointLight>(
-				light, transform.translation(), pointLight->getColor(), pointLight->getScale());
+			mLightStorage.emplaceEntity<rt::PointLight>(light);
+			uploadManagedObject(light, mLightStorage.getPointer(light).cast<rt::PointLight>());
 		} else if (auto directionalLight = std::dynamic_pointer_cast<DirectionalLight>(light)) {
-			mLightStorage.emplaceEntity<rt::DirectionalLight>(
-				light, transform.rotation(), directionalLight->getColor(),
-				directionalLight->getScale(), sceneRadius);
+			mLightStorage.emplaceEntity<rt::DirectionalLight>(light);
+			uploadManagedObject(light, mLightStorage.getPointer(light).cast<rt::DirectionalLight>());
 		} else if (auto spotlight = std::dynamic_pointer_cast<SpotLight>(light)) {
-			mLightStorage.emplaceEntity<rt::SpotLight>(
-				light, transform, spotlight->getColor(), spotlight->getScale(),
-				spotlight->getInnerConeAngle(), spotlight->getOuterConeAngle());
+			mLightStorage.emplaceEntity<rt::SpotLight>(light);
+			uploadManagedObject(light, mLightStorage.getPointer(light).cast<rt::SpotLight>());
 		} else {
 			Log(Error, "Unsupported light type not uploaded to device memory.");
 		}
@@ -209,9 +215,10 @@ void RTScene::updateSceneData() {
 	PROFILE("Update scene data");
 	// Currently we only support updating instance transformations...
 	static size_t lastUpdatedFrame = 0;
-	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
-	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)
-		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
+	auto lastUpdates			   = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
+	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform) !=
+			SceneGraphNode::UpdateFlags::None &&
+		lastUpdatedFrame < lastUpdates.frameIndex) {
 		cudaDeviceSynchronize();
 		auto &instances = mScene.lock()->getMeshInstances();
 		for (size_t idx = 0; idx < instances.size(); idx++) {
@@ -235,7 +242,14 @@ void RTScene::updateSceneData() {
 		}
 	}
 	lastUpdatedFrame = lastUpdates.frameIndex;
-
+	/* update managed objects... */
+	for (auto [leaf, object] : mManagedObjects) {
+		if (leaf.lock()->isUpdated()) {
+			assert(!leaf.expired());
+			updateManagedObject(leaf.lock());
+			leaf.lock()->setUpdated(false);
+		}
+	}
 }
 
 NAMESPACE_END(krr)

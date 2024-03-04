@@ -15,6 +15,7 @@ public:
 	operator bool() const { return m_data != nullptr; } 
 	virtual ~Blob() { if (m_data) std::free(m_data); m_data = nullptr;};
 	const void *data() const { return m_data; }
+	void *data() { return m_data; }
 	size_t size() const { return m_size; }
 
 private:

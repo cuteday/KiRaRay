@@ -48,6 +48,12 @@ SceneGraphLeaf::SharedPtr Material::clone() {
 	return nullptr;
 }
 
+void SceneGraphLeaf::setUpdated(bool updated) { 
+	mUpdated = updated; 
+	auto node = getNode();
+	node->propagateUpdateFlags(SceneGraphNode::UpdateFlags::Leaf);
+}
+
 void SceneGraphNode::setLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
 	auto graph = mGraph.lock();
 
@@ -507,10 +513,10 @@ void SpotLight::renderUI() {
 	if(ui::SliderFloat("Azimuth", &sphericalDir[0], 0, 1) ||
 				ui::SliderFloat("Altitude", &sphericalDir[1], 0, 1))
 		setDirection(latlongToWorld(sphericalDir));
-	if (ui::SliderFloat("Inner cone angle", &innerConeAngle, 0, 1)) 
-		setInnerConeAngle(innerConeAngle);
-	if (ui::SliderFloat("Outer cone angle", &outerConeAngle, 0, 1)) 
-		setOuterConeAngle(outerConeAngle);
+	if (ui::SliderFloat("Inner cone angle", &innerConeAngle, 0, 90)) 
+		setInnerConeAngle(std::min(innerConeAngle, outerConeAngle));
+	if (ui::SliderFloat("Outer cone angle", &outerConeAngle, 0, 90)) 
+		setOuterConeAngle(std::max(innerConeAngle, outerConeAngle));
 }
 
 void SceneAnimationChannel::renderUI() {
