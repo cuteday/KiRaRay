@@ -21,8 +21,19 @@
 				"stree_thres": 4000,
 				"dtree_trres": 0.01,
 				"auto_build": true,
-				"mode": "offline",
-				"budget": {
+				"mode": "interactive"
+			}
+		},
+		{
+			"enable": true,
+			"name": "AccumulatePass",
+			"params": {
+				"spp": 0,
+				"mode": "accumulate",
+				"precision": "double",
+				"save_on_finish": true,
+				"exit_on_finish": true,
+				"task": {
 					"type": "spp",
 					"value": 1000
 				}

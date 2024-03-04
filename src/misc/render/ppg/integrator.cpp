@@ -406,15 +406,17 @@ void PPGPathTracer::nextIteration() {
 }
 
 void PPGPathTracer::finalize() { 
-	cudaDeviceSynchronize();
-	string output_name = gpContext->getGlobalConfig().contains("name") ? 
-		gpContext->getGlobalConfig()["name"] : "result";
-	fs::path save_path = File::outputDir() / (output_name + ".exr");
-	m_image->save(save_path);
-	Log(Info, "Total SPP: %zd, elapsed time: %.1f", 
-		m_task.getCurrentSpp(), m_task.getElapsedTime());
-	Log(Success, "Task finished, saving results to %s", save_path.string().c_str());
-	CUDA_SYNC_CHECK();
+	if (m_renderMode == RenderMode::Offline) {
+		cudaDeviceSynchronize();
+		string output_name = gpContext->getGlobalConfig().contains("name") ? 
+			gpContext->getGlobalConfig()["name"] : "result";
+		fs::path save_path = File::outputDir() / (output_name + ".exr");
+		m_image->save(save_path);
+		Log(Info, "Total SPP: %zd, elapsed time: %.1f", 
+			m_task.getCurrentSpp(), m_task.getElapsedTime());
+		Log(Success, "Task finished, saving results to %s", save_path.string().c_str());
+		CUDA_SYNC_CHECK();
+	}
 }
 
 KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler, 
