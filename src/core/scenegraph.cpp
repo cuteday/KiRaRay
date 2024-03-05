@@ -1,5 +1,6 @@
 #include "scenegraph.h"
 #include "window.h"
+#include "scene.h"
 #include "render/profiler/profiler.h"
 
 NAMESPACE_BEGIN(krr)
@@ -205,8 +206,9 @@ SceneGraphNode::SharedPtr SceneGraph::attach(const SceneGraphNode::SharedPtr &pa
 }
 
 SceneGraphNode::SharedPtr SceneGraph::attachLeaf(const SceneGraphNode::SharedPtr &parent,
-												 const SceneGraphLeaf::SharedPtr &leaf) {
-	auto node = std::make_shared<SceneGraphNode>();
+												 const SceneGraphLeaf::SharedPtr &leaf,
+												 std::string nodeName) {
+	auto node = std::make_shared<SceneGraphNode>(nodeName);
 	if (leaf->getNode()) node->setLeaf(leaf->clone());
 	else node->setLeaf(leaf);
 	return attach(parent, node);
@@ -245,12 +247,6 @@ SceneGraphNode::SharedPtr SceneGraph::detach(const SceneGraphNode::SharedPtr& no
 		node->mParent = nullptr;
 	}
 	return node;
-}
-
-void SceneGraph::addMaterial(Material::SharedPtr material) {
-	material->mMaterialId = mMaterials.size();
-	mMaterials.push_back(material);
-	mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
 }
 
 void SceneGraph::addMesh(Mesh::SharedPtr mesh) {
@@ -374,6 +370,13 @@ void SceneGraph::update(size_t frameIndex) {
 			if (current->getLeaf()) {
 				AABB localBoundingBox = current->getLeaf()->getLocalBoundingBox();	
 				current->mGlobalBoundingBox = localBoundingBox.transformed(current->getGlobalTransform());
+			}
+		}
+
+		if (context.superGraphTransformUpdated || currentTransformUpdated) {
+			// The global transformation of the current node has changed, special treats goes to mesh instances.
+			if (current->getLeaf() && std::dynamic_pointer_cast<MeshInstance>(current->getLeaf())) {
+				//current->getLeaf()->setUpdated(true);
 			}
 		}
 
@@ -580,17 +583,29 @@ void SceneAnimation::renderUI() {
 
 void HomogeneousVolume::renderUI() { 
 	ui::Text("Homogeneous Volume"); 
-	ui::Text(("Sigma_a: " + sigma_t.string()).c_str());
-	ui::Text(("Sigma_s: " + albedo.string()).c_str());
-	ui::Text("g: %f", g);
-	if (isEmissive()) ui::Text("Le: %s", Le.string().c_str());
+	bool updated = false;
+	updated |= ui::InputFloat3("Sigma_t", (float *) &sigma_t, "%.2f");
+	updated |= ui::DragFloat3("Albedo", (float *) &albedo, 0.01f, 0, 1);
+	updated |= ui::DragFloat("g", &g, 0.01f, -1, 1);
+	updated |= ui::InputFloat3("Le", (float *) &Le, "%.2f");
+	if (updated) setUpdated(true);
 }
 
 void VDBVolume::renderUI() {
 	ui::Text("OpenVDB Volume Data");
-	ui::Text(("Sigma_a: " + sigma_t.string()).c_str());
-	ui::Text(("Sigma_s: " + albedo.string()).c_str());
-	ui::Text("g: %f", g);
+	bool updated = false;
+	if (!densityGrid)
+		updated |= ui::InputFloat3("Sigma_t", (float *) &sigma_t, "%.2f");
+	if (!albedoGrid) 
+		updated |= ui::DragFloat3("Albedo", (float *) &albedo, 0.01f, 0, 1);
+	if (temperatureGrid) {
+		updated |= ui::InputFloat("Temperature scale", &temperatureScale, 0, 0, "%.2f");
+		updated |= ui::InputFloat("Temperature offset", &temperatureOffset, 0, 0, "%.2f");
+	}
+	updated |= ui::DragFloat("g", &g, 0.01f, -1, 1);
+	updated |= ui::InputFloat3("Emission Scale", (float *) &LeScale, "%.2f");
+	updated |= ui::InputFloat("Scale", &scale, 0, 0, "%.2f");
+	setUpdated(updated);
 }
 
 void SceneGraphNode::renderUI() { 
@@ -663,5 +678,9 @@ void SceneGraph::renderUI() {
 		ui::TreePop();
 	}
 }
+
+Scene::SharedPtr SceneGraph::getScene() const { return mScene.lock(); }
+
+void SceneGraph::setScene(const Scene::SharedPtr &scene) { mScene = scene; }
 
 NAMESPACE_END(krr)

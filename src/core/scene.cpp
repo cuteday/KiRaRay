@@ -16,6 +16,7 @@ Scene::Scene() {
 
 bool Scene::update(size_t frameIndex, double currentTime) {
 	bool hasChanges = false;
+	mGraph->setScene(shared_from_this());
 	if (mEnableAnimation) mGraph->animate(currentTime);
 	if (mCameraController) hasChanges |= mCameraController->update();
 	mGraph->update(frameIndex); /* update graph transform since camera needs global transf. */
@@ -145,10 +146,11 @@ bool Scene::onKeyEvent(const KeyboardEvent& keyEvent){
 
 void Scene::initializeSceneRT() {
 	if (!mGraph) Log(Fatal, "Scene graph must be initialized.");
+	mGraph->setScene(shared_from_this());
 	mGraph->update(0); // must be done before preparing device data.
 	if (mSceneRT) {
 		if (mSceneRT->getScene() == shared_from_this())
-			Log(Debug, "The RT scene data has been initialized once before."
+			Log(Warning, "The RT scene data has been initialized once before."
 					 "I'm assuming you do not want to reinitialize it?");
 		else Log(Error, "[Confused cat noise] A new scene?"
 			"Currently only initialization with one scene is supported!");

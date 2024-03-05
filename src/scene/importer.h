@@ -76,6 +76,7 @@ private:
 	Material::SharedPtr loadMaterial(pbrt::Material::SP pbrtMaterial);
 	Volume::SharedPtr loadMedium(pbrt::Medium::SP pbrtMedium);
 
+	SceneGraphNode::SharedPtr mMaterialContainer;
 	string resolve(string path);
 
 	string mFilepath;

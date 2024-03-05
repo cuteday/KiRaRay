@@ -2,6 +2,7 @@
 #include "mesh.h"
 #include "shape.h"
 #include "window.h"
+#include "scenegraph.h"
 
 NAMESPACE_BEGIN(krr)
 
@@ -10,6 +11,18 @@ AABB Mesh::computeBoundingBox() {
 	for (const auto &v : positions) 
 		aabb.extend(v);
 	return aabb;
+}
+
+void rt::InstanceData::getObjectData(std::shared_ptr<SceneGraphLeaf> object,
+						std::shared_ptr<Blob> data, bool initialize) const {
+	auto inst  = std::dynamic_pointer_cast<MeshInstance>(object);
+	auto gdata = reinterpret_cast<rt::InstanceData *>(data->data());
+	if (initialize) {
+		auto &meshData = inst->getNode()->getGraph()->getScene()->getSceneRT()->getMeshData();
+		gdata->mesh	   = &meshData[inst->getMesh()->getMeshId()];	
+	}
+	gdata->transform = inst->getNode()->getGlobalTransform();
+	
 }
 
 void Mesh::renderUI() {

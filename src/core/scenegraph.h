@@ -12,6 +12,7 @@
 
 NAMESPACE_BEGIN(krr)
 
+class Scene;
 class SceneGraph;
 
 class MeshInstance : public SceneGraphLeaf {
@@ -248,6 +249,9 @@ public:
 	SceneGraph()		  = default;
 	virtual ~SceneGraph() = default;
 
+	void setScene(const std::shared_ptr<Scene> &scene);
+	std::shared_ptr<Scene> getScene() const;
+
 	void update(size_t frameIndex);
 	void animate(double currentTime);
 
@@ -261,14 +265,13 @@ public:
 	UpdateRecord getLastUpdateRecord() const { return mLastUpdateRecord; };
 	unsigned int evaluateMaxTraversalDepth() const;
 	void addMesh(Mesh::SharedPtr mesh);
-	void addMaterial(Material::SharedPtr material);
-
 	SceneGraphNode::SharedPtr setRoot(const SceneGraphNode::SharedPtr &root);
 	SceneGraphNode::SharedPtr attach(const SceneGraphNode::SharedPtr &parent,
 									 const SceneGraphNode::SharedPtr &child);
 	// Attach a leaf to a new node, then attach that node to specified parent.
 	SceneGraphNode::SharedPtr attachLeaf(const SceneGraphNode::SharedPtr &parent,
-										const SceneGraphLeaf::SharedPtr &leaf);
+										const SceneGraphLeaf::SharedPtr &leaf,
+										 std::string nodeName = "");
 	// Detach a node and its subgraph from the graph, then unregister all its resources.
 	SceneGraphNode::SharedPtr detach(const SceneGraphNode::SharedPtr &node);
 
@@ -284,6 +287,7 @@ private:
 	friend class SceneGraphWalker;
 
 	SceneGraphNode::SharedPtr mRoot;
+	std::weak_ptr<Scene> mScene;
 	
 	std::vector<Mesh::SharedPtr> mMeshes;
 	std::vector<Material::SharedPtr> mMaterials;

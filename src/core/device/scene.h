@@ -121,7 +121,7 @@ private:
 
 class SceneObject : public TaggedPointer<rt::PointLight, rt::DirectionalLight, rt::SpotLight, 
 	rt::InfiniteLight, HomogeneousMedium, NanoVDBMedium<float>, NanoVDBMedium<Array3f>,
-	rt::MaterialData> {
+	rt::MaterialData, rt::InstanceData> {
 public:
 	SceneObject() = default;
 

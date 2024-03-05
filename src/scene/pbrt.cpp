@@ -228,7 +228,7 @@ Material::SharedPtr PbrtImporter::loadMaterial(pbrt::Material::SP mat) {
 	if (matParams.IoR == 1) // 1-ETA is not plausible for transmission
 		matParams.IoR = 1.001;
 
-	mScene->addMaterial(material);
+	mScene->getSceneGraph()->attachLeaf(mMaterialContainer, material, material->getName());
 	loadedMaterials[mat] = material;
 	return material;
 }
@@ -309,10 +309,7 @@ Volume::SharedPtr PbrtImporter::loadMedium(pbrt::Medium::SP pbrtMedium) {
 		return nullptr;
 	}
 	
-	auto mediaNode = std::make_shared<SceneGraphNode>();
-	mediaNode->setLeaf(result);
-	mediaNode->setName(pbrtMedium->name);
-	sceneGraph->attach(mediaContainer, mediaNode);
+	sceneGraph->attachLeaf(mediaContainer, result, pbrtMedium->name);
 	loadedMedia[pbrtMedium] = result;
 	return result;
 }
@@ -337,7 +334,10 @@ bool PbrtImporter::import(const fs::path filepath, Scene::SharedPtr pScene,
 		pScene->getSceneGraph()->setRoot(root);
 	}
 
-	pScene->addMaterial(std::make_shared<Material>("default material")); 
+	mMaterialContainer = std::make_shared<SceneGraphNode>("Material Container");
+	pScene->getSceneGraph()->attach(root, mMaterialContainer);
+	pScene->getSceneGraph()->attachLeaf(mMaterialContainer,
+									std::make_shared<Material>("default material"));
 	// the default material for shapes without material
 
 	// build scenegraph

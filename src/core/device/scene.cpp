@@ -68,7 +68,8 @@ void RTScene::uploadSceneInstanceData() {
 		auto &instanceData	   = mInstances[idx];
 		Affine3f transform	   = instance->getNode()->getGlobalTransform();
 		instanceData.transform = Transformation(transform);
-		instanceData.mesh = &mMeshes[instance->getMesh()->getMeshId()];
+		instanceData.mesh	   = &mMeshes[instance->getMesh()->getMeshId()];
+		//uploadManagedObject(instances[idx], &mInstances[idx]);
 	}
 }
 
@@ -77,8 +78,7 @@ void RTScene::uploadSceneMaterialData() {
 	auto &materials = mScene.lock()->getMaterials();
 	mMaterials.resize(materials.size());
 	for (auto idx = 0; idx < materials.size(); idx++) {
-		auto material = materials[idx];
-		uploadManagedObject(material, &mMaterials[idx]);
+		uploadManagedObject(materials[idx], &mMaterials[idx]);
 	}
 }
 
@@ -210,20 +210,21 @@ void RTScene::updateSceneData() {
 	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform) !=
 			SceneGraphNode::UpdateFlags::None &&
 		lastUpdatedFrame < lastUpdates.frameIndex) {
-		cudaDeviceSynchronize();
 		auto &instances = mScene.lock()->getMeshInstances();
 		for (size_t idx = 0; idx < instances.size(); idx++) {
 			const auto &instance   = instances[idx];
 			auto &instanceData	   = mInstances[idx];
-			Affine3f transform	   = instance->getNode()->getGlobalTransform();
-			instanceData.transform = Transformation(transform);
+
+			Transformation transform = instance->getNode()->getGlobalTransform();
+			cudaMemcpyAsync(&instanceData.transform, &transform, sizeof(Transformation),
+											cudaMemcpyHostToDevice, gpContext->cudaStream);
 		}
 		lastUpdatedFrame = lastUpdates.frameIndex;
 	}
 	/* update managed objects... */
 	for (auto [leaf, object] : mManagedObjects) {
+		assert(!leaf.expired());
 		if (leaf.lock()->isUpdated()) {
-			assert(!leaf.expired());
 			updateManagedObject(leaf.lock());
 			leaf.lock()->setUpdated(false);
 		}
