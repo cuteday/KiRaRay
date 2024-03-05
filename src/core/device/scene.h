@@ -38,11 +38,11 @@ struct OptixSceneParameters {
 	float worldStartTime{0}, worldEndTime{1};
 
 	friend void from_json(const json& j, OptixSceneParameters& p) {
-		p.enableAnimation = j.value("animated", true);
-		p.buildMultilevel = j.value("multilevel", false);
+		p.enableAnimation  = j.value("animated", true);
+		p.buildMultilevel  = j.value("multilevel", false);
 		p.enableMotionBlur = j.value("motionblur", false);
-		p.worldStartTime = j.value("starttime", 0.f);
-		p.worldEndTime = j.value("endtime", 1.f);
+		p.worldStartTime   = j.value("starttime", 0.f);
+		p.worldEndTime	   = j.value("endtime", 1.f);
 	}
 };
 
@@ -119,7 +119,9 @@ private:
 	gpu::multi_vector<Types> mData;
 };
 
-class SceneObject : public TaggedPointer<rt::PointLight, rt::DirectionalLight, rt::SpotLight> {
+class SceneObject : public TaggedPointer<rt::PointLight, rt::DirectionalLight, rt::SpotLight, 
+	rt::InfiniteLight, HomogeneousMedium, NanoVDBMedium<float>, NanoVDBMedium<Array3f>,
+	rt::MaterialData> {
 public:
 	SceneObject() = default;
 

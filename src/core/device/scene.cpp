@@ -76,9 +76,9 @@ void RTScene::uploadSceneMaterialData() {
 	/* Upload texture and material data to device... */
 	auto &materials = mScene.lock()->getMaterials();
 	mMaterials.resize(materials.size());
-	for (size_t idx = 0; idx < materials.size(); idx++) {
-		const auto &material = materials[idx];
-		mMaterials[idx].initializeFromHost(material);
+	for (auto idx = 0; idx < materials.size(); idx++) {
+		auto material = materials[idx];
+		uploadManagedObject(material, &mMaterials[idx]);
 	}
 }
 
@@ -128,10 +128,8 @@ void RTScene::uploadSceneLightData() {
 		auto transform = light->getNode()->getGlobalTransform();
 		float sceneRadius = mScene.lock()->getBoundingBox().diagonal().norm();
 		if (auto infiniteLight = std::dynamic_pointer_cast<InfiniteLight>(light)) {
-			rt::TextureData textureData;
-			textureData.initializeFromHost(infiniteLight->getTexture());
-			mLightStorage.emplaceEntity<rt::InfiniteLight>(
-				light, transform.rotation(), textureData, light->getScale(), sceneRadius);
+			mLightStorage.emplaceEntity<rt::InfiniteLight>(light);
+			uploadManagedObject(light, mLightStorage.getPointer(light).cast<rt::InfiniteLight>());
 		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
 			mLightStorage.emplaceEntity<rt::PointLight>(light);
 			uploadManagedObject(light, mLightStorage.getPointer(light).cast<rt::PointLight>());
@@ -164,23 +162,16 @@ void RTScene::uploadSceneMediumData() {
 	cudaDeviceSynchronize();
 	for (auto medium : mScene.lock()->getMedia()) {
 		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) {
-			mMediumStorage.emplaceEntity<HomogeneousMedium>(medium, m->sigma_t, m->albedo, m->Le, m->g, KRR_DEFAULT_COLORSPACE);
+			mMediumStorage.emplaceEntity<HomogeneousMedium>(medium);
+			uploadManagedObject(m, mMediumStorage.getPointer(m).cast<HomogeneousMedium>());
 		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
 			if (std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)) {
-				mMediumStorage.emplaceEntity<NanoVDBMedium<float>>(medium,
-					m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
-					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)),
-					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
-					m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{},
-					m->scale, m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
+				mMediumStorage.emplaceEntity<NanoVDBMedium<float>>(medium);
+				uploadManagedObject(m, mMediumStorage.getPointer(m).cast<NanoVDBMedium<float>>());
 				mMediumStorage.getData<NanoVDBMedium<float>>().back().initializeFromHost();
 			} else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)) {
-				mMediumStorage.emplaceEntity<NanoVDBMedium<Array3f>>(medium,
-					m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
-					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)),
-					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
-					m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{},
-					m->scale, m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
+				mMediumStorage.emplaceEntity<NanoVDBMedium<Array3f>>(medium);
+				uploadManagedObject(m, mMediumStorage.getPointer(m).cast<NanoVDBMedium<Array3f>>());
 				mMediumStorage.getData<NanoVDBMedium<Array3f>>().back().initializeFromHost();
 			} else {
 				Log(Error, "Unsupported heterogeneous VDB medium data type");
@@ -229,19 +220,6 @@ void RTScene::updateSceneData() {
 		}
 		lastUpdatedFrame = lastUpdates.frameIndex;
 	}
-	bool materialsChanged{false};
-	for (const auto &material : mScene.lock()->getMaterials()) {
-		if (material->isUpdated()) {
-			cudaDeviceSynchronize();
-			materialsChanged |= material->isUpdated();
-			rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
-			materialData.mBsdfType		   = material->mBsdfType;
-			materialData.mMaterialParams   = material->mMaterialParams;
-			materialData.mShadingModel	   = material->mShadingModel;
-			material->setUpdated(false);
-		}
-	}
-	lastUpdatedFrame = lastUpdates.frameIndex;
 	/* update managed objects... */
 	for (auto [leaf, object] : mManagedObjects) {
 		if (leaf.lock()->isUpdated()) {

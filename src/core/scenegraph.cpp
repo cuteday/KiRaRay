@@ -50,8 +50,8 @@ SceneGraphLeaf::SharedPtr Material::clone() {
 
 void SceneGraphLeaf::setUpdated(bool updated) { 
 	mUpdated = updated; 
-	auto node = getNode();
-	node->propagateUpdateFlags(SceneGraphNode::UpdateFlags::Leaf);
+	if (updated)
+		getNode()->propagateUpdateFlags(SceneGraphNode::UpdateFlags::Leaf);
 }
 
 void SceneGraphNode::setLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
@@ -280,6 +280,14 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 	} else if (auto medium = std::dynamic_pointer_cast<Volume>(leaf)) {
 		mMedia.push_back(medium);
 		mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
+	} else if (auto material = std::dynamic_pointer_cast<Material>(leaf)) {
+		mMaterials.push_back(material);
+		mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
+	} else if (auto camera = std::dynamic_pointer_cast<Camera>(leaf)) {
+		mCameras.push_back(camera);
+		mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
+	} else {
+		Log(Error, "Unknown leaf type to register...");
 	}
 }
 
@@ -305,6 +313,16 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 		auto it = std::find(mMedia.begin(), mMedia.end(), leaf);
 		if (it != mMedia.end()) mMedia.erase(it);
 		else Log(Warning, "Unregistering a medium that do not exist in graph...");
+	} else if (auto material = std::dynamic_pointer_cast<Material>(leaf)) {
+		auto it = std::find(mMaterials.begin(), mMaterials.end(), leaf);
+		if (it != mMaterials.end()) mMaterials.erase(it);
+		else Log(Warning, "Unregistering a material that do not exist in graph...");
+	} else if (auto camera = std::dynamic_pointer_cast<Camera>(leaf)) {
+		auto it = std::find(mCameras.begin(), mCameras.end(), leaf);
+		if (it != mCameras.end()) mCameras.erase(it);
+		else Log(Warning, "Unregistering a camera that do not exist in graph...");
+	} else {
+		Log(Error, "Unknown leaf type to unregister...");
 	}
 }
 

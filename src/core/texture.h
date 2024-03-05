@@ -193,15 +193,14 @@ public:
 	Material::ShadingModel mShadingModel{Material::ShadingModel::MetallicRoughness};
 	const RGBColorSpace *mColorSpace{nullptr};
 
-	void initializeFromHost(Material::SharedPtr material);
+	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data,
+					   bool initialize) const;
 
 	KRR_CALLABLE TextureData getTexture(Material::TextureType type) const {
 		return mTextures[(uint32_t) type];
 	}
 
 	KRR_CALLABLE const RGBColorSpace *getColorSpace() const { return mColorSpace; }
-
-	void renderUI();
 };
 }
 

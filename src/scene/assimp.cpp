@@ -339,18 +339,23 @@ void AssimpImporter::traverseNode(aiNode *assimpNode, SceneGraphNode::SharedPtr 
 }
 
 void AssimpImporter::loadMaterials(const string &modelFolder) {
+	auto lightContainer	 = std::make_shared<SceneGraphNode>("Light Container");
 	auto defaultMaterial = std::make_shared<Material>("default material");
+	mScene->getSceneGraph()->attach(mRootNode, lightContainer);
 	mMaterials.push_back(defaultMaterial);
 	mScene->addMaterial(defaultMaterial);
 	for (uint i = 0; i < mAiScene->mNumMaterials; i++) {
 		const aiMaterial *aiMaterial = mAiScene->mMaterials[i];
+		
 		Material::SharedPtr pMaterial = createMaterial(aiMaterial, modelFolder, mImportMode);
 		if (pMaterial == nullptr) {
 			logError("Failed to create material...");
 			return;
 		}
+		auto materialNode = std::make_shared<SceneGraphNode>(aiCast(aiMaterial->GetName()));
+		materialNode->setLeaf(pMaterial);
+		mScene->getSceneGraph()->attach(lightContainer, materialNode);
 		mMaterials.push_back(pMaterial);
-		mScene->addMaterial(pMaterial);
 	}
 }
 

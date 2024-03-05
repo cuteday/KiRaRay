@@ -3,6 +3,7 @@
 #include "common.h"
 #include "logger.h"
 #include "mesh.h"
+#include "camera.h"
 #include "animation.h"
 #include "texture.h"
 #include "scenenode.h"
@@ -290,6 +291,7 @@ private:
 	std::vector<SceneAnimation::SharedPtr> mAnimations;
 	std::vector<SceneLight::SharedPtr> mLights;
 	std::vector<Volume::SharedPtr> mMedia;
+	std::vector<Camera::SharedPtr> mCameras;
 	UpdateRecord mLastUpdateRecord;
 };
 
