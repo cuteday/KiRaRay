@@ -237,12 +237,15 @@ void NanoVDBMedium<DataType>::getObjectData(SceneGraphLeaf::SharedPtr object, Bl
 											bool initialize) const {
 	auto m	   = std::dynamic_pointer_cast<VDBVolume>(object);
 	auto gdata = reinterpret_cast<NanoVDBMedium<DataType> *>(data->data());
-	if (initialize)
-		new (gdata) NanoVDBMedium<DataType>(m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
+	if (initialize) {
+		new (gdata) NanoVDBMedium<DataType>(
+			m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
 			std::move(*std::dynamic_pointer_cast<NanoVDBGrid<DataType>>(m->densityGrid)),
 			m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
-			m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{}, m->scale, m->LeScale,
-			m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
+			m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{}, m->scale,
+			m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
+		gdata->initializeFromHost();
+	}
 	gdata->albedo			 = m->albedo;
 	gdata->sigma_t			 = m->sigma_t;
 	gdata->phase			 = m->g;

@@ -145,11 +145,9 @@ void RTScene::uploadSceneMediumData() {
 			if (std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)) {
 				mMediumStorage.emplaceEntity<NanoVDBMedium<float>>(medium);
 				uploadManagedObject(m, mMediumStorage.getPointer(m).cast<NanoVDBMedium<float>>());
-				mMediumStorage.getData<NanoVDBMedium<float>>().back().initializeFromHost();
 			} else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)) {
 				mMediumStorage.emplaceEntity<NanoVDBMedium<Array3f>>(medium);
 				uploadManagedObject(m, mMediumStorage.getPointer(m).cast<NanoVDBMedium<Array3f>>());
-				mMediumStorage.getData<NanoVDBMedium<Array3f>>().back().initializeFromHost();
 			} else {
 				Log(Error, "Unsupported heterogeneous VDB medium data type");
 				continue;
