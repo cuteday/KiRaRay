@@ -8,6 +8,13 @@
 NAMESPACE_BEGIN(krr)
 /* Note that the function qualifier (e.g. inline) should be consistent between declaration and definition. */
 
+void HomogeneousMedium::getObjectData(SceneGraphLeaf::SharedPtr leaf, Blob::SharedPtr data,
+									  bool initialize) const {
+	auto object = std::dynamic_pointer_cast<HomogeneousVolume>(leaf);
+	auto gdata = reinterpret_cast<HomogeneousMedium* >(data->data());
+	new (gdata) HomogeneousMedium(object->sigma_t, object->albedo, object->Le, object->g);
+}
+
 template <typename GridType>
 void initializeMajorantGrid(MajorantGrid &majorantGrid, GridType *densityGrid) {
 	auto res = majorantGrid.res;

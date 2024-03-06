@@ -225,13 +225,16 @@ public:
 #endif
 };
 
-using Array2i = Array2<int>;
-using Array2f = Array2<float>;
+using Array2i  = Array2<int>;
+using Array2f  = Array2<float>;
+using Array2d  = Array2<double>;
 using Array2ui = Array2<uint>;
-using Array3i = Array3<int>;
-using Array3f = Array3<float>;
+using Array3i  = Array3<int>;
+using Array3f  = Array3<float>;
+using Array3d  = Array3<double>;
 using Array3ui = Array3<uint>;
-using Array4i = Array4<int>;
-using Array4f = Array4<float>;
+using Array4i  = Array4<int>;
+using Array4f  = Array4<float>;
+using Array4d  = Array4<double>;
 using Array4ui = Array4<uint>;
 NAMESPACE_END(krr)

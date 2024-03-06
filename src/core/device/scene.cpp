@@ -6,6 +6,21 @@
 
 NAMESPACE_BEGIN(krr)
 
+void RTScene::uploadManagedObject(SceneGraphLeaf::SharedPtr leaf, SceneObject object) {
+	mManagedObjects[leaf] = object;
+	object.getObjectData(leaf, true);
+	cudaMemcpy(object.ptr(), object.data->data(), object.data->size(), cudaMemcpyHostToDevice);
+}
+
+void RTScene::updateManagedObject(SceneGraphLeaf::SharedPtr leaf) {
+	if (mManagedObjects.find(leaf) != mManagedObjects.end()) {
+		auto object = mManagedObjects[leaf];
+		object.getObjectData(leaf, false);
+		cudaMemcpyAsync(object.ptr(), object.data->data(), object.data->size(),
+						cudaMemcpyHostToDevice, gpContext->cudaStream);
+	}
+}
+
 RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {}
 
 std::shared_ptr<Scene> RTScene::getScene() const { return mScene.lock(); }
@@ -49,11 +64,7 @@ void RTScene::uploadSceneInstanceData() {
 	auto &instances = mScene.lock()->getMeshInstances();
 	mInstances.resize(instances.size());
 	for (size_t idx = 0; idx < instances.size(); idx++) {
-		const auto &instance   = instances[idx];
-		auto &instanceData	   = mInstances[idx];
-		Affine3f transform	   = instance->getNode()->getGlobalTransform();
-		instanceData.transform = Transformation(transform);
-		instanceData.mesh = &mMeshes[instance->getMesh()->getMeshId()];
+		uploadManagedObject(instances[idx], &mInstances[idx]);
 	}
 }
 
@@ -61,9 +72,8 @@ void RTScene::uploadSceneMaterialData() {
 	/* Upload texture and material data to device... */
 	auto &materials = mScene.lock()->getMaterials();
 	mMaterials.resize(materials.size());
-	for (size_t idx = 0; idx < materials.size(); idx++) {
-		const auto &material = materials[idx];
-		mMaterials[idx].initializeFromHost(material);
+	for (auto idx = 0; idx < materials.size(); idx++) {
+		uploadManagedObject(materials[idx], &mMaterials[idx]);
 	}
 }
 
@@ -80,30 +90,12 @@ void RTScene::uploadSceneLightData() {
 	/* Process mesh lights (diffuse area lights).
 	   Mesh lights do not actually exists in the scene graph, since rasterization does 
 	   not inherently support them. We simply bypass them with storage in mesh data. */
-	uint nMeshes = mScene.lock()->getMeshes().size();
 	for (const auto &instance : mScene.lock()->getMeshInstances()) {
 		const auto &mesh			   = instance->getMesh();
 		const auto &material		   = mesh->getMaterial();
 		if ((material && material->hasEmission()) || mesh->Le.any()) {
-			rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
-			rt::MeshData &meshData		   = mMeshes[mesh->getMeshId()];
-			rt::TextureData &textureData = materialData.getTexture(Material::TextureType::Emissive);
 			rt::InstanceData &instanceData = mInstances[instance->getInstanceId()];
-			RGB Le = material->hasEmission()
-							 ? RGB(textureData.getConstant()) : mesh->Le;
-			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld", 
-					 " constant emission(?): %f", mesh->indices.size(), luminance(Le));
-			std::vector<Triangle> primitives =
-				createTrianglePrimitives(mesh, &mInstances[instance->getInstanceId()]);
-			size_t n_primitives				 = primitives.size();
-			instanceData.primitives.alloc_and_copy_from_host(primitives);
-			std::vector<rt::DiffuseAreaLight> lights(n_primitives);
-			for (size_t triId = 0; triId < n_primitives; triId++) {
-				lights[triId] =
-					rt::DiffuseAreaLight(Shape(&instanceData.primitives[triId]), textureData, Le);
-			}
-			instanceData.lights.alloc_and_copy_from_host(lights);
-			for (size_t triId = 0; triId < n_primitives; triId++) 
+			for (size_t triId = 0; triId < mesh->indices.size(); triId++) 
 				mLightStorage.addPointer(&instanceData.lights[triId]);
 		}
 	}
@@ -113,21 +105,17 @@ void RTScene::uploadSceneLightData() {
 		auto transform = light->getNode()->getGlobalTransform();
 		float sceneRadius = mScene.lock()->getBoundingBox().diagonal().norm();
 		if (auto infiniteLight = std::dynamic_pointer_cast<InfiniteLight>(light)) {
-			rt::TextureData textureData;
-			textureData.initializeFromHost(infiniteLight->getTexture());
-			mLightStorage.emplaceEntity<rt::InfiniteLight>(
-				light, transform.rotation(), textureData, light->getScale(), sceneRadius);
+			mLightStorage.emplaceEntity<rt::InfiniteLight>(light);
+			uploadManagedObject(light, mLightStorage.getPointer(light).cast<rt::InfiniteLight>());
 		} else if (auto pointLight = std::dynamic_pointer_cast<PointLight>(light)) {
-			mLightStorage.emplaceEntity<rt::PointLight>(
-				light, transform.translation(), pointLight->getColor(), pointLight->getScale());
+			mLightStorage.emplaceEntity<rt::PointLight>(light);
+			uploadManagedObject(light, mLightStorage.getPointer(light).cast<rt::PointLight>());
 		} else if (auto directionalLight = std::dynamic_pointer_cast<DirectionalLight>(light)) {
-			mLightStorage.emplaceEntity<rt::DirectionalLight>(
-				light, transform.rotation(), directionalLight->getColor(),
-				directionalLight->getScale(), sceneRadius);
+			mLightStorage.emplaceEntity<rt::DirectionalLight>(light);
+			uploadManagedObject(light, mLightStorage.getPointer(light).cast<rt::DirectionalLight>());
 		} else if (auto spotlight = std::dynamic_pointer_cast<SpotLight>(light)) {
-			mLightStorage.emplaceEntity<rt::SpotLight>(
-				light, transform, spotlight->getColor(), spotlight->getScale(),
-				spotlight->getInnerConeAngle(), spotlight->getOuterConeAngle());
+			mLightStorage.emplaceEntity<rt::SpotLight>(light);
+			uploadManagedObject(light, mLightStorage.getPointer(light).cast<rt::SpotLight>());
 		} else {
 			Log(Error, "Unsupported light type not uploaded to device memory.");
 		}
@@ -151,24 +139,15 @@ void RTScene::uploadSceneMediumData() {
 	cudaDeviceSynchronize();
 	for (auto medium : mScene.lock()->getMedia()) {
 		if (auto m = std::dynamic_pointer_cast<HomogeneousVolume>(medium)) {
-			mMediumStorage.emplaceEntity<HomogeneousMedium>(medium, m->sigma_t, m->albedo, m->Le, m->g, KRR_DEFAULT_COLORSPACE);
+			mMediumStorage.emplaceEntity<HomogeneousMedium>(medium);
+			uploadManagedObject(m, mMediumStorage.getPointer(m).cast<HomogeneousMedium>());
 		} else if (auto m = std::dynamic_pointer_cast<VDBVolume>(medium)) {
 			if (std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)) {
-				mMediumStorage.emplaceEntity<NanoVDBMedium<float>>(medium,
-					m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
-					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<float>>(m->densityGrid)),
-					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
-					m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{},
-					m->scale, m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
-				mMediumStorage.getData<NanoVDBMedium<float>>().back().initializeFromHost();
+				mMediumStorage.emplaceEntity<NanoVDBMedium<float>>(medium);
+				uploadManagedObject(m, mMediumStorage.getPointer(m).cast<NanoVDBMedium<float>>());
 			} else if (std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)) {
-				mMediumStorage.emplaceEntity<NanoVDBMedium<Array3f>>(medium,
-					m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
-					std::move(*std::dynamic_pointer_cast<NanoVDBGrid<Array3f>>(m->densityGrid)),
-					m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
-					m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{},
-					m->scale, m->LeScale, m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
-				mMediumStorage.getData<NanoVDBMedium<Array3f>>().back().initializeFromHost();
+				mMediumStorage.emplaceEntity<NanoVDBMedium<Array3f>>(medium);
+				uploadManagedObject(m, mMediumStorage.getPointer(m).cast<NanoVDBMedium<Array3f>>());
 			} else {
 				Log(Error, "Unsupported heterogeneous VDB medium data type");
 				continue;
@@ -200,35 +179,14 @@ void RTScene::update() {
 // This routine should only be called by OptixBackend...
 void RTScene::updateSceneData() {
 	PROFILE("Update scene data");
-	// Currently we only support updating instance transformations...
-	static size_t lastUpdatedFrame = 0;
-	auto lastUpdates = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
-	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform)
-		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {
-		cudaDeviceSynchronize();
-		auto &instances = mScene.lock()->getMeshInstances();
-		for (size_t idx = 0; idx < instances.size(); idx++) {
-			const auto &instance   = instances[idx];
-			auto &instanceData	   = mInstances[idx];
-			Affine3f transform	   = instance->getNode()->getGlobalTransform();
-			instanceData.transform = Transformation(transform);
-		}
-		lastUpdatedFrame = lastUpdates.frameIndex;
-	}
-	bool materialsChanged{false};
-	for (const auto &material : mScene.lock()->getMaterials()) {
-		if (material->isUpdated()) {
-			cudaDeviceSynchronize();
-			materialsChanged |= material->isUpdated();
-			rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
-			materialData.mBsdfType		   = material->mBsdfType;
-			materialData.mMaterialParams   = material->mMaterialParams;
-			materialData.mShadingModel	   = material->mShadingModel;
-			material->setUpdated(false);
+	/* update managed objects, including most types of leaf nodes... */
+	for (auto [leaf, object] : mManagedObjects) {
+		assert(!leaf.expired());
+		if (leaf.lock()->isUpdated()) {
+			updateManagedObject(leaf.lock());
+			leaf.lock()->setUpdated(false);
 		}
 	}
-	lastUpdatedFrame = lastUpdates.frameIndex;
-
 }
 
 NAMESPACE_END(krr)

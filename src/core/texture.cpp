@@ -179,12 +179,14 @@ void Material::renderUI() {
 	static const char *textureTypes[]  = {"Diffuse", "Specular", "Emissive", "Normal",
 										  "Transmission"};
 	static const char *bsdfTypes[]	   = {"Null", "Diffuse", "Dielectric", "Disney"};
-	mUpdated |= ui::ListBox("Shading model", (int *) &mShadingModel, shadingModels, 2);
-	mUpdated |= ui::ListBox("BSDF", (int *) &mBsdfType, bsdfTypes, (int) MaterialType::Count);
-	mUpdated |= ui::DragFloat4("Diffuse", (float *) &mMaterialParams.diffuse, 1e-3, 0, 1);
-	mUpdated |= ui::DragFloat4("Specular", (float *) &mMaterialParams.specular, 1e-3, 0, 1);
-	mUpdated |= ui::DragFloat("Specular transmission", &mMaterialParams.specularTransmission, 1e-3, 0, 1);
-	mUpdated |= ui::InputFloat("Index of Refraction", &mMaterialParams.IoR);
+	bool updated					   = false;
+	updated |= ui::ListBox("Shading model", (int *) &mShadingModel, shadingModels, 2);
+	updated |= ui::ListBox("BSDF", (int *) &mBsdfType, bsdfTypes, (int) MaterialType::Count);
+	updated |= ui::DragFloat4("Diffuse", (float *) &mMaterialParams.diffuse, 1e-3, 0, 1);
+	updated |= ui::DragFloat4("Specular", (float *) &mMaterialParams.specular, 1e-3, 0, 1);
+	updated |= ui::DragFloat("Specular transmission", &mMaterialParams.specularTransmission, 1e-3, 0, 1);
+	updated |= ui::InputFloat("Index of Refraction", &mMaterialParams.IoR);
+	setUpdated(updated);
 }
 
 namespace rt {
@@ -246,15 +248,20 @@ void TextureData::initializeFromHost(Texture::SharedPtr texture) {
 	CUDA_CHECK(cudaCreateTextureObject(&mCudaTexture, &resDesc, &texDesc, nullptr));
 }
 
-void MaterialData::initializeFromHost(Material::SharedPtr material) {
-	mBsdfType		= material->mBsdfType;
-	mMaterialParams = material->mMaterialParams;
-	mShadingModel	= material->mShadingModel;
-	mColorSpace		= material->getColorSpace();
-	for (size_t tex_idx = 0; tex_idx < (size_t)Material::TextureType::Count;
-		 tex_idx++) {
-		mTextures[tex_idx].initializeFromHost(material->mTextures[tex_idx]);
+void MaterialData::getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, 
+	bool initialize) const {
+	auto material = std::dynamic_pointer_cast<Material>(object);
+	auto gdata = reinterpret_cast<MaterialData *>(data->data());
+	if (initialize) {
+		new (gdata) MaterialData();
+		for (size_t tex_idx = 0; tex_idx < (size_t) Material::TextureType::Count; tex_idx++) 
+			gdata->mTextures[tex_idx].initializeFromHost(material->mTextures[tex_idx]);
+		
 	}
+	gdata->mBsdfType	   = material->mBsdfType;
+	gdata->mMaterialParams = material->mMaterialParams;
+	gdata->mShadingModel   = material->mShadingModel;
+	gdata->mColorSpace	   = material->getColorSpace();
 }
 
 } // namespace rt

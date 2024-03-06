@@ -20,6 +20,7 @@ struct Budget {
 
 class RenderTask {
 public:
+	using SharedPtr = std::shared_ptr<RenderTask>;
 	RenderTask() = default;
 	~RenderTask() = default;
 	RenderTask(Budget budget) : m_budget(budget) {}
@@ -30,15 +31,13 @@ public:
 	}
 
 	float tickFrame() {
-		switch (m_budget.type) {
-			case BudgetType::Spp:
-				m_spp++;
-		}
+		m_spp++;
+		m_current_time = CpuTimer::getCurrentTimePoint();
 		return getProgress();
 	}
 
 	float getElapsedTime() const {
-		return CpuTimer::calcDuration(m_start_time, CpuTimer::getCurrentTimePoint()) * 1e-3;
+		return CpuTimer::calcDuration(m_start_time, m_current_time) * 1e-3;
 	}
 
 	size_t getCurrentSpp() const { return m_spp; }
@@ -74,7 +73,7 @@ public:
 
 private:
 	Budget m_budget{};
-	CpuTimer::TimePoint m_start_time{};
+	CpuTimer::TimePoint m_start_time{}, m_current_time{};
 	size_t m_spp{ 0 };
 
 	friend void to_json(json &j, const RenderTask &p) {

@@ -3,6 +3,7 @@
 #include "common.h"
 #include "logger.h"
 #include "mesh.h"
+#include "camera.h"
 #include "animation.h"
 #include "texture.h"
 #include "scenenode.h"
@@ -11,6 +12,7 @@
 
 NAMESPACE_BEGIN(krr)
 
+class Scene;
 class SceneGraph;
 
 class MeshInstance : public SceneGraphLeaf {
@@ -55,13 +57,10 @@ public:
 	float getScale() const { return scale; }
 	Vector3f getPosition() const;
 	Vector3f getDirection() const;
-	bool isUpdated() const { return updated; }
-	void setUpdated(bool _updated = true) { updated = _updated; }
 
 protected:
 	RGB color;
 	float scale;
-	bool updated{false};
 };
 
 class PointLight : public SceneLight {
@@ -97,8 +96,14 @@ public:
 	float getInnerConeAngle() const { return innerConeAngle; }
 	float getOuterConeAngle() const { return outerConeAngle; }
 
-	void setInnerConeAngle(float angle) { innerConeAngle = angle; }
-	void setOuterConeAngle(float angle) { outerConeAngle = angle; }
+	void setInnerConeAngle(float angle) {
+		innerConeAngle = angle;
+		setUpdated(true);
+	}
+	void setOuterConeAngle(float angle) { 
+		outerConeAngle = angle; 
+		setUpdated(true);
+	}
 
 	float innerConeAngle{}, outerConeAngle{};
 };
@@ -244,6 +249,9 @@ public:
 	SceneGraph()		  = default;
 	virtual ~SceneGraph() = default;
 
+	void setScene(const std::shared_ptr<Scene> &scene);
+	std::shared_ptr<Scene> getScene() const;
+
 	void update(size_t frameIndex);
 	void animate(double currentTime);
 
@@ -257,14 +265,13 @@ public:
 	UpdateRecord getLastUpdateRecord() const { return mLastUpdateRecord; };
 	unsigned int evaluateMaxTraversalDepth() const;
 	void addMesh(Mesh::SharedPtr mesh);
-	void addMaterial(Material::SharedPtr material);
-
 	SceneGraphNode::SharedPtr setRoot(const SceneGraphNode::SharedPtr &root);
 	SceneGraphNode::SharedPtr attach(const SceneGraphNode::SharedPtr &parent,
 									 const SceneGraphNode::SharedPtr &child);
 	// Attach a leaf to a new node, then attach that node to specified parent.
 	SceneGraphNode::SharedPtr attachLeaf(const SceneGraphNode::SharedPtr &parent,
-										const SceneGraphLeaf::SharedPtr &leaf);
+										const SceneGraphLeaf::SharedPtr &leaf,
+										 std::string nodeName = "");
 	// Detach a node and its subgraph from the graph, then unregister all its resources.
 	SceneGraphNode::SharedPtr detach(const SceneGraphNode::SharedPtr &node);
 
@@ -280,6 +287,7 @@ private:
 	friend class SceneGraphWalker;
 
 	SceneGraphNode::SharedPtr mRoot;
+	std::weak_ptr<Scene> mScene;
 	
 	std::vector<Mesh::SharedPtr> mMeshes;
 	std::vector<Material::SharedPtr> mMaterials;
@@ -287,6 +295,7 @@ private:
 	std::vector<SceneAnimation::SharedPtr> mAnimations;
 	std::vector<SceneLight::SharedPtr> mLights;
 	std::vector<Volume::SharedPtr> mMedia;
+	std::vector<Camera::SharedPtr> mCameras;
 	UpdateRecord mLastUpdateRecord;
 };
 

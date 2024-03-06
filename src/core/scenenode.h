@@ -31,6 +31,9 @@ public:
 	virtual void renderUI() {}
 	virtual ContentFlags getContentFlags() const { return ContentFlags::None; }
 
+	virtual void setUpdated(bool updated = true);
+	virtual bool isUpdated() const { return mUpdated; }
+
 	const std::string &getName() const;
 	void setName(const std::string &name) const;
 
@@ -42,6 +45,7 @@ public:
 
 protected:
 	SceneGraphLeaf() = default;
+	bool mUpdated{};
 
 private:
 	friend class SceneGraphNode;

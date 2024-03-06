@@ -38,11 +38,11 @@ struct OptixSceneParameters {
 	float worldStartTime{0}, worldEndTime{1};
 
 	friend void from_json(const json& j, OptixSceneParameters& p) {
-		p.enableAnimation = j.value("animated", true);
-		p.buildMultilevel = j.value("multilevel", false);
+		p.enableAnimation  = j.value("animated", true);
+		p.buildMultilevel  = j.value("multilevel", false);
 		p.enableMotionBlur = j.value("motionblur", false);
-		p.worldStartTime = j.value("starttime", 0.f);
-		p.worldEndTime = j.value("endtime", 1.f);
+		p.worldStartTime   = j.value("starttime", 0.f);
+		p.worldEndTime	   = j.value("endtime", 1.f);
 	}
 };
 
@@ -119,6 +119,24 @@ private:
 	gpu::multi_vector<Types> mData;
 };
 
+class SceneObject : public TaggedPointer<rt::PointLight, rt::DirectionalLight, rt::SpotLight, 
+	rt::InfiniteLight, HomogeneousMedium, NanoVDBMedium<float>, NanoVDBMedium<Array3f>,
+	rt::MaterialData, rt::InstanceData> {
+public:
+	SceneObject() = default;
+
+	template <typename T> 
+	SceneObject(T *ptr): TaggedPointer(ptr) {
+		data = std::make_shared<Blob>(sizeof(T));
+	}
+
+	void getObjectData(SceneGraphLeaf::SharedPtr object, bool initialize = false) const {
+		auto func = [&](auto ptr) -> void { ptr->getObjectData(object, data, initialize); };
+		return dispatch(func);
+	}
+
+	std::shared_ptr<Blob> data;
+};
 
 class OptixScene;
 class RTScene {
@@ -131,6 +149,8 @@ public:
 	void update();
 	void uploadSceneData(const OptixSceneParameters& parameters);
 	void updateSceneData();
+	void updateManagedObject(SceneGraphLeaf::SharedPtr object);
+	void uploadManagedObject(SceneGraphLeaf::SharedPtr leaf, SceneObject object);
 
 	rt::SceneData getSceneData();
 	std::shared_ptr<Scene> getScene() const;
@@ -155,6 +175,9 @@ private:
 	
 	SceneStorage<Volume, Medium, Medium::Types> mMediumStorage;
 	SceneStorage<SceneLight, rt::Light, rt::Light::Types> mLightStorage;
+
+	std::map<std::weak_ptr<SceneGraphLeaf>, SceneObject,
+			 std::owner_less<std::weak_ptr<SceneGraphLeaf>>> mManagedObjects;
 
 	TypedBuffer<UniformLightSampler> mLightSamplerBuffer;
 

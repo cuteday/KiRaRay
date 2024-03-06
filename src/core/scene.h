@@ -49,8 +49,7 @@ public:
 	std::vector<Volume::SharedPtr> &getMedia() { return mGraph->getMedia(); }
 
 	void addMesh(Mesh::SharedPtr mesh) { mGraph->addMesh(mesh); }
-	void addMaterial(Material::SharedPtr material) { mGraph->addMaterial(material); }
-
+	
 	void setCamera(Camera::SharedPtr camera);
 	void setCameraController(OrbitCameraController::SharedPtr cameraController);
 	void setAnimated(bool animated) { mEnableAnimation = animated; }

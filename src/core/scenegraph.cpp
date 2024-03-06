@@ -1,5 +1,6 @@
 #include "scenegraph.h"
 #include "window.h"
+#include "scene.h"
 #include "render/profiler/profiler.h"
 
 NAMESPACE_BEGIN(krr)
@@ -41,6 +42,17 @@ SceneGraphLeaf::SharedPtr HomogeneousVolume::clone() {
 SceneGraphLeaf::SharedPtr VDBVolume::clone() {
 	return std::make_shared<VDBVolume>(sigma_t, albedo, g, densityGrid, temperatureGrid, albedoGrid,
 									   scale, LeScale, temperatureScale, temperatureOffset);
+}
+
+SceneGraphLeaf::SharedPtr Material::clone() {
+	// TODO
+	return nullptr;
+}
+
+void SceneGraphLeaf::setUpdated(bool updated) { 
+	mUpdated = updated; 
+	if (updated)
+		getNode()->propagateUpdateFlags(SceneGraphNode::UpdateFlags::Leaf);
 }
 
 void SceneGraphNode::setLeaf(const SceneGraphLeaf::SharedPtr &leaf) {
@@ -194,8 +206,9 @@ SceneGraphNode::SharedPtr SceneGraph::attach(const SceneGraphNode::SharedPtr &pa
 }
 
 SceneGraphNode::SharedPtr SceneGraph::attachLeaf(const SceneGraphNode::SharedPtr &parent,
-												 const SceneGraphLeaf::SharedPtr &leaf) {
-	auto node = std::make_shared<SceneGraphNode>();
+												 const SceneGraphLeaf::SharedPtr &leaf,
+												 std::string nodeName) {
+	auto node = std::make_shared<SceneGraphNode>(nodeName);
 	if (leaf->getNode()) node->setLeaf(leaf->clone());
 	else node->setLeaf(leaf);
 	return attach(parent, node);
@@ -236,12 +249,6 @@ SceneGraphNode::SharedPtr SceneGraph::detach(const SceneGraphNode::SharedPtr& no
 	return node;
 }
 
-void SceneGraph::addMaterial(Material::SharedPtr material) {
-	material->mMaterialId = mMaterials.size();
-	mMaterials.push_back(material);
-	mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
-}
-
 void SceneGraph::addMesh(Mesh::SharedPtr mesh) {
 	mesh->meshId = mMeshes.size();
 	mMeshes.push_back(mesh);
@@ -269,6 +276,14 @@ void SceneGraph::registerLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 	} else if (auto medium = std::dynamic_pointer_cast<Volume>(leaf)) {
 		mMedia.push_back(medium);
 		mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
+	} else if (auto material = std::dynamic_pointer_cast<Material>(leaf)) {
+		mMaterials.push_back(material);
+		mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
+	} else if (auto camera = std::dynamic_pointer_cast<Camera>(leaf)) {
+		mCameras.push_back(camera);
+		mRoot->mUpdateFlags |= SceneGraphNode::UpdateFlags::SubgraphContent;
+	} else {
+		Log(Error, "Unknown leaf type to register...");
 	}
 }
 
@@ -294,6 +309,16 @@ void SceneGraph::unregisterLeaf(const SceneGraphLeaf::SharedPtr& leaf) {
 		auto it = std::find(mMedia.begin(), mMedia.end(), leaf);
 		if (it != mMedia.end()) mMedia.erase(it);
 		else Log(Warning, "Unregistering a medium that do not exist in graph...");
+	} else if (auto material = std::dynamic_pointer_cast<Material>(leaf)) {
+		auto it = std::find(mMaterials.begin(), mMaterials.end(), leaf);
+		if (it != mMaterials.end()) mMaterials.erase(it);
+		else Log(Warning, "Unregistering a material that do not exist in graph...");
+	} else if (auto camera = std::dynamic_pointer_cast<Camera>(leaf)) {
+		auto it = std::find(mCameras.begin(), mCameras.end(), leaf);
+		if (it != mCameras.end()) mCameras.erase(it);
+		else Log(Warning, "Unregistering a camera that do not exist in graph...");
+	} else {
+		Log(Error, "Unknown leaf type to unregister...");
 	}
 }
 
@@ -337,14 +362,21 @@ void SceneGraph::update(size_t frameIndex) {
 			current->mGlobalTransform = current->getLocalTransform();
 		}
 
-		// initialize the global bbox of the current node, start with the leaf (or an empty box if
-		// there is no leaf)
+		// initialize the global bbox of the current node, start with the leaf 
+		// (or an empty box if there is no leaf)
 		if ((current->getUpdateFlags() & (SceneGraphNode::UpdateFlags::SubgraphStructure |
 			SceneGraphNode::UpdateFlags::SubgraphTransform)) != 0 || context.superGraphTransformUpdated){
 			current->mGlobalBoundingBox = AABB{};
 			if (current->getLeaf()) {
 				AABB localBoundingBox = current->getLeaf()->getLocalBoundingBox();	
 				current->mGlobalBoundingBox = localBoundingBox.transformed(current->getGlobalTransform());
+			}
+		}
+
+		if (context.superGraphTransformUpdated || currentTransformUpdated) {
+			// The global transformation of the current node has changed, special treats goes to mesh instances.
+			if (current->getLeaf() && std::dynamic_pointer_cast<MeshInstance>(current->getLeaf())) {
+				current->getLeaf()->setUpdated(true);
 			}
 		}
 
@@ -360,8 +392,7 @@ void SceneGraph::update(size_t frameIndex) {
 		if (deltaDepth > 0) { // goes to a child node
 			stack.push_back(context);
 			context.superGraphTransformUpdated |= currentTransformUpdated;
-		} else {	
-			// either goes to a sibling, or a child.
+		} else {	// either goes to a sibling, or a child.
 			if (parent) {	// in either case, the parent's bbox needs to be updated.
 				parent->mGlobalBoundingBox.extend(current->getGlobalBoundingBox());
 				parent->mUpdateFlags = current->getUpdateFlags() & SceneGraphNode::UpdateFlags::SubgraphUpdates;
@@ -503,10 +534,10 @@ void SpotLight::renderUI() {
 	if(ui::SliderFloat("Azimuth", &sphericalDir[0], 0, 1) ||
 				ui::SliderFloat("Altitude", &sphericalDir[1], 0, 1))
 		setDirection(latlongToWorld(sphericalDir));
-	if (ui::SliderFloat("Inner cone angle", &innerConeAngle, 0, 1)) 
-		setInnerConeAngle(innerConeAngle);
-	if (ui::SliderFloat("Outer cone angle", &outerConeAngle, 0, 1)) 
-		setOuterConeAngle(outerConeAngle);
+	if (ui::SliderFloat("Inner cone angle", &innerConeAngle, 0, 90)) 
+		setInnerConeAngle(std::min(innerConeAngle, outerConeAngle));
+	if (ui::SliderFloat("Outer cone angle", &outerConeAngle, 0, 90)) 
+		setOuterConeAngle(std::max(innerConeAngle, outerConeAngle));
 }
 
 void SceneAnimationChannel::renderUI() {
@@ -552,17 +583,29 @@ void SceneAnimation::renderUI() {
 
 void HomogeneousVolume::renderUI() { 
 	ui::Text("Homogeneous Volume"); 
-	ui::Text(("Sigma_a: " + sigma_t.string()).c_str());
-	ui::Text(("Sigma_s: " + albedo.string()).c_str());
-	ui::Text("g: %f", g);
-	if (isEmissive()) ui::Text("Le: %s", Le.string().c_str());
+	bool updated = false;
+	updated |= ui::InputFloat3("Sigma_t", (float *) &sigma_t, "%.2f");
+	updated |= ui::DragFloat3("Albedo", (float *) &albedo, 0.01f, 0, 1);
+	updated |= ui::DragFloat("g", &g, 0.01f, -1, 1);
+	updated |= ui::InputFloat3("Le", (float *) &Le, "%.2f");
+	if (updated) setUpdated(true);
 }
 
 void VDBVolume::renderUI() {
 	ui::Text("OpenVDB Volume Data");
-	ui::Text(("Sigma_a: " + sigma_t.string()).c_str());
-	ui::Text(("Sigma_s: " + albedo.string()).c_str());
-	ui::Text("g: %f", g);
+	bool updated = false;
+	if (!densityGrid)
+		updated |= ui::InputFloat3("Sigma_t", (float *) &sigma_t, "%.2f");
+	if (!albedoGrid) 
+		updated |= ui::DragFloat3("Albedo", (float *) &albedo, 0.01f, 0, 1);
+	if (temperatureGrid) {
+		updated |= ui::InputFloat("Temperature scale", &temperatureScale, 0, 0, "%.2f");
+		updated |= ui::InputFloat("Temperature offset", &temperatureOffset, 0, 0, "%.2f");
+	}
+	updated |= ui::DragFloat("g", &g, 0.01f, -1, 1);
+	updated |= ui::InputFloat3("Emission Scale", (float *) &LeScale, "%.2f");
+	updated |= ui::InputFloat("Scale", &scale, 0, 0, "%.2f");
+	setUpdated(updated);
 }
 
 void SceneGraphNode::renderUI() { 
@@ -635,5 +678,9 @@ void SceneGraph::renderUI() {
 		ui::TreePop();
 	}
 }
+
+Scene::SharedPtr SceneGraph::getScene() const { return mScene.lock(); }
+
+void SceneGraph::setScene(const Scene::SharedPtr &scene) { mScene = scene; }
 
 NAMESPACE_END(krr)

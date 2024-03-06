@@ -366,7 +366,34 @@ KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 }
 
 template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
-		typename T4, typename T5, typename T6, typename T7, typename... Ts>
+		typename T4, typename T5, typename T6, typename T7>
+KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
+	DCHECK_GE(index, 0);
+	DCHECK_LT(index, 8);
+
+	switch (index) {
+	case 0:
+		return func((const T0 *) ptr);
+	case 1:
+		return func((const T1 *) ptr);
+	case 2:
+		return func((const T2 *) ptr);
+	case 3:
+		return func((const T3 *) ptr);
+	case 4:
+		return func((const T4 *) ptr);
+	case 5:
+		return func((const T5 *) ptr);
+	case 6:
+		return func((const T6 *) ptr);
+	default:
+		return func((const T7 *) ptr);
+	}
+}
+
+template <typename F, typename R, typename T0, typename T1, typename T2, typename T3, typename T4,
+		  typename T5, typename T6, typename T7, typename... Ts,
+		  typename = typename std::enable_if_t<(sizeof...(Ts) > 0)>>
 KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
 	DCHECK_GE(index, 0);
 
@@ -392,8 +419,9 @@ KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
 	}
 }
 
-template <typename F, typename R, typename T0, typename T1, typename T2, typename T3,
-		typename T4, typename T5, typename T6, typename T7, typename... Ts>
+template <typename F, typename R, typename T0, typename T1, typename T2, typename T3, typename T4,
+		  typename T5, typename T6, typename T7, typename... Ts,
+		  typename = typename std::enable_if_t<(sizeof...(Ts) > 0)>>
 KRR_CALLABLE R Dispatch(F &&func, void *ptr, int index) {
 	DCHECK_GE(index, 0);
 

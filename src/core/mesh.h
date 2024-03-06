@@ -34,7 +34,12 @@ struct MeshData {
 	MediumInterface mediumInterface;
 };
 
-struct InstanceData {
+class InstanceData {
+public:
+	InstanceData() = default;
+	void getObjectData(std::shared_ptr<SceneGraphLeaf> object, std::shared_ptr<Blob> data,
+					   bool initialize) const;
+
 	KRR_CALLABLE const MeshData &getMesh() const { return *mesh; }
 	KRR_CALLABLE const MaterialData &getMaterial() const { return mesh->getMaterial(); }
 	KRR_CALLABLE const Affine3f getTransform() const { return transform.matrix(); }
