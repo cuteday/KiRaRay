@@ -236,12 +236,22 @@ template <typename DataType>
 void NanoVDBMedium<DataType>::getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data,
 											bool initialize) const {
 	auto m	   = std::dynamic_pointer_cast<VDBVolume>(object);
-	auto gdata	= reinterpret_cast<HomogeneousMedium *>(data->data());
-	new (gdata) NanoVDBMedium<DataType>(m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
-		std::move(*std::dynamic_pointer_cast<NanoVDBGrid<DataType>>(m->densityGrid)),
-		m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
-		m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{}, m->scale, m->LeScale,
-		m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
+	auto gdata = reinterpret_cast<NanoVDBMedium<DataType> *>(data->data());
+	if (initialize)
+		new (gdata) NanoVDBMedium<DataType>(m->getNode()->getGlobalTransform(), m->sigma_t, m->albedo, m->g,
+			std::move(*std::dynamic_pointer_cast<NanoVDBGrid<DataType>>(m->densityGrid)),
+			m->temperatureGrid ? std::move(*m->temperatureGrid) : NanoVDBGrid<float>{},
+			m->albedoGrid ? std::move(*m->albedoGrid) : NanoVDBGrid<Array3f>{}, m->scale, m->LeScale,
+			m->temperatureScale, m->temperatureOffset, KRR_DEFAULT_COLORSPACE);
+	gdata->albedo			 = m->albedo;
+	gdata->sigma_t			 = m->sigma_t;
+	gdata->phase			 = m->g;
+	gdata->scale			 = m->scale;
+	gdata->LeScale			 = m->LeScale;
+	gdata->temperatureScale	 = m->temperatureScale;
+	gdata->temperatureOffset = m->temperatureOffset;
+	gdata->transform		 = m->getNode()->getGlobalTransform();
+	gdata->inverseTransform	 = gdata->transform.inverse();
 }
 
 /* Put these definitions here since the optix kernel will need them... */

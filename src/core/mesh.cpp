@@ -15,11 +15,45 @@ AABB Mesh::computeBoundingBox() {
 
 void rt::InstanceData::getObjectData(std::shared_ptr<SceneGraphLeaf> object,
 						std::shared_ptr<Blob> data, bool initialize) const {
+	auto createTrianglePrimitives = [](Mesh::SharedPtr mesh,
+									   rt::InstanceData *instance) -> std::vector<Triangle> {
+		uint nTriangles = mesh->indices.size();
+		std::vector<Triangle> triangles;
+		for (uint i = 0; i < nTriangles; i++) triangles.push_back(Triangle(i, instance));
+		return triangles;
+	};
+
 	auto inst  = std::dynamic_pointer_cast<MeshInstance>(object);
 	auto gdata = reinterpret_cast<rt::InstanceData *>(data->data());
 	if (initialize) {
-		auto &meshData = inst->getNode()->getGraph()->getScene()->getSceneRT()->getMeshData();
-		gdata->mesh	   = &meshData[inst->getMesh()->getMeshId()];	
+		new (gdata) rt::InstanceData();
+		auto scene		   = inst->getNode()->getGraph()->getScene()->getSceneRT();
+		auto &meshes	   = scene->getMeshData();
+		auto &instances	   = scene->getInstanceData();
+		auto &materials	   = scene->getMaterialData();
+		gdata->mesh		   = &meshes[inst->getMesh()->getMeshId()];	
+		/* process mesh lights for light sampling purposes */
+		const auto &mesh	 = inst->getMesh();
+		const auto &material = mesh->getMaterial();
+
+		if ((material && material->hasEmission()) || mesh->Le.any()) {
+			rt::MaterialData &materialData = materials[material->getMaterialId()];
+			rt::MeshData &meshData		   = meshes[mesh->getMeshId()];
+			rt::TextureData &textureData = materialData.getTexture(Material::TextureType::Emissive);
+			rt::InstanceData &instanceData = instances[inst->getInstanceId()];
+			RGB Le = material->hasEmission() ? RGB(textureData.getConstant()) : mesh->Le;
+			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld",
+				" constant emission(?): %f", mesh->indices.size(), luminance(Le));
+			std::vector<Triangle> primitives = createTrianglePrimitives(mesh, const_cast<rt::InstanceData*>(this));
+			size_t n_primitives = primitives.size();
+			gdata->primitives.alloc_and_copy_from_host(primitives);
+			std::vector<rt::DiffuseAreaLight> lights(n_primitives);
+			for (size_t triId = 0; triId < n_primitives; triId++) {
+				lights[triId] =
+					rt::DiffuseAreaLight(Shape(&gdata->primitives[triId]), textureData, Le);
+			}
+			gdata->lights.alloc_and_copy_from_host(lights);
+		}
 	}
 	gdata->transform = inst->getNode()->getGlobalTransform();
 	

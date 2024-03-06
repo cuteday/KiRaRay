@@ -376,7 +376,7 @@ void SceneGraph::update(size_t frameIndex) {
 		if (context.superGraphTransformUpdated || currentTransformUpdated) {
 			// The global transformation of the current node has changed, special treats goes to mesh instances.
 			if (current->getLeaf() && std::dynamic_pointer_cast<MeshInstance>(current->getLeaf())) {
-				//current->getLeaf()->setUpdated(true);
+				current->getLeaf()->setUpdated(true);
 			}
 		}
 

@@ -64,12 +64,7 @@ void RTScene::uploadSceneInstanceData() {
 	auto &instances = mScene.lock()->getMeshInstances();
 	mInstances.resize(instances.size());
 	for (size_t idx = 0; idx < instances.size(); idx++) {
-		const auto &instance   = instances[idx];
-		auto &instanceData	   = mInstances[idx];
-		Affine3f transform	   = instance->getNode()->getGlobalTransform();
-		instanceData.transform = Transformation(transform);
-		instanceData.mesh	   = &mMeshes[instance->getMesh()->getMeshId()];
-		//uploadManagedObject(instances[idx], &mInstances[idx]);
+		uploadManagedObject(instances[idx], &mInstances[idx]);
 	}
 }
 
@@ -95,30 +90,12 @@ void RTScene::uploadSceneLightData() {
 	/* Process mesh lights (diffuse area lights).
 	   Mesh lights do not actually exists in the scene graph, since rasterization does 
 	   not inherently support them. We simply bypass them with storage in mesh data. */
-	uint nMeshes = mScene.lock()->getMeshes().size();
 	for (const auto &instance : mScene.lock()->getMeshInstances()) {
 		const auto &mesh			   = instance->getMesh();
 		const auto &material		   = mesh->getMaterial();
 		if ((material && material->hasEmission()) || mesh->Le.any()) {
-			rt::MaterialData &materialData = mMaterials[material->getMaterialId()];
-			rt::MeshData &meshData		   = mMeshes[mesh->getMeshId()];
-			rt::TextureData &textureData = materialData.getTexture(Material::TextureType::Emissive);
 			rt::InstanceData &instanceData = mInstances[instance->getInstanceId()];
-			RGB Le = material->hasEmission()
-							 ? RGB(textureData.getConstant()) : mesh->Le;
-			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld", 
-					 " constant emission(?): %f", mesh->indices.size(), luminance(Le));
-			std::vector<Triangle> primitives =
-				createTrianglePrimitives(mesh, &mInstances[instance->getInstanceId()]);
-			size_t n_primitives				 = primitives.size();
-			instanceData.primitives.alloc_and_copy_from_host(primitives);
-			std::vector<rt::DiffuseAreaLight> lights(n_primitives);
-			for (size_t triId = 0; triId < n_primitives; triId++) {
-				lights[triId] =
-					rt::DiffuseAreaLight(Shape(&instanceData.primitives[triId]), textureData, Le);
-			}
-			instanceData.lights.alloc_and_copy_from_host(lights);
-			for (size_t triId = 0; triId < n_primitives; triId++) 
+			for (size_t triId = 0; triId < mesh->indices.size(); triId++) 
 				mLightStorage.addPointer(&instanceData.lights[triId]);
 		}
 	}
@@ -204,24 +181,7 @@ void RTScene::update() {
 // This routine should only be called by OptixBackend...
 void RTScene::updateSceneData() {
 	PROFILE("Update scene data");
-	// Currently we only support updating instance transformations...
-	static size_t lastUpdatedFrame = 0;
-	auto lastUpdates			   = mScene.lock()->getSceneGraph()->getLastUpdateRecord();
-	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphTransform) !=
-			SceneGraphNode::UpdateFlags::None &&
-		lastUpdatedFrame < lastUpdates.frameIndex) {
-		auto &instances = mScene.lock()->getMeshInstances();
-		for (size_t idx = 0; idx < instances.size(); idx++) {
-			const auto &instance   = instances[idx];
-			auto &instanceData	   = mInstances[idx];
-
-			Transformation transform = instance->getNode()->getGlobalTransform();
-			cudaMemcpyAsync(&instanceData.transform, &transform, sizeof(Transformation),
-											cudaMemcpyHostToDevice, gpContext->cudaStream);
-		}
-		lastUpdatedFrame = lastUpdates.frameIndex;
-	}
-	/* update managed objects... */
+	/* update managed objects, including most types of leaf nodes... */
 	for (auto [leaf, object] : mManagedObjects) {
 		assert(!leaf.expired());
 		if (leaf.lock()->isUpdated()) {
