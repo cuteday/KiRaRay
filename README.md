@@ -16,7 +16,7 @@
 - [x] Spectral or tristimulus (RGB) rendering. 
 - [x] Other distributed effects like DoF and motion blur.
 - [x] Post processing passes (e.g. denoising).
-- [x] Basic support for scene animation (glTF).
+- [x] Single/multi-level scene graph with animation support.
 
 ### Build and run
 

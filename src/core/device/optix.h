@@ -8,6 +8,7 @@
 #include <optional>
 
 #include "raytracing.h"
+#include "context.h"
 #include "scene.h"
 
 NAMESPACE_BEGIN(krr)
@@ -162,15 +163,15 @@ public:
 	void setScene(std::shared_ptr<Scene> _scene);
 	template <typename Integrator>
 	void launch(const LaunchParameters<Integrator>& parameters, string entryPoint, 
-		int width, int height, int depth = 1) {
+		int width, int height, int depth = 1, CUstream stream = 0) {
 		if (height * width * depth == 0) return;
 		static LaunchParameters<Integrator> *launchParams{nullptr};
 		if (!launchParams) cudaMalloc(&launchParams, sizeof(LaunchParameters<Integrator>));
 		if (!entryPoints.count(entryPoint))
 			Log(Fatal, "The entrypoint %s is not initialized!", entryPoint.c_str());
 		cudaMemcpyAsync(launchParams, &parameters, sizeof(LaunchParameters<Integrator>),
-						cudaMemcpyHostToDevice, cudaStream);
-		OPTIX_CHECK(optixLaunch(optixPipeline, cudaStream, CUdeviceptr(launchParams),
+						cudaMemcpyHostToDevice, stream);
+		OPTIX_CHECK(optixLaunch(optixPipeline, stream, CUdeviceptr(launchParams),
 								sizeof(LaunchParameters<Integrator>), &SBT[entryPoints[entryPoint]],
 								width, height, depth));
 	}
@@ -193,7 +194,6 @@ protected:
 	OptixModule optixModule;
 	OptixPipeline optixPipeline;
 	OptixDeviceContext optixContext;
-	CUstream cudaStream;
 
 	std::vector<OptixProgramGroup> raygenPGs;
 	std::vector<OptixProgramGroup> missPGs;

@@ -53,7 +53,7 @@ void WavefrontPathTracer::traceClosest(int depth) {
 	params.nextRayQueue		   = nextRayQueue(depth);
 	params.mediumSampleQueue   = enableMedium ? mediumSampleQueue : nullptr;
 	params.pixelState		   = pixelState;
-	backend->launch(params, "Closest", maxQueueSize, 1, 1);
+	backend->launch(params, "Closest", maxQueueSize, 1, 1, gpContext->cudaStream);
 }
 
 void WavefrontPathTracer::traceShadow() {
@@ -64,7 +64,7 @@ void WavefrontPathTracer::traceShadow() {
 	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
 	params.shadowRayQueue	   = shadowRayQueue;
 	params.pixelState		   = pixelState;
-	backend->launch(params, enableMedium ? "ShadowTr" : "Shadow", maxQueueSize, 1, 1);
+	backend->launch(params, enableMedium ? "ShadowTr" : "Shadow", maxQueueSize, 1, 1, gpContext->cudaStream);
 }
 
 void WavefrontPathTracer::handleHit() {

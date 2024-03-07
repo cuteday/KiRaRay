@@ -263,7 +263,6 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 	// temporary workaround for setup context
 	optixParameters = params;
 	optixContext	= gpContext->optixContext;
-	cudaStream		= gpContext->cudaStream;
 	
 	// creating optix module from ptx
 	optixModule = createOptixModule(optixContext, params.ptx);
@@ -556,8 +555,8 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	instanceData.visibilityMask	   = 255;
 	instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 	instanceData.traversableHandle = traversable;
-	cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
-			   cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
+			   cudaMemcpyHostToDevice, gpContext->cudaStream);
 	instanceBuildInputs.push_back(rootBuildInput);
 
 	OptixBuildInput iasBuildInput			 = {};
@@ -626,17 +625,16 @@ void OptixSceneMultiLevel::updateAccelStructure() {
 	for (auto instanceInput : instanceBuildInputs) {
 		for (int idx = 0; idx < instanceInput->nodes.size(); idx++) {
 			const auto instance			   = instanceInput->nodes[idx];
-			/*if (bool(instance->getUpdateFlags() & SceneGraphNode::UpdateFlags::LocalTransform)) {
-				instance->updateLocalTransform();*/
+			if (bool(instance->getUpdateFlags() & SceneGraphNode::UpdateFlags::LocalTransform)) {
+				instance->updateLocalTransform();
 				OptixInstance &instanceData = instanceInput->instances[idx];
 				Affine3f transform			= instance->getLocalTransform();
 				cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
 								cudaMemcpyHostToDevice, gpContext->cudaStream);
 				needsRebuild = true;
-			//}
+			}
 		}
-
-		//if (!needsRebuild) return;
+		if (!needsRebuild) continue;
 		OptixBuildInput iasBuildInput			 = {};
 		iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 		iasBuildInput.instanceArray.numInstances = instanceInput->instances.size();
