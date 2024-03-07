@@ -35,7 +35,7 @@ OptixModule OptixBackend::createOptixModule(OptixDeviceContext optixContext,
 	OptixModuleCompileOptions moduleCompileOptions = {};
 	moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 #ifdef KRR_DEBUG_BUILD
-	moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
+	moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #if (OPTIX_VERSION >= 70400)
 	moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_MODERATE;
 #else
@@ -299,10 +299,11 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 							&pipelineLinkOptions, allPGs.data(), allPGs.size(),
 							log, &logSize, &optixPipeline), log);
 	
+	Log(Info, "Setting max traversable graph depth to %d", params.maxTraversableDepth);	
 	OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the
 											 stack size for */
 										  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024, 
-		params.maxTraversableDepth * 2 /* max traversable graph depth */));
+		std::min(static_cast<unsigned int>(31), 2 * params.maxTraversableDepth)  /* max traversable graph depth */));
 	/* [TODO] current setup on maxTraversableDepth is just a temporal workaround, 
 	 * making sure the actual depth (plus motion nodes) would never exceeds 2*graphDepth.
 	 * This is somewhat acceptable since its performace impact seems to be small.
@@ -594,15 +595,20 @@ OptixSceneMultiLevel::OptixSceneMultiLevel(Scene::SharedPtr scene,
 void OptixSceneSingleLevel::updateAccelStructure() {
 	PROFILE("Update Accel Structure");
 	if (!config.enableAnimation) return;
-	// Currently only supports updating subgraph transformations.
+	// Currently only supports updating subgraph transformations
+	bool needsRebuild = false;
 	for (int idx = 0; idx < referencedMeshes.size(); idx++) {
 		const auto &instance		   = referencedMeshes[idx].lock();
-		OptixInstance &instanceData	   = instancesIAS[idx];
-		Affine3f transform			   = instance->getNode()->getGlobalTransform();
-		cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
-				   cudaMemcpyHostToDevice, gpContext->cudaStream);
+		if (instance->isUpdated()) { /* global transformation has been changed */
+			OptixInstance &instanceData = instancesIAS[idx];
+			Affine3f transform			= instance->getNode()->getGlobalTransform();
+			cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
+							cudaMemcpyHostToDevice, gpContext->cudaStream);
+			needsRebuild = true;
+		}
 	}
 
+	if (!needsRebuild) return;
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = instancesIAS.size();
@@ -616,15 +622,21 @@ void OptixSceneSingleLevel::updateAccelStructure() {
 void OptixSceneMultiLevel::updateAccelStructure() {
 	PROFILE("Update Accel Structure");
 	if (!config.enableAnimation) return;
+	bool needsRebuild = false;
 	for (auto instanceInput : instanceBuildInputs) {
 		for (int idx = 0; idx < instanceInput->nodes.size(); idx++) {
 			const auto instance			   = instanceInput->nodes[idx];
-			OptixInstance &instanceData	   = instanceInput->instances[idx];
-			Affine3f transform			   = instance->getLocalTransform();
-			cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
-							cudaMemcpyHostToDevice, gpContext->cudaStream);
+			/*if (bool(instance->getUpdateFlags() & SceneGraphNode::UpdateFlags::LocalTransform)) {
+				instance->updateLocalTransform();*/
+				OptixInstance &instanceData = instanceInput->instances[idx];
+				Affine3f transform			= instance->getLocalTransform();
+				cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
+								cudaMemcpyHostToDevice, gpContext->cudaStream);
+				needsRebuild = true;
+			//}
 		}
 
+		//if (!needsRebuild) return;
 		OptixBuildInput iasBuildInput			 = {};
 		iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 		iasBuildInput.instanceArray.numInstances = instanceInput->instances.size();

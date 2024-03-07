@@ -166,8 +166,8 @@ public:
 	}
 
 	template <typename F> 
-	KRR_HOST void for_each(F&& func) {
-		thrust::transform(thrust::device, d_ptr, d_ptr + m_size, d_ptr, 
+	KRR_HOST void for_each(F&& func, CUstream stream = 0) {
+		thrust::transform(thrust::device.on(stream), d_ptr, d_ptr + m_size, d_ptr, 
 			[func] KRR_DEVICE(const T &val) mutable { return func(val); });
 	}
 

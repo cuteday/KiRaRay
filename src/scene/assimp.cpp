@@ -401,6 +401,8 @@ void AssimpImporter::loadMeshes() {
 			mesh->indices.push_back(indices);
 		}
 
+		if (pAiMesh->mMaterialIndex + 1 >= mMaterials.size())
+			Log(Warning, "Mesh %s has wrong material ID!", pAiMesh->mName.C_Str());
 		mesh->material = mMaterials[pAiMesh->mMaterialIndex + 1];
 		mesh->aabb	   = aiCast(pAiMesh->mAABB);
 		mesh->setName(std::string(pAiMesh->mName.C_Str()));

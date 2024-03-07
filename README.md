@@ -74,10 +74,6 @@ build/src/kiraray.exe common/configs/example_cbox.json
 
 ### Additional Information
 
-#### Performance
-
-This toy renderer is not carefully unoptimized. Additionally, the renderer runs extremely slow on *Debug* build for unknown reasons. Please switch to *Release* build for normal performance.
-
 #### Writing new render passes.
 
 It is possible to write your own render pass, see the examples [here](src/misc/samples/). Check [bindless render pass](src/render/rasterize/) (rasterization) or the [post-processing passes](src/render/passes/) for more working examples.

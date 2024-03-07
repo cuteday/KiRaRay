@@ -19,9 +19,13 @@ bool Scene::update(size_t frameIndex, double currentTime) {
 	mGraph->setScene(shared_from_this());
 	if (mEnableAnimation) mGraph->animate(currentTime);
 	if (mCameraController) hasChanges |= mCameraController->update();
+	if (mSceneRT && std::dynamic_pointer_cast<OptixSceneMultiLevel>(mSceneRT->getOptixScene())) 
+		mSceneRT->updateAccelStructure();
 	mGraph->update(frameIndex); /* update graph transform since camera needs global transf. */
 	if (mCamera) hasChanges |= mCamera->update();
-	if (mSceneRT) mSceneRT->update();
+	if (mSceneRT && std::dynamic_pointer_cast<OptixSceneSingleLevel>(mSceneRT->getOptixScene()))
+		mSceneRT->updateAccelStructure();
+	if (mSceneRT) mSceneRT->updateSceneData();
 	if (mSceneVK) mSceneVK->update();
 	return mHasChanges = hasChanges;
 }

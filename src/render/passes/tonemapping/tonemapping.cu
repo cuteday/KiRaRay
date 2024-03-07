@@ -81,7 +81,7 @@ void ToneMappingPass::render(RenderContext *context) {
 		}
 		if (mUseGamma) color = color.pow(0.45454545f);
 		frameBuffer.write(RGBA(color, 1.f), pixelId);
-	});
+	}, gpContext->cudaStream);
 }
 
 KRR_REGISTER_PASS_DEF(ToneMappingPass);

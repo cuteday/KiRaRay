@@ -146,7 +146,7 @@ public:
 	RTScene(std::shared_ptr<Scene> scene);
 	~RTScene() = default;
 
-	void update();
+	void updateAccelStructure();
 	void uploadSceneData(const OptixSceneParameters& parameters);
 	void updateSceneData();
 	void updateManagedObject(SceneGraphLeaf::SharedPtr object);

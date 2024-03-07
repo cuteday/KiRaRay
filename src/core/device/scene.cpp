@@ -171,9 +171,8 @@ rt::SceneData RTScene::getSceneData() {
 	return sceneData;
 }
 
-void RTScene::update() { 
+void RTScene::updateAccelStructure() { 
 	mOptixScene->update();
-	updateSceneData();
 }
 
 // This routine should only be called by OptixBackend...

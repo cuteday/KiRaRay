@@ -2,6 +2,7 @@
 #include "metrics.h"
 #include "device/cuda.h"
 #include "device/buffer.h"
+#include "device/context.h"
 #include "util/math_utils.h"
 
 #include <thrust/sort.h>
@@ -108,15 +109,17 @@ float calc_metric(const CudaRenderTarget & frame, const RGBA *reference,
 				error = rel_mse(y, ref);
 		}
 		error_buffer[i] = error;
-	});
+	}, gpContext->cudaStream);
 
 #if DISCARD_FIREFLIES
-	thrust::sort(thrust::device, error_buffer, error_buffer + n_elements);
+	thrust::sort(thrust::device.on(gpContext->cudaStream), error_buffer,
+				 error_buffer + n_elements);
 	n_elements = n_elements * (1.f - DISCARD_FIREFLIES_PRECENTAGE);
 #endif
 
 	return thrust::transform_reduce(
-			   thrust::device, error_buffer, error_buffer + n_elements,
+			   thrust::device.on(gpContext->cudaStream), 
+				error_buffer, error_buffer + n_elements,
 				[] KRR_DEVICE(const float &val) -> float {
 #if CLAMP_PIXEL_ERROR 
 					return min(val, CLAMP_PIXEL_ERROR_THRESHOLD);

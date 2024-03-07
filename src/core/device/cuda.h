@@ -97,9 +97,6 @@ inline void GPUParallelFor(int nElements, F func, CUstream stream) {
 	int blockSize = GetBlockSize(kernel);
 	int gridSize = (nElements + blockSize - 1) / blockSize;
 	kernel <<<gridSize, blockSize, 0, stream>>> (func, nElements);
-#ifdef KRR_DEBUG_BUILD
-	CUDA_SYNC_CHECK();
-#endif
 }
 
 template <typename F> 

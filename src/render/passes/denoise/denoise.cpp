@@ -98,13 +98,13 @@ void DenoiseBackend::denoise(CUstream stream, float *rgb, float *normal, float *
 	layers.input  = inputLayers[0];
 	layers.output = outputImage;
 
-	OPTIX_CHECK(optixDenoiserInvoke(denoiserHandle, 0 /* stream */, &params,
-									CUdeviceptr(denoiserState.data()), memorySizes.stateSizeInBytes,
-									&guideLayer, &layers, 1 /* # layers to denoise */,
-									0 /* offset x */, 0 /* offset y */, CUdeviceptr(scratchBuffer.data()),
-									memorySizes.withoutOverlapScratchSizeInBytes));
+	OPTIX_CHECK(optixDenoiserInvoke(
+		denoiserHandle, stream /* stream */, &params, CUdeviceptr(denoiserState.data()),
+		memorySizes.stateSizeInBytes, &guideLayer, &layers, nLayers /* # layers to denoise */,
+		0 /* offset x */, 0 /* offset y */, CUdeviceptr(scratchBuffer.data()),
+		memorySizes.withoutOverlapScratchSizeInBytes));
 #else
-	OPTIX_CHECK(optixDenoiserInvoke(denoiserHandle, 0 /* stream */, &params,
+	OPTIX_CHECK(optixDenoiserInvoke(denoiserHandle, stream /* stream */, &params,
 									CUdeviceptr(denoiserState.data()), memorySizes.stateSizeInBytes,
 									inputLayers.data(), nLayers, 0 /* offset x */, 0 /* offset y */,
 									&outputImage, CUdeviceptr(scratchBuffer.data()),
@@ -137,12 +137,12 @@ void DenoisePass::render(RenderContext *context) {
 	RGBA* colorBuffer	   = mColorBuffer.data();
 	GPUParallelFor(size[0] * size[1], [=] KRR_DEVICE(int pixelId) mutable {
 		colorBuffer[pixelId] = cudaFrame.read(pixelId);
-	});
-	mBackend.denoise(0, (float *) colorBuffer, nullptr, nullptr,
+	}, gpContext->cudaStream);
+	mBackend.denoise(gpContext->cudaStream, (float *) colorBuffer, nullptr, nullptr,
 					 (float *) colorBuffer);
 	GPUParallelFor(size[0] * size[1], [=] KRR_DEVICE(int pixelId) mutable {
-		cudaFrame.write(colorBuffer[pixelId], pixelId);
-	});
+		cudaFrame.write(colorBuffer[pixelId], pixelId); 
+	}, gpContext->cudaStream);
 }
 
 void DenoisePass::renderUI() { 

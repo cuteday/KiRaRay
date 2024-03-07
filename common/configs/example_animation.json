@@ -37,7 +37,7 @@
     "scene": {
         "options": {
 			"animated": true,
-			"multilevel": true
+			"multilevel": false
 		},
 		"model": [
             {

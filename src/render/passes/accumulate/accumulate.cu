@@ -42,7 +42,7 @@ void acculumate(Array4<DType> *accumBuffer, CudaRenderTarget currentBuffer, size
 				currentBuffer.write(accumBuffer[i].template cast<float>(), i);
 			else
 				currentBuffer.write((accumBuffer[i] * currentWeight).template cast<float>(), i);
-		});
+		}, gpContext->cudaStream);
 }
 
 void AccumulatePass::render(RenderContext *context) {
