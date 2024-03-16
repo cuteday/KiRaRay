@@ -247,7 +247,7 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 									| aiProcess_CalcTangentSpace
 									| aiProcess_FindDegenerates
 									| aiProcess_OptimizeMeshes
-									//| aiProcess_OptimizeGraph
+									| aiProcess_OptimizeGraph
 									| aiProcess_JoinIdenticalVertices 
 									| aiProcess_FindInvalidData
 									//| aiProcess_MakeLeftHanded

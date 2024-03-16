@@ -40,12 +40,12 @@ jobs:
         (Get-CimInstance Win32_PageFileUsage).AllocatedBaseSize
 
     - name: Checkout Kiraray
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
     - name: Download optix include
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: cuteday/optix-headers
         path: optix

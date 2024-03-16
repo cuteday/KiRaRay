@@ -147,6 +147,7 @@ inline RGBSigmoidPolynomial RGBToSpectrumTable::operator()(RGB rgb) const {
 
 	// Trilinearly interpolate sigmoid polynomial coefficients _c_
 	Array3f c;
+	KRR_PRAGMA_UNROLL
 	for (int i = 0; i < 3; ++i) {
 		// Define _co_ lambda for looking up sigmoid polynomial coefficients
 		auto co = [&](int dx, int dy, int dz) {

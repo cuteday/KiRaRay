@@ -27,6 +27,8 @@ using nlohmann::json;
 typedef uint32_t uint;
 typedef unsigned char uchar;
 
+#define KRR_COMMON_H
+
 #if !defined(NAMESPACE_BEGIN)
 #define NAMESPACE_BEGIN(name) namespace name {
 #endif
@@ -34,7 +36,7 @@ typedef unsigned char uchar;
 #define NAMESPACE_END(name) }
 #endif
 
-#define KRR_COMMON_H
+#define KRR_PRAGMA(arg) _Pragma(arg)
 
 #ifdef KRR_DEBUG_BUILD
 #   define KRR_DEBUG_SELECT(A, B) A
@@ -90,6 +92,14 @@ struct dim3;
 extern const uint3 threadIdx, blockIdx;
 extern const dim3 blockDim, gridDim;
 #endif	// eliminate intellisense warnings for these kernel built-in variables
+
+#if defined(__CUDA_ARCH__)
+	#define KRR_PRAGMA_UNROLL    KRR_PRAGMA("unroll")
+	#define KRR_PRAGMA_NO_UNROLL KRR_PRAGMA("unroll 1")
+#else
+	#define KRR_PRAGMA_UNROLL
+	#define KRR_PRAGMA_NO_UNROLL
+#endif
 
 #ifdef __GNUC__
 #define MAYBE_UNUSED __attribute__((unused))

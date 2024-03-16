@@ -34,6 +34,7 @@ public:
 		SampledWavelengths swl;
 		swl.lambda[0] = lerp(lambdaMin, lambdaMax, u);
 		float delta = (lambdaMax - lambdaMin) / nSpectrumSamples;
+		KRR_PRAGMA_UNROLL
 		for (int i = 1; i < nSpectrumSamples; i++) {
 			swl.lambda[i] = swl.lambda[i - 1] + delta;
 			if (swl.lambda[i] > lambdaMax) 
@@ -132,6 +133,7 @@ public:
 
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths& lambda) const {
 		SampledSpectrum result;
+		KRR_PRAGMA_UNROLL
 		for (int i = 0; i < nSpectrumSamples; i++)
 			result[i] = rsp(lambda[i]);
 		return result;
@@ -151,6 +153,7 @@ public:
 
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
 		SampledSpectrum result;
+		KRR_PRAGMA_UNROLL
 		for (int i = 0; i < nSpectrumSamples; i++) result[i] = scale * rsp(lambda[i]);
 		return result;
 	}
