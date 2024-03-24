@@ -17,7 +17,7 @@ void RTScene::updateManagedObject(SceneGraphLeaf::SharedPtr leaf) {
 		auto object = mManagedObjects[leaf];
 		object.getObjectData(leaf, false);
 		cudaMemcpyAsync(object.ptr(), object.data->data(), object.data->size(),
-						cudaMemcpyHostToDevice, gpContext->cudaStream);
+						cudaMemcpyHostToDevice, KRR_DEFAULT_STREAM);
 	}
 }
 

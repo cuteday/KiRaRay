@@ -31,7 +31,7 @@ void GBufferPass::render(RenderContext* context) {
 	launchParams.traversable				= mOptixBackend->getRootTraversable();
 
 	mOptixBackend->launch(launchParams, "Primary", getFrameSize()[0], getFrameSize()[1], 
-		1, gpContext->cudaStream);
+		1, KRR_DEFAULT_STREAM);
 }
 
 void GBufferPass::renderUI() {

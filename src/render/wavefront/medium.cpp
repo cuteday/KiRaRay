@@ -99,7 +99,7 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 
 			// [Tomorrow is another day] Next surface scattering event...!
 			scatterRayQueue->push(w.intr, thp, pu, w.depth, w.pixelId);
-	}, gpContext->cudaStream);
+	}, KRR_DEFAULT_STREAM);
 }
 
 void WavefrontPathTracer::sampleMediumScattering(int depth) {
@@ -149,7 +149,7 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 				/* [NOTE] We need to multiply P_path by w.pu. While the PDF of P_light and P_bsdf is 
 					the same until this vertex, the channel-wise PDF along the path may be different. */
 				nextRayQueue(depth)->push(ray, ctx, thp, w.pu, w.pu / ps.pdf, w.depth + 1, w.pixelId, BSDF_SMOOTH);
-	}, gpContext->cudaStream);
+	}, KRR_DEFAULT_STREAM);
 }
 
 NAMESPACE_END(krr)

@@ -17,6 +17,7 @@
 - [x] Other distributed effects like DoF and motion blur.
 - [x] Post processing passes (e.g. denoising).
 - [x] Single/multi-level scene graph with animation support.
+- [x] Interactive editing scene components with simple UI.
 
 ### Build and run
 

@@ -137,12 +137,12 @@ void DenoisePass::render(RenderContext *context) {
 	RGBA* colorBuffer	   = mColorBuffer.data();
 	GPUParallelFor(size[0] * size[1], [=] KRR_DEVICE(int pixelId) mutable {
 		colorBuffer[pixelId] = cudaFrame.read(pixelId);
-	}, gpContext->cudaStream);
-	mBackend.denoise(gpContext->cudaStream, (float *) colorBuffer, nullptr, nullptr,
+	}, KRR_DEFAULT_STREAM);
+	mBackend.denoise(KRR_DEFAULT_STREAM, (float *) colorBuffer, nullptr, nullptr,
 					 (float *) colorBuffer);
 	GPUParallelFor(size[0] * size[1], [=] KRR_DEVICE(int pixelId) mutable {
 		cudaFrame.write(colorBuffer[pixelId], pixelId); 
-	}, gpContext->cudaStream);
+	}, KRR_DEFAULT_STREAM);
 }
 
 void DenoisePass::renderUI() { 

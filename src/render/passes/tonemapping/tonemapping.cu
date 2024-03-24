@@ -56,7 +56,7 @@ void ToneMappingPass::renderUI() {
 
 void ToneMappingPass::render(RenderContext *context) {
 	PROFILE("Tong mapping pass");
-	CUstream &stream = gpContext->cudaStream;
+	CUstream &stream = KRR_DEFAULT_STREAM;
 	RGB colorTransform = RGB(mExposureCompensation);
 	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
 	GPUParallelFor(getFrameSize()[0] * getFrameSize()[1], KRR_DEVICE_LAMBDA(int pixelId) {
@@ -81,7 +81,7 @@ void ToneMappingPass::render(RenderContext *context) {
 		}
 		if (mUseGamma) color = color.pow(0.45454545f);
 		frameBuffer.write(RGBA(color, 1.f), pixelId);
-	}, gpContext->cudaStream);
+	}, KRR_DEFAULT_STREAM);
 }
 
 KRR_REGISTER_PASS_DEF(ToneMappingPass);

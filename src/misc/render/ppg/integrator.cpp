@@ -87,7 +87,7 @@ void PPGPathTracer::traceClosest(int depth) {
 	params.nextRayQueue			  = nextRayQueue(depth);
 	params.mediumSampleQueue	  = enableMedium ? mediumSampleQueue : nullptr;
 	params.pixelState			  = pixelState;
-	backend->launch(params, "Closest", maxQueueSize, 1, 1, gpContext->cudaStream);
+	backend->launch(params, "Closest", maxQueueSize, 1, 1, KRR_DEFAULT_STREAM);
 }
 
 void PPGPathTracer::traceShadow() {
@@ -100,8 +100,8 @@ void PPGPathTracer::traceShadow() {
 	params.pixelState			  = pixelState;
 	params.guidedState			  = guidedPathState;
 	params.enableTraining		  = enableLearning;
-	if(enableMedium) backend->launch(params, "ShadowTr", maxQueueSize, 1, 1, gpContext->cudaStream);
-	else backend->launch(params, "Shadow", maxQueueSize, 1, 1, gpContext->cudaStream);
+	if(enableMedium) backend->launch(params, "ShadowTr", maxQueueSize, 1, 1, KRR_DEFAULT_STREAM);
+	else backend->launch(params, "Shadow", maxQueueSize, 1, 1, KRR_DEFAULT_STREAM);
 }
 
 void PPGPathTracer::handleHit() {

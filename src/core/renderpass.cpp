@@ -69,7 +69,7 @@ RenderContext::RenderContext(nvrhi::IDevice* device) :
 	mCommandList	 = mDevice->createCommandList();
 	mCudaSemaphore	 = mCudaHandler->createCuVkSemaphore(true);
 	mVulkanSemaphore = mCudaHandler->createCuVkSemaphore(true);
-	mCudaStream		 = gpContext->cudaStream;
+	mCudaStream		 = KRR_DEFAULT_STREAM;
 }
 
 RenderContext::~RenderContext() { 

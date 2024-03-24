@@ -42,4 +42,6 @@ public:
 
 extern std::unique_ptr<Context> gpContext;
 
+#define KRR_DEFAULT_STREAM gpContext->cudaStream
+
 NAMESPACE_END(krr)

@@ -4,12 +4,12 @@
 NAMESPACE_BEGIN(krr)
 
 bool Camera::update(){
+	mData.transform = Transformation(getNode()->getGlobalTransform());
 	bool hasChanges = mHasChanges || (bool) memcmp(&mData, &mDataPrev, sizeof(rt::CameraData));
 	if (hasChanges) {
 		/* Update parameters in data. */
 		if (mPreserveHeight) mData.filmSize[0] = mData.aspectRatio * mData.filmSize[1];
 		else mData.filmSize[1] = mData.filmSize[0] / mData.aspectRatio;
-		mData.transform = Transformation(getNode()->getGlobalTransform());
 		mDataPrev		= mData;
 		mHasChanges		= false;
 	}
@@ -47,10 +47,10 @@ std::shared_ptr<SceneGraphLeaf> Camera::clone() { return std::make_shared<Camera
 
 bool OrbitCameraController::update(){
 	bool hasChanges = (bool)memcmp(&mData, &mDataPrev, sizeof(CameraControllerData));
-	if (hasChanges) {
+	if (hasChanges || mCamera->isUpdated()) {
 		Quaternionf rotate = Quaternionf::fromEuler(mData.yaw, mData.pitch, 0).normalized();
-		Vector3f forward = rotate * -Vector3f::UnitZ();
-		Vector3f pos	 = mData.target - forward * mData.radius;
+		Vector3f forward   = rotate * -Vector3f::UnitZ();
+		Vector3f pos	   = mData.target - forward * mData.radius;
 
 		mCamera->getNode()->setRotation(rotate);
 		mCamera->getNode()->setTranslation(pos);

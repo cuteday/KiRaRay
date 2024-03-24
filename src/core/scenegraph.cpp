@@ -375,9 +375,8 @@ void SceneGraph::update(size_t frameIndex) {
 
 		if (context.superGraphTransformUpdated || currentTransformUpdated) {
 			// The global transformation of the current node has changed, special treats goes to mesh instances.
-			if (current->getLeaf() && std::dynamic_pointer_cast<MeshInstance>(current->getLeaf())) {
+			if (std::dynamic_pointer_cast<MeshInstance>(current->getLeaf())) 
 				current->getLeaf()->setUpdated(true);
-			}
 		}
 
 		// whether we need to go deeper into the subgraph?
@@ -554,6 +553,11 @@ void MeshInstance::renderUI() {
 			mMesh->renderUI();
 			ui::TreePop();
 		}
+		ui::BulletText("Node");
+		if (ui::TreeNode(getNode()->getName().c_str())) {
+			getNode()->renderUI();
+			ui::TreePop();
+		}
 	}
 }
 
@@ -609,13 +613,13 @@ void VDBVolume::renderUI() {
 }
 
 void SceneGraphNode::renderUI() { 
-	if (mHasLocalTransform && ui::TreeNode("Transformation")) {
-		if (getScaling() != Vector3f::Ones())
-			ui::Text(("Scaling:\n" + getScaling().string()).c_str());
-		if (getRotation() != Quaternionf::Identity())
-			ui::Text(("Rotation:\n" + getRotation().string()).c_str());
-		if (getTranslation() != Vector3f::Zero())
-			ui::Text(("Translation:\n" + getTranslation().string()).c_str());
+	if (ui::TreeNode("Transformation")) {
+		Vector3f scaling = getScaling();
+		Quaternionf rotation = getRotation();
+		Vector3f translation = getTranslation();
+		if (ui::InputFloat3("Scaling", scaling.data())) setScaling(scaling);
+		if (ui::InputFloat3("Translationg", translation.data())) setTranslation(translation);
+		if (ui::InputFloat4("Rotation", rotation.coeffs().data())) setRotation(rotation);
 		ui::TreePop();
 	}
 	if (ui::TreeNode("Bounding box")) {
@@ -624,10 +628,10 @@ void SceneGraphNode::renderUI() {
 		ui::TreePop();
 	}
 	std::string contents;
-	if (int(getContentFlags() & SceneGraphNode::ContentFlags::Mesh)) contents += "Mesh Instance, ";
-	if (int(getContentFlags() & SceneGraphNode::ContentFlags::Animation)) contents += "Animation, ";
-	if (int(getContentFlags() & SceneGraphNode::ContentFlags::Light)) contents += "Light, ";
-	if (int(getContentFlags() & SceneGraphNode::ContentFlags::Volume)) contents += "Volume, ";
+	if (bool(getContentFlags() & SceneGraphNode::ContentFlags::Mesh)) contents += "Mesh Instance, ";
+	if (bool(getContentFlags() & SceneGraphNode::ContentFlags::Animation)) contents += "Animation, ";
+	if (bool(getContentFlags() & SceneGraphNode::ContentFlags::Light)) contents += "Light, ";
+	if (bool(getContentFlags() & SceneGraphNode::ContentFlags::Volume)) contents += "Volume, ";
 	ui::Text(("Contents: " + contents).c_str());
 	if (getLeaf()) {
 		ui::Text("Leaf:");

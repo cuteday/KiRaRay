@@ -340,7 +340,7 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 	for (int idx = 0; idx < meshes.size(); idx++) {
 		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
 		// build GAS for each mesh
-		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream,
+		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, KRR_DEFAULT_STREAM,
 													meshData, accelBuffersGAS[idx]);
 	}
 
@@ -368,9 +368,9 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
 	
 	Log(Info, "Building root IAS: %zd instances", instances.size());
-	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+	traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 									   {iasBuildInput}, accelBufferIAS, false);
-	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
+	CUDA_CHECK(cudaStreamSynchronize(KRR_DEFAULT_STREAM));
 }
 
 std::optional<OptixSceneMultiLevel::MotionKeyframes>
@@ -501,7 +501,7 @@ OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node, std::optional<Motion
 	iasBuildInput.instanceArray.numInstances = buildInput->instances.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) buildInput->instances.data();
 	
-	buildInput->traversable = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+	buildInput->traversable = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 												{iasBuildInput}, buildInput->accelBuffer, false);
 
 	if (motion.has_value()) { 
@@ -539,7 +539,7 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	accelBuffersGAS.resize(meshes.size());
 	for (int idx = 0; idx < meshes.size(); idx++) {
 		const auto &meshData = scene.lock()->getSceneRT()->getMeshData()[idx];
-		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, gpContext->cudaStream,
+		traversablesGAS[idx] = buildTriangleMeshGAS(gpContext->optixContext, KRR_DEFAULT_STREAM,
 													meshData, accelBuffersGAS[idx]);
 	}
 
@@ -556,14 +556,14 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 	instanceData.traversableHandle = traversable;
 	cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
-			   cudaMemcpyHostToDevice, gpContext->cudaStream);
+			   cudaMemcpyHostToDevice, KRR_DEFAULT_STREAM);
 	instanceBuildInputs.push_back(rootBuildInput);
 
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = 1;  /* the one and only root desu */
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) rootBuildInput->instances.data();
-	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+	traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 									   {iasBuildInput}, rootBuildInput->accelBuffer, false);
 }
 
@@ -602,7 +602,7 @@ void OptixSceneSingleLevel::updateAccelStructure() {
 			OptixInstance &instanceData = instancesIAS[idx];
 			Affine3f transform			= instance->getNode()->getGlobalTransform();
 			cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
-							cudaMemcpyHostToDevice, gpContext->cudaStream);
+							cudaMemcpyHostToDevice, KRR_DEFAULT_STREAM);
 			needsRebuild = true;
 		}
 	}
@@ -614,7 +614,7 @@ void OptixSceneSingleLevel::updateAccelStructure() {
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
 	Log(Debug, "Updating single-level root IAS with %zd instances", instancesIAS.size());
 
-	traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+	traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 									   {iasBuildInput}, accelBufferIAS, false, true);
 }
 
@@ -630,7 +630,7 @@ void OptixSceneMultiLevel::updateAccelStructure() {
 				OptixInstance &instanceData = instanceInput->instances[idx];
 				Affine3f transform			= instance->getLocalTransform();
 				cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
-								cudaMemcpyHostToDevice, gpContext->cudaStream);
+								cudaMemcpyHostToDevice, KRR_DEFAULT_STREAM);
 				needsRebuild = true;
 			}
 		}
@@ -639,7 +639,7 @@ void OptixSceneMultiLevel::updateAccelStructure() {
 		iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 		iasBuildInput.instanceArray.numInstances = instanceInput->instances.size();
 		iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instanceInput->instances.data();
-		traversableIAS = buildASFromInputs(gpContext->optixContext, gpContext->cudaStream,
+		traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 										   {iasBuildInput}, instanceInput->accelBuffer, false, true);
 	}
 }

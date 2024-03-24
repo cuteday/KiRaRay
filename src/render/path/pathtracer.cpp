@@ -53,7 +53,7 @@ void MegakernelPathTracer::render(RenderContext *context) {
 		launchParams.frameID	 = (uint)getFrameIndex();
 
 		optixBackend->launch(launchParams, "Pathtracer", getFrameSize()[0], getFrameSize()[1],
-			1, gpContext->cudaStream);
+			1, KRR_DEFAULT_STREAM);
 	}
 }
 

@@ -109,16 +109,16 @@ float calc_metric(const CudaRenderTarget & frame, const RGBA *reference,
 				error = rel_mse(y, ref);
 		}
 		error_buffer[i] = error;
-	}, gpContext->cudaStream);
+	}, KRR_DEFAULT_STREAM);
 
 #if DISCARD_FIREFLIES
-	thrust::sort(thrust::device.on(gpContext->cudaStream), error_buffer,
+	thrust::sort(thrust::device.on(KRR_DEFAULT_STREAM), error_buffer,
 				 error_buffer + n_elements);
 	n_elements = n_elements * (1.f - DISCARD_FIREFLIES_PRECENTAGE);
 #endif
 
 	return thrust::transform_reduce(
-			   thrust::device.on(gpContext->cudaStream), 
+			   thrust::device.on(KRR_DEFAULT_STREAM), 
 				error_buffer, error_buffer + n_elements,
 				[] KRR_DEVICE(const float &val) -> float {
 #if CLAMP_PIXEL_ERROR 

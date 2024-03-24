@@ -47,7 +47,7 @@ public:
 			Log(Fatal, "Shader initialization failed");
 		
 		//CUDA_CHECK(cudaStreamCreate(&m_CudaStream));
-		m_CudaStream = gpContext->cudaStream;
+		m_CudaStream = KRR_DEFAULT_STREAM;
 
 		m_CommandList = getVulkanDevice()->createCommandList();
 		m_CudaUpdateVkSem = m_CuVkHandler->createCuVkSemaphore();
