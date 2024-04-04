@@ -209,6 +209,7 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 		float transmission;
 		if (pAiMaterial->Get(AI_MATKEY_GLTF_MATERIAL_TRANSMISSION_FACTOR, transmission) ==
 			AI_SUCCESS) {
+			/* If the material is deemed to be glass, then its metallic should be 0. */
 			pMaterial->mMaterialParams.specularTransmission = transmission;
 			if (transmission > 1 - M_EPSILON)
 				pMaterial->mBsdfType = MaterialType::Dielectric; 
@@ -313,6 +314,7 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 	loadMeshes();
 	traverseNode(mAiScene->mRootNode, node);
 	loadAnimations();
+	loadLights();
 	Assimp::DefaultLogger::kill();
 	return true;
 }
@@ -429,10 +431,8 @@ void AssimpImporter::loadLights() {
 
 		if (pAiLight->mType == aiLightSource_POINT) {
 			light = std::make_shared<PointLight>();
-			light->setPosition(aiCast(pAiLight->mPosition));
 		} else if (pAiLight->mType == aiLightSource_DIRECTIONAL) {
 			light = std::make_shared<DirectionalLight>();
-			light->setDirection(aiCast(pAiLight->mDirection));
 		} else if (pAiLight->mType == aiLightSource_SPOT) {
 			light = std::make_shared<SpotLight>();
 			std::dynamic_pointer_cast<SpotLight>(light)->setInnerConeAngle(
@@ -443,13 +443,17 @@ void AssimpImporter::loadLights() {
 			Log(Warning, "Unsupported light type: %d", pAiLight->mType);
 			continue;
 		}
+
+		auto lightNode = std::make_shared<SceneGraphNode>();
+		lightNode->setName(aiCast(pAiLight->mName));
+		lightNode->setLeaf(light);
+		sceneGraph->attach(lightContainer, lightNode);
 		
 		RGB color = aiCast(pAiLight->mColorDiffuse + pAiLight->mColorSpecular);
 		light->setScale(color.maxCoeff());
 		light->setColor(color / color.maxCoeff());
-		auto lightNode = std::make_shared<SceneGraphNode>();
-		lightNode->setName(aiCast(pAiLight->mName));
-		sceneGraph->attach(lightContainer, lightNode);
+		light->setPosition(aiCast(pAiLight->mPosition));
+		light->setDirection(aiCast(pAiLight->mDirection));
 		if (!lightNode->getName().empty()) mNodeMap[lightNode->getName()] = lightNode;
 	}
 

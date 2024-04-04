@@ -44,6 +44,8 @@ KRR_CALLABLE RGB srgb2linear(RGB sRGBColor) {
 	return ret;
 }
 
+#define CHECK_INVALID(pix) if (pix.hasInf() || pix.hasNaN()) return 0.f;
+
 KRR_CALLABLE float linear2srgb(float linearColor) {
 	if (linearColor <= 0.0031308)
 		return linearColor * 12.92f;
@@ -60,19 +62,23 @@ KRR_CALLABLE RGB linear2srgb(RGB linearColor) {
 }
 
 KRR_CALLABLE float mse(const RGB& y, const RGB& ref) {
+	CHECK_INVALID(ref)
 	return (y - ref).abs().pow(2).mean(); 
 }
 
 KRR_CALLABLE float mape(const RGB &y, const RGB &ref) { 
+	CHECK_INVALID(ref)
 	return ((y - ref).abs() / (ref + ERROR_EPS)).mean();
 }
 
 KRR_CALLABLE float smape(const RGB &y, const RGB &ref) { 
+	CHECK_INVALID(ref)
 	return ((y - ref).abs() / (ref + y + ERROR_EPS)).mean();
 }
 
 // is in fact MRSE...
 KRR_CALLABLE float rel_mse(const RGB &y, const RGB &ref) {
+	CHECK_INVALID(ref)
 	if constexpr (ERROR_EPS)
 		return ((y - ref) / (ref + ERROR_EPS)).square().mean();
 	else {

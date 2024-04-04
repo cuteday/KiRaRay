@@ -16,14 +16,12 @@ void DirectionalLight::getObjectData(SceneGraphLeaf::SharedPtr object, Blob::Sha
 									 bool initialize) const {
 	auto light = std::dynamic_pointer_cast<krr::DirectionalLight>(object);
 	auto gdata = reinterpret_cast<rt::DirectionalLight *>(data->data());
-	assert(data->size() == sizeof(rt::DirectionalLight));
 	auto transform = light->getNode()->getGlobalTransform();
 	float sceneRadius =
 		light->getNode()->getGraph()->getRoot()->getGlobalBoundingBox().diagonal().norm();
 	new (gdata) rt::DirectionalLight(transform.rotation(), light->getColor(), light->getScale(),
 									 sceneRadius);
 }
-
 
 void InfiniteLight::getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize) const {
 	auto light = std::dynamic_pointer_cast<krr::InfiniteLight>(object);
