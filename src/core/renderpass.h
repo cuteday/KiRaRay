@@ -22,7 +22,7 @@ public:
 	using SharedPtr = std::shared_ptr<RenderTexture>;
 
 	RenderTexture(vkrhi::IDevice *device, vkrhi::TextureHandle texture);
-	~RenderTexture() = default;
+	~RenderTexture();
 
 	static RenderTexture::SharedPtr create(vkrhi::IDevice *device, 
 		const Vector2i size, vkrhi::Format format, const std::string name = "");

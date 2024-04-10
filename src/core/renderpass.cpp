@@ -11,6 +11,10 @@ RenderTexture::RenderTexture(vkrhi::IDevice *device, vkrhi::TextureHandle textur
 	mCudaSurface = cudaHandler->mapVulkanTextureToCudaSurface(mTexture, cudaArrayColorAttachment);
 }
 
+RenderTexture::~RenderTexture() { 
+	CUDA_CHECK(cudaDestroySurfaceObject(mCudaSurface)); 
+}
+
 vkrhi::TextureDesc RenderTexture::getVulkanDesc(const Vector2i size, vkrhi::Format format,
 										const std::string name) {
 	vkrhi::TextureDesc textureDesc;

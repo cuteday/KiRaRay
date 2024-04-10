@@ -1075,6 +1075,9 @@ bool DeviceManager::createSwapChain() {
 
 	const bool enableSwapChainSharing = queues.size() > 1;
 
+	auto nextDesc = vk::SwapchainPresentScalingCreateInfoEXT().setScalingBehavior(
+		vk::PresentScalingFlagBitsEXT::eOneToOne);
+
 	auto desc =
 		vk::SwapchainCreateInfoKHR()
 			.setSurface(mWindowSurface)
@@ -1094,7 +1097,8 @@ bool DeviceManager::createSwapChain() {
 			.setPresentMode(mDeviceParams.vsyncEnabled ? vk::PresentModeKHR::eFifo
 														: vk::PresentModeKHR::eImmediate)
 			.setClipped(true)
-			.setOldSwapchain(nullptr);
+			.setOldSwapchain(nullptr)
+			.setPNext(&nextDesc);
 
 	const vk::Result res = mVulkanDevice.createSwapchainKHR(&desc, nullptr, &mSwapChain);
 	if (res != vk::Result::eSuccess) {
