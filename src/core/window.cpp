@@ -497,7 +497,11 @@ void DeviceManager::getFrameSize(int &width, int &height) const {
 void DeviceManager::updateWindowSize() {
 	if (mWindow == nullptr) return;
 	int width, height;
-	glfwGetWindowSize(mWindow, &width, &height);
+	// as the validation layer needs us to get the window extent through this way.
+	// https://www.reddit.com/r/vulkan/comments/14uen19/do_i_need_to_recreate_glfw_surfaces_on_window/
+	auto surfaceCap = mVulkanPhysicalDevice.getSurfaceCapabilitiesKHR(mWindowSurface);
+	width			= surfaceCap.currentExtent.width;
+	height			= surfaceCap.currentExtent.height;
 
 	if (width == 0 || height == 0) {
 		// window is minimized
