@@ -9,8 +9,6 @@
 
 NAMESPACE_BEGIN(krr)
 
-using namespace utils;
-
 KRR_CALLABLE float evalMIS(float p0, float p1) {
 #if MIS_POWER_HEURISTIC
 	return p0 * p0 / (p0 * p0 + p1 * p1);
@@ -94,7 +92,7 @@ KRR_CALLABLE int sampleDiscrete(gpu::span<const float> weights, float u, float *
 	for (float w : weights) sumWeights += w;
 
 	float up = u * sumWeights;
-	if (up == sumWeights) up = nextFloatDown(up);
+	if (up == sumWeights) up = utils::nextFloatDown(up);
 
 	int offset = 0;
 	float sum  = 0;

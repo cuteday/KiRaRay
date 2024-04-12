@@ -12,6 +12,7 @@ KRR_CALLABLE T expandBits(T x) {
 	static_assert(std::is_same_v<T, uint32_t> || std::is_same_v<T, uint64_t>, 
 		"expandBits: argument must have integral type in 32/64 bits.");
 	if constexpr (n_bits == 1) {
+		// insert 1 zero after each of the low 16/32 bits
 		x &= static_cast<T>(0xffffffff);
 		x = (x ^ (x << 16)) & static_cast<T>(0x0000ffff0000ffff);
 		x = (x ^ (x << 8)) & static_cast<T>(0x00ff00ff00ff00ff);
@@ -19,6 +20,7 @@ KRR_CALLABLE T expandBits(T x) {
 		x = (x ^ (x << 2)) & static_cast<T>(0x3333333333333333);
 		x = (x ^ (x << 1)) & static_cast<T>(0x5555555555555555);
 	} else if constexpr (n_bits == 2) {
+		// insert 2 zeros after each of the low 10/21 bits
 		x &= static_cast<T>(0x1fffff);
 		x = (x | x << 32) & static_cast<T>(0x1f00000000ffff);
 		x = (x | x << 16) & static_cast<T>(0x1f0000ff0000ff);
