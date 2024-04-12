@@ -1,20 +1,13 @@
 #pragma once
 #include "common.h"
+#include <type_traits>
 
 NAMESPACE_BEGIN(krr)
 
 template <typename T> 
-class SOA;
-
-template <typename T>
-struct SOAGetSetIndirector {
-	KRR_CALLABLE SOAGetSetIndirector() = default;
-	KRR_CALLABLE SOAGetSetIndirector(SOA<T> *soa, int index) : m_soa(soa), m_index(index) {}
-	KRR_CALLABLE operator T() const { return m_soa->operator[](m_index); };
-	KRR_CALLABLE void operator=(const T &val);
-
-	SOA<T> *m_soa;
-	int m_index;
+class SOA {
+public:
+	struct GetSetIndirector { SOA<T> *soa; int i; };
 };
 
 template <typename T> 
@@ -24,6 +17,7 @@ public:
 
 	KRR_CALLABLE SOAIterator() : m_soa(nullptr), m_index(0) {}
 	KRR_CALLABLE SOAIterator(SOA<T> *soa, int index) : m_soa(soa), m_index(index) {}
+	KRR_CALLABLE SOAIterator(const SOA<T> *soa, int index) : m_soa(const_cast<SOA<T>*>(soa)), m_index(index) {}
 	KRR_CALLABLE SOAIterator(const SOAIterator &it) : m_soa(it.m_soa), m_index(it.m_index) {}
 
 	KRR_CALLABLE SOAIterator& operator +=(int n) { m_index += n; return *this; }
@@ -46,11 +40,11 @@ public:
 	KRR_CALLABLE bool operator>=(const SOAIterator &it) const { return m_index >= it.m_index; }
 
 	KRR_CALLABLE SOA<T> *operator->() { return m_soa; }
-	KRR_CALLABLE SOAGetSetIndirector<T> operator*() { return {m_soa, m_index}; }
-	KRR_CALLABLE SOAGetSetIndirector<T> operator[](difference_type n) { return {m_soa, m_index + n}; }
+	KRR_CALLABLE typename SOA<T>::GetSetIndirector operator*() { return {m_soa, m_index}; }
+	KRR_CALLABLE typename SOA<T>::GetSetIndirector operator[](difference_type n) { return {m_soa, m_index + n}; }
 
 private:
-	SOA<T>* m_soa;
+	std::conditional_t<std::is_const_v<T>, const SOA<T>*, SOA<T>*> m_soa;
 	int m_index;
 };
 
