@@ -423,6 +423,7 @@ int main(int argc, char* argv[]) {
 		printf("        }\n");
 
 		printf("        KRR_CALLABLE void operator=(const %s &a) {\n", workItemName.c_str());
+		printf("			DCHECK(soa != nullptr);\n");		
 		for (const auto& member : soa.members)
 			for (int i = 0; i < member.names.size(); ++i) {
 				std::string name = member.names[i];

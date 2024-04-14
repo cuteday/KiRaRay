@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
 #include <atomic>
-
+#include <thrust/sort.h>
 
 #include "device/cuda.h"
 #include "device/atomic.h"
@@ -70,8 +70,39 @@ protected:
 		return m_size.fetch_add(1);
 	}
 
-private:
 	atomic<int> m_size{ 0 };
+};
+
+template <typename WorkItem, typename Key> 
+class SortableWorkQueue : public WorkQueue<WorkItem> {
+public:
+	SortableWorkQueue() = default;
+	KRR_HOST SortableWorkQueue(int n, Allocator alloc) 
+		: SOA<WorkItem>(n, alloc) {
+		m_keys = TypedBuffer<Key>(n, alloc);
+	}
+	KRR_HOST SortableWorkQueue &operator=(const SortableWorkQueue &w) {
+		WorkQueue<WorkItem>::operator=(w);
+		m_keys = w.m_keys;
+		return *this;
+	}
+
+	template <typename F> 
+	void updateKeys(F mapping, const Key& oob_val, CUstream stream) {
+		GPUParallelFor(m_keys.size(), KRR_DEVICE_LAMBDA(int index) {
+				if (index >= this->size()) m_keys[index] = oob_val;
+				else m_keys[index] = mapping((*this)[index]);
+			}, stream);
+	}
+
+	template <typename Compare>
+	void sort(Compare comp, CUstream stream) {
+		thrust::sort_by_key(thrust::device.on(stream), m_keys.begin(),
+							m_keys.begin() + m_keys.size(), this->begin(), comp);
+	}
+
+protected:
+	TypedBuffer<Key> m_keys;
 };
 
 template <typename T> class MultiWorkQueue;
@@ -117,8 +148,7 @@ template <typename F, typename WorkItem>
 void ForAllQueued(const WorkQueue<WorkItem>* q, int nElements,
 	F&& func, CUstream stream = 0) {
 	GPUParallelFor(nElements, [=] KRR_DEVICE(int index) mutable {
-		if (index >= q->size())
-			return;
+		if (index >= q->size()) return;
 		func((*q)[index]);
 	}, stream);
 }

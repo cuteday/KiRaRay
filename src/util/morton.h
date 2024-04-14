@@ -21,8 +21,12 @@ KRR_CALLABLE T expandBits(T x) {
 		x = (x ^ (x << 1)) & static_cast<T>(0x5555555555555555);
 	} else if constexpr (n_bits == 2) {
 		// insert 2 zeros after each of the low 10/21 bits
-		x &= static_cast<T>(0x1fffff);
-		x = (x | x << 32) & static_cast<T>(0x1f00000000ffff);
+		if constexpr (std::is_same_v<T, uint32_t>)
+			x &= 0x000003ff;
+		else {
+			x &= static_cast<T>(0x1fffff);
+			x = (x | x << 32) & static_cast<T>(0x1f00000000ffff);
+		}
 		x = (x | x << 16) & static_cast<T>(0x1f0000ff0000ff);
 		x = (x | x << 8) & static_cast<T>(0x100f00f00f00f00f);
 		x = (x | x << 4) & static_cast<T>(0x10c30c30c30c30c3);
