@@ -13,7 +13,11 @@ public:
 template <typename T> 
 class SOAIterator {
 public:
-	using difference_type = int;
+	using difference_type	= int;
+	using value_type		= typename SOA<T>::GetSetIndirector;
+	using reference			= typename SOA<T>::GetSetIndirector &;
+	using pointer			= void;
+	using iterator_category = std::random_access_iterator_tag;
 
 	KRR_CALLABLE SOAIterator() : m_soa(nullptr), m_index(0) {}
 	KRR_CALLABLE SOAIterator(SOA<T> *soa, int index) : m_soa(soa), m_index(index) {}
@@ -39,13 +43,12 @@ public:
 	KRR_CALLABLE bool operator>(const SOAIterator &it) const { return m_index > it.m_index; }
 	KRR_CALLABLE bool operator>=(const SOAIterator &it) const { return m_index >= it.m_index; }
 
-	KRR_CALLABLE SOA<T> *operator->() { return m_soa; }
 	KRR_CALLABLE typename SOA<T>::GetSetIndirector operator*() { return {m_soa, m_index}; }
 	KRR_CALLABLE typename SOA<T>::GetSetIndirector operator[](difference_type n) { return {m_soa, m_index + n}; }
 
 private:
 	std::conditional_t<std::is_const_v<T>, const SOA<T>*, SOA<T>*> m_soa;
-	int m_index;
+	difference_type m_index;
 };
 
 NAMESPACE_END(krr)

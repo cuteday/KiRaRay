@@ -33,28 +33,28 @@ KRR_CALLABLE T expandBits(T x) {
 }
 
 template <typename T, int dim, std::enable_if_t<std::is_integral_v<T>, bool> = true>
-KRR_CALLABLE T mortonEncode(Vector<T, dim> v) {
+KRR_CALLABLE T encodeMorton(Vector<T, dim> v) {
 	if constexpr (dim == 2) {
 		return (expandBits<T, 1>(v[1]) << 1) | expandBits<T, 1>(v[0]);
 	} else if constexpr (dim == 3) {
 		return (expandBits<T, 2>(v[2]) << 2) | (expandBits<T, 2>(v[1]) << 1) |
 			   expandBits<T, 2>(v[0]);
 	} else {
-		static_assert(false, "mortonEncode<int>: dim must be 2 or 3.");
+		static_assert(false, "encodeMorton<int>: dim must be 2 or 3.");
 	}
 }
 
 template <typename T, int dim, std::enable_if_t<std::is_floating_point_v<T>, bool> = true>
-KRR_CALLABLE decltype(auto) mortonEncode(Vector<T, dim> v) {
+KRR_CALLABLE decltype(auto) encodeMorton(Vector<T, dim> v) {
 	using VectorType = Vector<T, dim>;
 	if constexpr (std::is_same_v<T, float>) {
 		v = VectorType(v * 1024.f).cwiseMin(1023.f).cwiseMax(0.f);
-		return mortonEncode<uint32_t, dim>(Vector<uint32_t, dim>(v));
+		return encodeMorton<uint32_t, dim>(Vector<uint32_t, dim>(v));
 	} else if constexpr (std::is_same_v<T, double>) {
 		v = VectorType(v * (1 << 21)).cwiseMax(0.0).cwiseMin(static_cast<double>((1 << 21) - 1));
-		return mortonEncode<uint64_t, dim>(Vector<uint64_t, dim>(v));
+		return encodeMorton<uint64_t, dim>(Vector<uint64_t, dim>(v));
 	} else {
-		static_assert(false, "mortonEncode<float>: T must be float or double.");
+		static_assert(false, "encodeMorton<float>: T must be float or double.");
 	}
 }
 

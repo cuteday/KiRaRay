@@ -404,17 +404,8 @@ int main(int argc, char* argv[]) {
 
 		// operator[] madness...
 		printf("    struct GetSetIndirector {\n");
-		if (!soa.templateType.empty()) {
-			printf("        KRR_CALLABLE\n");
-			printf("        operator %s<%s>() const {\n", soa.type.c_str(),
-				soa.templateType.c_str());
-			printf("            %s<%s> r;\n", soa.type.c_str(), soa.templateType.c_str());
-		}
-		else {
-			printf("        KRR_CALLABLE\n");
-			printf("        operator %s() const {\n", soa.type.c_str());
-			printf("            %s r;\n", soa.type.c_str());
-		}
+		printf("        KRR_CALLABLE operator %s() const {\n",workItemName.c_str());
+		printf("            %s r;\n", workItemName.c_str());
 		for (const auto& member : soa.members)
 			for (int i = 0; i < member.names.size(); ++i) {
 				std::string name = member.names[i];
@@ -431,12 +422,7 @@ int main(int argc, char* argv[]) {
 		printf("            return r;\n");
 		printf("        }\n");
 
-		printf("        KRR_CALLABLE\n");
-		if (!soa.templateType.empty())
-			printf("        void operator=(const %s<%s> &a) {\n", soa.type.c_str(),
-				soa.templateType.c_str());
-		else
-			printf("        void operator=(const %s &a) {\n", soa.type.c_str());
+		printf("        KRR_CALLABLE void operator=(const %s &a) {\n", workItemName.c_str());
 		for (const auto& member : soa.members)
 			for (int i = 0; i < member.names.size(); ++i) {
 				std::string name = member.names[i];
@@ -451,27 +437,20 @@ int main(int argc, char* argv[]) {
 						name.c_str());
 			}
 		printf("        }\n\n");
+		printf("		KRR_CALLABLE GetSetIndirector() = default;\n");	// default ctor
+		// GetSetIndirector members
 		printf("        SOA *soa;\n");
 		printf("        int i;\n");
 		printf("    };\n\n");
 
-		printf("    KRR_CALLABLE\n");
-		printf("    GetSetIndirector operator[](int i) {\n");
+		printf("    KRR_CALLABLE GetSetIndirector operator[](int i) {\n");
 		printf("        DCHECK_LT(i, nAlloc);\n");
 		printf("        return GetSetIndirector{this, i};\n");
 		printf("    }\n");
-		printf("    KRR_CALLABLE\n");
-		if (!soa.templateType.empty()) {
-			printf("    %s<%s> operator[](int i) const {\n", soa.type.c_str(),
-				soa.templateType.c_str());
-			printf("        DCHECK_LT(i, nAlloc);\n");
-			printf("        %s<%s> r;\n", soa.type.c_str(), soa.templateType.c_str());
-		}
-		else {
-			printf("    %s operator[](int i) const {\n", soa.type.c_str());
-			printf("        DCHECK_LT(i, nAlloc);\n");
-			printf("        %s r;\n", soa.type.c_str());
-		}
+
+		printf("    KRR_CALLABLE %s operator[](int i) const {\n", workItemName.c_str());
+		printf("        DCHECK_LT(i, nAlloc);\n");
+		printf("        %s r;\n", workItemName.c_str());
 		for (const auto& member : soa.members)
 			for (int i = 0; i < member.names.size(); ++i) {
 				std::string name = member.names[i];
@@ -485,8 +464,7 @@ int main(int argc, char* argv[]) {
 					printf("        r.%s = this->%s[i];\n", name.c_str(), name.c_str());
 			}
 		printf("        return r;\n");
-		printf("    }\n");
-		printf("\n");
+		printf("    }\n\n");
 
 		// Member definitions
 		printf("    int nAlloc{ };\n");

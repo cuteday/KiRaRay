@@ -26,6 +26,12 @@ public:
 template <typename WorkItem>
 class WorkQueue : public SOA<WorkItem> {
 public:
+	using value_type			 = WorkItem;
+	using iterator				 = typename SOA<WorkItem>::iterator;
+	using const_iterator		 = typename SOA<WorkItem>::const_iterator;
+	using reverse_iterator		 = typename SOA<WorkItem>::reverse_iterator;
+	using const_reverse_iterator = typename SOA<WorkItem>::const_reverse_iterator;
+
 	WorkQueue() = default;
 	KRR_HOST WorkQueue(int n, Allocator alloc) : SOA<WorkItem>(n, alloc) {}
 	KRR_HOST WorkQueue& operator=(const WorkQueue& w) {
@@ -33,6 +39,11 @@ public:
 		m_size.store(w.m_size);
 		return *this;
 	}
+
+	KRR_CALLABLE iterator begin() { return iterator(this, 0); }
+	KRR_CALLABLE const_iterator begin() const { return const_iterator(this, 0); }
+	KRR_CALLABLE iterator end() { return iterator(this, m_size.load()); }
+	KRR_CALLABLE const_iterator end() const { return const_iterator(this, m_size.load()); }
 
 	KRR_CALLABLE int size() const {
 		return m_size.load();
