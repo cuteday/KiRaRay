@@ -45,12 +45,9 @@ public:
 	KRR_CALLABLE iterator end() { return iterator(this, m_size.load()); }
 	KRR_CALLABLE const_iterator end() const { return const_iterator(this, m_size.load()); }
 
-	KRR_CALLABLE int size() const {
-		return m_size.load();
-	}
-	KRR_CALLABLE void reset() {
-		m_size.store(0);
-	}
+	KRR_CALLABLE int size() const { return m_size.load(); }
+	KRR_CALLABLE int capacity() const { return nAlloc; }
+	KRR_CALLABLE void reset() { m_size.store(0); }
 
 	KRR_CALLABLE int push(const WorkItem& w) {
 		int index = allocateEntry();
@@ -78,9 +75,10 @@ class SortableWorkQueue : public WorkQueue<WorkItem> {
 public:
 	SortableWorkQueue() = default;
 	KRR_HOST SortableWorkQueue(int n, Allocator alloc) 
-		: SOA<WorkItem>(n, alloc) {
-		m_keys = TypedBuffer<Key>(n, alloc);
+		: WorkQueue<WorkItem>(n, alloc) {
+		m_keys = TypedBuffer<Key>(n);
 	}
+
 	KRR_HOST SortableWorkQueue &operator=(const SortableWorkQueue &w) {
 		WorkQueue<WorkItem>::operator=(w);
 		m_keys = w.m_keys;
@@ -89,9 +87,11 @@ public:
 
 	template <typename F> 
 	void updateKeys(F mapping, const Key& oob_val, CUstream stream) {
-		GPUParallelFor(m_keys.size(), KRR_DEVICE_LAMBDA(int index) {
-				if (index >= this->size()) m_keys[index] = oob_val;
-				else m_keys[index] = mapping((*this)[index]);
+		auto* queue = this;
+		Key *keys	= m_keys.data();
+		GPUParallelFor(m_keys.size(), [=] KRR_DEVICE (int index) {
+				if (index >= queue->size()) keys[index] = oob_val;
+				else keys[index] = mapping(queue->operator[](index));
 			}, stream);
 	}
 
@@ -99,6 +99,11 @@ public:
 	void sort(Compare comp, CUstream stream) {
 		thrust::sort_by_key(thrust::device.on(stream), m_keys.begin(),
 							m_keys.begin() + m_keys.size(), this->begin(), comp);
+	}
+
+	void resize(int n, Allocator alloc) {
+		WorkQueue<WorkItem>::resize(n, alloc);
+		m_keys.resize(n);
 	}
 
 protected:
@@ -267,10 +272,9 @@ public:
 	using WorkQueue::push;
 };
 
-class ScatterRayQueue : public WorkQueue<ScatterRayWorkItem> {
+class ScatterRayQueue : public SortableWorkQueue<ScatterRayWorkItem, uint64_t> {
 public:
-	using WorkQueue::WorkQueue;
-	using WorkQueue::push;
+	using SortableWorkQueue::SortableWorkQueue;
 
 	KRR_CALLABLE int push(const SurfaceInteraction &intr, const Spectrum &thp, const Spectrum &pu,
 						  uint depth, uint pixelId) {
