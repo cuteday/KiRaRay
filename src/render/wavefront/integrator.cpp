@@ -3,6 +3,11 @@
 #include <thrust/sort.h>
 #include <thrust/execution_policy.h>
 #include <thrust/iterator/retag.h>
+#include <thrust/device_ptr.h>
+#include <thrust/functional.h>
+#include <thrust/mr/allocator.h>
+#include <thrust/device_allocator.h>
+#include <thrust/mr/device_memory_resource.h>
 
 #include "device/cuda.h"
 #include "device/thrust.h"
@@ -108,47 +113,54 @@ void WavefrontPathTracer::handleMiss() {
 
 void WavefrontPathTracer::generateScatterRays(int depth) {
 	PROFILE("Generate scatter rays");
-	static thrust::cuda::vector<ScatterRayKeyIndex> scatterRayKeys1;
-	if (scatterRayKeys1.size() != maxQueueSize) {
-		scatterRayKeys1.resize(maxQueueSize);
-		Log(Info, "resized ");
+	using MemRes = thrust::device_ptr_memory_resource<thrust_cached_resource<thrust::device_memory_resource>>;
+	using Alloc = thrust::mr::allocator<ScatterRayKeyIndex, MemRes>;
+	static std::unique_ptr<MemRes> memory;
+	static std::unique_ptr<Alloc> alloc;
+	if (!memory) {
+		memory = std::make_unique<MemRes>();
+		alloc = std::make_unique<Alloc>(memory.get());
 	}
 	{
 		PROFILE("Sort scatter rays");
 		auto *queue				 = scatterRayQueue;
 		auto *auxBuffer			 = scatterRaySortBuffer;
 		ScatterRayKeyIndex *keys = scatterRayKeys->data();
-		GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
-				if (index >= queue->size()) 
-					keys[index].key = std::numeric_limits<int64_t>::max();
-				else {
-					ScatterRayQueue::GetSetIndirector w = queue->operator[](index);
-					keys[index].key = static_cast<int64_t>(w.soa->intr.sd.bsdfType[w.i]);
-				}	
-				keys[index].index = index;
-			}, KRR_DEFAULT_STREAM);
-		cudaMemcpyAsync(thrust::raw_pointer_cast(scatterRayKeys1.data()), keys,
-			maxQueueSize * sizeof(ScatterRayKeyIndex), 
-			cudaMemcpyDeviceToDevice, KRR_DEFAULT_STREAM);
-		thrust::sort(thrust::cuda::par_nosync.on(KRR_DEFAULT_STREAM), 
-			thrust::retag<cached_allocator_tag>(scatterRayKeys1.begin()),
-			thrust::retag<cached_allocator_tag>(scatterRayKeys1.end()),
-				//keys, keys + maxQueueSize,
-				[] KRR_DEVICE(const ScatterRayKeyIndex &a, const ScatterRayKeyIndex &b) {
-					return a.key < b.key;
-				});
-		//// sorted to auxiliary buffer
-		GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
-				if (index >= queue->size()) return;
-				ScatterRayQueue::GetSetIndirector w = queue->operator[](keys[index].index);
-				auxBuffer->operator[](index)		= w.operator krr::ScatterRayWorkItem();
-			}, KRR_DEFAULT_STREAM);
-		// blit back
-		GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
-				if (index >= queue->size()) return;
-				queue->operator[](index) =
-					auxBuffer->operator[](index).operator krr::ScatterRayWorkItem();
-			}, KRR_DEFAULT_STREAM);
+		{
+			PROFILE("Update keys");
+			GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
+					if (index >= queue->size()) 
+						keys[index].key = std::numeric_limits<int64_t>::max();
+					else {
+						ScatterRayQueue::GetSetIndirector w = queue->operator[](index);
+						keys[index].key = static_cast<int64_t>(w.soa->intr.sd.bsdfType[w.i]);
+					}	
+					keys[index].index = index;
+				}, KRR_DEFAULT_STREAM);
+		}
+		{
+			PROFILE("Sort indices");
+			thrust::sort(thrust::cuda::par_nosync(*alloc).on(KRR_DEFAULT_STREAM),
+						 keys, keys + maxQueueSize,
+						 [] KRR_DEVICE(const ScatterRayKeyIndex &a, const ScatterRayKeyIndex &b) {
+							 return a.key < b.key;
+						 });
+		}
+		{
+			PROFILE("Reorder and blit");
+			// sorted to auxiliary buffer
+			GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
+					if (index >= queue->size()) return;
+					ScatterRayQueue::GetSetIndirector w = queue->operator[](keys[index].index);
+					auxBuffer->operator[](index)		= w.operator krr::ScatterRayWorkItem();
+				}, KRR_DEFAULT_STREAM);
+			// blit back
+			GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
+					if (index >= queue->size()) return;
+					queue->operator[](index) =
+						auxBuffer->operator[](index).operator krr::ScatterRayWorkItem();
+				}, KRR_DEFAULT_STREAM);
+		}
 	}
 	ForAllQueued(
 		scatterRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(ScatterRayWorkItem& w) {
