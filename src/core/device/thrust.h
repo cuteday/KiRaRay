@@ -23,51 +23,62 @@ public:
 
 private:
 	typedef typename Upstream::pointer void_ptr;
-	typedef std::tuple<std::ptrdiff_t, std::size_t, void_ptr> block_t;
-	std::vector<block_t> blocks{};
+	using block_key_type = std::pair<std::ptrdiff_t, std::size_t>;	// size, alignment
+	using free_blocks_container = std::multimap<block_key_type, void_ptr>;
+	using allocated_blocks_container = std::vector<std::pair<void_ptr, block_key_type>>;
+
+	free_blocks_container free_blocks;
+	allocated_blocks_container allocated_blocks;
 	Upstream *m_upstream;
 
 public:
 	void release() {
 		Log(Info, "thrust_cached_resource::release()");
-		std::for_each(blocks.begin(), blocks.end(), [this](block_t &block) {
-			auto &[bytes, alignment, ptr] = block;
-			m_upstream->do_deallocate(ptr, bytes, alignment);
-		});
+		// Deallocate all outstanding blocks in both lists.
+		for (typename free_blocks_container::iterator i = free_blocks.begin(); i != free_blocks.end(); ++i)
+			m_upstream->do_deallocate(i->second, i->first.first, i->first.second);
+
+		for (typename allocated_blocks_container::iterator i = allocated_blocks.begin();
+			 i != allocated_blocks.end(); ++i)
+			m_upstream->do_deallocate(i->first, i->second.first, i->second.second);
 	}
 
 	void_ptr do_allocate(std::size_t bytes, std::size_t alignment) override {
 		Log(Info, "thrust_cached_resource::do_allocate(): num_bytes == %zu", bytes);
-
 		void_ptr result = nullptr;
 
-		auto const fitting_block =
-			std::find_if(blocks.cbegin(), blocks.cend(), [bytes, alignment](block_t const &block) {
-				auto &[b_bytes, b_alignment, _] = block;
-				return b_bytes == bytes && b_alignment == alignment;
-			});
+		typename free_blocks_container::iterator free_block = free_blocks.find({bytes, alignment});
 
-		if (fitting_block != blocks.end()) {
+		if (free_block != free_blocks.end()) {
 			Log(Info, "thrust_cached_resource::do_allocate(): found a free block of %zd bytes", bytes);
-			result = std::get<2>(*fitting_block);
+			result = free_block->second;
+			free_blocks.erase(free_block);
 		} else {
 			Log(Info, "thrust_cached_resource::do_allocate(): allocating new block of %zd bytes", bytes);
 			result = m_upstream->do_allocate(bytes, alignment);
-			blocks.emplace_back(bytes, alignment, result);
 		}
+
+		allocated_blocks.push_back(std::make_pair(result, block_key_type{bytes, alignment}));
 		return result;
 	}
 
 	void do_deallocate(void_ptr ptr, std::size_t bytes, std::size_t alignment) override {
-		Log(Info, "thrust_cached_resource::do_deallocate(): ptr == %p",
-			reinterpret_cast<void *>(ptr.get()));
-		auto const fitting_block =
-			std::find_if(blocks.cbegin(), blocks.cend(),
-						 [ptr](block_t const &block) { return std::get<2>(block) == ptr; });
+		Log(Info, "thrust_cached_resource::do_deallocate(): ptr == %p", reinterpret_cast<void *>(ptr.get()));
 
-		if (fitting_block == blocks.end())
+		//typename allocated_blocks_container::iterator iter = allocated_blocks.find(ptr);
+		typename allocated_blocks_container::iterator iter = std::find_if(allocated_blocks.begin(), 
+			allocated_blocks.end(), [ptr](const typename allocated_blocks_container::value_type& pair){
+							 return pair.first == ptr; });
+		if (iter == allocated_blocks.end()) {
 			Log(Error, "Pointer `%p` was not allocated by this allocator",
-				thrust::raw_pointer_cast(ptr));
+				reinterpret_cast<void *>(ptr.get()));
+			return;
+		}
+
+		block_key_type key = iter->second;
+
+		allocated_blocks.erase(iter);
+		free_blocks.insert(std::make_pair(key, ptr));
 	}
 };
 
