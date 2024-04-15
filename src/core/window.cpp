@@ -497,7 +497,11 @@ void DeviceManager::getFrameSize(int &width, int &height) const {
 void DeviceManager::updateWindowSize() {
 	if (mWindow == nullptr) return;
 	int width, height;
-	glfwGetWindowSize(mWindow, &width, &height);
+	// as the validation layer needs us to get the window extent through this way.
+	// https://www.reddit.com/r/vulkan/comments/14uen19/do_i_need_to_recreate_glfw_surfaces_on_window/
+	auto surfaceCap = mVulkanPhysicalDevice.getSurfaceCapabilitiesKHR(mWindowSurface);
+	width			= surfaceCap.currentExtent.width;
+	height			= surfaceCap.currentExtent.height;
 
 	if (width == 0 || height == 0) {
 		// window is minimized
@@ -1075,6 +1079,9 @@ bool DeviceManager::createSwapChain() {
 
 	const bool enableSwapChainSharing = queues.size() > 1;
 
+	auto nextDesc = vk::SwapchainPresentScalingCreateInfoEXT().setScalingBehavior(
+		vk::PresentScalingFlagBitsEXT::eOneToOne);
+
 	auto desc =
 		vk::SwapchainCreateInfoKHR()
 			.setSurface(mWindowSurface)
@@ -1094,7 +1101,8 @@ bool DeviceManager::createSwapChain() {
 			.setPresentMode(mDeviceParams.vsyncEnabled ? vk::PresentModeKHR::eFifo
 														: vk::PresentModeKHR::eImmediate)
 			.setClipped(true)
-			.setOldSwapchain(nullptr);
+			.setOldSwapchain(nullptr)
+			.setPNext(&nextDesc);
 
 	const vk::Result res = mVulkanDevice.createSwapchainKHR(&desc, nullptr, &mSwapChain);
 	if (res != vk::Result::eSuccess) {

@@ -240,7 +240,7 @@ public:
 	}
 
 	KRR_DEVICE Spectrum Li(Vector3f wi, const SampledWavelengths &lambda) const {
-		Vector2f uv = worldToLatLong(rotation.transpose() * wi);
+		Vector2f uv = utils::worldToLatLong(rotation.transpose() * wi);
 		RGB L		= image.isValid() ? tint * image.evaluate(uv).head<3>() : tint;
 		return scale * Spectrum::fromRGB(L, SpectrumType::RGBIlluminant, lambda, *colorSpace);
 	}

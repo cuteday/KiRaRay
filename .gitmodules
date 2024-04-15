@@ -1,23 +1,23 @@
 [submodule "src/ext/assimp"]
 	path = src/ext/assimp
-	url = git@github.com:assimp/assimp.git
+	url = https://github.com/assimp/assimp.git
 [submodule "src/ext/glfw"]
 	path = src/ext/glfw
-	url = git@github.com:glfw/glfw.git
+	url = https://github.com/glfw/glfw.git
 [submodule "src/ext/pybind11"]
 	path = src/ext/pybind11
-	url = git@github.com:pybind/pybind11.git
+	url = https://github.com/pybind/pybind11.git
 	branch = stable
 [submodule "src/ext/pbrtparser"]
 	path = src/ext/pbrtparser
-	url = git@github.com:cuteday/pbrt-parser.git
+	url = https://github.com/cuteday/pbrt-parser.git
 	branch = cute
 [submodule "src/core/math/3rdparty/eigen"]
 	path = src/core/math/3rdparty/eigen
-	url = git@github.com:cuteday/Eigen.git
+	url = https://github.com/cuteday/Eigen.git
 [submodule "src/ext/nvrhi"]
 	path = src/ext/nvrhi
-	url = git@github.com:cuteday/nvrhi.git
+	url = https://github.com/cuteday/nvrhi.git
 [submodule "src/ext/openvdb"]
 	path = src/ext/openvdb
-	url = git@github.com:cuteday/openvdb_win.git
+	url = https://github.com/cuteday/openvdb_win.git

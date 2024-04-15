@@ -21,7 +21,6 @@
 
 NAMESPACE_BEGIN(krr)
 
-using namespace utils;
 using namespace rt;
 	
 struct HitInfo {

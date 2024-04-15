@@ -467,9 +467,7 @@ KRR_CALLABLE float RGBColorSpace::lum(const SpectrumType& s, const SampledWavele
 		SampledSpectrum pdf = lambda.pdf();
 		return SampledSpectrum(Ys * s).safeDiv(pdf).mean() / CIE_Y_integral;
 	}
-	else 
-		static_assert(!std::is_same_v<SpectrumType, SpectrumType>, 
-			"SpectrumType must be either RGB or SampledSpectrum");
+	else static_assert(false, "SpectrumType must be either RGB or SampledSpectrum");
 }
 
 KRR_CALLABLE float luminance(RGB color) {
