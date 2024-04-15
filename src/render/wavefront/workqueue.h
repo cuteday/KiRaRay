@@ -1,7 +1,9 @@
 #pragma once
 #include "common.h"
 #include <atomic>
+#ifdef __NVCC__
 #include <thrust/sort.h>
+#endif
 
 #include "device/cuda.h"
 #include "device/atomic.h"
@@ -73,6 +75,7 @@ protected:
 template <typename WorkItem, typename Key> 
 class SortableWorkQueue : public WorkQueue<WorkItem> {
 public:
+	using KeyType = Key;
 	SortableWorkQueue() = default;
 	KRR_HOST SortableWorkQueue(int n, Allocator alloc) 
 		: WorkQueue<WorkItem>(n, alloc) {
@@ -85,20 +88,23 @@ public:
 		return *this;
 	}
 
+	KRR_CALLABLE TypedBuffer<Key>& keys() { return m_keys; }
+
 	template <typename F> 
-	void updateKeys(F mapping, const Key& oob_val, CUstream stream) {
+	void updateKeys(F mapping, size_t max_elements, const Key& oob_val, CUstream stream) {
 		auto* queue = this;
-		Key *keys	= m_keys.data();
-		GPUParallelFor(m_keys.size(), [=] KRR_DEVICE (int index) {
-				if (index >= queue->size()) keys[index] = oob_val;
-				else keys[index] = mapping(queue->operator[](index));
+		GPUParallelFor(max_elements, [=] KRR_DEVICE (int index) {
+				if (index >= queue->size()) queue->keys()[index] = oob_val;
+				else queue->keys()[index] = mapping(queue->operator[](index));
 			}, stream);
 	}
 
-	template <typename Compare>
-	void sort(Compare comp, CUstream stream) {
-		thrust::sort_by_key(thrust::device.on(stream), m_keys.begin(),
-							m_keys.begin() + m_keys.size(), this->begin(), comp);
+	template <typename Compare> 
+	void sort(Compare comp, size_t max_elements, CUstream stream) {
+#ifdef __NVCC__
+		thrust::sort_by_key(thrust::device.on(stream), m_keys.data(),
+							m_keys.data() + max_elements, this->begin(), comp);
+#endif
 	}
 
 	void resize(int n, Allocator alloc) {
@@ -149,14 +155,22 @@ private:
 };
 
 // Helper functions and basic classes
+
 template <typename F, typename WorkItem>
-void ForAllQueued(const WorkQueue<WorkItem>* q, int nElements,
-	F&& func, CUstream stream = 0) {
-	GPUParallelFor(nElements, [=] KRR_DEVICE(int index) mutable {
-		if (index >= q->size()) return;
-		func((*q)[index]);
-	}, stream);
+void ForAllQueued(const WorkQueue<WorkItem> *q, int nElements, F &&func, CUstream stream = 0);
+
+#ifdef __NVCC__
+template <typename F, typename WorkItem>
+void ForAllQueued(const WorkQueue<WorkItem> *q, int nElements, F &&func, CUstream stream) {
+	GPUParallelFor(
+		nElements,
+		[=] KRR_DEVICE(int index) mutable {
+			if (index >= q->size()) return;
+			func((*q)[index]);
+		},
+		stream);
 }
+#endif
 
 class RayQueue : public WorkQueue<RayWorkItem> {
 public:
@@ -272,9 +286,10 @@ public:
 	using WorkQueue::push;
 };
 
-class ScatterRayQueue : public SortableWorkQueue<ScatterRayWorkItem, uint64_t> {
+class ScatterRayQueue : public WorkQueue<ScatterRayWorkItem> {
 public:
-	using SortableWorkQueue::SortableWorkQueue;
+	using WorkQueue::WorkQueue;
+	using WorkQueue::push;
 
 	KRR_CALLABLE int push(const SurfaceInteraction &intr, const Spectrum &thp, const Spectrum &pu,
 						  uint depth, uint pixelId) {
@@ -342,6 +357,5 @@ public:
 		return index;
 	}
 };
-
 
 NAMESPACE_END(krr)
