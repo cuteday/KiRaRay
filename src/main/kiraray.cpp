@@ -8,8 +8,8 @@ extern "C" int main(int argc, char *argv[]) {
 	Log(Info, "Working directory: %s", KRR_PROJECT_DIR);
 	Log(Info, "Kiraray build type: %s", KRR_BUILD_TYPE);
 #ifdef KRR_DEBUG_BUILD
-	Log(Warning, "Running in debug mode, the performance may be extremely slow. "
-			   "Switch to Release build for normal performance!");
+	Log(Warning, "Running in debug mode, the performance may be slow."
+			   "Switch to Release build for faster performance!");
 #endif
 
 	string configFile = "common/configs/example_cbox.json";
