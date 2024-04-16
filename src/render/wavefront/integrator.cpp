@@ -140,6 +140,7 @@ void WavefrontPathTracer::generateScatterRays(int depth) {
 		}
 		{
 			PROFILE("Sort indices");
+			// par_nosync only appears on recently cuda versions...
 			thrust::sort(thrust::cuda::par_nosync(*alloc).on(KRR_DEFAULT_STREAM),
 						 keys, keys + maxQueueSize,
 						 [] KRR_DEVICE(const ScatterRayKeyIndex &a, const ScatterRayKeyIndex &b) {
@@ -151,14 +152,12 @@ void WavefrontPathTracer::generateScatterRays(int depth) {
 			// sorted to auxiliary buffer
 			GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
 					if (index >= queue->size()) return;
-					ScatterRayQueue::GetSetIndirector w = queue->operator[](keys[index].index);
-					auxBuffer->operator[](index)		= w.operator krr::ScatterRayWorkItem();
+					auxBuffer->operator[](index) = queue->operator[](keys[index].index);
 				}, KRR_DEFAULT_STREAM);
 			// blit back
 			GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
 					if (index >= queue->size()) return;
-					queue->operator[](index) =
-						auxBuffer->operator[](index).operator krr::ScatterRayWorkItem();
+					queue->operator[](index) = auxBuffer->operator[](index);
 				}, KRR_DEFAULT_STREAM);
 		}
 	}

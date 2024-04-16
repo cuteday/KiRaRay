@@ -33,7 +33,7 @@ private:
 
 public:
 	void release() {
-		Log(Info, "thrust_cached_resource::release()");
+		Log(Debug, "thrust_cached_resource::release()");
 		// Deallocate all outstanding blocks in both lists.
 		for (typename free_blocks_container::iterator i = free_blocks.begin(); i != free_blocks.end(); ++i)
 			m_upstream->do_deallocate(i->second, i->first.first, i->first.second);
@@ -44,17 +44,17 @@ public:
 	}
 
 	void_ptr do_allocate(std::size_t bytes, std::size_t alignment) override {
-		Log(Info, "thrust_cached_resource::do_allocate(): num_bytes == %zu", bytes);
+		Log(Debug, "thrust_cached_resource::do_allocate(): num_bytes == %zu", bytes);
 		void_ptr result = nullptr;
 
 		typename free_blocks_container::iterator free_block = free_blocks.find({bytes, alignment});
 
 		if (free_block != free_blocks.end()) {
-			Log(Info, "thrust_cached_resource::do_allocate(): found a free block of %zd bytes", bytes);
+			Log(Debug, "thrust_cached_resource::do_allocate(): found a free block of %zd bytes", bytes);
 			result = free_block->second;
 			free_blocks.erase(free_block);
 		} else {
-			Log(Info, "thrust_cached_resource::do_allocate(): allocating new block of %zd bytes", bytes);
+			Log(Debug, "thrust_cached_resource::do_allocate(): allocating new block of %zd bytes", bytes);
 			result = m_upstream->do_allocate(bytes, alignment);
 		}
 
@@ -63,7 +63,7 @@ public:
 	}
 
 	void do_deallocate(void_ptr ptr, std::size_t bytes, std::size_t alignment) override {
-		Log(Info, "thrust_cached_resource::do_deallocate(): ptr == %p", reinterpret_cast<void *>(ptr.get()));
+		Log(Debug, "thrust_cached_resource::do_deallocate(): ptr == %p", reinterpret_cast<void *>(ptr.get()));
 
 		//typename allocated_blocks_container::iterator iter = allocated_blocks.find(ptr);
 		typename allocated_blocks_container::iterator iter = std::find_if(allocated_blocks.begin(), 
