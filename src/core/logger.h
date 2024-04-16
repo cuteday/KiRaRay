@@ -61,8 +61,11 @@ private:
 
 	static void log(Level level, const string& msg, bool terminate = false);
 };
-
+#ifndef KRR_DEBUG_BUILD
+inline void logDebug(const std::string &msg) {}	
+#else
 inline void logDebug(const std::string& msg) { Logger::log(Logger::Level::Debug, msg); }
+#endif
 inline void logInfo(const std::string& msg) { Logger::log(Logger::Level::Info, msg); }
 inline void logSuccess(const std::string& msg) { Logger::log(Logger::Level::Success, msg); }
 inline void logWarning(const std::string& msg) { Logger::log(Logger::Level::Warning, msg); }

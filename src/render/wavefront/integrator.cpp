@@ -1,12 +1,20 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <thrust/sort.h>
+#include <thrust/execution_policy.h>
+#include <thrust/iterator/retag.h>
+#include <thrust/device_ptr.h>
+#include <thrust/functional.h>
+#include <thrust/mr/allocator.h>
+#include <thrust/device_allocator.h>
+#include <thrust/mr/device_memory_resource.h>
 
 #include "device/cuda.h"
+#include "device/thrust.h"
 #include "integrator.h"
 #include "wavefront.h"
 #include "render/spectrum.h"
 #include "render/profiler/profiler.h"
-#include "workqueue.h"
 
 NAMESPACE_BEGIN(krr)
 extern "C" char WAVEFRONT_PTX[];
@@ -102,7 +110,7 @@ void WavefrontPathTracer::handleMiss() {
 void WavefrontPathTracer::generateScatterRays(int depth) {
 	PROFILE("Generate scatter rays");
 	ForAllQueued(
-		scatterRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(ScatterRayWorkItem & w) {
+		scatterRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(ScatterRayWorkItem& w) {
 			Sampler sampler = &pixelState->sampler[w.pixelId];
 			/*  Russian Roulette: If the path is terminated by this vertex,
 				then NEE should not be evaluated */

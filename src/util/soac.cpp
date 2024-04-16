@@ -423,19 +423,31 @@ int main(int argc, char* argv[]) {
 		printf("        }\n");
 
 		printf("        KRR_CALLABLE void operator=(const %s &a) {\n", workItemName.c_str());
-		printf("			DCHECK(soa != nullptr);\n");		
+		printf("			DCHECK(soa != nullptr);\n");
 		for (const auto& member : soa.members)
 			for (int i = 0; i < member.names.size(); ++i) {
 				std::string name = member.names[i];
 				if (!member.arraySizes[i].empty()) {
 					printf("            for (int c = 0; c < %s; ++c)\n",
-						member.arraySizes[i].c_str());
+						   member.arraySizes[i].c_str());
 					printf("                soa->%s[c][i] = a.%s[c];\n", name.c_str(),
-						name.c_str());
-				}
-				else
-					printf("            soa->%s[i] = a.%s;\n", name.c_str(),
-						name.c_str());
+						   name.c_str());
+				} else
+					printf("            soa->%s[i] = a.%s;\n", name.c_str(), name.c_str());
+			}
+		printf("        }\n\n");
+		printf("        KRR_CALLABLE void operator=(const GetSetIndirector &other) {\n");
+		printf("			DCHECK(soa != nullptr && other.soa != nullptr);\n");
+		for (const auto& member : soa.members)
+			for (int i = 0; i < member.names.size(); ++i) {
+				std::string name = member.names[i];
+				if (!member.arraySizes[i].empty()) {
+					printf("            for (int c = 0; c < %s; ++c)\n",
+						   member.arraySizes[i].c_str());
+					printf("                soa->%s[c][i] = other.soa->%s[c][other.i];\n", name.c_str(),
+						   name.c_str());
+				} else
+					printf("            soa->%s[i] = other.soa->%s[other.i];\n", name.c_str(), name.c_str());
 			}
 		printf("        }\n\n");
 		printf("		KRR_CALLABLE GetSetIndirector() = default;\n");	// default ctor

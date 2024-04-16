@@ -56,7 +56,6 @@ public:
 		if (debugOutput && pixelId == debugPixel) printf(fmt, std::forward<Args>(args)...);
 	}
 
-	
 	OptixBackend *backend{ };
 	rt::CameraData* camera{ };
 	LightSampler lightSampler;
