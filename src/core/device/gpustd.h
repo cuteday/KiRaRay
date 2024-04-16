@@ -29,24 +29,26 @@ namespace gpu {
 		static constexpr size_t max_align = alignof(std::max_align_t);
 
 	public:
-		virtual ~memory_resource() {};
-		void* allocate(size_t bytes, size_t alignment = max_align) {
+		virtual ~memory_resource() {}
+		void release() { do_release(); }
+		void *allocate(size_t bytes, size_t alignment = max_align) {
 			if (bytes == 0)
 				return nullptr;
 			return do_allocate(bytes, alignment);
 		}
-		void deallocate(void* p, size_t bytes, size_t alignment = max_align) {
+		void deallocate(void *p, size_t bytes, size_t alignment = max_align) {
 			if (!p)
 				return;
 			return do_deallocate(p, bytes, alignment);
 		}
-		bool is_equal(const memory_resource& other) const noexcept {
+		bool is_equal(const memory_resource &other) const noexcept {
 			return do_is_equal(other);
 		}
 
 	private:
-		virtual void* do_allocate(size_t bytes, size_t alignment) = 0;
-		virtual void do_deallocate(void* p, size_t bytes, size_t alignment) = 0;
+		virtual void do_release()											  = 0;
+		virtual void *do_allocate(size_t bytes, size_t alignment)			  = 0;
+		virtual void do_deallocate(void *p, size_t bytes, size_t alignment)	  = 0;
 		virtual bool do_is_equal(const memory_resource& other) const noexcept = 0;
 	};
 

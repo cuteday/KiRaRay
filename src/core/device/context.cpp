@@ -57,7 +57,7 @@ void Context::initialize() {
 
 	// tracked cuda device memory management
 	set_default_resource(&CUDATrackedMemory::singleton);
-	alloc = new Allocator(&CUDATrackedMemory::singleton);
+	alloc = std::make_unique<Allocator>(&CUDATrackedMemory::singleton);
 
 	// initialize spectral rendering resources
 #if KRR_RENDER_SPECTRAL
@@ -70,8 +70,9 @@ void Context::initialize() {
 
 void Context::finalize(){
 	CUDA_SYNC_CHECK();
+	CUDATrackedMemory::singleton.release();
 	optixDeviceContextDestroy(optixContext);
-	delete alloc;
+	alloc.reset();
 	cuCtxDestroy(cudaContext);
 }
 

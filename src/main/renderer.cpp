@@ -326,6 +326,7 @@ void RenderApp::finalize() {
 	mScene.reset();
 	// Destroy created vulkan resources before destroy vulkan device
 	shutdown();
+	gpContext.reset();
 }
 
 NAMESPACE_END(krr)
