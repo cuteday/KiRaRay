@@ -108,7 +108,8 @@ public:
 				const json &params = json::object());
 	bool importNode(const json &j, Scene::SharedPtr scene,
 					 SceneGraphNode::SharedPtr node = nullptr, const json &params = json::object());
-
+	
+	static void loadMaterials(const json &j, Scene::SharedPtr scene);
 	static bool loadModel(const fs::path filepath, Scene::SharedPtr pScene,
 						  SceneGraphNode::SharedPtr node = nullptr,
 						  const json &params			 = json::object());
@@ -116,7 +117,7 @@ public:
 						   const json &params = json::object());
 	static bool loadLight(Scene::SharedPtr pScene, SceneGraphNode::SharedPtr node = nullptr,
 						   const json &params = json::object());
-
+	
 
 private:
 	SceneImporter(const SceneImporter &)  = delete;

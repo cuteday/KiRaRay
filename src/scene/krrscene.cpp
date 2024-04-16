@@ -119,6 +119,35 @@ bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPt
 	}
 }
 
+void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
+	if (j.type() != json::value_t::array) {
+		Log(Error, "Materials must be an json array of a material list!");
+		return;
+	}
+	std::vector<Material::SharedPtr> loadedMaterials;
+	for (auto m : j) {
+		auto name = m.value<string>("name", "Untitled");
+
+		std::shared_ptr<Material> material;
+		auto overrideMaterial = std::find_if(scene->getMaterials().begin(), scene->getMaterials().end(),
+						[&](const Material::SharedPtr &v) { return v->getName() == name; });
+		if (overrideMaterial == scene->getMaterials().end()) {
+			material = std::make_shared<Material>(name);
+			loadedMaterials.push_back(material);
+		} else material = *overrideMaterial;
+		// load material parameters and optionally textures
+		
+	}
+	if (!loadedMaterials.empty()) {
+		// create a material container within the scene graph
+		auto root = scene->getSceneGraph()->getRoot();
+		auto materialContainer = std::make_shared<SceneGraphNode>("Material Container");
+		scene->getSceneGraph()->attach(root, materialContainer);
+		for (auto pMaterial : loadedMaterials)
+			scene->getSceneGraph()->attachLeaf(materialContainer, pMaterial, pMaterial->getName());
+	}
+}
+
 bool SceneImporter::import(const fs::path filepath, Scene::SharedPtr scene,
 						   SceneGraphNode::SharedPtr node, const json &params) {
 	string format = filepath.extension().string();
@@ -169,6 +198,10 @@ bool SceneImporter::import(const json &j, Scene::SharedPtr scene, SceneGraphNode
 
 	if (j.contains("model")) {
 		importNode(j.at("model"), scene, node, params);
+	}
+
+	if (j.contains("materials")) {
+		loadMaterials(j.at("materials"), scene);
 	}
 
 	if (j.contains("options")) {
