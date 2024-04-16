@@ -43,10 +43,6 @@ void WavefrontPathTracer::initialize() {
 		if (mediumScatterQueue) mediumScatterQueue->resize(maxQueueSize, alloc);
 		else mediumScatterQueue = alloc.new_object<MediumScatterQueue>(maxQueueSize, alloc);
 	}
-	if (scatterRayKeys) scatterRayKeys->resize(maxQueueSize);
-	else scatterRayKeys = new TypedBuffer<ScatterRayKeyIndex>(maxQueueSize);
-	if (scatterRaySortBuffer) scatterRaySortBuffer->resize(maxQueueSize, alloc);
-	else scatterRaySortBuffer = alloc.new_object<ScatterRayQueue>(maxQueueSize, alloc);
 	if (!camera) camera = alloc.new_object<rt::CameraData>();
 	CUDA_SYNC_CHECK();
 }
@@ -113,54 +109,6 @@ void WavefrontPathTracer::handleMiss() {
 
 void WavefrontPathTracer::generateScatterRays(int depth) {
 	PROFILE("Generate scatter rays");
-	using MemRes = thrust::device_ptr_memory_resource<thrust_cached_resource<thrust::device_memory_resource>>;
-	using Alloc = thrust::mr::allocator<ScatterRayKeyIndex, MemRes>;
-	static std::unique_ptr<MemRes> memory;
-	static std::unique_ptr<Alloc> alloc;
-	if (!memory) {
-		memory = std::make_unique<MemRes>();
-		alloc = std::make_unique<Alloc>(memory.get());
-	}
-	{
-		PROFILE("Sort scatter rays");
-		auto *queue				 = scatterRayQueue;
-		auto *auxBuffer			 = scatterRaySortBuffer;
-		ScatterRayKeyIndex *keys = scatterRayKeys->data();
-		{
-			PROFILE("Update keys");
-			GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
-					if (index >= queue->size()) 
-						keys[index].key = std::numeric_limits<int64_t>::max();
-					else {
-						ScatterRayQueue::GetSetIndirector w = queue->operator[](index);
-						keys[index].key = static_cast<int64_t>(w.soa->intr.sd.bsdfType[w.i]);
-					}	
-					keys[index].index = index;
-				}, KRR_DEFAULT_STREAM);
-		}
-		{
-			PROFILE("Sort indices");
-			// par_nosync only appears on recently cuda versions...
-			thrust::sort(thrust::cuda::par_nosync(*alloc).on(KRR_DEFAULT_STREAM),
-						 keys, keys + maxQueueSize,
-						 [] KRR_DEVICE(const ScatterRayKeyIndex &a, const ScatterRayKeyIndex &b) {
-							 return a.key < b.key;
-						 });
-		}
-		{
-			PROFILE("Reorder and blit");
-			// sorted to auxiliary buffer
-			GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
-					if (index >= queue->size()) return;
-					auxBuffer->operator[](index) = queue->operator[](keys[index].index);
-				}, KRR_DEFAULT_STREAM);
-			// blit back
-			GPUParallelFor(maxQueueSize, [=] KRR_DEVICE (int index) {
-					if (index >= queue->size()) return;
-					queue->operator[](index) = auxBuffer->operator[](index);
-				}, KRR_DEFAULT_STREAM);
-		}
-	}
 	ForAllQueued(
 		scatterRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(ScatterRayWorkItem& w) {
 			Sampler sampler = &pixelState->sampler[w.pixelId];

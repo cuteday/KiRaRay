@@ -56,7 +56,6 @@ public:
 		if (debugOutput && pixelId == debugPixel) printf(fmt, std::forward<Args>(args)...);
 	}
 
-	
 	OptixBackend *backend{ };
 	rt::CameraData* camera{ };
 	LightSampler lightSampler;
@@ -70,9 +69,6 @@ public:
 	MediumSampleQueue* mediumSampleQueue{ };
 	MediumScatterQueue* mediumScatterQueue{ };
 	PixelStateBuffer *pixelState{ };
-	struct ScatterRayKeyIndex { int64_t key; int index; };
-	TypedBuffer<ScatterRayKeyIndex> *scatterRayKeys;
-	SOA<ScatterRayWorkItem> *scatterRaySortBuffer;
 
 	// path tracing parameters
 	int maxQueueSize;
