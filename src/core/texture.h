@@ -130,8 +130,9 @@ public:
 		RGBA diffuse{ 1 };			// RGB for base color and A (optional) for opacity 
 		RGBA specular{ 0 };			// G-roughness B-metallic A-shininess in MetalRough model
 									// RGB - specular color (F0); A - shininess in SpecGloss model
+		float specularTransmission{0};
 		float IoR{ 1.5f };
-		float specularTransmission{ 0 };
+		Spectra spectralEta{};
 	};
 
 	Material() {};

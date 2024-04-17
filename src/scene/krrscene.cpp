@@ -1,4 +1,5 @@
 #include "importer.h"
+#include "render/spectrum.h"
 
 NAMESPACE_BEGIN(krr)
 using namespace importer;
@@ -137,6 +138,13 @@ void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
 		} else material = *overrideMaterial;
 		// load material parameters and optionally textures
 		
+		if (m.contains("eta")) {
+			if (m.at("eta").type() == json::value_t::number_float)
+				material->mMaterialParams.IoR = m.value<float>("eta", 1.5f);
+			else if (m.at("eta").type() == json::value_t::string)
+				material->mMaterialParams.spectralEta =
+					Spectra::getNamed(m.value<std::string>("eta", ""));
+		}
 	}
 	if (!loadedMaterials.empty()) {
 		// create a material container within the scene graph

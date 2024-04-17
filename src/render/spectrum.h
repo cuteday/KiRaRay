@@ -88,6 +88,7 @@ public:
 	KRR_HOST_DEVICE float operator()(float lambda) const;
 	KRR_HOST_DEVICE float maxValue() const;
 	KRR_HOST_DEVICE SampledSpectrum sample(const SampledWavelengths &lambda) const;
+	KRR_HOST static Spectra getNamed(std::string name);
 };
 
 class BlackbodySpectrum {
@@ -182,7 +183,15 @@ public:
 		return s;
 	}
 
-	KRR_HOST_DEVICE float operator()(float lambda) const;
+	KRR_CALLABLE float operator()(float lambda) const {
+		// Handle _PiecewiseLinearSpectrum_ corner cases
+		if (lambdas.empty() || lambda < lambdas.front() || lambda > lambdas.back()) return 0;
+		// Find offset to largest _lambdas_ below _lambda_ and interpolate
+		int o = utils::findInterval(lambdas.size(), [&](int i) { return lambdas[i] <= lambda; });
+		DCHECK(lambda >= lambdas[o] && lambda <= lambdas[o + 1]);
+		float t = (lambda - lambdas[o]) / (lambdas[o + 1] - lambdas[o]);
+		return lerp(values[o], values[o + 1], t);
+	}
 
 	PiecewiseLinearSpectrum(gpu::span<const float> lambdas, gpu::span<const float> values,
 							Allocator alloc = {});
@@ -405,6 +414,10 @@ XYZ spectrumToXYZ(Spectra s);
 Spectra getNamedSpectrum(std::string name);
 
 } // namespace spec
+
+inline Spectra Spectra::getNamed(std::string name) {
+	return spec::getNamedSpectrum(name);
+}
 
 inline RGBSigmoidPolynomial RGBColorSpace::toRGBCoeffs(RGB rgb) const {
 	DCHECK(rgb.r() >= 0 && rgb.g() >= 0 && rgb.b() >= 0);
