@@ -40,6 +40,13 @@ enum class ColorSpaceType {
 	ACES2065_1,
 };
 
+KRR_ENUM_DEFINE(ColorSpaceType, {
+	{ColorSpaceType::sRGB, "sRGB"},
+	{ColorSpaceType::DCI_P3, "DCI_P3"},
+	{ColorSpaceType::Rec2020, "Rec2020"},
+	{ColorSpaceType::ACES2065_1, "ACES2065_1"},
+})
+
 class RGB : public Array3f {
 public:
 	using Array3f::Array3f;

@@ -58,17 +58,7 @@
 		"model": [
 			{
 				"model": "common/assets/scenes/cbox/cbox.obj",
-				"name": "Cornell Box",
-				"scale": [
-					1,
-					1,
-					1
-				]
-			}
-		],
-		"materials": [
-			{
-				"name": "box"
+				"name": "Cornell Box"
 			}
 		]
 	}

@@ -89,7 +89,7 @@ KRR_DEVICE_FUNCTION bool alphaKilled(const HitInfo& hitInfo) {
 }
 
 KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, const HitInfo &hitInfo, 
-	const Ray& ray, const SampledWavelengths& lambda) {
+	const Ray& ray, SampledWavelengths& lambda /*secondary rays would be terminated if non-constant eta*/ ) {
 	// [NOTE] about local shading frame (tangent space, TBN, etc.)
 	// The shading normal intr.n and face normal is always points towards the outside of
 	// the object, we can use this convention to determine whether an incident ray is coming from
@@ -153,9 +153,10 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	intr.sd.bsdfType			 = material.mBsdfType;
 	intr.sd.specularTransmission = materialParams.specularTransmission;
 
-	if (materialParams.spectralEta)
+	if (materialParams.spectralEta) {
 		intr.sd.IoR = materialParams.spectralEta(lambda[0]);
-	else intr.sd.IoR = materialParams.IoR;
+		lambda.terminateSecondary();
+	} else intr.sd.IoR = materialParams.IoR;
 
 	const rt::TextureData &diffuseTexture = 
 		material.mTextures[(uint) Material::TextureType::Diffuse];

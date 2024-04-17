@@ -44,14 +44,21 @@ public:
 		return swl;
 	}
 
+	KRR_CALLABLE bool isSecondaryTerminated() const {
+		return pdfs.tail<ArrayType::dim - 1>().isZero();
+	}
+
+	KRR_CALLABLE void terminateSecondary() {
+		if (isSecondaryTerminated()) return;
+		pdfs.tail<ArrayType::dim - 1>().fill(0);
+		pdfs[0] /= ArrayType::dim;
+	}
+
 	KRR_CALLABLE int mainIndex(float lambdaMin = cLambdaMin,
 									float lambdaMax = cLambdaMax) const {
-#if KRR_RENDER_SPECTRAL
-		return 0;
-#else
-		return clamp(int((lambda[0] - lambdaMin) / (lambdaMax - lambdaMin) * Spectrum::dim), 0,
-					 Spectrum::dim - 1);
-#endif
+		if constexpr (KRR_RENDER_SPECTRAL) return 0;
+		return clamp(int((lambda[0] - lambdaMin) / (lambdaMax - lambdaMin) * ArrayType::dim), 0,
+					 ArrayType::dim - 1);
 	}
 
 
@@ -428,14 +435,13 @@ inline RGBSigmoidPolynomial RGBColorSpace::toRGBCoeffs(RGB rgb) const {
 	__device__ qualifier). For a workaround, we put these variables (e.g. CIE_X spectral)
 	within the RGBColorSpace class, and pass its pointer to launch parameters. */
 inline XYZ RGBColorSpace::toXYZ(SampledSpectrum s, const SampledWavelengths& lambda) const {
+	s					= s.safeDiv(lambda.pdf());
 	SampledSpectrum X	= CIE_X->sample(lambda);
 	SampledSpectrum Y	= CIE_Y->sample(lambda);
 	SampledSpectrum Z	= CIE_Z->sample(lambda);
-	SampledSpectrum pdf = lambda.pdf();
-	return XYZ(SampledSpectrum(X * s).safeDiv(pdf).mean(),
-			   SampledSpectrum(Y * s).safeDiv(pdf).mean(),
-			   SampledSpectrum(Z * s).safeDiv(pdf).mean()) /
-		   CIE_Y_integral;
+	return XYZ(SampledSpectrum(X * s).mean(),
+			   SampledSpectrum(Y * s).mean(),
+			   SampledSpectrum(Z * s).mean()) / CIE_Y_integral;
 }
 
 inline RGB RGBColorSpace::toRGB(SampledSpectrum s, const SampledWavelengths &lambda) const {

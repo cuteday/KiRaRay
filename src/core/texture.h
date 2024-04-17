@@ -164,6 +164,19 @@ public:
 	int mMaterialId{-1};
 };
 
+KRR_ENUM_DEFINE(Material::TextureType, {
+	{Material::TextureType::Diffuse, "diffuse"},
+	{Material::TextureType::Specular, "specular"},
+	{Material::TextureType::Normal, "normal"},
+	{Material::TextureType::Emissive, "emissive"},
+	{Material::TextureType::Transmission, "transmission"},
+})
+
+KRR_ENUM_DEFINE(Material::ShadingModel, {
+	{Material::ShadingModel::MetallicRoughness, "metallic_roughness"},
+	{Material::ShadingModel::SpecularGlossiness, "specular_glossiness"},
+})
+
 namespace rt {
 class TextureData {
 public:

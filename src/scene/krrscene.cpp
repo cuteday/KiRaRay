@@ -137,14 +137,27 @@ void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
 			loadedMaterials.push_back(material);
 		} else material = *overrideMaterial;
 		// load material parameters and optionally textures
-		
-		if (m.contains("eta")) {
-			if (m.at("eta").type() == json::value_t::number_float)
-				material->mMaterialParams.IoR = m.value<float>("eta", 1.5f);
-			else if (m.at("eta").type() == json::value_t::string)
-				material->mMaterialParams.spectralEta =
-					Spectra::getNamed(m.value<std::string>("eta", ""));
-		}
+		Log(Info, "Overriding existing material %s", name.c_str());
+		auto params = m.value<json>("params", json{});
+		auto& matParams = material->mMaterialParams;
+		matParams.diffuse.head<3>()	   = params.value<Array3f>("diffuse", Array3f::Ones());
+		matParams.specular.head<3>()   = params.value<Array3f>("specular", Array3f::Zero());
+		matParams.specular[3]		   = 1 - params.value<float>("roughness", 1.f);
+		matParams.specularTransmission = params.value<float>("specular_transmission", 0.f);
+		if (params.contains("eta")) 
+			switch (params.at("eta").type()) {
+				case json::value_t::number_float:
+					matParams.IoR = params.value<float>("eta", 1.5f);
+					break;
+				case json::value_t::string:
+					matParams.spectralEta = Spectra::getNamed(params.value<std::string>("eta", ""));
+					break;
+				default:
+					Log(Error, "Unsupported spectrum eta type");
+			}
+		material->mBsdfType		= m.value<MaterialType>("bsdf", MaterialType::Diffuse);
+		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
+		material->mColorSpace	= m.value<ColorSpaceType>("color_space", ColorSpaceType::sRGB);
 	}
 	if (!loadedMaterials.empty()) {
 		// create a material container within the scene graph
