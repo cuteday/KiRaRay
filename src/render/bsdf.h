@@ -6,12 +6,13 @@
 #include "materials/null.h"
 #include "materials/diffuse.h"
 #include "materials/disney.h"
+#include "materials/conductor.h"
 #include "materials/dielectric.h"
 
 NAMESPACE_BEGIN(krr)
 
 class BxDF :public TaggedPointer<NullBsdf, DiffuseBrdf, 
-	DielectricBsdf, DisneyBsdf>{
+	DielectricBsdf, ConductorBsdf, DisneyBsdf>{
 public:
 	using TaggedPointer::TaggedPointer;
 

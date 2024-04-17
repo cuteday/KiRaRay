@@ -33,7 +33,7 @@ void RenderApp::backBufferResized() {
 bool RenderApp::onMouseEvent(io::MouseEvent &mouseEvent) {
 	if (mpUIRenderer->onMouseEvent(mouseEvent)) return true;
 	if (DeviceManager::onMouseEvent(mouseEvent)) return true;
-	if (mScene && mScene->onMouseEvent(mouseEvent) && !sLockCamera) return true;
+	if (!sLockCamera && mScene && mScene->onMouseEvent(mouseEvent)) return true;
 	return false;
 }
 

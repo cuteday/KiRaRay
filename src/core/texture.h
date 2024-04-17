@@ -132,7 +132,7 @@ public:
 									// RGB - specular color (F0); A - shininess in SpecGloss model
 		float specularTransmission{0};
 		float IoR{ 1.5f };
-		Spectra spectralEta{};
+		Spectra spectralEta{}, spectralK{};
 	};
 
 	Material() {};

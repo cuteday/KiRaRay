@@ -159,6 +159,15 @@ void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
 				default:
 					Log(Error, "Unsupported spectrum eta type");
 			}
+		if (params.contains("k")) {
+			if (params.at("k").type() == json::value_t::string) {
+				matParams.spectralK = Spectra::getNamed(params.value<std::string>("k", ""));
+				if (matParams.spectralK) 
+					Log(Info, "load built-in spectra k %s for material %s",
+						params.value<std::string>("k", "").c_str(), name.c_str());
+			} else
+				Log(Error, "Unsupported spectrum k type");
+		}
 		material->mBsdfType		= m.value<MaterialType>("bsdf", MaterialType::Diffuse);
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
 		material->mColorSpace	= m.value<ColorSpaceType>("color_space", ColorSpaceType::sRGB);
