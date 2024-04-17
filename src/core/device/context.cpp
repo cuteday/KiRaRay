@@ -60,8 +60,8 @@ void Context::initialize() {
 	alloc = std::make_unique<Allocator>(&CUDATrackedMemory::singleton);
 
 	// initialize spectral rendering resources
-#if KRR_RENDER_SPECTRAL
 	spec::init(*alloc);
+#if KRR_RENDER_SPECTRAL
 	RGBToSpectrumTable::init(*alloc);
 	RGBColorSpace::init(*alloc);
 	CUDA_SYNC_CHECK();

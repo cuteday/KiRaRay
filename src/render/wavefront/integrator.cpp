@@ -258,8 +258,8 @@ void WavefrontPathTracer::render(RenderContext *context) {
 			if (enableNEE) traceShadow();
 		}
 		GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-			pixelState->pixel[pixelId] += KRR_DEFAULT_COLORSPACE_GPU->toRGB(
-				pixelState->L[pixelId], pixelState->lambda[pixelId]);
+			pixelState->pixel[pixelId] += pixelState->L[pixelId].toRGB(
+				pixelState->lambda[pixelId], *KRR_DEFAULT_COLORSPACE_GPU);
 		}, KRR_DEFAULT_STREAM);
 	}
 	GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {

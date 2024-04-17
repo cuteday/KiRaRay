@@ -151,6 +151,10 @@ void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
 					break;
 				case json::value_t::string:
 					matParams.spectralEta = Spectra::getNamed(params.value<std::string>("eta", ""));
+					if (matParams.spectralEta) 
+						Log(Info, "load built-in spectra eta %s for material %s",
+							params.value<std::string>("eta", "").c_str(), name.c_str());
+					matParams.IoR = matParams.spectralEta.maxValue();
 					break;
 				default:
 					Log(Error, "Unsupported spectrum eta type");

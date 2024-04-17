@@ -203,7 +203,7 @@ Material::SharedPtr PbrtImporter::loadMaterial(pbrt::Material::SP mat) {
 		Vector3f eta			= cast(m->eta);
 		Vector3f eta_k			= cast(m->k);
 		// matParams.diffuse		= Vector4f(eta_to_reflectivity(eta, eta_k), 0);
-		matParams.diffuse = Vector4f(bsdf::FrComplex(1, eta, eta_k), 0);
+		matParams.diffuse = Vector4f(bsdf::FrComplex(1, RGB(eta), RGB(eta_k)), 0);
 		float roughness	  = m->roughness;
 		roughness		  = (m->uRoughness + m->vRoughness) / 2;
 		if (m->remapRoughness) roughness = remap_roughness(roughness);

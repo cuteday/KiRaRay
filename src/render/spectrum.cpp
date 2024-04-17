@@ -162,9 +162,9 @@ void init(Allocator alloc) {
 		{"glass-BAF10", glassbaf10eta},
 		{"glass-FK51A", glassfk51aeta},
 		{"glass-LASF9", glasslasf9eta},
-		{"glass-F5", glasssf5eta},
-		{"glass-F10", glasssf10eta},
-		{"glass-F11", glasssf11eta},
+		{"glass-SF5", glasssf5eta},
+		{"glass-SF10", glasssf10eta},
+		{"glass-SF11", glasssf11eta},
 
 		{"metal-Ag-eta", ageta},
 		{"metal-Ag-k", agk},

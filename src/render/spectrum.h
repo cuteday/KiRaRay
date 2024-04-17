@@ -9,12 +9,28 @@
 
 NAMESPACE_BEGIN(krr)
 
-class BlackbodySpectrum;
 class RGBColorSpace;
+class SampledWavelengths;
+class BlackbodySpectrum;
 class RGBBoundedSpectrum;
 class RGBUnboundedSpectrum;
 class DenselySampledSpectrum;
 class PiecewiseLinearSpectrum;
+
+class SampledSpectrum : public Array<float, nSpectrumSamples> {
+public:
+	using Array<float, nSpectrumSamples>::Array;
+	KRR_CALLABLE explicit SampledSpectrum(float c) : Array(c) {}
+
+	KRR_CALLABLE explicit operator bool() const { return this->any(); }
+	/* These functions should not be called within a OptiX kernel. */
+	KRR_HOST_DEVICE float y(const SampledWavelengths &swl) const;
+	KRR_HOST_DEVICE XYZ toXYZ(const SampledWavelengths &swl) const;
+	KRR_CALLABLE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
+	KRR_CALLABLE static SampledSpectrum fromRGB(const RGB &rgb, SpectrumType type,
+												const SampledWavelengths &lambda,
+												const RGBColorSpace &colorSpace);
+};
 
 class SampledWavelengths {
 public:
@@ -57,8 +73,8 @@ public:
 	KRR_CALLABLE int mainIndex(float lambdaMin = cLambdaMin,
 									float lambdaMax = cLambdaMax) const {
 		if constexpr (KRR_RENDER_SPECTRAL) return 0;
-		return clamp(int((lambda[0] - lambdaMin) / (lambdaMax - lambdaMin) * ArrayType::dim), 0,
-					 ArrayType::dim - 1);
+		return clamp(int((lambda[0] - lambdaMin) / (lambdaMax - lambdaMin) * Spectrum::dim), 0,
+					 Spectrum::dim - 1);
 	}
 
 
@@ -70,21 +86,6 @@ public:
 
 private:
 	ArrayType lambda, pdfs;
-};
-
-class SampledSpectrum : public Array<float, nSpectrumSamples> {
-public:
-	using Array<float, nSpectrumSamples>::Array;
-	KRR_CALLABLE explicit SampledSpectrum(float c) : Array(c) {}
-
-	KRR_CALLABLE explicit operator bool() const { return this->any(); }
-	/* These functions should not be called within a OptiX kernel. */
-	KRR_HOST_DEVICE float y(const SampledWavelengths &swl) const;
-	KRR_HOST_DEVICE XYZ toXYZ(const SampledWavelengths &swl) const;
-	KRR_CALLABLE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
-	KRR_CALLABLE static SampledSpectrum fromRGB(const RGB &rgb, SpectrumType type,
-												   const SampledWavelengths &lambda,
-												   const RGBColorSpace &colorSpace);
 };
 
 class Spectra :

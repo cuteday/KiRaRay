@@ -54,9 +54,18 @@ namespace bsdf {
 		return (r_parl.norm() + r_perp.norm()) / 2;
 	}
 
-	KRR_CALLABLE Vector3f FrComplex(float cosTheta_i, Vector3f eta, Vector3f k) {
-		Vector3f result;
-		for (int i = 0; i < 3; ++i)
+	KRR_CALLABLE RGB FrComplex(float cosTheta_i, RGB eta, RGB k) {
+		RGB result;
+		KRR_PRAGMA_UNROLL
+		for (int i = 0; i < RGB::dim; ++i)
+			result[i] = FrComplex(cosTheta_i, Complex<float>(eta[i], k[i]));
+		return result;
+	}
+
+	KRR_CALLABLE SampledSpectrum FrComplex(float cosTheta_i, SampledSpectrum eta, SampledSpectrum k) {
+		SampledSpectrum result;
+		KRR_PRAGMA_UNROLL
+		for (int i = 0; i < SampledSpectrum::dim; ++i)
 			result[i] = FrComplex(cosTheta_i, Complex<float>(eta[i], k[i]));
 		return result;
 	}

@@ -152,12 +152,13 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 
 	intr.sd.bsdfType			 = material.mBsdfType;
 	intr.sd.specularTransmission = materialParams.specularTransmission;
-
+	intr.sd.IoR					 = materialParams.IoR;
+#ifdef KRR_RENDER_SPECTRAL
 	if (materialParams.spectralEta) {
 		intr.sd.IoR = materialParams.spectralEta(lambda[0]);
 		lambda.terminateSecondary();
-	} else intr.sd.IoR = materialParams.IoR;
-
+	}
+#endif
 	const rt::TextureData &diffuseTexture = 
 		material.mTextures[(uint) Material::TextureType::Diffuse];
 	const rt::TextureData &specularTexture =
