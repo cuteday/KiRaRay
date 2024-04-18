@@ -156,7 +156,8 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 #ifdef KRR_RENDER_SPECTRAL
 	if (materialParams.spectralEta) {
 		intr.sd.IoR = materialParams.spectralEta(lambda[0]);
-		lambda.terminateSecondary();
+		if (!materialParams.spectralEta.template is<ConstantSpectrum>()) 
+			lambda.terminateSecondary();
 	}
 #endif
 	const rt::TextureData &diffuseTexture = 

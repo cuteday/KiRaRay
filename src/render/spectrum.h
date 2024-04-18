@@ -11,6 +11,9 @@ NAMESPACE_BEGIN(krr)
 
 class RGBColorSpace;
 class SampledWavelengths;
+class ConstantSpectrum;
+class CauchyIoRSpectrum;
+class SellmeierIoRSpectrum;
 class BlackbodySpectrum;
 class RGBBoundedSpectrum;
 class RGBUnboundedSpectrum;
@@ -89,8 +92,9 @@ private:
 };
 
 class Spectra :
-	public TaggedPointer<BlackbodySpectrum, RGBBoundedSpectrum, RGBUnboundedSpectrum, 
-						DenselySampledSpectrum, PiecewiseLinearSpectrum> {
+	public TaggedPointer<ConstantSpectrum, CauchyIoRSpectrum, SellmeierIoRSpectrum,
+						 BlackbodySpectrum, RGBBoundedSpectrum, RGBUnboundedSpectrum,
+						 DenselySampledSpectrum, PiecewiseLinearSpectrum> {
 public:
 	using TaggedPointer::TaggedPointer;
 	KRR_HOST_DEVICE float operator()(float lambda) const;
@@ -99,8 +103,54 @@ public:
 	KRR_HOST static Spectra getNamed(std::string name);
 };
 
-class BlackbodySpectrum {
+class ConstantSpectrum {
+public:
+	KRR_CALLABLE ConstantSpectrum(float c) : c(c) {}
+	KRR_CALLABLE float operator()(float lambda) const { return c; }
+	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const { 
+		return SampledSpectrum::Constant(c);
+	}
+	KRR_CALLABLE float maxValue() const { return c; }
+private:
+	float c;
+};
 
+class CauchyIoRSpectrum {
+public:
+	KRR_CALLABLE CauchyIoRSpectrum(float a, float b) : a(a), b(b) {}
+	KRR_CALLABLE float operator()(float lambda) const { return a + b / pow2(lambda / 1000.f); }
+	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
+		SampledSpectrum s;
+		KRR_PRAGMA_UNROLL
+		for (int i = 0; i < nSpectrumSamples; ++i) s[i] = (*this)(lambda[i]);
+		return s;
+	}
+	KRR_CALLABLE float maxValue() const { return a + (*this)(cLambdaMin); }
+
+private:
+	/* n(\lambda) = a + b / \lambda^2 (in um) */
+	float a, b;
+};
+
+class SellmeierIoRSpectrum {
+public:
+	KRR_CALLABLE SellmeierIoRSpectrum(Array3f b, Array3f c) : b(b), c(c) {}
+	KRR_CALLABLE float operator()(float lambda) const { 
+		return sqrt(1 + (Array3f(pow2(lambda) * b).safeDiv(pow2(lambda) - c)).sum());
+	}
+	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
+		SampledSpectrum s;
+		KRR_PRAGMA_UNROLL
+		for (int i = 0; i < nSpectrumSamples; ++i) s[i] = (*this)(lambda[i]);
+		return s;
+	}
+	KRR_CALLABLE float maxValue() const { return 1.f; /* not implemented */ }
+
+private:
+	Array3f b, c;
+};
+
+class BlackbodySpectrum {
 public:
 	KRR_CALLABLE BlackbodySpectrum(float T) : T(T) {}
 
