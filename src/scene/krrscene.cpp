@@ -171,6 +171,7 @@ void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
 		matParams.specular.head<3>()   = params.value<Array3f>("specular", Array3f::Zero());
 		matParams.specular[3]		   = 1 - params.value<float>("roughness", 1.f);
 		matParams.specularTransmission = params.value<float>("specular_transmission", 0.f);
+		matParams.anisotropic		   = params.value<float>("anisotropic", 0.f);
 		if (params.contains("eta")) 
 			switch (params.at("eta").type()) {
 				case json::value_t::number_float:

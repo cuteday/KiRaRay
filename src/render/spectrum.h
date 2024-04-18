@@ -122,7 +122,7 @@ public:
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
 		SampledSpectrum s;
 		KRR_PRAGMA_UNROLL
-		for (int i = 0; i < nSpectrumSamples; ++i) s[i] = (*this)(lambda[i]);
+		for (int i = 0; i < SampledSpectrum::dim; ++i) s[i] = (*this)(lambda[i]);
 		return s;
 	}
 	KRR_CALLABLE float maxValue() const { return a + (*this)(cLambdaMin); }
@@ -141,7 +141,7 @@ public:
 	KRR_CALLABLE SampledSpectrum sample(const SampledWavelengths &lambda) const {
 		SampledSpectrum s;
 		KRR_PRAGMA_UNROLL
-		for (int i = 0; i < nSpectrumSamples; ++i) s[i] = (*this)(lambda[i]);
+		for (int i = 0; i < SampledSpectrum::dim; ++i) s[i] = (*this)(lambda[i]);
 		return s;
 	}
 	KRR_CALLABLE float maxValue() const { return 1.f; /* not implemented */ }

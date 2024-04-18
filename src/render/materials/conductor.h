@@ -11,8 +11,11 @@ public:
 
 	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
 		Spectra eta_spec = intr.material->mMaterialParams.spectralEta, k_spec;
-		reflectance = intr.sd.diffuse.cwiseMin(0.9999);		// avoid NaN caused by r==1... 
-		distribution = {intr.sd.roughness, intr.sd.roughness};
+		reflectance		 = intr.sd.diffuse.cwiseMin(0.9999); // avoid NaN caused by r==1... 
+		float aspect	 = sqrt(1 - intr.sd.anisotropic * .9f);
+		float ax		 = max(.001f, pow2(intr.sd.roughness) / aspect);
+		float ay		 = max(.001f, pow2(intr.sd.roughness) * aspect);
+		distribution	 = GGXMicrofacetDistribution{ax, ay};
 		// currently only the spectral build supports wavelength-dependent eta and k...
 #if KRR_RENDER_SPECTRAL
 		if (eta_spec) {

@@ -195,9 +195,10 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 		intr.sd.roughness = 1.f - spec[3];	
 		intr.sd.metallic  = getMetallic(diffuse, specular);
 	} else assert(false);
-	intr.sd.diffuse	 = Spectrum::fromRGB(diffuse, SpectrumType::RGBBounded, lambda, colorSpace);
-	intr.sd.specular = Spectrum::fromRGB(specular, SpectrumType::RGBBounded, lambda, colorSpace);
-	intr.lambda		 = lambda;
+	intr.sd.diffuse		= Spectrum::fromRGB(diffuse, SpectrumType::RGBBounded, lambda, colorSpace);
+	intr.sd.specular	= Spectrum::fromRGB(specular, SpectrumType::RGBBounded, lambda, colorSpace);
+	intr.sd.anisotropic = materialParams.anisotropic;
+	intr.lambda			= lambda;
 }
 
 NAMESPACE_END(krr)
