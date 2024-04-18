@@ -1,5 +1,4 @@
 {
-	"model": "common/assets/scenes/cbox/cbox.obj",
 	"resolution": [
 		750,
 		750
@@ -55,6 +54,12 @@
 				],
 				"yaw": 0.000348508358001709
 			}
-		}
+		},
+		"model": [
+			{
+				"model": "common/assets/scenes/cbox/cbox.obj",
+				"name": "Cornell Box"
+			}
+		]
 	}
 }

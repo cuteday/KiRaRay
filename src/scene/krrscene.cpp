@@ -1,4 +1,5 @@
 #include "importer.h"
+#include "render/spectrum.h"
 
 NAMESPACE_BEGIN(krr)
 using namespace importer;
@@ -119,6 +120,68 @@ bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPt
 	}
 }
 
+void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
+	if (j.type() != json::value_t::array) {
+		Log(Error, "Materials must be an json array of a material list!");
+		return;
+	}
+	std::vector<Material::SharedPtr> loadedMaterials;
+	for (auto m : j) {
+		auto name = m.value<string>("name", "Untitled");
+
+		std::shared_ptr<Material> material;
+		auto overrideMaterial = std::find_if(scene->getMaterials().begin(), scene->getMaterials().end(),
+						[&](const Material::SharedPtr &v) { return v->getName() == name; });
+		if (overrideMaterial == scene->getMaterials().end()) {
+			material = std::make_shared<Material>(name);
+			loadedMaterials.push_back(material);
+		} else material = *overrideMaterial;
+		// load material parameters and optionally textures
+		Log(Info, "Overriding existing material %s", name.c_str());
+		auto params = m.value<json>("params", json{});
+		auto& matParams = material->mMaterialParams;
+		matParams.diffuse.head<3>()	   = params.value<Array3f>("diffuse", Array3f::Ones());
+		matParams.specular.head<3>()   = params.value<Array3f>("specular", Array3f::Zero());
+		matParams.specular[3]		   = 1 - params.value<float>("roughness", 1.f);
+		matParams.specularTransmission = params.value<float>("specular_transmission", 0.f);
+		if (params.contains("eta")) 
+			switch (params.at("eta").type()) {
+				case json::value_t::number_float:
+					matParams.IoR = params.value<float>("eta", 1.5f);
+					break;
+				case json::value_t::string:
+					matParams.spectralEta = Spectra::getNamed(params.value<std::string>("eta", ""));
+					if (matParams.spectralEta) 
+						Log(Info, "load built-in spectra eta %s for material %s",
+							params.value<std::string>("eta", "").c_str(), name.c_str());
+					matParams.IoR = matParams.spectralEta.maxValue();
+					break;
+				default:
+					Log(Error, "Unsupported spectrum eta type");
+			}
+		if (params.contains("k")) {
+			if (params.at("k").type() == json::value_t::string) {
+				matParams.spectralK = Spectra::getNamed(params.value<std::string>("k", ""));
+				if (matParams.spectralK) 
+					Log(Info, "load built-in spectra k %s for material %s",
+						params.value<std::string>("k", "").c_str(), name.c_str());
+			} else
+				Log(Error, "Unsupported spectrum k type");
+		}
+		material->mBsdfType		= m.value<MaterialType>("bsdf", MaterialType::Diffuse);
+		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
+		material->mColorSpace	= m.value<ColorSpaceType>("color_space", ColorSpaceType::sRGB);
+	}
+	if (!loadedMaterials.empty()) {
+		// create a material container within the scene graph
+		auto root = scene->getSceneGraph()->getRoot();
+		auto materialContainer = std::make_shared<SceneGraphNode>("Material Container");
+		scene->getSceneGraph()->attach(root, materialContainer);
+		for (auto pMaterial : loadedMaterials)
+			scene->getSceneGraph()->attachLeaf(materialContainer, pMaterial, pMaterial->getName());
+	}
+}
+
 bool SceneImporter::import(const fs::path filepath, Scene::SharedPtr scene,
 						   SceneGraphNode::SharedPtr node, const json &params) {
 	string format = filepath.extension().string();
@@ -169,6 +232,10 @@ bool SceneImporter::import(const json &j, Scene::SharedPtr scene, SceneGraphNode
 
 	if (j.contains("model")) {
 		importNode(j.at("model"), scene, node, params);
+	}
+
+	if (j.contains("materials")) {
+		loadMaterials(j.at("materials"), scene);
 	}
 
 	if (j.contains("options")) {

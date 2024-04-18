@@ -18,27 +18,28 @@
 NAMESPACE_BEGIN(krr)
 
 class CUDAMemory : public gpu::memory_resource {
-	void *do_allocate(size_t size, size_t alignment){
+	void *do_allocate(size_t size, size_t alignment) override {
 		void *ptr;
 		CUDA_CHECK(cudaMallocManaged(&ptr, size));
 		CHECK_EQ(0, intptr_t(ptr) % alignment);
 		return ptr;
 	}
 
-	void do_deallocate(void *p, size_t bytes, size_t alignment) {
+	void do_deallocate(void *p, size_t bytes, size_t alignment) override {
 		CUDA_CHECK(cudaFree(p));
 	}
 
-	bool do_is_equal(const memory_resource &other) const noexcept {
+	bool do_is_equal(const memory_resource &other) const noexcept override {
 		return this == &other;
 	}
+
+	void do_release() override {}
 };
 
 class CUDATrackedMemory : public CUDAMemory {
 public:
-	void *do_allocate(size_t size, size_t alignment){
-		if (size == 0)
-			return nullptr;
+	void *do_allocate(size_t size, size_t alignment) override {
+		if (size == 0) return nullptr;
 
 		void *ptr;
 		CUDA_CHECK(cudaMallocManaged(&ptr, size));
@@ -51,9 +52,8 @@ public:
 		return ptr;
 	}
 
-	void do_deallocate(void* p, size_t size, size_t alignment) {
-		if (!p)
-			return;
+	void do_deallocate(void *p, size_t size, size_t alignment) override {
+		if (!p) return;
 
 		CUDA_CHECK(cudaFree(p));
 
@@ -64,9 +64,18 @@ public:
 		bytesAllocated -= size;
 	}
 
-	bool do_is_equal(const memory_resource &other) const noexcept {
+	bool do_is_equal(const memory_resource &other) const noexcept override {
 		return this == &other;
 	}
+
+	void do_release() override {
+		std::lock_guard<std::mutex> lock(mutex);
+		for (auto iter : allocations) 
+			CUDA_CHECK(cudaFree(iter.first));
+		allocations.clear();
+		bytesAllocated = 0;
+	}
+
 
 	void PrefetchToGPU() const {
 		// only linux supports uniform memory prefetching on demand

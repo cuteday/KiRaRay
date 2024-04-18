@@ -26,16 +26,6 @@ XYZ SampledSpectrum::toXYZ(const SampledWavelengths &lambda) const {
 		   CIE_Y_integral;
 }
 
-float PiecewiseLinearSpectrum::operator()(float lambda) const {
-	// Handle _PiecewiseLinearSpectrum_ corner cases
-	if (lambdas.empty() || lambda < lambdas.front() || lambda > lambdas.back()) return 0;
-	// Find offset to largest _lambdas_ below _lambda_ and interpolate
-	int o = utils::findInterval(lambdas.size(), [&](int i) { return lambdas[i] <= lambda; });
-	DCHECK(lambda >= lambdas[o] && lambda <= lambdas[o + 1]);
-	float t = (lambda - lambdas[o]) / (lambdas[o + 1] - lambdas[o]);
-	return lerp(values[o], values[o + 1], t);
-}
-
 PiecewiseLinearSpectrum::PiecewiseLinearSpectrum(gpu::span<const float> l, gpu::span<const float> v,
 												 Allocator alloc) :
 	lambdas(l.begin(), l.end(), alloc), values(v.begin(), v.end(), alloc) {
@@ -172,9 +162,9 @@ void init(Allocator alloc) {
 		{"glass-BAF10", glassbaf10eta},
 		{"glass-FK51A", glassfk51aeta},
 		{"glass-LASF9", glasslasf9eta},
-		{"glass-F5", glasssf5eta},
-		{"glass-F10", glasssf10eta},
-		{"glass-F11", glasssf11eta},
+		{"glass-SF5", glasssf5eta},
+		{"glass-SF10", glasssf10eta},
+		{"glass-SF11", glasssf11eta},
 
 		{"metal-Ag-eta", ageta},
 		{"metal-Ag-k", agk},

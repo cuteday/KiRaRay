@@ -35,7 +35,7 @@ public:
 	cudaDeviceProp deviceProps;
 	OptixDeviceContext optixContext;
 	nvrhi::vulkan::IDevice *defaultVkDevice{};
-	Allocator* alloc;
+	std::unique_ptr<Allocator> alloc;
 	// signal bits
 	bool exit{};
 };

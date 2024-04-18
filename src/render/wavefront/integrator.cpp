@@ -258,16 +258,15 @@ void WavefrontPathTracer::render(RenderContext *context) {
 			if (enableNEE) traceShadow();
 		}
 		GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-			RGB L = pixelState->L[pixelId].toRGB(pixelState->lambda[pixelId],
-															*KRR_DEFAULT_COLORSPACE_GPU);
-			pixelState->pixel[pixelId] = pixelState->pixel[pixelId] + L;
+			pixelState->pixel[pixelId] += pixelState->L[pixelId].toRGB(
+				pixelState->lambda[pixelId], *KRR_DEFAULT_COLORSPACE_GPU);
 		}, KRR_DEFAULT_STREAM);
 	}
 	GPUParallelFor(maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-			RGB pixel = pixelState->pixel[pixelId] / float(samplesPerPixel);
-			if (enableClamp) pixel.clamp(0, clampMax);
-			frameBuffer.write(RGBA(pixel, 1), pixelId);
-		}, KRR_DEFAULT_STREAM);
+		RGB pixel = pixelState->pixel[pixelId] / float(samplesPerPixel);
+		if (enableClamp) pixel.clamp(0, clampMax);
+		frameBuffer.write(RGBA(pixel, 1), pixelId);
+	}, KRR_DEFAULT_STREAM);
 }
 
 void WavefrontPathTracer::renderUI() {

@@ -25,9 +25,18 @@ enum class MaterialType : uint32_t{
 	Null = 0,
 	Diffuse,
 	Dielectric,
+	Conductor,
 	Disney,
 	Count
 };
+
+KRR_ENUM_DEFINE(MaterialType, {
+	{MaterialType::Null, "null"},
+	{MaterialType::Diffuse, "diffuse"},
+	{MaterialType::Conductor, "conductor"},
+	{MaterialType::Dielectric, "dielectric"},
+	{MaterialType::Disney, "disney"}
+})
 
 class Ray {
 public:

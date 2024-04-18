@@ -9,12 +9,28 @@
 
 NAMESPACE_BEGIN(krr)
 
-class BlackbodySpectrum;
 class RGBColorSpace;
+class SampledWavelengths;
+class BlackbodySpectrum;
 class RGBBoundedSpectrum;
 class RGBUnboundedSpectrum;
 class DenselySampledSpectrum;
 class PiecewiseLinearSpectrum;
+
+class SampledSpectrum : public Array<float, nSpectrumSamples> {
+public:
+	using Array<float, nSpectrumSamples>::Array;
+	KRR_CALLABLE explicit SampledSpectrum(float c) : Array(c) {}
+
+	KRR_CALLABLE explicit operator bool() const { return this->any(); }
+	/* These functions should not be called within a OptiX kernel. */
+	KRR_HOST_DEVICE float y(const SampledWavelengths &swl) const;
+	KRR_HOST_DEVICE XYZ toXYZ(const SampledWavelengths &swl) const;
+	KRR_CALLABLE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
+	KRR_CALLABLE static SampledSpectrum fromRGB(const RGB &rgb, SpectrumType type,
+												const SampledWavelengths &lambda,
+												const RGBColorSpace &colorSpace);
+};
 
 class SampledWavelengths {
 public:
@@ -44,14 +60,21 @@ public:
 		return swl;
 	}
 
+	KRR_CALLABLE bool isSecondaryTerminated() const {
+		return pdfs.tail<ArrayType::dim - 1>().isZero();
+	}
+
+	KRR_CALLABLE void terminateSecondary() {
+		if (isSecondaryTerminated()) return;
+		pdfs.tail<ArrayType::dim - 1>().fill(0);
+		pdfs[0] /= ArrayType::dim;
+	}
+
 	KRR_CALLABLE int mainIndex(float lambdaMin = cLambdaMin,
 									float lambdaMax = cLambdaMax) const {
-#if KRR_RENDER_SPECTRAL
-		return 0;
-#else
+		if constexpr (KRR_RENDER_SPECTRAL) return 0;
 		return clamp(int((lambda[0] - lambdaMin) / (lambdaMax - lambdaMin) * Spectrum::dim), 0,
 					 Spectrum::dim - 1);
-#endif
 	}
 
 
@@ -65,21 +88,6 @@ private:
 	ArrayType lambda, pdfs;
 };
 
-class SampledSpectrum : public Array<float, nSpectrumSamples> {
-public:
-	using Array<float, nSpectrumSamples>::Array;
-	KRR_CALLABLE explicit SampledSpectrum(float c) : Array(c) {}
-
-	KRR_CALLABLE explicit operator bool() const { return this->any(); }
-	/* These functions should not be called within a OptiX kernel. */
-	KRR_HOST_DEVICE float y(const SampledWavelengths &swl) const;
-	KRR_HOST_DEVICE XYZ toXYZ(const SampledWavelengths &swl) const;
-	KRR_CALLABLE RGB toRGB(const SampledWavelengths &swl, const RGBColorSpace &cs) const;
-	KRR_CALLABLE static SampledSpectrum fromRGB(const RGB &rgb, SpectrumType type,
-												   const SampledWavelengths &lambda,
-												   const RGBColorSpace &colorSpace);
-};
-
 class Spectra :
 	public TaggedPointer<BlackbodySpectrum, RGBBoundedSpectrum, RGBUnboundedSpectrum, 
 						DenselySampledSpectrum, PiecewiseLinearSpectrum> {
@@ -88,6 +96,7 @@ public:
 	KRR_HOST_DEVICE float operator()(float lambda) const;
 	KRR_HOST_DEVICE float maxValue() const;
 	KRR_HOST_DEVICE SampledSpectrum sample(const SampledWavelengths &lambda) const;
+	KRR_HOST static Spectra getNamed(std::string name);
 };
 
 class BlackbodySpectrum {
@@ -182,7 +191,15 @@ public:
 		return s;
 	}
 
-	KRR_HOST_DEVICE float operator()(float lambda) const;
+	KRR_CALLABLE float operator()(float lambda) const {
+		// Handle _PiecewiseLinearSpectrum_ corner cases
+		if (lambdas.empty() || lambda < lambdas.front() || lambda > lambdas.back()) return 0;
+		// Find offset to largest _lambdas_ below _lambda_ and interpolate
+		int o = utils::findInterval(lambdas.size(), [&](int i) { return lambdas[i] <= lambda; });
+		DCHECK(lambda >= lambdas[o] && lambda <= lambdas[o + 1]);
+		float t = (lambda - lambdas[o]) / (lambdas[o + 1] - lambdas[o]);
+		return lerp(values[o], values[o + 1], t);
+	}
 
 	PiecewiseLinearSpectrum(gpu::span<const float> lambdas, gpu::span<const float> values,
 							Allocator alloc = {});
@@ -406,6 +423,10 @@ Spectra getNamedSpectrum(std::string name);
 
 } // namespace spec
 
+inline Spectra Spectra::getNamed(std::string name) {
+	return spec::getNamedSpectrum(name);
+}
+
 inline RGBSigmoidPolynomial RGBColorSpace::toRGBCoeffs(RGB rgb) const {
 	DCHECK(rgb.r() >= 0 && rgb.g() >= 0 && rgb.b() >= 0);
 	return (*rgbToSpectrumTable)(rgb.cwiseMax(0));
@@ -415,14 +436,13 @@ inline RGBSigmoidPolynomial RGBColorSpace::toRGBCoeffs(RGB rgb) const {
 	__device__ qualifier). For a workaround, we put these variables (e.g. CIE_X spectral)
 	within the RGBColorSpace class, and pass its pointer to launch parameters. */
 inline XYZ RGBColorSpace::toXYZ(SampledSpectrum s, const SampledWavelengths& lambda) const {
+	s					= s.safeDiv(lambda.pdf());
 	SampledSpectrum X	= CIE_X->sample(lambda);
 	SampledSpectrum Y	= CIE_Y->sample(lambda);
 	SampledSpectrum Z	= CIE_Z->sample(lambda);
-	SampledSpectrum pdf = lambda.pdf();
-	return XYZ(SampledSpectrum(X * s).safeDiv(pdf).mean(),
-			   SampledSpectrum(Y * s).safeDiv(pdf).mean(),
-			   SampledSpectrum(Z * s).safeDiv(pdf).mean()) /
-		   CIE_Y_integral;
+	return XYZ(SampledSpectrum(X * s).mean(),
+			   SampledSpectrum(Y * s).mean(),
+			   SampledSpectrum(Z * s).mean()) / CIE_Y_integral;
 }
 
 inline RGB RGBColorSpace::toRGB(SampledSpectrum s, const SampledWavelengths &lambda) const {

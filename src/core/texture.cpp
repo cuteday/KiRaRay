@@ -178,14 +178,16 @@ void Material::renderUI() {
 	static const char *shadingModels[] = {"MetallicRoughness", "SpecularGlossiness"};
 	static const char *textureTypes[]  = {"Diffuse", "Specular", "Emissive", "Normal",
 										  "Transmission"};
-	static const char *bsdfTypes[]	   = {"Null", "Diffuse", "Dielectric", "Disney"};
+	static const char *bsdfTypes[]	   = {"Null", "Diffuse", "Dielectric", "Conductor", "Disney"};
 	bool updated					   = false;
 	updated |= ui::ListBox("Shading model", (int *) &mShadingModel, shadingModels, 2);
 	updated |= ui::ListBox("BSDF", (int *) &mBsdfType, bsdfTypes, (int) MaterialType::Count);
 	updated |= ui::DragFloat4("Diffuse", (float *) &mMaterialParams.diffuse, 1e-3, 0, 1);
 	updated |= ui::DragFloat4("Specular", (float *) &mMaterialParams.specular, 1e-3, 0, 1);
 	updated |= ui::DragFloat("Specular transmission", &mMaterialParams.specularTransmission, 1e-3, 0, 1);
-	updated |= ui::InputFloat("Index of Refraction", &mMaterialParams.IoR);
+	if (mMaterialParams.spectralEta) ui::Text("Has Spectral Eta");
+	else updated |= ui::InputFloat("IoR", &mMaterialParams.IoR);
+	if (mMaterialParams.spectralK) ui::Text("Has Spectral K");
 	setUpdated(updated);
 }
 

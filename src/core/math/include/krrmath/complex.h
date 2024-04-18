@@ -72,4 +72,7 @@ template <typename T> KRR_CALLABLE T abs(const Complex<T> &z) { return z.abs(); 
 
 template <typename T> KRR_CALLABLE Complex<T> sqrt(const Complex<T> &z) { return z.sqrt(); }
 
+using Complexf = Complex<float>;
+using Complexd = Complex<double>;
+
 NAMESPACE_END(krr)

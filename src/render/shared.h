@@ -60,6 +60,9 @@ struct BSDFData {
 				type = roughness <= 1e-3f ? BSDF_SPECULAR : BSDF_GLOSSY;
 				type = type | BSDF_REFLECTION | BSDF_TRANSMISSION;
 				break;
+			case MaterialType::Conductor:
+				type = BSDF_REFLECTION | (roughness <= 1e-3f ? BSDF_SPECULAR : BSDF_GLOSSY);
+				break;
 			case MaterialType::Disney:
 				type = roughness <= 1e-3f ? BSDF_SPECULAR_REFLECTION : BSDF_GLOSSY_REFLECTION;
 				if (diffuse.any() && specularTransmission < 1 && metallic < 1)

@@ -16,7 +16,6 @@ NAMESPACE_BEGIN(krr)
 
 using namespace bsdf;
 
-
 class DielectricBsdf {
 public:
 	DielectricBsdf() = default;

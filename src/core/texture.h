@@ -129,9 +129,10 @@ public:
 	struct MaterialParams {
 		RGBA diffuse{ 1 };			// RGB for base color and A (optional) for opacity 
 		RGBA specular{ 0 };			// G-roughness B-metallic A-shininess in MetalRough model
-										// RGB - specular color (F0); A - shininess in SpecGloss model
+									// RGB - specular color (F0); A - shininess in SpecGloss model
+		float specularTransmission{0};
 		float IoR{ 1.5f };
-		float specularTransmission{ 0 };
+		Spectra spectralEta{}, spectralK{};
 	};
 
 	Material() {};
@@ -162,6 +163,19 @@ public:
 	string mName;
 	int mMaterialId{-1};
 };
+
+KRR_ENUM_DEFINE(Material::TextureType, {
+	{Material::TextureType::Diffuse, "diffuse"},
+	{Material::TextureType::Specular, "specular"},
+	{Material::TextureType::Normal, "normal"},
+	{Material::TextureType::Emissive, "emissive"},
+	{Material::TextureType::Transmission, "transmission"},
+})
+
+KRR_ENUM_DEFINE(Material::ShadingModel, {
+	{Material::ShadingModel::MetallicRoughness, "metallic_roughness"},
+	{Material::ShadingModel::SpecularGlossiness, "specular_glossiness"},
+})
 
 namespace rt {
 class TextureData {

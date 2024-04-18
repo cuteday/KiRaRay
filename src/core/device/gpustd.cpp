@@ -24,6 +24,8 @@ namespace gpu {
 		bool do_is_equal(const memory_resource& other) const noexcept {
 			return this == &other;
 		}
+
+		void do_release() {}
 	};
 
 	static NewDeleteResource* ndr;

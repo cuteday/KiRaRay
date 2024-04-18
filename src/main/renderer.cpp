@@ -7,6 +7,7 @@ namespace { // status bits
 static bool sShowUI				 = true;
 static bool sSaveHDR			 = false;
 static bool sSaveFrames			 = false;
+static bool sLockCamera			 = false;
 static bool sRequestScreenshot	 = false;
 static size_t sSaveFrameInterval = 2;
 }
@@ -32,7 +33,7 @@ void RenderApp::backBufferResized() {
 bool RenderApp::onMouseEvent(io::MouseEvent &mouseEvent) {
 	if (mpUIRenderer->onMouseEvent(mouseEvent)) return true;
 	if (DeviceManager::onMouseEvent(mouseEvent)) return true;
-	if (mScene && mScene->onMouseEvent(mouseEvent)) return true;
+	if (!sLockCamera && mScene && mScene->onMouseEvent(mouseEvent)) return true;
 	return false;
 }
 
@@ -136,6 +137,7 @@ void RenderApp::renderUI() {
 			ui::EndMenu();
 		}
 		if (ui::BeginMenu("Tools")) {
+			ui::MenuItem("Lock Camera", NULL, &sLockCamera);
 			if (ui::MenuItem("Save config")) saveConfig("");
 			ui::MenuItem("Save HDR", NULL, &sSaveHDR);
 			if (ui::MenuItem("Screen shot")) sRequestScreenshot = true;
@@ -255,6 +257,7 @@ void RenderApp::loadConfig(const json config) {
 	if (config.contains("renderer")) {
 		const json render_config = config.at("renderer");
 		sSaveHDR				 = render_config.value("save_hdr", true);
+		sLockCamera				 = render_config.value("lock_camera", false);
 		sSaveFrames				 = render_config.value("save_frames", false);
 		sSaveFrameInterval		 = render_config.value("save_frame_interval", 5);
 	}
@@ -326,6 +329,7 @@ void RenderApp::finalize() {
 	mScene.reset();
 	// Destroy created vulkan resources before destroy vulkan device
 	shutdown();
+	gpContext.reset();
 }
 
 NAMESPACE_END(krr)
