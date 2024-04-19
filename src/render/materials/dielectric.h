@@ -16,6 +16,62 @@ NAMESPACE_BEGIN(krr)
 
 using namespace bsdf;
 
+class ThinDielectricBsdf {
+public:
+	ThinDielectricBsdf() = default;
+
+	_DEFINE_BSDF_INTERNAL_ROUTINES(ThinDielectricBsdf);
+
+	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
+		eta			 = intr.sd.IoR;
+	}
+
+	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
+							TransportMode mode = TransportMode::Radiance) const {
+		return Spectrum::Zero();
+	}
+
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
+							TransportMode mode = TransportMode::Radiance) const {
+		float R = FrDielectric(AbsCosTheta(wo), eta), T = 1 - R;
+		// Compute _R_ and _T_ accounting for scattering between interfaces
+		if (R < 1) {
+			R += pow2(T) * R / (1 - pow2(R));
+			T = 1 - R;
+		}
+
+		// Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
+		float pr = R, pt = T;
+		if (pr == 0 && pt == 0) return {};
+
+		if (sg.get1D() < pr / (pr + pt)) {
+			// Sample perfect specular dielectric BRDF
+			Vector3f wi(-wo.x(), -wo.y(), wo.z());
+			SampledSpectrum fr(R / AbsCosTheta(wi));
+			return BSDFSample(fr, wi, pr / (pr + pt), BSDFType::BSDF_SPECULAR_REFLECTION);
+		} else {
+			// Sample perfect specular transmission at thin dielectric interface
+			Vector3f wi = -wo;
+			SampledSpectrum ft(T / AbsCosTheta(wi));
+			return BSDFSample(ft, wi, pt / (pr + pt), BSDFType::BSDF_SPECULAR_TRANSMISSION);
+		}
+
+	}
+
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
+						   TransportMode mode = TransportMode::Radiance) const {
+		return 0;
+	}
+
+	KRR_CALLABLE BSDFType flags() const {
+		BSDFType type = eta == 1 ? BSDF_TRANSMISSION : (BSDF_REFLECTION | BSDF_TRANSMISSION);
+		return type |  BSDF_SPECULAR;
+	}
+
+private:
+	float eta;
+};
+
 class DielectricBsdf {
 public:
 	DielectricBsdf() = default;

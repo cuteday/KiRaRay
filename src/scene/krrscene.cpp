@@ -1,4 +1,5 @@
 #include "importer.h"
+#include "device/context.h"
 #include "render/spectrum.h"
 
 NAMESPACE_BEGIN(krr)
@@ -126,6 +127,32 @@ void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
 		return;
 	}
 	std::vector<Material::SharedPtr> loadedMaterials;
+	auto& alloc			 = gpContext->alloc;
+	auto extractSpectrum = [&](const json& j) -> Spectra {
+		if(j.type() == json::value_t::string)
+			return Spectra::getNamed(j.get<string>());
+		else if (j.type() == json::value_t::object) {
+			auto type = j.value<string>("type", "null");
+			if (type == "named_spectrum") {
+				return Spectra::getNamed(j.value<std::string>("name", ""));
+			} else if (type == "constant_spectrum") {
+				auto value = j.value<float>("value", 1.5f);
+				return alloc->new_object<ConstantSpectrum>(value);
+			} else if (type == "cauchy_spectrum") {
+				auto a = j.value<float>("a", 1.5);
+				auto b = j.value<float>("b", 0);
+				return alloc->new_object<CauchyIoRSpectrum>(a, b);
+			} else if (type == "sellmeier_spectrum") {
+				auto b = j.value<Array3f>("b", {});
+				auto c = j.value<Array3f>("c", {});
+				return alloc->new_object<SellmeierIoRSpectrum>(b, c);
+			} else {
+				Log(Error, "Unsupported spectrum type: %s", type.c_str());
+				return nullptr;
+			}
+		}
+	};
+
 	for (auto m : j) {
 		auto name = m.value<string>("name", "Untitled");
 
@@ -144,29 +171,18 @@ void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
 		matParams.specular.head<3>()   = params.value<Array3f>("specular", Array3f::Zero());
 		matParams.specular[3]		   = 1 - params.value<float>("roughness", 1.f);
 		matParams.specularTransmission = params.value<float>("specular_transmission", 0.f);
+		matParams.anisotropic		   = params.value<float>("anisotropic", 0.f);
 		if (params.contains("eta")) 
 			switch (params.at("eta").type()) {
 				case json::value_t::number_float:
 					matParams.IoR = params.value<float>("eta", 1.5f);
 					break;
-				case json::value_t::string:
-					matParams.spectralEta = Spectra::getNamed(params.value<std::string>("eta", ""));
-					if (matParams.spectralEta) 
-						Log(Info, "load built-in spectra eta %s for material %s",
-							params.value<std::string>("eta", "").c_str(), name.c_str());
-					matParams.IoR = matParams.spectralEta.maxValue();
-					break;
 				default:
-					Log(Error, "Unsupported spectrum eta type");
+					matParams.spectralEta = extractSpectrum(params.at("eta"));
+					matParams.IoR		  = matParams.spectralEta.maxValue();
 			}
 		if (params.contains("k")) {
-			if (params.at("k").type() == json::value_t::string) {
-				matParams.spectralK = Spectra::getNamed(params.value<std::string>("k", ""));
-				if (matParams.spectralK) 
-					Log(Info, "load built-in spectra k %s for material %s",
-						params.value<std::string>("k", "").c_str(), name.c_str());
-			} else
-				Log(Error, "Unsupported spectrum k type");
+			matParams.spectralK = extractSpectrum(params.at("k"));
 		}
 		material->mBsdfType		= m.value<MaterialType>("bsdf", MaterialType::Diffuse);
 		material->mShadingModel = Material::ShadingModel::SpecularGlossiness;
