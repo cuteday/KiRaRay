@@ -95,7 +95,7 @@ void WavefrontPathTracer::handleMiss() {
 	ForAllQueued(
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
 			Spectrum L		  = {};
-			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
+			const SampledWavelengths &lambda = pixelState->lambda[w.pixelId];
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : infiniteLights) {
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_DELTA)) {
@@ -119,7 +119,7 @@ void WavefrontPathTracer::generateScatterRays(int depth) {
 			const SurfaceInteraction &intr = w.intr;
 			Vector3f woLocal			   = intr.toLocal(intr.wo);
 			BSDFType bsdfType			   = intr.getBsdfType();
-			SampledWavelengths lambda	   = pixelState->lambda[w.pixelId];
+			const SampledWavelengths &lambda	   = pixelState->lambda[w.pixelId];
 			/* sample direct lighting */
 			if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());

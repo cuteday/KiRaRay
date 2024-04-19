@@ -45,7 +45,7 @@ KRR_RT_KERNEL KRR_RT_CH(Closest)() {
 	SurfaceInteraction &intr  = *getPRD<SurfaceInteraction>();
 	RayWorkItem r			  = getRayWorkItem();
 	int pixelId				  = launchParams.currentRayQueue->pixelId[getRayId()];
-	SampledWavelengths& lambda = launchParams.pixelState->lambda[pixelId];
+	SampledWavelengths &lambda = launchParams.pixelState->lambda[pixelId];
 	prepareSurfaceInteraction(intr, hitInfo, r.ray, lambda);
 	if (launchParams.mediumSampleQueue && r.ray.medium) {
 		launchParams.mediumSampleQueue->push(r, intr, optixGetRayTmax());
@@ -103,7 +103,7 @@ KRR_RT_KERNEL KRR_RT_CH(ShadowTr)() {
 	HitInfo hitInfo			  = getHitInfo();
 	ShadowRayWorkItem r		  = getShadowRayWorkItem();
 	int pixelId				  = launchParams.shadowRayQueue->pixelId[getRayId()]; 
-	SampledWavelengths lambda = launchParams.pixelState->lambda[pixelId];
+	SampledWavelengths &lambda = launchParams.pixelState->lambda[pixelId];
 	SurfaceInteraction &intr  = *getPRD<SurfaceInteraction>();
 	prepareSurfaceInteraction(intr, hitInfo, r.ray, lambda);
 }

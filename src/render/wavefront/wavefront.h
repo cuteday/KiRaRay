@@ -33,7 +33,7 @@ struct LaunchParameters <WavefrontPathTracer> {
 
 template <typename F>
 KRR_HOST_DEVICE Spectrum sampleT_maj(Ray ray, float tMax, Sampler sampler,
-											SampledWavelengths lambda, F callback) {
+											const SampledWavelengths &lambda, F callback) {
 	/* This function returns the [remaining](not told callback before hitting surface) 
 		part of the transmittance. */
 	tMax *= ray.dir.norm();
@@ -80,12 +80,12 @@ KRR_HOST_DEVICE Spectrum sampleT_maj(Ray ray, float tMax, Sampler sampler,
 template <typename TraceFunc>
 KRR_HOST_DEVICE void traceTransmittance(const ShadowRayWorkItem& sr, const SurfaceInteraction& intr,
 									 PixelStateBuffer *pixelState, TraceFunc trace) {
-	Ray ray					  = sr.ray;
-	SampledWavelengths lambda = pixelState->lambda[sr.pixelId];
-	Sampler sampler			  = &pixelState->sampler[sr.pixelId];
-	int channel				  = lambda.mainIndex();
-	float tMax				  = sr.tMax;
-	Vector3f pLight			  = ray(tMax);
+	Ray ray							 = sr.ray;
+	const SampledWavelengths &lambda = pixelState->lambda[sr.pixelId];
+	Sampler sampler					 = &pixelState->sampler[sr.pixelId];
+	int channel						 = lambda.mainIndex();
+	float tMax						 = sr.tMax;
+	Vector3f pLight					 = ray(tMax);
 
 	Spectrum T_ray(1);
 	Spectrum pu(1), pl(1);

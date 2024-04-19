@@ -31,7 +31,7 @@ struct Vertex {
 	KRR_DEVICE void commit(STree *sdTree, float statisticalWeight, ESpatialFilter spatialFilter,
 						   EDirectionalFilter directionalFilter,
 						   EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler &sampler,
-						   EDistribution distribution = EDistribution::ERadiance,
+						   EDistribution distribution, const SampledWavelengths &lambda,
 						   const Spectrum &pixelEstimate = {}) {
 		if (wiPdf <= 0 || isDelta) return;
 		
@@ -42,6 +42,8 @@ struct Vertex {
 			localRadiance[1] = radiance[1] / throughput[1];
 		if (throughput[2] * wiPdf > 1e-4f)
 			localRadiance[2] = radiance[2] / throughput[2];
+		if (lambda.isSecondaryTerminated()) 
+			localRadiance.tail<Spectrum::dim - 1>().fill(0);
 		Spectrum product = localRadiance * bsdfVal;
 		
 		/* @modified: VAPG */
@@ -150,16 +152,15 @@ public:
 	}
 
 	// @modified VAPG
-	KRR_DEVICE void commitAll(int pixelId, 
-		STree* sdTree, float statisticalWeight,
-		ESpatialFilter spatialFilter, EDirectionalFilter directionalFilter,
-		EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler& sampler,
-		EDistribution distribution = EDistribution::ERadiance, const Spectrum &pixelEstimate = {}) {
+	KRR_DEVICE void commitAll(int pixelId, STree *sdTree, float statisticalWeight,
+							  ESpatialFilter spatialFilter, EDirectionalFilter directionalFilter,
+							  EBsdfSamplingFractionLoss bsdfSamplingFractionLoss, Sampler &sampler,
+							  EDistribution distribution, const SampledWavelengths &lambda,
+							  const Spectrum &pixelEstimate = {}) {
 		for (int i = 0; i < n_vertices[pixelId]; i++) {
 			Vertex v = vertices[i][pixelId];
-			v.commit(sdTree, statisticalWeight,
-				spatialFilter, directionalFilter, bsdfSamplingFractionLoss, sampler, 
-				distribution, pixelEstimate);
+			v.commit(sdTree, statisticalWeight, spatialFilter, directionalFilter,
+					 bsdfSamplingFractionLoss, sampler, distribution, lambda, pixelEstimate);
 		}
 	}
 };

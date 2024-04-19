@@ -125,7 +125,7 @@ void PPGPathTracer::handleMiss() {
 	const rt::SceneData& sceneData = mScene->mSceneRT->getSceneData();
 	ForAllQueued(missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem & w) {
 			Spectrum L = {};
-			SampledWavelengths lambda = pixelState->lambda[w.pixelId];
+			const SampledWavelengths& lambda = pixelState->lambda[w.pixelId];
 			Interaction intr(w.ray.origin);
 			for (const rt::InfiniteLight &light : sceneData.infiniteLights) {
 				if (enableNEE && w.depth && !(w.bsdfType & BSDF_SPECULAR)) {
@@ -149,7 +149,7 @@ void PPGPathTracer::handleIntersections() {
 		const SurfaceInteraction& intr = w.intr;
 		BSDFType bsdfType = intr.getBsdfType();
 		Vector3f woLocal = intr.toLocal(intr.wo);
-		SampledWavelengths lambda	   = pixelState->lambda[w.pixelId];
+		const SampledWavelengths& lambda	   = pixelState->lambda[w.pixelId];
 
 		/* Statistics for mixed bsdf-guided sampling */
 		float bsdfPdf, dTreePdf;
@@ -295,8 +295,10 @@ void PPGPathTracer::endFrame(RenderContext* context) {
 				pixelEstimate = Spectrum::fromRGB(
 					m_pixelEstimate->getPixel(pixelId).head<3>(), SpectrumType::RGBUnbounded,
 					pixelState->lambda[pixelId], *KRR_DEFAULT_COLORSPACE_GPU);
-			guidedPathState->commitAll(pixelId, m_sdTree, 1.f, m_spatialFilter, m_directionalFilter, m_bsdfSamplingFractionLoss, sampler,
-										   m_distribution, pixelEstimate);
+				guidedPathState->commitAll(pixelId, m_sdTree, 1.f, m_spatialFilter,
+										   m_directionalFilter, m_bsdfSamplingFractionLoss, sampler,
+										   m_distribution, pixelState->lambda[pixelId],
+										   pixelEstimate);
 		});
 		++guiding_trained_frames;
 	}

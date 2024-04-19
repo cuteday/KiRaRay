@@ -99,7 +99,6 @@ void AccumulatePass::finalize() {
 		size_t nPixels = getFrameSize()[0] * getFrameSize()[1];
 		CUDABuffer tmpBuffer(nPixels * sizeof(Vector4f));
 		const float weight = 1.0f / mAccumCount;
-		Log(Info, "Weight %f", weight);
 		if (mPrecision == Precision::Float) {
 			thrust::transform(thrust::device, reinterpret_cast<Array4f *>(mAccumBuffer->data()),
 							  reinterpret_cast<Array4f *>(mAccumBuffer->data()) + nPixels,
