@@ -150,6 +150,9 @@ void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
 				Log(Error, "Unsupported spectrum type: %s", type.c_str());
 				return nullptr;
 			}
+		}else {
+			Log(Error, "Unsupported parameter type: %s", j.dump().c_str());
+			return nullptr;
 		}
 	};
 
