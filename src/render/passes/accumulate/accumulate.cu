@@ -81,6 +81,34 @@ void AccumulatePass::render(RenderContext *context) {
 void AccumulatePass::endFrame(RenderContext *context) {
 	if (mTask.getBudgetType() != BudgetType::None && mTask.isFinished() && mExitOnFinish)
 		gpContext->requestExit();
+	if (mSaveEvery && mAccumCount % mSaveEvery == 0) {
+		string outputName = gpContext->getGlobalConfig().contains("name")
+								? gpContext->getGlobalConfig()["name"]
+								: "result" + std::to_string(mAccumCount);
+		saveImage(File::outputDir() / (outputName + ".exr"));
+	}
+}
+
+void AccumulatePass::saveImage(fs::path path) {
+	Image frame(getFrameSize(), Image::Format::RGBAfloat, false);
+	size_t nPixels = getFrameSize()[0] * getFrameSize()[1];
+	CUDABuffer tmpBuffer(nPixels * sizeof(Vector4f));
+	const float weight = 1.0f / mAccumCount;
+	if (mPrecision == Precision::Float) {
+		thrust::transform(thrust::device, reinterpret_cast<Array4f *>(mAccumBuffer->data()),
+						  reinterpret_cast<Array4f *>(mAccumBuffer->data()) + nPixels,
+						  reinterpret_cast<RGBA *>(tmpBuffer.data()),
+						  [=] KRR_DEVICE(const Array4f &d) -> RGBA { return d * weight; });
+	} else if (mPrecision == Precision::Double) {
+		thrust::transform(
+			thrust::device, reinterpret_cast<Array4d *>(mAccumBuffer->data()),
+			reinterpret_cast<Array4d *>(mAccumBuffer->data()) + nPixels,
+			reinterpret_cast<RGBA *>(tmpBuffer.data()),
+			[=] KRR_DEVICE(const Array4d &d) -> RGBA { return (d * weight).cast<float>(); });
+	}
+	tmpBuffer.copy_to_host(frame.data(), nPixels * sizeof(RGBA));
+	CUDA_SYNC_CHECK();
+	frame.saveImage(path, true);
 }
 
 void AccumulatePass::resize(const Vector2i &size) {
@@ -95,25 +123,7 @@ void AccumulatePass::finalize() {
 								? gpContext->getGlobalConfig()["name"]
 								: "result";
 		fs::path savePath = File::outputDir() / (outputName + ".exr");
-		Image frame(getFrameSize(), Image::Format::RGBAfloat, false);
-		size_t nPixels = getFrameSize()[0] * getFrameSize()[1];
-		CUDABuffer tmpBuffer(nPixels * sizeof(Vector4f));
-		const float weight = 1.0f / mAccumCount;
-		if (mPrecision == Precision::Float) {
-			thrust::transform(thrust::device, reinterpret_cast<Array4f *>(mAccumBuffer->data()),
-							  reinterpret_cast<Array4f *>(mAccumBuffer->data()) + nPixels,
-							  reinterpret_cast<RGBA *>(tmpBuffer.data()),
-							  [=] KRR_DEVICE(const Array4f &d) -> RGBA { return d * weight; });
-		} else if (mPrecision == Precision::Double) {
-			thrust::transform(
-				thrust::device, reinterpret_cast<Array4d *>(mAccumBuffer->data()),
-				reinterpret_cast<Array4d *>(mAccumBuffer->data()) + nPixels,
-				reinterpret_cast<RGBA *>(tmpBuffer.data()),
-				[=] KRR_DEVICE(const Array4d &d) -> RGBA { return (d * weight).cast<float>(); });
-		}
-		tmpBuffer.copy_to_host(frame.data(), nPixels * sizeof(RGBA));
-		CUDA_SYNC_CHECK();
-		frame.saveImage(savePath, true);
+		saveImage(savePath);
 	}
 }
 
