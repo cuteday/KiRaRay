@@ -110,6 +110,7 @@ public:
 					 SceneGraphNode::SharedPtr node = nullptr, const json &params = json::object());
 	
 	static void loadMaterials(const json &j, Scene::SharedPtr scene);
+	static void loadMedia(const json &j, Scene::SharedPtr scene);
 	static bool loadModel(const fs::path filepath, Scene::SharedPtr pScene,
 						  SceneGraphNode::SharedPtr node = nullptr,
 						  const json &params			 = json::object());

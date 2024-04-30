@@ -62,7 +62,6 @@ void PPGPathTracer::initialize() {
 	else guidedPathState = alloc.new_object<GuidedPathStateBuffer>(maxQueueSize, alloc);
 	if (guidedRayQueue) guidedRayQueue->resize(maxQueueSize, alloc);
 	else guidedRayQueue = alloc.new_object<GuidedRayQueue>(maxQueueSize, alloc);
-	//if (!backend) backend = new OptixPPGBackend();
 	/* @addition VAPG */
 	if (m_image)  m_image->resize(getFrameSize());
 	else m_image = alloc.new_object<Film>(getFrameSize());
