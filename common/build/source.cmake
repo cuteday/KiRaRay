@@ -142,10 +142,12 @@ SET(KRR_SOURCE
 	${KRR_SOURCE}
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/treemanip.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/medium.cpp
 )
 
 SET_SOURCE_FILES_PROPERTIES (
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/integrator.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/medium.cpp
 	PROPERTIES LANGUAGE CUDA
 )
 
