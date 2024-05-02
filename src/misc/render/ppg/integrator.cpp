@@ -246,11 +246,13 @@ void PPGPathTracer::render(RenderContext *context) {
 			});
 			// [STEP#2.1] find closest intersections, filling in scatterRayQueue and hitLightQueue
 			traceClosest(depth);
+			if (enableMedium) sampleMediumInteraction(depth);	
 			// [STEP#2.2] handle hit and missed rays, contribute to pixels
 			handleHit();
 			handleMiss();
 			// Break on maximum depth, but incorprate contribution from emissive hits.
 			if (depth == maxDepth) break;
+			if (enableMedium) sampleMediumScattering(depth);
 			// [STEP#2.3] handle intersections and shadow rays
 			handleIntersections();
 			if (enableNEE) traceShadow();
