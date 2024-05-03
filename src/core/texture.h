@@ -152,6 +152,7 @@ public:
 	const string& getName() const { return mName; }
 	int getMaterialId() const { return mMaterialId; }
 	const RGBColorSpace *getColorSpace() const { return spec::getColorSpace(mColorSpace); }
+	AABB getLocalBoundingBox() const override { return AABB::Zero(); }
 	std::shared_ptr<SceneGraphLeaf> clone() override;
 
 	void renderUI();

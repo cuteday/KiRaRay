@@ -310,7 +310,6 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 	node->setName(filepath.filename().string());
 	scene->getSceneGraph()->attach(root, node);
 	mRootNode = root;
-
 	loadMaterials(modelFolder);
 	loadMeshes();
 	traverseNode(mAiScene->mRootNode, node);

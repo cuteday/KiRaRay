@@ -73,8 +73,8 @@ bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPt
 		auto sigma_t = params.value<Array3f>("sigma_t", Array3f{1, 1, 1});
 		auto albedo	 = params.value<Array3f>("albedo", Array3f{0.5, 0.5, 0.5});
 		auto g		 = params.value<float>("g", 0.f);
-		auto Le		 = params.value<Array3f>("Le", Array3f{0, 0, 0});
-		auto aabb	 = params.value<AABB3f>("bound", AABB3f{0, 0});
+		auto Le		 = params.value<Array3f>("Le", Array3f::Zero());
+		auto aabb	 = params.value<AABB3f>("bound", AABB3f::Zero());
 
 		if (params.contains("sigma_a") || params.contains("sigma_s")) {
 			// backward compatibility
@@ -110,28 +110,26 @@ bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPt
 			mesh->computeBoundingBox();
 			pScene->addMesh(mesh);
 			pScene->getSceneGraph()->attachLeaf(node, instance);
-		}
-
-		if (params.contains("meshes")) {
-			for (auto m : params.at("meshes")) {
-				std::string meshName = m.get<std::string>();
-				for (auto mesh : pScene->getMeshes()) {
-					if (mesh->getName() == meshName) 
-						mesh->setMedium(volume, mesh->outside);
+		} else {
+			// use existing meshes as its bound...
+			if (params.contains("meshes")) {
+				for (auto m : params.at("meshes")) {
+					std::string meshName = m.get<std::string>();
+					for (auto mesh : pScene->getMeshes()) {
+						if (mesh->getName() == meshName) mesh->setMedium(volume, mesh->outside);
+					}
+				}
+			}
+			if (params.contains("meshes_outside")) {
+				for (auto m : params.at("meshes_outside")) {
+					std::string meshName = m.get<std::string>();
+					for (auto mesh : pScene->getMeshes()) {
+						if (mesh->getName() == meshName) mesh->setMedium(mesh->inside, volume);
+					}
 				}
 			}
 		}
 
-		if (params.contains("meshes_outside")) {
-			for (auto m : params.at("meshes_outside")) {
-				std::string meshName = m.get<std::string>();
-				for (auto mesh : pScene->getMeshes()) {
-					if (mesh->getName() == meshName) 
-						mesh->setMedium(mesh->inside, volume);
-				}
-			}
-		}
-	
 		return true;
 	} else if (type == "heterogeneous") {
 		if (params.contains("file")) {
@@ -152,7 +150,7 @@ void SceneImporter::loadMedia(const json& j, Scene::SharedPtr scene) {
 		return;
 	}
 	auto root			= scene->getSceneGraph()->getRoot();
-	auto mediaContainer = std::make_shared<SceneGraphNode>("Material Container");
+	auto mediaContainer = std::make_shared<SceneGraphNode>("Media Container");
 	scene->getSceneGraph()->attach(root, mediaContainer);
 	for (auto m : j) {
 		loadMedium(scene, mediaContainer, m.at("params"));
