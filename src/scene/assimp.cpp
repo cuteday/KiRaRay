@@ -166,16 +166,17 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 	}
 
 	// Emissive color
+	RGB emissive = Vector3f::Zero();
 	if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
-		RGB emissive = Vector3f(color[0], color[1], color[2]);
-		float strength = 1;
-		if (pAiMaterial->Get(AI_MATKEY_EMISSIVE_INTENSITY, strength) == AI_SUCCESS) {
-			emissive *= strength;
-		}
-		if (emissive.any()) {
-			pMaterial->setConstantTexture(Material::TextureType::Emissive,
-										  RGBA(emissive, 1));
-		}
+		emissive = RGB(color[0], color[1], color[2]);
+	}
+	float strength = 0;
+	if (pAiMaterial->Get(AI_MATKEY_EMISSIVE_INTENSITY, strength) == AI_SUCCESS) {
+		emissive *= strength;
+	}
+	if (emissive.any()) {
+		Log(Info, "Found a light with strength %f; emission %s", strength, emissive.string().c_str());
+		pMaterial->setConstantTexture(Material::TextureType::Emissive, RGBA(emissive, 1));
 	}
 
 	// Double-Sided

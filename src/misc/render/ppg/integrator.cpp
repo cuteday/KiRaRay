@@ -28,7 +28,6 @@ void PPGPathTracer::resize(const Vector2i& size) {
 
 void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 	mScene = scene;
-	initialize();
 	if (!backend) {
 		backend		= new OptixBackend();
 		auto params = OptixInitializeParameters()
