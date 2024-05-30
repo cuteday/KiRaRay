@@ -327,7 +327,7 @@ void RGBColorSpace::init(Allocator alloc) {
 	using namespace spec;
 	// Rec. ITU-R BT.709.3
 	sRGB = alloc.new_object<RGBColorSpace>(
-		Point2f(.64, .33), Point2f(.3, .6), Point2f(.15, .06), getNamedSpectrum("stdillum-F2"),
+		Point2f(.64, .33), Point2f(.3, .6), Point2f(.15, .06), getNamedSpectrum("stdillum-D65"),
 		RGBToSpectrumTable::sRGB, spec::x, spec::y, spec::z, alloc);
 	// P3-D65 (display)
 	DCI_P3 = alloc.new_object<RGBColorSpace>(
