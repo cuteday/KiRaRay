@@ -26,7 +26,7 @@ public:
 
 	SceneGraphNode *getNode() const { return mNode.lock().get(); }
 	std::shared_ptr<SceneGraphNode> getNodeSharedPtr() const { return mNode.lock(); }
-	virtual AABB getLocalBoundingBox() const { return {}; }
+	virtual AABB getLocalBoundingBox() const { return AABB::Zero(); }
 	virtual std::shared_ptr<SceneGraphLeaf> clone() = 0;
 	virtual void renderUI() {}
 	virtual ContentFlags getContentFlags() const { return ContentFlags::None; }
@@ -126,7 +126,7 @@ private:
 	Quaternionf mRotation = Quaternionf::Identity();
 	Vector3f mScaling	  = Vector3f::Ones();
 	Vector3f mTranslation = Vector3f::Zero();
-	AABB3f mGlobalBoundingBox;
+	AABB3f mGlobalBoundingBox = AABB3f::Zero();
 	bool mHasLocalTransform{false};
 	
 	UpdateFlags mUpdateFlags = UpdateFlags::None;

@@ -166,16 +166,17 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 	}
 
 	// Emissive color
+	RGB emissive = Vector3f::Zero();
 	if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
-		RGB emissive = Vector3f(color[0], color[1], color[2]);
-		float strength = 1;
-		if (pAiMaterial->Get(AI_MATKEY_EMISSIVE_INTENSITY, strength) == AI_SUCCESS) {
-			emissive *= strength;
-		}
-		if (emissive.any()) {
-			pMaterial->setConstantTexture(Material::TextureType::Emissive,
-										  RGBA(emissive, 1));
-		}
+		emissive = RGB(color[0], color[1], color[2]);
+	}
+	float strength = 0;
+	if (pAiMaterial->Get(AI_MATKEY_EMISSIVE_INTENSITY, strength) == AI_SUCCESS) {
+		emissive *= strength;
+	}
+	if (emissive.any()) {
+		Log(Info, "Found a light with strength %f; emission %s", strength, emissive.string().c_str());
+		pMaterial->setConstantTexture(Material::TextureType::Emissive, RGBA(emissive, 1));
 	}
 
 	// Double-Sided
@@ -247,8 +248,8 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 	unsigned int postProcessSteps = 0 
 									| aiProcess_CalcTangentSpace
 									| aiProcess_FindDegenerates
-									| aiProcess_OptimizeMeshes
-									| aiProcess_OptimizeGraph
+									//| aiProcess_OptimizeMeshes
+									//| aiProcess_OptimizeGraph
 									| aiProcess_JoinIdenticalVertices 
 									| aiProcess_FindInvalidData
 									//| aiProcess_MakeLeftHanded
@@ -265,7 +266,7 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 									| aiProcess_FlipUVs
 									//| aiProcess_FlipWindingOrder 
 									| aiProcess_GenBoundingBoxes
-									| aiProcess_FindInstances
+									//| aiProcess_FindInstances
 									| aiProcess_ImproveCacheLocality;
 	/* [TODO] aiProcess_OptimizeGraph is disabled, since I found sometimes 
 	   it merges different transformations into one... WHY? */
@@ -309,7 +310,6 @@ bool AssimpImporter::import(const fs::path filepath, const Scene::SharedPtr scen
 	node->setName(filepath.filename().string());
 	scene->getSceneGraph()->attach(root, node);
 	mRootNode = root;
-
 	loadMaterials(modelFolder);
 	loadMeshes();
 	traverseNode(mAiScene->mRootNode, node);
