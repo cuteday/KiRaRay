@@ -7,6 +7,7 @@
 
 #include <thrust/sort.h>
 #include <thrust/transform_reduce.h>
+#include <thrust/functional.h>
 #include <thrust/execution_policy.h>
 
 #define METRIC_IN_SRGB					0
@@ -89,6 +90,15 @@ KRR_CALLABLE float rel_mse(const RGB &y, const RGB &ref) {
 	}
 }
 
+template <typename T> struct clamp_max_value {
+	KRR_CALLABLE T operator()(const T &x) const {
+#if CLAMP_PIXEL_ERROR
+		return min(x, CLAMP_PIXEL_ERROR_THRESHOLD);
+#endif
+		return x;
+	}
+};
+
 float calc_metric(const CudaRenderTarget & frame, const RGBA *reference, 
 	size_t n_elements, ErrorMetric metric) {
 	float *error_buffer = initialize_metric(n_elements);
@@ -123,15 +133,10 @@ float calc_metric(const CudaRenderTarget & frame, const RGBA *reference,
 	n_elements = n_elements * (1.f - DISCARD_FIREFLIES_PRECENTAGE);
 #endif
 
-	return thrust::transform_reduce(
-			   thrust::device.on(KRR_DEFAULT_STREAM), 
-				error_buffer, error_buffer + n_elements,
-				[] KRR_DEVICE(const float &val) -> float {
-#if CLAMP_PIXEL_ERROR 
-					return min(val, CLAMP_PIXEL_ERROR_THRESHOLD);
-#endif
-					return val;
-				}, 0.f, thrust::plus<float>()) / n_elements;
+	return thrust::transform_reduce(thrust::device.on(KRR_DEFAULT_STREAM), error_buffer,
+									error_buffer + n_elements, clamp_max_value<float>(), 0.f,
+									thrust::plus<float>()) /
+		   n_elements;
 }
 
 NAMESPACE_END(krr)

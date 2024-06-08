@@ -29,7 +29,7 @@ OPTION (KRR_BUILD_EXAMPLES
 
 OPTION (KRR_RENDER_SPECTRAL 
 	"Build the spectral variant of the renderer (WIP)."
-	OFF
+	ON
 )
 
 ###############################################################################

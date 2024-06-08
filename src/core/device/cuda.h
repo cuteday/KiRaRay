@@ -69,6 +69,23 @@ inline int GetBlockSize(F kernel) {
 	return blockSize;
 }
 
+template <typename F> inline int2 GetBlockSizeAndMinGridSize(F kernel) {
+	// https://developer.nvidia.com/blog/cuda-pro-tip-occupancy-api-simplifies-launch-configuration/
+	static std::map<std::type_index, int2> kernelBlockSizesAndMinGridSize;
+
+	std::type_index index = std::type_index(typeid(F));
+
+	auto iter = kernelBlockSizesAndMinGridSize.find(index);
+	if (iter != kernelBlockSizesAndMinGridSize.end()) return iter->second;
+
+	int minGridSize, blockSize;
+	CUDA_CHECK(cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, kernel, 0, 0));
+
+	int2 ret							  = make_int2(blockSize, minGridSize);
+	kernelBlockSizesAndMinGridSize[index] = ret;
+	return ret;
+}
+
 template <typename F>
 void GPUParallelFor(int nElements, F func, CUstream stream = 0);
 

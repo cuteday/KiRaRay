@@ -1,0 +1,65 @@
+flat int;
+flat uint;
+flat float;
+flat BSDFType;
+flat bool;
+flat double;
+
+flat Light;
+flat Medium;
+flat PhaseFunction;
+flat MaterialType;
+flat LCGSampler;
+flat PCGSampler;
+flat HaltonSampler;
+flat SampledChannel;
+flat Spectrum;
+flat SampledWavelengths;
+
+flat RGB;
+flat RGBA;
+flat Vector2f;
+flat Vector3f;
+
+struct LightSampleContext {
+	Vector3f p, n;
+};
+
+struct MediumInterface {
+	Medium inside;
+	Medium outside;
+};
+
+struct Ray {
+	Vector3f origin;
+	Vector3f dir;
+	float time;
+	Medium medium;
+};
+
+struct BSDFData {
+	float IoR;
+	Spectrum diffuse;
+	Spectrum specular;
+	float specularTransmission;
+	float roughness;
+	float metallic;
+	float anisotropic;
+	MaterialType bsdfType;
+};
+
+struct SurfaceInteraction {
+	Vector3f p;
+	Vector3f wo;
+	Vector3f n;
+	Vector2f uv;
+	float time;
+	const MediumInterface *mediumInterface;
+	const MaterialData *material;
+	Medium medium;
+	Vector3f tangent;
+	Vector3f bitangent;
+	SampledWavelengths lambda;
+	Light light;
+	BSDFData sd;
+};

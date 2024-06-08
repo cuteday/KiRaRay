@@ -429,14 +429,15 @@ OptixSceneMultiLevel::getMotionKeyframes(SceneGraphNode *node) {
 		memset(&srt, 0, sizeof(OptixSRTData)); /* memset(0) is necessary to initialize the coeffs! */
 		std::optional<Array4f> v;
 		Vector3f scale, translate;
-		Quaternionf rotate;
+		// Quaternionf rotate;
 		/* if one attribute has no keyframes, it will return default values. */
 		v		  = scaleSampler.evaluate(time, true);
 		scale	  = v.has_value() ? Vector3f(v->x(), v->y(), v->z()) : node->getScaling();
 		v		  = translateSampler.evaluate(time, true);
 		translate = v.has_value() ? Vector3f(v->x(), v->y(), v->z()) : node->getTranslation();
 		v		  = rotateSampler.evaluate(time, true);
-		rotate	  = v.has_value() ? Quaternionf(v->w(), v->x(), v->y(), v->z()) : node->getRotation();
+		Quaternionf rotate =
+			v.has_value() ? Quaternionf(v->w(), v->x(), v->y(), v->z()) : node->getRotation();
 		/* cast data to optix srt datatype. */
 		srt.qw = rotate.w(), srt.qx = rotate.x(), srt.qy = rotate.y(), srt.qz = rotate.z();
 		srt.tx = translate.x(), srt.ty = translate.y(), srt.tz = translate.z();
