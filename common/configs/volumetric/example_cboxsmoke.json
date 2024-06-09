@@ -25,7 +25,7 @@
 			"enable": true,
 			"name": "ToneMappingPass",
 			"params": {
-				"exposure": 5,
+				"exposure": 0.5,
 				"operator": "aces"
 			}
 		}
