@@ -70,8 +70,10 @@ public:
 		size_t n_pixels = m_size[0] * m_size[1]; 
 		CUDABuffer tmp(n_pixels * sizeof(Pixel));
 		Pixel *pixels_device = reinterpret_cast<Pixel *>(tmp.data());
+#ifdef __NVCC__
 		thrust::transform(thrust::device, m_data.data(), m_data.data() + n_pixels, pixels_device,
 						  [] KRR_DEVICE(const WeightedPixel &d) -> Pixel { return d.pixel / d.weight; });
+#endif
 		Image frame(m_size, Image::Format::RGBAfloat, false);
 		tmp.copy_to_host(frame.data(), n_pixels * sizeof(RGBA));
 		frame.saveImage(filepath, true);

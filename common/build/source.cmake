@@ -26,7 +26,7 @@ SET ( KRR_CORE_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/core/device/gpustd.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/device/context.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/device/optix.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/device/scene.cpp	
+	${KRR_RENDER_SOURCE_DIR}/core/device/scene.cpp
 )
 
 SET (KRR_RENDER_PASSES
@@ -79,52 +79,17 @@ SET (KRR_SOURCE_VULKAN
 	${KRR_RENDER_SOURCE_DIR}/core/vulkan/textureloader.cpp
 )
 
-# some files are set to be compiled by nvcc so cuda can resolve 
-# the symbols that are defined within these .cpp files.
-SET_SOURCE_FILES_PROPERTIES(
-	${KRR_RENDER_SOURCE_DIR}/core/camera.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/device/context.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/device/optix.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/device/scene.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/light.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/mesh.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/python/py.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/renderpass.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/scene.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/scenegraph.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/texture.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/vulkan/scene.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/vulkan/textureloader.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/vulkan/uirender.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/window.cpp
-	
-	${KRR_RENDER_SOURCE_DIR}/scene/assimp.cpp
-	${KRR_RENDER_SOURCE_DIR}/scene/krrscene.cpp
-	${KRR_RENDER_SOURCE_DIR}/scene/openvdb.cpp
-	${KRR_RENDER_SOURCE_DIR}/scene/pbrt.cpp
-
-	${KRR_RENDER_SOURCE_DIR}/util/tables.cpp
-	
-	${KRR_RENDER_SOURCE_DIR}/main/renderer.cpp
-	${KRR_RENDER_SOURCE_DIR}/main/kiraray.cpp
-
-	PROPERTIES LANGUAGE CUDA
-)
-
 SET_SOURCE_FILES_PROPERTIES (
-	${KRR_RENDER_SOURCE_DIR}/render/bdpt/integrator.cpp
-	${KRR_RENDER_SOURCE_DIR}/render/color.cpp
+	# some files are set to be compiled by nvcc so cuda can resolve 
+	# the symbols that are defined within these .cpp files.
+	${KRR_RENDER_SOURCE_DIR}/core/light.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/media.cpp
-	${KRR_RENDER_SOURCE_DIR}/render/passes/denoise/denoise.cpp
-	${KRR_RENDER_SOURCE_DIR}/render/passes/errormeasure/errormeasure.cpp
-	${KRR_RENDER_SOURCE_DIR}/render/passes/gbuffer/gbuffer.cpp
-	${KRR_RENDER_SOURCE_DIR}/render/path/pathtracer.cpp
-	${KRR_RENDER_SOURCE_DIR}/render/profiler/profiler.cpp
-	${KRR_RENDER_SOURCE_DIR}/render/profiler/ui.cpp
-	${KRR_RENDER_SOURCE_DIR}/render/rasterize/bindless.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/color.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/spectrum.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/wavefront/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/wavefront/medium.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/passes/denoise/denoise.cpp
+	${KRR_RENDER_SOURCE_DIR}/util/tables.cpp
 	PROPERTIES LANGUAGE CUDA
 )
 
@@ -141,18 +106,12 @@ add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/render/wavefront/wor
     COMMAND soac ${KRR_RENDER_SOURCE_DIR}/render/wavefront/workitem.soa > ${KRR_RENDER_BINARY_DIR}/include/render/wavefront/workitem_soa.h
     DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/render/wavefront/workitem.soa)
 
-add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/render/wavefront/basic_soa.h
-    COMMAND soac ${KRR_RENDER_SOURCE_DIR}/render/wavefront/basic.soa > ${KRR_RENDER_BINARY_DIR}/include/render/wavefront/basic_soa.h
-    DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/render/wavefront/basic.soa)
-
 add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/render/bdpt/workitem_soa.h
     COMMAND soac ${KRR_RENDER_SOURCE_DIR}/render/bdpt/workitem.soa > ${KRR_RENDER_BINARY_DIR}/include/render/bdpt/workitem_soa.h
     DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/render/bdpt/workitem.soa)
 
-
 set (KRR_SOA_GENERATED 
 	${KRR_RENDER_BINARY_DIR}/include/render/wavefront/workitem_soa.h
-	${KRR_RENDER_BINARY_DIR}/include/render/wavefront/basic_soa.h
 	${KRR_RENDER_BINARY_DIR}/include/render/bdpt/workitem_soa.h
 )
 
@@ -183,10 +142,12 @@ SET(KRR_SOURCE
 	${KRR_SOURCE}
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/treemanip.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/medium.cpp
 )
 
 SET_SOURCE_FILES_PROPERTIES (
 	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/integrator.cpp
+	${KRR_RENDER_SOURCE_DIR}/misc/render/ppg/medium.cpp
 	PROPERTIES LANGUAGE CUDA
 )
 

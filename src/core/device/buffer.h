@@ -2,9 +2,10 @@
 #include <vector>
 #include <assert.h>
 #include <cuda.h>
+#ifdef __NVCC__
 #include <thrust/transform.h>
 #include <thrust/execution_policy.h>
-
+#endif
 #include "common.h"
 #include "device/cuda.h"
 #include "device/gpustd.h"
@@ -167,8 +168,10 @@ public:
 
 	template <typename F> 
 	KRR_HOST void for_each(F&& func, CUstream stream = 0) {
+#ifdef __NVCC__
 		thrust::transform(thrust::device.on(stream), d_ptr, d_ptr + m_size, d_ptr, 
 			[func] KRR_DEVICE(const T &val) mutable { return func(val); });
+#endif
 	}
 
 	KRR_CALLABLE size_t size() const { return m_size; }
