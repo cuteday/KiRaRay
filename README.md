@@ -27,7 +27,7 @@
 #### Requirements
 
 - Nvidia RTX GPU (Turing or higher).
-- [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix) **7.3+** and [CUDA](https://developer.nvidia.com/cuda-toolkit) **11.4+**.
+- [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix) **7.3+** and [CUDA](https://developer.nvidia.com/cuda-toolkit) **11.4+** (current develop environment: OptiX 8 and CUDA 12).
 - [Vulkan SDK](https://vulkan.lunarg.com/) **1.3+**.
 
 This project is developed with on Windows (MSVC). It cannot compile on Linux. 

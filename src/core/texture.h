@@ -2,9 +2,10 @@
 #pragma once
 #include <map>
 #include <cuda_runtime.h>
+#ifdef __NVCC__
 #include <thrust/transform.h>
 #include <thrust/execution_policy.h>
-
+#endif
 #include "common.h"
 
 #include "file.h"
@@ -61,6 +62,7 @@ template <typename F> void Image::process(F func) {
 	CHECK_LOG(4 == mChannels, "Only support channel == 4 currently!");
 	size_t data_size = getElementSize();
 	size_t n_pixels	 = mSize[0] * mSize[1];
+#ifdef __NVCC__
 	if (data_size == sizeof(float)) {
 		using PixelType = Array<float, 4>;
 		auto *pixels	= reinterpret_cast<PixelType *>(mData);
@@ -74,6 +76,7 @@ template <typename F> void Image::process(F func) {
 						  [=](auto pixel) { return func(pixel); });
 	}
 	else Log(Error, "Permute channels not implemented yet :-(");
+#endif
 }
 
 class Texture {
