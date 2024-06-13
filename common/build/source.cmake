@@ -107,15 +107,19 @@ add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/render/wavefront/wor
     COMMAND soac ${KRR_RENDER_SOURCE_DIR}/render/wavefront/workitem.soa > ${KRR_RENDER_BINARY_DIR}/include/render/wavefront/workitem_soa.h
     DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/render/wavefront/workitem.soa)
 
+add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/render/wavefront/basic_soa.h
+    COMMAND soac ${KRR_RENDER_SOURCE_DIR}/render/wavefront/basic.soa > ${KRR_RENDER_BINARY_DIR}/include/render/wavefront/basic_soa.h
+    DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/render/wavefront/basic.soa)
+
 add_custom_command (OUTPUT ${KRR_RENDER_BINARY_DIR}/include/render/bdpt/workitem_soa.h
     COMMAND soac ${KRR_RENDER_SOURCE_DIR}/render/bdpt/workitem.soa > ${KRR_RENDER_BINARY_DIR}/include/render/bdpt/workitem_soa.h
     DEPENDS soac ${KRR_RENDER_SOURCE_DIR}/render/bdpt/workitem.soa)
 
 set (KRR_SOA_GENERATED 
 	${KRR_RENDER_BINARY_DIR}/include/render/wavefront/workitem_soa.h
+	${KRR_RENDER_BINARY_DIR}/include/render/wavefront/basic_soa.h
 	${KRR_RENDER_BINARY_DIR}/include/render/bdpt/workitem_soa.h
 )
-
 ###############################################################################
 # generating PTX code from optix shader routines
 ###############################################################################
