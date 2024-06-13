@@ -366,9 +366,14 @@ void SceneGraph::update(size_t frameIndex) {
 		// (or an empty box if there is no leaf)
 		if ((current->getUpdateFlags() & (SceneGraphNode::UpdateFlags::SubgraphStructure |
 			SceneGraphNode::UpdateFlags::SubgraphTransform)) != 0 || context.superGraphTransformUpdated){
-			current->mGlobalBoundingBox = AABB{};
+			current->mGlobalBoundingBox = AABB::Zero();
 			if (current->getLeaf()) {
 				AABB localBoundingBox = current->getLeaf()->getLocalBoundingBox();	
+				if (abs(localBoundingBox.min().minCoeff()) > 1e4 ||
+					abs(localBoundingBox.max().maxCoeff()) > 1e4) {
+					Log(Warning, "Local bounding box of %s is too large",
+						current->getName().c_str());
+				}
 				current->mGlobalBoundingBox = localBoundingBox.transformed(current->getGlobalTransform());
 			}
 		}
@@ -393,12 +398,19 @@ void SceneGraph::update(size_t frameIndex) {
 			context.superGraphTransformUpdated |= currentTransformUpdated;
 		} else {	// either goes to a sibling, or a child.
 			if (parent) {	// in either case, the parent's bbox needs to be updated.
+				if (abs(current->getGlobalBoundingBox().min().minCoeff()) > 1e4 || 
+					abs(current->getGlobalBoundingBox().max().maxCoeff()) > 1e4) {
+					Log(Warning, "Global bounding box of %s will be too large", parent->getName().c_str());
+				}
 				parent->mGlobalBoundingBox.extend(current->getGlobalBoundingBox());
 				parent->mUpdateFlags = current->getUpdateFlags() & SceneGraphNode::UpdateFlags::SubgraphUpdates;
 			}
 
 			while (deltaDepth++ < 0) {
-				DCHECK(parent);
+				if (!parent) {
+					Log(Error, "Parent node is null, but the depth is negative...");
+					break;
+				}
 				current = parent;
 				parent	= current->getParent();
 

@@ -9,6 +9,7 @@ static bool sSaveHDR			 = false;
 static bool sSaveFrames			 = false;
 static bool sLockCamera			 = false;
 static bool sRequestScreenshot	 = false;
+static Vector2ui sCursorPos		 = Vector2ui::Zero();
 static bool sUIAlphaOff			 = false;
 static size_t sSaveFrameInterval = 2;
 }
@@ -32,6 +33,10 @@ void RenderApp::backBufferResized() {
 }
 
 bool RenderApp::onMouseEvent(io::MouseEvent &mouseEvent) {
+	if (io::MouseEvent::Type::Move == mouseEvent.type) {
+		sCursorPos[0] = mouseEvent.pos[0] * mDeviceParams.backBufferWidth;
+		sCursorPos[1] = mouseEvent.pos[1] * mDeviceParams.backBufferHeight;
+	}
 	if (mpUIRenderer->onMouseEvent(mouseEvent)) return true;
 	if (DeviceManager::onMouseEvent(mouseEvent)) return true;
 	if (!sLockCamera && mScene && mScene->onMouseEvent(mouseEvent)) return true;
@@ -121,6 +126,7 @@ void RenderApp::renderUI() {
 	static bool showProfiler{};
 	static bool showFps{ true };
 	static bool showDashboard{ true };
+	static bool showCursorPos{ false };
 	Profiler::instance().setEnabled(showProfiler);
 	if (!sShowUI) return;
 	if (!sUIAlphaOff) {
@@ -135,6 +141,7 @@ void RenderApp::renderUI() {
 			ui::MenuItem("Global UI", NULL, &sShowUI);
 			ui::MenuItem("Dashboard", NULL, &showDashboard);
 			ui::MenuItem("FPS Counter", NULL, &showFps);
+			ui::MenuItem("Show Cursor", NULL, &showCursorPos);
 			ui::MenuItem("Profiler", NULL, &showProfiler);
 			ui::EndMenu();
 		}
@@ -149,6 +156,8 @@ void RenderApp::renderUI() {
 			ui::MenuItem("UI Alpha Off", NULL, &sUIAlphaOff);
 			ui::EndMenu();
 		}
+		if (showCursorPos)
+			ui::BeginMenu(formatString("[%d, %d]", sCursorPos[0], sCursorPos[1]).c_str(), false);
 		if (showFps) 
 			ui::BeginMenu(formatString("FPS: %.0lf", 
 				1.0 / getAverageFrameTimeSeconds()).c_str(), false);

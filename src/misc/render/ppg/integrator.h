@@ -36,6 +36,7 @@ public:
 	void generateScatterRays(int depth);
 	void traceClosest(int depth);
 	void traceShadow();
+	void sampleMediumInteraction(int depth);
 
 	/* params:
 	 *	wi: scatter direction in local shading frame

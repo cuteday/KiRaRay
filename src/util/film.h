@@ -73,7 +73,7 @@ public:
 #ifdef __NVCC__
 		thrust::transform(thrust::device, m_data.data(), m_data.data() + n_pixels, pixels_device,
 						  [] KRR_DEVICE(const WeightedPixel &d) -> Pixel { return d.pixel / d.weight; });
-#endif
+#endif 
 		Image frame(m_size, Image::Format::RGBAfloat, false);
 		tmp.copy_to_host(frame.data(), n_pixels * sizeof(RGBA));
 		frame.saveImage(filepath, true);

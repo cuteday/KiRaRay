@@ -148,8 +148,7 @@ public:
 	using SharedPtr = std::shared_ptr<HomogeneousVolume>;
 
 	HomogeneousVolume(RGB sigma_t, RGB albedo, float g, RGB Le = RGB::Zero(), 
-		AABB boundingBox = AABB{std::numeric_limits<float>::max(),
-								std::numeric_limits<float>::min()}) :
+		AABB boundingBox = AABB::Zero()) :
 		Volume(sigma_t, albedo, g), Le(Le), boundingBox(boundingBox) {}
 
 	std::shared_ptr<SceneGraphLeaf> clone() override;
@@ -159,7 +158,7 @@ public:
 	bool isEmissive() const { return !Le.isZero(); }
 
 	RGB Le;
-	AABB boundingBox;
+	AABB boundingBox = AABB::Zero();
 
 private:
 	friend class SceneGraph;

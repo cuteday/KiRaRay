@@ -1,5 +1,4 @@
 #pragma once
-#pragma init_seg(lib)
 #include <nvrhi/vulkan.h>
 #include <vulkan/cuvk.h>
 

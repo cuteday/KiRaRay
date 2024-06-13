@@ -129,10 +129,9 @@ float calc_metric(CudaRenderTarget &frame, const RGBA *reference, size_t n_eleme
 	n_elements = n_elements * (1.f - DISCARD_FIREFLIES_PRECENTAGE);
 #endif
 
-	return thrust::transform_reduce(
-			   thrust::device.on(KRR_DEFAULT_STREAM), 
+	return thrust::transform_reduce(thrust::device, 
 				error_buffer, error_buffer + n_elements,
-				[] KRR_HOST_DEVICE(const float &val) -> float {
+				[] KRR_HOST_DEVICE (const float &val) -> float {
 #if CLAMP_PIXEL_ERROR 
 					return min(val, CLAMP_PIXEL_ERROR_THRESHOLD);
 #endif

@@ -6,6 +6,7 @@
 #include <thrust/transform.h>
 #include <thrust/execution_policy.h>
 #endif
+
 #include "common.h"
 #include "device/cuda.h"
 #include "device/gpustd.h"

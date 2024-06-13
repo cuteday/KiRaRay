@@ -27,6 +27,7 @@ public:
 	string getName() const override { return "AccumulatePass"; }
 	void render(RenderContext *context) override;
 	void endFrame(RenderContext *context) override;
+	void saveImage(fs::path path);
 
 private:
 	void reset();
@@ -40,7 +41,8 @@ private:
 			{ "task", p.mTask }, 
 			{ "precision", p.mPrecision },
 			{ "save_on_finish", p.mSaveOnFinish }, 
-			{ "exit_on_finish", p.mExitOnFinish}
+			{ "exit_on_finish", p.mExitOnFinish },
+			{ "save_every", p.mSaveEvery }
 		};
 	}
 
@@ -51,6 +53,7 @@ private:
 		p.mPrecision	 = j.value("precision", Precision::Float);
 		p.mSaveOnFinish  = j.value("save_on_finish", false);
 		p.mExitOnFinish  = j.value("exit_on_finish", false);
+		p.mSaveEvery	 = j.value("save_every", 0U);
 		if (j.contains("task"))  j.at("task").get_to(p.mTask);
 		
 	}
@@ -60,6 +63,7 @@ private:
 	Precision mPrecision { Precision::Float };
 	uint mMaxAccumCount{0U};
 	float mMaxAccumTime{0.f};
+	uint mSaveEvery{ 0U };
 	CUDABuffer *mAccumBuffer;
 	RenderTask mTask;
 	bool mSaveOnFinish{}, mExitOnFinish{};

@@ -73,8 +73,8 @@ bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPt
 		auto sigma_t = params.value<Array3f>("sigma_t", Array3f{1, 1, 1});
 		auto albedo	 = params.value<Array3f>("albedo", Array3f{0.5, 0.5, 0.5});
 		auto g		 = params.value<float>("g", 0.f);
-		auto Le		 = params.value<Array3f>("Le", Array3f{0, 0, 0});
-		auto aabb	 = params.value<AABB3f>("bound", AABB3f{0, 0});
+		auto Le		 = params.value<Array3f>("Le", Array3f::Zero());
+		auto aabb	 = params.value<AABB3f>("bound", AABB3f::Zero());
 
 		if (params.contains("sigma_a") || params.contains("sigma_s")) {
 			// backward compatibility
@@ -84,29 +84,52 @@ bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPt
 			albedo		 = sigma_s / sigma_t;
 		}
 
-		auto mesh		= std::make_shared<Mesh>();
-		auto instance	= std::make_shared<MeshInstance>(mesh);
-		auto volume		= std::make_shared<HomogeneousVolume>(sigma_t, albedo, g, Le, aabb);
-		mesh->indices	= {{4, 2, 0}, {2, 7, 3}, {6, 5, 7}, {1, 7, 5}, {0, 3, 1}, {4, 1, 5},
-						   {4, 6, 2}, {2, 6, 7}, {6, 4, 5}, {1, 3, 7}, {0, 2, 3}, {4, 0, 1}};
-		mesh->positions = {
-			{aabb.max()[0], aabb.max()[1], aabb.min()[2]},
-			{aabb.max()[0], aabb.min()[1], aabb.min()[2]},
-			{aabb.max()[0], aabb.max()[1], aabb.max()[2]},
-			{aabb.max()[0], aabb.min()[1], aabb.max()[2]},
-			{aabb.min()[0], aabb.max()[1], aabb.min()[2]},
-			{aabb.min()[0], aabb.min()[1], aabb.min()[2]},
-			{aabb.min()[0], aabb.max()[1], aabb.max()[2]},
-			{aabb.min()[0], aabb.min()[1], aabb.max()[2]},
-		};
-
-		mesh->setName("Medium box");
-		mesh->setMaterial(nullptr);
-		mesh->setMedium(volume, nullptr);
-		mesh->computeBoundingBox();
-		pScene->addMesh(mesh);
-		pScene->getSceneGraph()->attachLeaf(node, instance);
+		auto volume = std::make_shared<HomogeneousVolume>(sigma_t, albedo, g, Le, aabb);
 		pScene->getSceneGraph()->attachLeaf(node, volume);
+
+		if (params.contains("bound")) {
+			auto mesh		= std::make_shared<Mesh>();
+			auto instance	= std::make_shared<MeshInstance>(mesh);
+			
+			mesh->indices	= {{4, 2, 0}, {2, 7, 3}, {6, 5, 7}, {1, 7, 5}, {0, 3, 1}, {4, 1, 5},
+							   {4, 6, 2}, {2, 6, 7}, {6, 4, 5}, {1, 3, 7}, {0, 2, 3}, {4, 0, 1}};
+			mesh->positions = {
+				{aabb.max()[0], aabb.max()[1], aabb.min()[2]},
+				{aabb.max()[0], aabb.min()[1], aabb.min()[2]},
+				{aabb.max()[0], aabb.max()[1], aabb.max()[2]},
+				{aabb.max()[0], aabb.min()[1], aabb.max()[2]},
+				{aabb.min()[0], aabb.max()[1], aabb.min()[2]},
+				{aabb.min()[0], aabb.min()[1], aabb.min()[2]},
+				{aabb.min()[0], aabb.max()[1], aabb.max()[2]},
+				{aabb.min()[0], aabb.min()[1], aabb.max()[2]},
+			};
+
+			mesh->setName("Medium box");
+			mesh->setMaterial(nullptr);
+			mesh->setMedium(volume, nullptr);
+			mesh->computeBoundingBox();
+			pScene->addMesh(mesh);
+			pScene->getSceneGraph()->attachLeaf(node, instance);
+		} else {
+			// use existing meshes as its bound...
+			if (params.contains("meshes")) {
+				for (auto m : params.at("meshes")) {
+					std::string meshName = m.get<std::string>();
+					for (auto mesh : pScene->getMeshes()) {
+						if (mesh->getName() == meshName) mesh->setMedium(volume, mesh->outside);
+					}
+				}
+			}
+			if (params.contains("meshes_outside")) {
+				for (auto m : params.at("meshes_outside")) {
+					std::string meshName = m.get<std::string>();
+					for (auto mesh : pScene->getMeshes()) {
+						if (mesh->getName() == meshName) mesh->setMedium(mesh->inside, volume);
+					}
+				}
+			}
+		}
+
 		return true;
 	} else if (type == "heterogeneous") {
 		if (params.contains("file")) {
@@ -118,6 +141,19 @@ bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPt
 	} else {
 			Log(Error, "Unsupported medium type: %s", type.c_str());
 			return false;
+	}
+}
+
+void SceneImporter::loadMedia(const json& j, Scene::SharedPtr scene) {
+	if (j.type() != json::value_t::array) {
+		Log(Error, "Media must be an json array of a list of individual media!");
+		return;
+	}
+	auto root			= scene->getSceneGraph()->getRoot();
+	auto mediaContainer = std::make_shared<SceneGraphNode>("Media Container");
+	scene->getSceneGraph()->attach(root, mediaContainer);
+	for (auto m : j) {
+		loadMedium(scene, mediaContainer, m.at("params"));
 	}
 }
 
@@ -150,6 +186,9 @@ void SceneImporter::loadMaterials(const json& j, Scene::SharedPtr scene) {
 				Log(Error, "Unsupported spectrum type: %s", type.c_str());
 				return nullptr;
 			}
+		}else {
+			Log(Error, "Unsupported parameter type: %s", j.dump().c_str());
+			return nullptr;
 		}
 	};
 
@@ -248,6 +287,10 @@ bool SceneImporter::import(const json &j, Scene::SharedPtr scene, SceneGraphNode
 
 	if (j.contains("model")) {
 		importNode(j.at("model"), scene, node, params);
+	}
+
+	if (j.contains("media")) {
+		loadMedia(j.at("media"), scene);
 	}
 
 	if (j.contains("materials")) {

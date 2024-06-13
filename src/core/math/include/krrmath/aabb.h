@@ -31,6 +31,9 @@ public:
 	KRR_CALLABLE AxisAligned operator*(const Eigen::Transform<T, Size, Mode, Options> & t) 
 	{ return this->transformed(t); }
 
+	KRR_CALLABLE static AxisAligned Zero() {
+		return Eigen::AlignedBox<T, Size>(VectorType::Zero(), VectorType::Zero());
+	}
 	KRR_CALLABLE VectorType min() const { return Eigen::AlignedBox<T, Size>::min(); }
 	KRR_CALLABLE VectorType max() const { return Eigen::AlignedBox<T, Size>::max(); }
 
