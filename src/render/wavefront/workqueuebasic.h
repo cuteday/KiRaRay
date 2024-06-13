@@ -47,6 +47,11 @@ public:
 		return index;
 	}
 
+    KRR_CALLABLE int allocAll(uint32_t n) {
+		int index = m_size.fetch_add(n);
+		return index;
+	}
+
 protected:
 	KRR_CALLABLE int allocateEntry() { return m_size.fetch_add(1); }
 

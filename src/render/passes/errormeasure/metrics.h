@@ -13,6 +13,9 @@ KRR_ENUM_DEFINE(ErrorMetric, {
 	{ErrorMetric::RelMSE, "rel_mse"}
 });
 
-float calc_metric(const CudaRenderTarget& frame, const RGBA *reference, size_t n_elements, ErrorMetric metric);
-
+float calc_metric(CudaRenderTarget &frame, const RGBA *reference, size_t n_elements,
+				  ErrorMetric metric, const bool showPixelError, const bool jetOn,
+				  const float jetVMax);
+void writeErrorToRenderTarget(CudaRenderTarget &renderTarget, float *errorBuffer, size_t n_elements,
+							  const bool jetOn, const float jetVMax);
 NAMESPACE_END(krr)

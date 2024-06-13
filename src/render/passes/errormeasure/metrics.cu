@@ -20,6 +20,7 @@ KRR_DEVICE constexpr float ERROR_EPS					= 0;
 KRR_DEVICE constexpr float CLAMP_PIXEL_ERROR_THRESHOLD	= 100.f;
 KRR_DEVICE constexpr float DISCARD_FIREFLIES_PRECENTAGE = 0.0001;
 
+
 namespace {
 TypedBuffer<float> intermediateResult;
 
@@ -89,10 +90,11 @@ KRR_CALLABLE float rel_mse(const RGB &y, const RGB &ref) {
 	}
 }
 
-float calc_metric(const CudaRenderTarget & frame, const RGBA *reference, 
-	size_t n_elements, ErrorMetric metric) {
+float calc_metric(CudaRenderTarget &frame, const RGBA *reference, size_t n_elements,
+				  ErrorMetric metric, const bool showPixelError, const bool jetOn,
+				  const float jetVMax) {
 	float *error_buffer = initialize_metric(n_elements);
-	GPUParallelFor(n_elements, [=] KRR_DEVICE(int i) {	
+	GPUParallelFor(n_elements, [=] KRR_DEVICE(int i) {
 		RGB y = frame.read(i);
 		RGB ref = reference[i];
 #if METRIC_IN_SRGB
@@ -117,6 +119,10 @@ float calc_metric(const CudaRenderTarget & frame, const RGBA *reference,
 		error_buffer[i] = error;
 	}, KRR_DEFAULT_STREAM);
 
+	if (showPixelError) {
+		writeErrorToRenderTarget(frame, error_buffer, n_elements, jetOn, jetVMax);
+	}
+
 #if DISCARD_FIREFLIES
 	thrust::sort(thrust::device.on(KRR_DEFAULT_STREAM), error_buffer,
 				 error_buffer + n_elements);
@@ -134,4 +140,36 @@ float calc_metric(const CudaRenderTarget & frame, const RGBA *reference,
 				}, 0.f, thrust::plus<float>()) / n_elements;
 }
 
+
+void writeErrorToRenderTarget(CudaRenderTarget &renderTarget, float* errorBuffer, size_t n_elements, const bool jetOn,
+							  const float jetVMax) {
+	GPUParallelFor(
+		n_elements,
+		[=] KRR_DEVICE(int pixelId) mutable {
+			float v = errorBuffer[pixelId];
+			RGB c;
+			if (jetOn) {
+				// vMin = 0.f
+				// https://stackoverflow.com/questions/7706339/grayscale-to-red-green-blue-matlab-jet-color-scale
+				c = RGB(1.f, 1.f, 1.f);
+				if (v < (0.25 * jetVMax)) {
+					c[0] = 0;
+					c[1] = 4 * v / jetVMax;
+				} else if (v < (0.5 * jetVMax)) {
+					c[0] = 0;
+					c[2] = 1 + 4 * (0.25 * jetVMax - v) / jetVMax;
+				} else if (v < (0.75 * jetVMax)) {
+					c[0] = 4 * (v - 0.5 * jetVMax) / jetVMax;
+					c[2] = 0;
+				} else {
+					c[1] = 1 + 4 * (0.75 * jetVMax - v) / jetVMax;
+					c[2] = 0;
+				}
+			} else {
+				c = RGB(v, v, v);
+			}
+			renderTarget.write(RGBA(c, 1), pixelId);
+		},
+		KRR_DEFAULT_STREAM);
+}
 NAMESPACE_END(krr)

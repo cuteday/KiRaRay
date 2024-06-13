@@ -9,6 +9,7 @@ static bool sSaveHDR			 = false;
 static bool sSaveFrames			 = false;
 static bool sLockCamera			 = false;
 static bool sRequestScreenshot	 = false;
+static bool sUIAlphaOff			 = false;
 static size_t sSaveFrameInterval = 2;
 }
 
@@ -122,8 +123,12 @@ void RenderApp::renderUI() {
 	static bool showDashboard{ true };
 	Profiler::instance().setEnabled(showProfiler);
 	if (!sShowUI) return;
-	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.8); // this sets the global transparency of UI windows.
-	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5);	// this sets the transparency of the main menubar.
+	if (!sUIAlphaOff) {
+		// this sets the global transparency of UI windows.
+		ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.8);
+		// this sets the transparency of the main menubar.
+		ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5);
+	}
 	if (ui::BeginMainMenuBar()) {
 		ui::PopStyleVar(1);
 		if (ui::BeginMenu("Views")) {
@@ -141,6 +146,7 @@ void RenderApp::renderUI() {
 			if (ui::MenuItem("Save config")) saveConfig("");
 			ui::MenuItem("Save HDR", NULL, &sSaveHDR);
 			if (ui::MenuItem("Screen shot")) sRequestScreenshot = true;
+			ui::MenuItem("UI Alpha Off", NULL, &sUIAlphaOff);
 			ui::EndMenu();
 		}
 		if (showFps) 
@@ -260,6 +266,7 @@ void RenderApp::loadConfig(const json config) {
 		sLockCamera				 = render_config.value("lock_camera", false);
 		sSaveFrames				 = render_config.value("save_frames", false);
 		sSaveFrameInterval		 = render_config.value("save_frame_interval", 5);
+		sUIAlphaOff				 = render_config.value("ui_alpha_off", false);
 	}
 
 	if (config.contains("passes")) {

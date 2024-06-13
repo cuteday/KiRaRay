@@ -29,7 +29,7 @@ void AccumulatePass::reset() {
 
 template <typename DType>
 void acculumate(Array4<DType> *accumBuffer, CudaRenderTarget currentBuffer, size_t nPixels,
-				size_t accumCount, size_t maxAccumCount, AccumulatePass::Mode mode) {
+				size_t accumCount, bool stopCondition, AccumulatePass::Mode mode) {
 	GPUParallelFor(
 		nPixels,
 		[=] KRR_DEVICE(int i) mutable {
@@ -38,7 +38,7 @@ void acculumate(Array4<DType> *accumBuffer, CudaRenderTarget currentBuffer, size
 			if (accumCount > 0) {
 				if (mode == AccumulatePass::Mode::MovingAverage) // moving average mode
 					accumBuffer[i] = lerp(accumBuffer[i], currentPixel, currentWeight);
-				else if (!maxAccumCount || accumCount < maxAccumCount) // sum mode
+				else if (!stopCondition) // sum mode
 					accumBuffer[i] = accumBuffer[i] + currentPixel;
 			} else {
 				accumBuffer[i] = currentPixel;
@@ -62,17 +62,25 @@ void AccumulatePass::render(RenderContext *context) {
 		lastResetFrame = lastSceneUpdates.frameIndex;
 	}
 
+	auto timeElapsed   = mTask.getElapsedTime();
+	bool stopCondition = false;
+	if (mMode == Mode::Accumulate) {
+		stopCondition = mMaxAccumCount != 0 && mAccumCount >= mMaxAccumCount;
+	} else if (mMode == Mode::AccumulateTime) {
+		stopCondition = mMaxAccumTime != 0.f && timeElapsed >= mMaxAccumTime;
+	}
+
 	RGBA *accumBuffer			   = (RGBA *) mAccumBuffer->data();
 	CudaRenderTarget currentBuffer = context->getColorTexture()->getCudaRenderTarget();
 
 	if (mPrecision == Precision::Float) {
 		acculumate(reinterpret_cast<Array4<float> *>(accumBuffer), currentBuffer,
-				   getFrameSize()[0] * getFrameSize()[1], mAccumCount, mMaxAccumCount, mMode);
+				   getFrameSize()[0] * getFrameSize()[1], mAccumCount, stopCondition, mMode);
 	} else if (mPrecision == Precision::Double) {
 		acculumate(reinterpret_cast<Array4<double> *>(accumBuffer), currentBuffer,
-				   getFrameSize()[0] * getFrameSize()[1], mAccumCount, mMaxAccumCount, mMode);
+				   getFrameSize()[0] * getFrameSize()[1], mAccumCount, stopCondition, mMode);
 	}
-	if (!mMaxAccumCount || mAccumCount < mMaxAccumCount) {
+	if (!stopCondition) {
 		mTask.tickFrame();
 		mAccumCount++;
 	}
@@ -120,7 +128,7 @@ void AccumulatePass::finalize() {
 void AccumulatePass::renderUI() {
 	if (ui::Checkbox("Enabled", &mEnable)) reset();
 	if (mEnable) {
-		static const char *modeNames[]		= {"Accumulate", "Moving Average"};
+		static const char *modeNames[] = {"Accumulate Spp", "Accumulate Time", "Moving Average"};
 		static const char *precisionNames[] = {"Float", "Double"};
 		if (ui::Combo("Accumulate mode", (int *) &mMode, modeNames, (int) Mode::Count)) reset();
 		if (ui::Combo("Precision", (int *) &mPrecision, precisionNames, (int) Precision::Count))
@@ -128,6 +136,7 @@ void AccumulatePass::renderUI() {
 		ui::Text("Accumulate count: %d", mAccumCount);
 		ui::Text("Elapsed time: %.2f", mTask.getElapsedTime());
 		if (ui::DragInt("Max accum count", (int *) &mMaxAccumCount, 1, 0, 1e9)) reset();
+		if (ui::DragFloat("Max accum time", (float *) &mMaxAccumTime, 0.1f, 0.0f, 1e9f)) reset();
 		if (ui::Button("reset")) reset();
 		if (mTask.getBudgetType() != BudgetType::None && ui::CollapsingHeader("Task progress"))
 			mTask.renderUI();

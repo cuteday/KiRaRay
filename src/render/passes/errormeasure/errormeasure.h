@@ -42,6 +42,7 @@ protected:
 	
 	std::shared_ptr<Image> mReferenceImage;
 	TypedBuffer<RGBA> mReferenceImageBuffer;
+	bool mShowReferenceImage{false};
 	ErrorMetric mMetric{ ErrorMetric::RelMSE };
 	json mLastResult;
 	string mReferenceImagePath;
@@ -51,27 +52,34 @@ protected:
 	std::vector<EvaluationData> mEvaluationResults;
 	CpuTimer::TimePoint mStartTime;
 
-	friend void to_json(json &j, const ErrorMeasurePass &p) { 
-		j = json{ 
-			{ "metric", p.mMetric }, 
-			{ "reference", p.mReferenceImagePath },
-			{ "continuous", p.mContinuousEvaluate },
-			{ "interval", p.mEvaluateInterval }, 
-			{ "log", p.mLogResults },
-			{ "save", p.mSaveResults },
-		};
+	bool mShowPixelError{false};
+	bool mJetColorMapOn{false};
+	float mJetColorMapVMax{0.01f};
+	float mJetColorMapVMaxAdjusted{0.05f};
+
+	friend void to_json(json &j, const ErrorMeasurePass &p) {
+		j = json{{"metric", p.mMetric},
+				 {"reference", p.mReferenceImagePath},
+				 {"continuous", p.mContinuousEvaluate},
+				 {"interval", p.mEvaluateInterval},
+				 {"log", p.mLogResults},
+				 {"save", p.mSaveResults},
+				 {"vJetMax", p.mJetColorMapVMax},
+				 {"vJetMaxAdjusted", p.mJetColorMapVMax}};
 	}
 
 	friend void from_json(const json &j, ErrorMeasurePass &p) {
-		p.mMetric			  = j.value("metric", ErrorMetric::RelMSE);
-		p.mContinuousEvaluate = j.value("continuous", false);
-		p.mEvaluateInterval	  = j.value("interval", 1);
-		p.mLogResults		  = j.value("log", false);
-		p.mSaveResults		  = j.value("save", false);
+		p.mMetric				   = j.value("metric", ErrorMetric::RelMSE);
+		p.mContinuousEvaluate	   = j.value("continuous", false);
+		p.mEvaluateInterval		   = j.value("interval", 1);
+		p.mLogResults			   = j.value("log", false);
+		p.mSaveResults			   = j.value("save", false);
+		p.mJetColorMapVMax		   = j.value("vJetMax", 0.01f);
+		p.mJetColorMapVMaxAdjusted = j.value("vJetMaxAdjusted", 0.05f);
+
 		if (gpContext->getGlobalConfig().contains("reference"))
 			p.loadReferenceImage(gpContext->getGlobalConfig().at("reference"));
-		if (j.contains("reference"))
-			p.loadReferenceImage(j.at("reference"));
+		if (j.contains("reference")) p.loadReferenceImage(j.at("reference"));
 	}
 };
 

@@ -1,4 +1,4 @@
- #pragma once
+#pragma once
 #include <cuda_runtime.h>
 #include <optix.h>
 
@@ -19,15 +19,16 @@ public:
 
 	DenoiseBackend() = default;
 
-	void initialize();	
+	void initialize();
 
 	void denoise(CUstream stream, float *rgb, float *normal, float *albedo, float *result);
-	
+
 	void resize(Vector2i size);
-	
+
 	void setHaveGeometry(bool haveGeometry);
 
 	void setPixelFormat(PixelFormat format);
+	void setProps(bool haveGeometry, PixelFormat format);
 
 private:
 	Vector2i resolution;
@@ -43,18 +44,40 @@ public:
 	using RenderPass::RenderPass;
 	using SharedPtr = std::shared_ptr<DenoisePass>;
 	KRR_REGISTER_PASS_DEC(DenoisePass);
-	KRR_CLASS_DEFINE(DenoisePass, mUseGeometry);
 
-	void render(RenderContext* context) override;
+	void render(RenderContext *context) override;
 	void renderUI() override;
-	void resize(const Vector2i& size) override;
-
+	void resize(const Vector2i &size) override;
+	// true: have special task(CtxDenoiseGBuffer)
+	void checkSpecTask(RenderContext *context);
 	string getName() const override { return "DenoisePass"; }
 
+	friend void from_json(const json &j, DenoisePass &p) {
+		p.mDoSpecTask  = j.value("doSpecTask", false);
+		p.mUseGeometry = j.value("useGeometry", false);
+	}
+
+	friend void to_json(json &j, const DenoisePass &p) {
+		j.update({{"doSpecTask", p.mDoSpecTask}, {"useGeometry", p.mUseGeometry}});
+	}
+
+public:
+	constexpr static char CTX_JSON_GBUFFER[] = "DENOISE_GBUFFER";
+
 private:
+	bool mDoSpecTask{false};
 	bool mUseGeometry{};
 	TypedBuffer<RGBA> mColorBuffer;
 	DenoiseBackend mBackend;
 };
+
+typedef struct {
+	bool mState;
+	float *mColorBuffer;
+	float *mAlbedoBuffer;
+	float *mNormalBuffer;
+	float *mDenoisedBuffer;
+	DenoiseBackend::PixelFormat mPixelFormat;
+} CtxDenoiseGBuffer;
 
 NAMESPACE_END(krr)

@@ -5,10 +5,10 @@
 NAMESPACE_BEGIN(krr)
 
 namespace {
-static const char *metricNames[] = { "MSE", "MAPE", "SMAPE", "RelMSE" };
+static const char *metricNames[] = {"MSE", "MAPE", "SMAPE", "RelMSE"};
 }
 
-void ErrorMeasurePass::beginFrame(RenderContext* context) {
+void ErrorMeasurePass::beginFrame(RenderContext *context) {
 	if (!mFrameNumber) reset();
 	mFrameNumber++;
 	mNeedsEvaluate |= mContinuousEvaluate && (mFrameNumber % mEvaluateInterval == 0);
@@ -16,69 +16,89 @@ void ErrorMeasurePass::beginFrame(RenderContext* context) {
 
 void ErrorMeasurePass::render(RenderContext *context) {
 	PROFILE("Metric calculation");
+	size_t n_elements = getFrameSize()[0] * getFrameSize()[1];
 	if (mNeedsEvaluate && mReferenceImage && mReferenceImage->isValid()) {
 		CHECK_LOG(mReferenceImage->getSize() == getFrameSize(),
 				  "ErrorMeasure::Reference image size does not match frame size!");
-		size_t n_elememts = getFrameSize()[0] * getFrameSize()[1];
-		float result	  = calc_metric(context->getColorTexture()->getCudaRenderTarget(),
-			reinterpret_cast<RGBA *>(mReferenceImageBuffer.data()),
-			n_elememts, mMetric);
-		mLastResult = { { string(metricNames[(int) mMetric]), result } };
+		auto frameBuffer = context->getColorTexture()->getCudaRenderTarget();
+
+		// show reference image
+		if (mShowReferenceImage) {
+			RGBA *ref = reinterpret_cast<RGBA *>(mReferenceImageBuffer.data());
+			GPUParallelFor(
+				n_elements,
+				[=] KRR_DEVICE(int pixelId) mutable { frameBuffer.write(ref[pixelId], pixelId); },
+				KRR_DEFAULT_STREAM);
+			return;
+		}
+
+		float result =
+			calc_metric(frameBuffer, reinterpret_cast<RGBA *>(mReferenceImageBuffer.data()),
+						n_elements, mMetric, mShowPixelError, mJetColorMapOn, mJetColorMapVMax);
+		mLastResult = {{string(metricNames[(int) mMetric]), result}};
 		if (mLogResults)
 			Log(Info, "Evaluating frame #%zd: %s", mFrameNumber, mLastResult.dump().c_str());
 		if (mSaveResults)
 			mEvaluationResults.push_back(
-					{ mFrameNumber,
-					CpuTimer::calcElapsedTime(mStartTime) * 1e-3,
-					mLastResult });
+				{mFrameNumber, CpuTimer::calcElapsedTime(mStartTime) * 1e-3, mLastResult});
 		mNeedsEvaluate = false;
 	}
 }
 
-void ErrorMeasurePass::resize(const Vector2i &size) {
-	RenderPass::resize(size); }
+void ErrorMeasurePass::resize(const Vector2i &size) { RenderPass::resize(size); }
 
 void ErrorMeasurePass::finalize() {
 	if (mSaveResults) {
 		string output_name = gpContext->getGlobalConfig().contains("name")
-						 ? gpContext->getGlobalConfig()["name"] : "result";
+								 ? gpContext->getGlobalConfig()["name"]
+								 : "result";
 		fs::path save_path = File::outputDir() / "error" / (output_name + ".json");
 		json timesteps, timepoints, data, result;
 		for (const EvaluationData &e : mEvaluationResults) {
-			timesteps.push_back((int)e.timestep);
+			timesteps.push_back((int) e.timestep);
 			timepoints.push_back((float) e.timepoint);
 			data.push_back(e.metrics);
 		}
-		result["timesteps"] = timesteps, 
-		result["timepoints"] = timepoints,
-		result["data"] = data;
+		result["timesteps"] = timesteps, result["timepoints"] = timepoints, result["data"] = data;
 		File::saveJSON(save_path, result);
 		logInfo("Saved error evaluation data to " + save_path.string());
 	}
 }
 
-void ErrorMeasurePass::renderUI() { 
+void ErrorMeasurePass::renderUI() {
 	ui::Checkbox("Enabled", &mEnable);
 	if (mEnable) {
-		if (ui::Combo("Metric", (int *) &mMetric, metricNames, (int)ErrorMetric::Count))
-			reset();
+		if (ui::Combo("Metric", (int *) &mMetric, metricNames, (int) ErrorMetric::Count)) reset();
 		static char referencePath[256] = "";
 		ui::InputText("Reference", referencePath, sizeof(referencePath));
 		if (ui::Button("Load")) {
 			loadReferenceImage(referencePath);
 		}
-		if (mReferenceImage && mReferenceImage->isValid()) {
-			ui::Text("Reference image: %s", mReferenceImagePath.c_str());
-			ui::Checkbox("Continuous evaluate", &mContinuousEvaluate);
-			if (mContinuousEvaluate)
-				ui::InputScalar("Evaluate every", ImGuiDataType_::ImGuiDataType_U64,
-								&mEvaluateInterval);
-			if (ui::Button("Evaluate")) mNeedsEvaluate = 1;
+		if (!(mReferenceImage && mReferenceImage->isValid())) {
+			return;
 		}
-		if (!mLastResult.empty())
-			ui::Text("%s", mLastResult.dump().c_str());
+
+		ui::Text("Reference image: %s", mReferenceImagePath.c_str());
+		ui::Checkbox("Show Reference Image", &mShowReferenceImage);
+		if (mShowReferenceImage) {
+			return;
+		}
+
+		ui::Checkbox("Continuous evaluate", &mContinuousEvaluate);
+		if (mContinuousEvaluate)
+			ui::InputScalar("Evaluate every", ImGuiDataType_::ImGuiDataType_U64,
+							&mEvaluateInterval);
+		if (ui::Button("Evaluate")) mNeedsEvaluate = 1;
+		if (!mLastResult.empty()) ui::Text("%s", mLastResult.dump().c_str());
 		ui::Checkbox("Log results", &mLogResults);
 		ui::Checkbox("Save results", &mSaveResults);
+
+		ui::Checkbox("Show Pixel Error", &mShowPixelError);
+		if (mShowPixelError) {
+			mEvaluateInterval = 1;
+			ui::Checkbox("Jet Colormap", &mJetColorMapOn);
+			ui::SliderFloat("Jet vMax", &mJetColorMapVMax, 0.0f, mJetColorMapVMaxAdjusted, "%.4f");
+		}
 	}
 }
 
@@ -91,21 +111,20 @@ void ErrorMeasurePass::reset() {
 
 bool ErrorMeasurePass::loadReferenceImage(const string &path) {
 	mReferenceImage = std::make_shared<Image>();
- 	bool success = mReferenceImage->loadImage(path, true, false);
+	bool success	= mReferenceImage->loadImage(path, true, false);
 	if (success) {
 		// TODO: find out why saving an exr image yields this permutation on pixel format?
 		// This should be deleted once new reference images are updated.
 		auto permute = [](auto pixel) {
-			Array4i p = { 3, 0, 1, 2 };
+			Array4i p = {3, 0, 1, 2};
 			auto res  = pixel;
-			for (int c = 0; c < 4; c++) 
-				res[c] = pixel[p[c]];
+			for (int c = 0; c < 4; c++) res[c] = pixel[p[c]];
 			return res;
 		};
 		mReferenceImage->process(permute);
 		mReferenceImageBuffer.resize(mReferenceImage->getSizeInBytes());
-		mReferenceImageBuffer.copy_from_host(reinterpret_cast<RGBA*>(mReferenceImage->data()), 
-			mReferenceImage->getSizeInBytes() / sizeof(RGBA));
+		mReferenceImageBuffer.copy_from_host(reinterpret_cast<RGBA *>(mReferenceImage->data()),
+											 mReferenceImage->getSizeInBytes() / sizeof(RGBA));
 		reset();
 		mReferenceImagePath = path;
 		Log(Info, "ErrorMeasure::Loaded reference image from %s.", path.c_str());

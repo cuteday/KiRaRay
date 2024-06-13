@@ -16,7 +16,7 @@ class AccumulatePass : public RenderPass {
 public:
 	using SharedPtr = std::shared_ptr<AccumulatePass>;
 	KRR_REGISTER_PASS_DEC(AccumulatePass);
-	enum class Mode { Accumulate, MovingAverage, Count };
+	enum class Mode { Accumulate, AccumulateTime, MovingAverage, Count };
 	enum class Precision { Float, Double, Count };
 
 	AccumulatePass() = default;
@@ -35,6 +35,7 @@ private:
 	friend void to_json(json &j, const AccumulatePass &p) {
 		j = json{ 
 			{ "spp", p.mMaxAccumCount }, 
+			{ "time", p.mMaxAccumTime },
 			{ "mode", p.mMode },
 			{ "task", p.mTask }, 
 			{ "precision", p.mPrecision },
@@ -45,6 +46,7 @@ private:
 
 	friend void from_json(const json &j, AccumulatePass &p) {
 		p.mMaxAccumCount = j.value("spp", 0);
+		p.mMaxAccumTime	 = j.value("time", 0.f);
 		p.mMode			 = j.value("mode", Mode::Accumulate);
 		p.mPrecision	 = j.value("precision", Precision::Float);
 		p.mSaveOnFinish  = j.value("save_on_finish", false);
@@ -56,7 +58,8 @@ private:
 	uint mAccumCount{ 0 };
 	Mode mMode{ Mode::Accumulate };
 	Precision mPrecision { Precision::Float };
-	uint mMaxAccumCount{ 0U };
+	uint mMaxAccumCount{0U};
+	float mMaxAccumTime{0.f};
 	CUDABuffer *mAccumBuffer;
 	RenderTask mTask;
 	bool mSaveOnFinish{}, mExitOnFinish{};
@@ -64,6 +67,7 @@ private:
 
 KRR_ENUM_DEFINE(AccumulatePass::Mode, {
 	{AccumulatePass::Mode::Accumulate, "accumulate"},
+	{AccumulatePass::Mode::AccumulateTime, "accumulate time"},
 	{AccumulatePass::Mode::MovingAverage, "moving average"}	
 })
 
