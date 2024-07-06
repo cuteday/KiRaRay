@@ -17,27 +17,26 @@ public:
 	using TaggedPointer::TaggedPointer;
 
 	KRR_CALLABLE static BSDFSample sample(const SurfaceInteraction &intr, Vector3f wo, Sampler &sg,
-										  int bsdfIndex,
 										  TransportMode mode = TransportMode::Radiance) {
 		auto sample = [&](auto ptr)->BSDFSample {return ptr->sampleInternal(intr, wo, sg, mode); };
-		return dispatch(sample, bsdfIndex);
+		return dispatch(sample, static_cast<int>(intr.sd.bsdfType));
 	}
 
 	KRR_CALLABLE static Spectrum f(const SurfaceInteraction &intr, Vector3f wo, Vector3f wi,
-								int bsdfIndex, TransportMode mode = TransportMode::Radiance) {
+								TransportMode mode = TransportMode::Radiance) {
 		auto f = [&](auto ptr) -> Spectrum { return ptr->fInternal(intr, wo, wi, mode); };
-		return dispatch(f, bsdfIndex);
+		return dispatch(f, static_cast<int>(intr.sd.bsdfType));
 	}
 
-	KRR_CALLABLE static float pdf(const SurfaceInteraction &intr, Vector3f wo, Vector3f wi, int bsdfIndex,
+	KRR_CALLABLE static float pdf(const SurfaceInteraction &intr, Vector3f wo, Vector3f wi,
 								  TransportMode mode = TransportMode::Radiance) {
 		auto pdf = [&](auto ptr)->float {return ptr->pdfInternal(intr, wo, wi, mode); };
-		return dispatch(pdf, bsdfIndex);
+		return dispatch(pdf, static_cast<int>(intr.sd.bsdfType));
 	}
 
-	KRR_CALLABLE static BSDFType flags(const SurfaceInteraction& intr, int bsdfIndex) {
+	KRR_CALLABLE static BSDFType flags(const SurfaceInteraction& intr) {
 		auto flags = [&](auto ptr)->BSDFType {return ptr->flagsInternal(intr); };
-		return dispatch(flags, bsdfIndex);
+		return dispatch(flags, static_cast<int>(intr.sd.bsdfType));
 	}
 
 	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
@@ -68,6 +67,11 @@ public:
 		auto flags = [&](auto ptr) -> BSDFType { return ptr->flags(); };
 		return dispatch(flags);
 	}
+};
+
+class BSDF : public BxDF {
+public:
+	char data[MaximumSizeOfTypePack<Types>::value];
 };
 
 NAMESPACE_END(krr)

@@ -9,7 +9,7 @@ NAMESPACE_BEGIN(krr)
 // TaggedPointer Definition
 template <typename... Ts>
 class TaggedPointer {
-  public:
+public:
 	// TaggedPointer Public Types
 	using Types = TypePack<Ts...>;
 
@@ -123,7 +123,7 @@ class TaggedPointer {
 		return Dispatch<F, R, Ts...>(func, (const void*)nullptr, index);
 	}
 
-  private:
+private:
 	static_assert(sizeof(uintptr_t) == 8, "Expected uintptr_t to be 64 bits");
 	static constexpr int tagShift = 57;
 	static constexpr int tagBits = 64 - tagShift;

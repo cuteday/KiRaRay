@@ -162,8 +162,8 @@ void PPGPathTracer::handleIntersections() {
 			Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
 			float lightPdf	= sampledLight.pdf * ls.pdf;
-			Spectrum bsdfVal	= BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-			float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+			Spectrum bsdfVal	= BxDF::f(intr, woLocal, wiLocal);
+			float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal);
 			if (lightPdf > 0 && bsdfVal.any()) {
 				ShadowRayWorkItem sw = {};
 				sw.ray				 = shadowRay;
@@ -429,14 +429,14 @@ KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler,
 
 	if (!m_isBuilt || !dTree || !enableGuiding || (bsdfType & BSDF_SPECULAR)
 		|| bsdfSamplingFraction == 1 || depth >= MAX_GUIDED_DEPTH) {
-		sample = BxDF::sample(intr, woLocal, sampler, (int)intr.sd.bsdfType);
+		sample = BxDF::sample(intr, woLocal, sampler);
 		bsdfPdf = sample.pdf;
 		dTreePdf = 0;
 		return sample;
 	}
 
 	if (bsdfSamplingFraction > 0 && sampler.get1D() < bsdfSamplingFraction) {
-		sample = BxDF::sample(intr, woLocal, sampler, (int)intr.sd.bsdfType);
+		sample = BxDF::sample(intr, woLocal, sampler);
 		bsdfPdf = sample.pdf;
 		dTreePdf = dTree->pdf(intr.toWorld(sample.wi));
 		sample.pdf = bsdfSamplingFraction * bsdfPdf + (1 - bsdfSamplingFraction) * dTreePdf;
@@ -444,7 +444,7 @@ KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler,
 	}
 	else {
 		sample.wi = intr.toLocal(dTree->sample(sampler));
-		sample.f = BxDF::f(intr, woLocal, sample.wi, (int)intr.sd.bsdfType);
+		sample.f = BxDF::f(intr, woLocal, sample.wi);
 		sample.flags = BSDF_GLOSSY | (SameHemisphere(sample.wi, woLocal) ?
 			BSDF_REFLECTION : BSDF_TRANSMISSION);
 		sample.pdf = evalPdf(bsdfPdf, dTreePdf, depth, intr, sample.wi,
@@ -460,10 +460,10 @@ KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int d
 	bsdfPdf = dTreePdf = 0;
 	if (!m_isBuilt || !dTree || !enableGuiding || (bsdfType & BSDF_SPECULAR)
 		|| alpha == 1 || depth >= MAX_GUIDED_DEPTH) {
-		return bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int)intr.sd.bsdfType);
+		return bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal);
 	}
 	if (alpha > 0) {
-		bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal, (int)intr.sd.bsdfType);
+		bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal);
 		if (isinf(bsdfPdf) || isnan(bsdfPdf)) {
 			return bsdfPdf = dTreePdf = 0;
 		}
