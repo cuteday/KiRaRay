@@ -97,10 +97,9 @@ KRR_DEVICE_FUNCTION void generateShadowRay(PathData& path) {
 	float lightPdf = sampledLight.pdf * ls.pdf;
 	if (lightPdf == 0)
 		return; // We have sampled on the primitive itself...
-	float bsdfPdf = light.isDeltaLight() ? 0 
-					: BxDF ::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+	float bsdfPdf = light.isDeltaLight() ? 0 : BxDF ::pdf(intr, woLocal, wiLocal);
 	Spectrum bsdfVal =
-		BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType) * fabs(wiLocal[2]);
+		BxDF::f(intr, woLocal, wiLocal) * fabs(wiLocal[2]);
 	float misWeight = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
 	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any()) return;
 
@@ -121,7 +120,7 @@ KRR_DEVICE_FUNCTION void evalDirect(PathData& path) {
 KRR_DEVICE_FUNCTION bool generateScatterRay(PathData& path) {
 	const SurfaceInteraction &intr = path.intr;
 	Vector3f woLocal			   = intr.toLocal(intr.wo);
-	BSDFSample sample = BxDF::sample(intr, woLocal, path.sampler, (int) intr.sd.bsdfType);
+	BSDFSample sample = BxDF::sample(intr, woLocal, path.sampler);
 	if (sample.pdf == 0 || !any(sample.f)) return false;
 
 	Vector3f wiWorld = intr.toWorld(sample.wi);

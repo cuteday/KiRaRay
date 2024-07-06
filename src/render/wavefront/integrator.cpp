@@ -130,10 +130,8 @@ void WavefrontPathTracer::generateScatterRays(int depth) {
 				Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
 				float lightPdf			= sampledLight.pdf * ls.pdf;
-				Spectrum bsdfVal = BxDF::f(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
-				float bsdfPdf			= light.isDeltaLight()
-											  ? 0
-											  : BxDF::pdf(intr, woLocal, wiLocal, (int) intr.sd.bsdfType);
+				Spectrum bsdfVal = BxDF::f(intr, woLocal, wiLocal);
+				float bsdfPdf			= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal);
 				if (lightPdf > 0 && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
@@ -147,7 +145,7 @@ void WavefrontPathTracer::generateScatterRays(int depth) {
 			}
 
 			/* sample BSDF */
-			BSDFSample sample = BxDF::sample(intr, woLocal, sampler, (int) intr.sd.bsdfType);
+			BSDFSample sample = BxDF::sample(intr, woLocal, sampler);
 			if (sample.pdf != 0 && sample.f.any()) {
 				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};

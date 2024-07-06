@@ -108,6 +108,25 @@ struct MapType<M, TypePack<T, Ts...>> {
 	using type = typename Prepend<M<T>, typename MapType<M, TypePack<Ts...>>::type>::type;
 };
 
+template <typename T, typename... Ts> 
+struct MaximumSizeOfTypePack {
+	static constexpr size_t value = sizeof(T);
+};
+template <typename T, typename... Ts> 
+struct MaximumSizeOfTypePack<TypePack<T, Ts...>> {
+	static constexpr size_t value = std::max(sizeof(T), MaximumSizeOfTypePack<TypePack<Ts...>>::value);
+};
+
+template <typename T>
+constexpr size_t MaximumSizeOfTypes() {
+	return sizeof(T);
+}
+
+template <typename T, typename... Ts>
+constexpr size_t MaximumSizeOfTypes() {
+	return std::max(sizeof(T), MaximumSizeOfTypes<Ts...>());
+}
+
 // TaggedPointer Helper Templates
 template <typename F, typename R, typename T>
 KRR_CALLABLE R Dispatch(F &&func, const void *ptr, int index) {
