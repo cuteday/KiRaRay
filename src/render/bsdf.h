@@ -69,9 +69,24 @@ public:
 	}
 };
 
+/* Another way to implement gpu polymorphism that is rather tricky, 
+*  avoiding initializing a BSDF multiple times within in a scope, 
+*  but needs a maximum size of the data array to be known at compile time.
+*/
 class BSDF : public BxDF {
 public:
-	char data[MaximumSizeOfTypePack<Types>::value];
+	using BxDF::BxDF;
+	KRR_CALLABLE BSDF(const SurfaceInteraction &intr) :
+		BxDF(data, 1 + static_cast<int>(intr.sd.bsdfType)) {
+		setup(intr);
+	}
+
+	BSDF(const BSDF &)			   = delete;
+	BSDF(const BSDF &&)			   = delete;
+	BSDF &operator=(const BSDF &)  = delete;
+	BSDF &operator=(const BSDF &&) = delete;
+
+	alignas(16) char data[MaximumSizeOfTypePack<Types>::value];
 };
 
 NAMESPACE_END(krr)
