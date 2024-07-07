@@ -1,6 +1,7 @@
 // Code taken and modified from pbrt-v4,
 // Originally licensed under the Apache License, Version 2.0.
 #pragma once
+#include "common.h"
 
 #include <algorithm>
 #include <string>
@@ -10,9 +11,7 @@
 #include <shared_mutex>
 #include <tuple>
 
-#include "common.h"
 #include "util/check.h"
-
 NAMESPACE_BEGIN(krr)
 
 template <typename... Ts>
