@@ -16,8 +16,11 @@
 
 #include "config.h"	
 
-#ifdef __INTELLISENSE__
-#pragma diag_suppress 40		// suppress lambda error for visual studio
+#ifdef  __INTELLISENSE__
+#pragma diag_suppress   40		// suppress lambda error for visual studio
+#ifndef _HAS_CXX17
+#define _HAS_CXX17      1
+#endif
 #endif
 
 using std::string;
