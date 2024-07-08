@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "device/taggedptr.h"
+#include "device/variant.h"
 
 #include "materials/null.h"
 #include "materials/diffuse.h"
@@ -71,22 +72,43 @@ public:
 
 /* Another way to implement gpu polymorphism that is rather tricky, 
 *  avoiding initializing a BSDF multiple times within in a scope, 
-*  but needs a maximum size of the data array to be known at compile time.
+*  but needs a maximum size of variant to be known at compile time.
 */
-class BSDF : public BxDF {
+class BSDF : public VariantClass<NullBsdf, DiffuseBrdf, DielectricBsdf, ConductorBsdf, DisneyBsdf> {
 public:
-	using BxDF::BxDF;
-	KRR_CALLABLE BSDF(const SurfaceInteraction &intr) :
-		BxDF(data, 1 + static_cast<int>(intr.sd.bsdfType)) {
-		setup(intr);
+	using VariantClass::VariantClass;
+
+	KRR_CALLABLE BSDF(const SurfaceInteraction &intr) { setup(intr); }
+
+	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
+		defaultConstruct(static_cast<size_t>(intr.sd.bsdfType));
+		auto setup = [&](auto ptr)->void {return ptr->setup(intr); };
+		return dispatch(setup);
 	}
 
-	BSDF(const BSDF &)			   = delete;
-	BSDF(const BSDF &&)			   = delete;
-	BSDF &operator=(const BSDF &)  = delete;
-	BSDF &operator=(const BSDF &&) = delete;
+	// [NOTE] f the cosine theta term in render equation is not contained in f().
+	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
+						 TransportMode mode = TransportMode::Radiance) const {
+		auto f = [&](auto ptr) -> Spectrum { return ptr->f(wo, wi, mode); };
+		return dispatch(f);
+	}
 
-	alignas(16) char data[MaximumSizeOfTypePack<Types>::value];
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
+								   TransportMode mode = TransportMode::Radiance) const {
+		auto sample = [&](auto ptr)->BSDFSample {return ptr->sample(wo, sg, mode); };
+		return dispatch(sample);
+	}
+
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
+						   TransportMode mode = TransportMode::Radiance) const {
+		auto pdf = [&](auto ptr)->float {return ptr->pdf(wo, wi, mode); };
+		return dispatch(pdf);
+	}
+
+	KRR_CALLABLE BSDFType flags() const {
+		auto flags = [&](auto ptr) -> BSDFType { return ptr->flags(); };
+		return dispatch(flags);
+	}
 };
 
 NAMESPACE_END(krr)

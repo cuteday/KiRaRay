@@ -145,10 +145,11 @@ void PPGPathTracer::handleIntersections() {
 		w.thp /= probRR;
 		
 		const SurfaceInteraction& intr = w.intr;
+		BSDF bsdf(intr);
 		BSDFType bsdfType = intr.getBsdfType();
 		Vector3f woLocal = intr.toLocal(intr.wo);
 		const SampledWavelengths& lambda	   = pixelState->lambda[w.pixelId];
-
+		
 		/* Statistics for mixed bsdf-guided sampling */
 		float bsdfPdf, dTreePdf;
 		DTreeWrapper* dTree = m_sdTree->dTreeWrapper(intr.p);
@@ -162,8 +163,8 @@ void PPGPathTracer::handleIntersections() {
 			Vector3f wiLocal		  = intr.toLocal(wiWorld);
 
 			float lightPdf	= sampledLight.pdf * ls.pdf;
-			Spectrum bsdfVal	= BxDF::f(intr, woLocal, wiLocal);
-			float bsdfPdf	= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal);
+			Spectrum bsdfVal	= bsdf.f(woLocal, wiLocal);
+			float bsdfPdf	= light.isDeltaLight() ? 0 : bsdf.pdf(woLocal, wiLocal);
 			if (lightPdf > 0 && bsdfVal.any()) {
 				ShadowRayWorkItem sw = {};
 				sw.ray				 = shadowRay;
@@ -426,25 +427,26 @@ KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler,
 	float bsdfSamplingFraction, const DTreeWrapper* dTree, BSDFType bsdfType) const {
 	BSDFSample sample = {};
 	Vector3f woLocal = intr.toLocal(intr.wo);
+	BSDF bsdf(intr);
 
 	if (!m_isBuilt || !dTree || !enableGuiding || (bsdfType & BSDF_SPECULAR)
 		|| bsdfSamplingFraction == 1 || depth >= MAX_GUIDED_DEPTH) {
-		sample = BxDF::sample(intr, woLocal, sampler);
-		bsdfPdf = sample.pdf;
+		sample	 = bsdf.sample(woLocal, sampler);
+		bsdfPdf	 = sample.pdf;
 		dTreePdf = 0;
 		return sample;
 	}
 
 	if (bsdfSamplingFraction > 0 && sampler.get1D() < bsdfSamplingFraction) {
-		sample = BxDF::sample(intr, woLocal, sampler);
-		bsdfPdf = sample.pdf;
-		dTreePdf = dTree->pdf(intr.toWorld(sample.wi));
+		sample	   = bsdf.sample(woLocal, sampler);
+		bsdfPdf	   = sample.pdf;
+		dTreePdf   = dTree->pdf(intr.toWorld(sample.wi));
 		sample.pdf = bsdfSamplingFraction * bsdfPdf + (1 - bsdfSamplingFraction) * dTreePdf;
 		return sample;
 	}
 	else {
-		sample.wi = intr.toLocal(dTree->sample(sampler));
-		sample.f = BxDF::f(intr, woLocal, sample.wi);
+		sample.wi	 = intr.toLocal(dTree->sample(sampler));
+		sample.f	 = bsdf.f(woLocal, sample.wi);
 		sample.flags = BSDF_GLOSSY | (SameHemisphere(sample.wi, woLocal) ?
 			BSDF_REFLECTION : BSDF_TRANSMISSION);
 		sample.pdf = evalPdf(bsdfPdf, dTreePdf, depth, intr, sample.wi,
@@ -456,14 +458,14 @@ KRR_CALLABLE BSDFSample PPGPathTracer::sample(Sampler& sampler,
 KRR_CALLABLE float PPGPathTracer::evalPdf(float& bsdfPdf, float& dTreePdf, int depth,
 	const SurfaceInteraction& intr, Vector3f wiLocal, float alpha, const DTreeWrapper* dTree, BSDFType bsdfType) const {
 	Vector3f woLocal = intr.toLocal(intr.wo);
-	
+	BSDF bsdf(intr);
 	bsdfPdf = dTreePdf = 0;
 	if (!m_isBuilt || !dTree || !enableGuiding || (bsdfType & BSDF_SPECULAR)
 		|| alpha == 1 || depth >= MAX_GUIDED_DEPTH) {
-		return bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal);
+		return bsdfPdf = bsdf.pdf(woLocal, wiLocal);
 	}
 	if (alpha > 0) {
-		bsdfPdf = BxDF::pdf(intr, woLocal, wiLocal);
+		bsdfPdf = bsdf.pdf(woLocal, wiLocal);
 		if (isinf(bsdfPdf) || isnan(bsdfPdf)) {
 			return bsdfPdf = dTreePdf = 0;
 		}
