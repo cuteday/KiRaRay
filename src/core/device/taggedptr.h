@@ -1,21 +1,14 @@
 // Code taken and modified from pbrt-v4,
 // Originally licensed under the Apache License, Version 2.0.
 #pragma once
-
 #include "types.h"
-
-#include <variant>
-#include <cuda/std/variant>
 
 NAMESPACE_BEGIN(krr)
 
-// TaggedPointer Definition
 template <typename... Ts> class TaggedPointer {
 public:
-	// TaggedPointer Public Types
 	using Types = TypePack<Ts...>;
 
-	// TaggedPointer Public Methods
 	TaggedPointer() = default;
 
 	template <typename T> KRR_CALLABLE TaggedPointer(T *ptr) {
@@ -119,95 +112,6 @@ private:
 	static constexpr uint64_t tagMask = ((1ull << tagBits) - 1) << tagShift;
 	static constexpr uint64_t ptrMask = ~tagMask;
 	uintptr_t bits					  = 0;
-};
-
-template <typename... Ts> class VariantClass {
-public:
-	// TaggedPointer Public Types
-	using Types = TypePack<Ts...>;
-
-	// TaggedPointer Public Methods
-	VariantClass() = default;
-
-	template <typename T> KRR_CALLABLE VariantClass(T value) {
-		static_assert(HasType<T, Types>::value, "Type not present in the type pack!");
-		data = value;
-	}
-
-	template <typename T> VariantClass &operator=(T value) {
-		static_assert(HasType<T, Types>::value, "Type not present in the type pack!");
-		data = value;
-		return *this;
-	}
-
-	template <typename T> KRR_CALLABLE static constexpr unsigned int typeIndex() {
-		using Tp = typename std::remove_cv_t<T>;
-		if constexpr (std::is_same_v<Tp, std::nullptr_t>) return 0;
-		return 1 + IndexOf<Tp, Types>::count;
-	}
-
-	// the index of the type pack plus one. tag=0 means nullptr.
-	KRR_CALLABLE int index() const { return static_cast<int>(data.index()); }
-	template <typename T> KRR_CALLABLE bool is() const { return index() == typeIndex<T>(); }
-
-	KRR_CALLABLE static constexpr unsigned int maxIndex() { return sizeof...(Ts); }
-	KRR_CALLABLE static constexpr unsigned int numIndices() { return maxIndex() + 1; }
-
-	KRR_CALLABLE explicit operator bool() const { return data.index() != 0; }
-
-	template <typename T> KRR_CALLABLE T *cast() {
-		DCHECK(is<T>());
-		return reinterpret_cast<T *>(ptr());
-	}
-
-	template <typename T> KRR_CALLABLE const T *cast() const {
-		DCHECK(is<T>());
-		return reinterpret_cast<const T *>(ptr());
-	}
-
-	template <typename T> KRR_CALLABLE T *castOrNullptr() {
-		if (is<T>())
-			return reinterpret_cast<T *>(ptr());
-		else
-			return nullptr;
-	}
-
-	template <typename T> KRR_CALLABLE const T *castOrNullptr() const {
-		if (is<T>())
-			return reinterpret_cast<const T *>(ptr());
-		else
-			return nullptr;
-	}
-
-	KRR_CALLABLE void *ptr() { return reinterpret_cast<void *>(std::get_if<data.index()>(data)); }
-
-	KRR_CALLABLE const void *ptr() const {
-		return reinterpret_cast<const void *>(std::get_if<data.index()>(data));
-	}
-
-	template <typename F> KRR_CALLABLE decltype(auto) dispatch(F &&func) {
-		DCHECK(ptr());
-		using R = typename ReturnType<F, Ts...>::type;
-		return Dispatch<F, R, Ts...>(func, ptr(), index() - 1);
-	}
-
-	template <typename F> KRR_CALLABLE decltype(auto) dispatch(F &&func) const {
-		DCHECK(ptr());
-		using R = typename ReturnType<F, Ts...>::type;
-		return Dispatch<F, R, Ts...>(func, ptr(), index() - 1);
-	}
-
-	template <typename F> KRR_CALLABLE static decltype(auto) dispatch(F &&func, int index) {
-		using R = typename ReturnType<F, Ts...>::type;
-		return Dispatch<F, R, Ts...>(func, (const void *) nullptr, index);
-	}
-
-protected:
-#ifdef KRR_DEVICE_CODE
-	cuda::std::variant<cuda::std::monostate, Ts...> data;
-#else
-	std::variant<std::monostate, Ts...> data;
-#endif
 };
 
 NAMESPACE_END(krr)
