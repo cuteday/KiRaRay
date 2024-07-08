@@ -116,22 +116,23 @@ void WavefrontPathTracer::generateScatterRays(int depth) {
 				then NEE should not be evaluated */
 			if (sampler.get1D() >= probRR) return;
 			w.thp /= probRR;
-			const SurfaceInteraction &intr = w.intr;
-			Vector3f woLocal			   = intr.toLocal(intr.wo);
-			BSDFType bsdfType			   = intr.getBsdfType();
-			const SampledWavelengths &lambda	   = pixelState->lambda[w.pixelId];
+			const SurfaceInteraction &intr	 = w.intr;
+			Vector3f woLocal				 = intr.toLocal(intr.wo);
+			BSDFType bsdfType				 = intr.getBsdfType();
+			const SampledWavelengths &lambda = pixelState->lambda[w.pixelId];
+			BSDF bsdf(intr);
 			/* sample direct lighting */
 			if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
 				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
 				Light light				  = sampledLight.light;
-				LightSample ls			  = light.sampleLi(sampler.get2D(), {intr.p, intr.n}, lambda);
-				Ray shadowRay			  = intr.spawnRayTo(ls.intr);
-				Vector3f wiWorld		  = normalize(shadowRay.dir);
-				Vector3f wiLocal		  = intr.toLocal(wiWorld);
+				LightSample ls	 = light.sampleLi(sampler.get2D(), {intr.p, intr.n}, lambda);
+				Ray shadowRay	 = intr.spawnRayTo(ls.intr);
+				Vector3f wiWorld = normalize(shadowRay.dir);
+				Vector3f wiLocal = intr.toLocal(wiWorld);
 
-				float lightPdf			= sampledLight.pdf * ls.pdf;
-				Spectrum bsdfVal = BxDF::f(intr, woLocal, wiLocal);
-				float bsdfPdf			= light.isDeltaLight() ? 0 : BxDF::pdf(intr, woLocal, wiLocal);
+				float lightPdf	 = sampledLight.pdf * ls.pdf;
+				Spectrum bsdfVal = bsdf.f(woLocal, wiLocal);
+				float bsdfPdf	 = light.isDeltaLight() ? 0 : bsdf.pdf(woLocal, wiLocal);
 				if (lightPdf > 0 && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
@@ -145,7 +146,7 @@ void WavefrontPathTracer::generateScatterRays(int depth) {
 			}
 
 			/* sample BSDF */
-			BSDFSample sample = BxDF::sample(intr, woLocal, sampler);
+			BSDFSample sample = bsdf.sample(woLocal, sampler);
 			if (sample.pdf != 0 && sample.f.any()) {
 				Vector3f wiWorld = intr.toWorld(sample.wi);
 				RayWorkItem r	 = {};

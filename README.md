@@ -27,12 +27,14 @@
 #### Requirements
 
 - Nvidia RTX GPU (Turing or higher).
-- [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix) **7.3+** and [CUDA](https://developer.nvidia.com/cuda-toolkit) **11.4+** (current develop environment: OptiX 8 and CUDA 12).
+- [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix) **7.5+** and [CUDA](https://developer.nvidia.com/cuda-toolkit) **12.5+**.
 - [Vulkan SDK](https://vulkan.lunarg.com/) **1.3+**.
 
 This project is developed with on Windows (MSVC). It cannot compile on Linux. 
 
-> *KiRaRay* now uses Vulkan for better interoperability with CUDA, and extensibility to rasterization-based render passes. If Vulkan is not desired, check the [legacy-GL](https://github.com/cuteday/KiRaRay/tree/legacy-GL) branch that instead depends on OpenGL.
+> *KiRaRay* has bumped the required CUDA version to 12.5 for newer libcu++ features. The most recent legacy version on CUDA 11.4 is at the [cu114](https://github.com/cuteday/KiRaRay/tree/cu114) branch.
+
+> *KiRaRay* now uses Vulkan for interoperability with CUDA. If Vulkan is not desired, check the [legacy-GL](https://github.com/cuteday/KiRaRay/tree/legacy-GL) branch that instead depends on OpenGL.
 
 #### Cloning the repository
 
