@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: 
-        cuda: ["11.4.0", "12.1.0"]
+        cuda: ["12.5.0"]
         cuda_arch: ["75"]
         os: ["windows-2019"]
         spectral: ["ON", "OFF"]
