@@ -22,7 +22,7 @@ public:
 		: Eigen::Transform<T, Dim, Mode, Options>(Eigen::Transform<T, Dim, Mode, Options>::Identity()) {}
 
 	template <typename U = T> /* Dummy parameter for enable_if */
-	KRR_CALLABLE Transform(typename std::enable_if_t<Dim == Mode, U> v) 
+	KRR_CALLABLE Transform(typename std::enable_if_t<Dim == Mode && std::is_floating_point_v<U>, U> v) 
 		: Eigen::Transform<T, Dim, Mode, Options>(Vector<T, Dim>::Constant(v).asDiagonal()) {}
 
 	template <typename OtherDerived>

@@ -10,26 +10,33 @@
 
 NAMESPACE_BEGIN(krr)
 
+namespace gpu {
+#ifdef KRR_DEVICE_CODE
+	template <class ...Ts>
+	using variant = cuda::std::variant<Ts...>;
+	using monostate = cuda::std::monostate;
+#else
+	template <class... Ts>
+	using variant = std::variant<Ts...>;
+	using monostate = std::monostate;
+#endif
+}
+
 template <class Variant, size_t I = 0>
 KRR_HOST Variant VariantFromIndex(size_t index) {
-	/* Constructing a variant with std::in_place_index is cxx17 which cudac currently does not support */
+	/* Constructing a variant with std::in_place_index seems cudac currently does not support? */
 	if constexpr (I >= std::variant_size_v<Variant>) 
 		return Variant{std::in_place_index<0>};
     return index == 0 ?
 		Variant{std::in_place_index<I>} : VariantFromIndex<Variant, I + 1>(index - 1);
 }
 
-template <typename V, typename T>
-KRR_CALLABLE void DefaultConstruct(V& var, size_t index) {
-	DCHECK_EQ(index, 0);
-	if (index == 0) var = T();
-}
-
-template <typename V, typename T, typename... Ts,
-		  typename = typename std::enable_if_t<(sizeof...(Ts) > 0)>>
+template <typename V, typename T, typename... Ts>
 KRR_CALLABLE void DefaultConstruct(V& var, size_t index) {
 	if (index == 0) var = T();
-	else DefaultConstruct<V, Ts...>(var, index - 1);
+	else if constexpr (sizeof...(Ts) > 0) 
+		DefaultConstruct<V, Ts...>(var, index - 1);
+	else assert(false);
 }
 
 template <typename... Ts> class VariantClass {
@@ -64,24 +71,24 @@ public:
 
 	KRR_CALLABLE explicit operator bool() const { return data.index() != 0; }
 
-	template <typename T> KRR_CALLABLE T *cast() {
+	template <typename T> KRR_CALLABLE T *get() {
 		DCHECK(is<T>());
 		return reinterpret_cast<T *>(ptr());
 	}
 
-	template <typename T> KRR_CALLABLE const T *cast() const {
+	template <typename T> KRR_CALLABLE const T *get() const {
 		DCHECK(is<T>());
 		return reinterpret_cast<const T *>(ptr());
 	}
 
-	template <typename T> KRR_CALLABLE T *castOrNullptr() {
+	template <typename T> KRR_CALLABLE T *getIf() {
 		if (is<T>())
 			return reinterpret_cast<T *>(ptr());
 		else
 			return nullptr;
 	}
 
-	template <typename T> KRR_CALLABLE const T *castOrNullptr() const {
+	template <typename T> KRR_CALLABLE const T *getIf() const {
 		if (is<T>())
 			return reinterpret_cast<const T *>(ptr());
 		else
@@ -113,12 +120,7 @@ protected:
 		DefaultConstruct<decltype(data), Ts...>(data, index);
 	}
 
-#ifdef KRR_DEVICE_CODE
-	/* note that cudac supports variant features only until cxx14. */
-	cuda::std::variant<cuda::std::monostate, Ts...> data;
-#else
-	std::variant<std::monostate, Ts...> data;
-#endif
+	gpu::variant<gpu::monostate, Ts...> data;
 };
 
 NAMESPACE_END(krr)

@@ -450,7 +450,6 @@ int main(int argc, char* argv[]) {
 					printf("            soa->%s[i] = other.soa->%s[other.i];\n", name.c_str(), name.c_str());
 			}
 		printf("        }\n\n");
-		printf("		KRR_CALLABLE GetSetIndirector() = default;\n");	// default ctor
 		// GetSetIndirector members
 		printf("        SOA *soa;\n");
 		printf("        int i;\n");

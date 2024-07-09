@@ -10,6 +10,7 @@ class SOA {
 public:
 	struct GetSetIndirector { 
 		GetSetIndirector() = default; 
+		GetSetIndirector(SOA<T> *soa, int i): soa(soa), i(i) {}
 		KRR_CALLABLE operator T() const;
 		KRR_CALLABLE void operator=(const T &val);
 		KRR_CALLABLE void operator=(const GetSetIndirector &other);

@@ -1,18 +1,9 @@
 #pragma once
 #include "common.h"
 #include <atomic>
+#include <cuda/std/atomic>
 
-/* This is a simple wrapper with the expection of both CUDA and CPU usage. */
-/* This interface is exclusively designed for KiRaRay, and is completely 
-	based on my imagination since I am not familiar with CPP's atomic API :-) */
-
-#ifdef KRR_DEVICE_CODE
-#if (__CUDA_ARCH__ < 700)
-#define KRR_LEGACY_CUDA_ATOMICS
-#else
-#include <cuda/atomic>
-#endif
-#endif
+/* This is a simple wrapper with the expect of both CUDA and CPU usage. */
 
 NAMESPACE_BEGIN(krr)
 
@@ -30,11 +21,7 @@ public:
 	
 	KRR_CALLABLE T load() const {
 #ifdef KRR_DEVICE_CODE
-#ifdef KRR_LEGACY_CUDA_ATOMICS
-		return m_val;
-#else
 		return m_val.load(cuda::std::memory_order_relaxed);
-#endif
 #else
 		return m_val.load(std::memory_order_relaxed);
 #endif
@@ -42,11 +29,7 @@ public:
 
 	KRR_CALLABLE void store(const T& val) {
 #ifdef KRR_DEVICE_CODE
-#ifdef KRR_LEGACY_CUDA_ATOMICS
-		m_val = val;
-#else
 		m_val.store(val, cuda::std::memory_order_relaxed);
-#endif
 #else
 		m_val.store(val, std::memory_order_relaxed);
 #endif
@@ -58,11 +41,7 @@ public:
 	
 	KRR_CALLABLE T exchange(const T &val) {
 #ifdef KRR_DEVICE_CODE
-#ifdef KRR_LEGACY_CUDA_ATOMICS
-		return atomicExch(&m_val, val);
-#else
 		return m_val.exchange(val, cuda::std::memory_order_relaxed);
-#endif
 #else
 		return m_val.exchange(val, std::memory_order_relaxed);
 #endif
@@ -81,11 +60,7 @@ public:
 	
 private:
 #ifdef KRR_DEVICE_CODE
-#ifdef KRR_LEGACY_CUDA_ATOMICS
-	T m_val{ 0 };
-#else
-	cuda::atomic<T, cuda::thread_scope_device> m_val{ 0 };
-#endif
+	cuda::std::atomic<T> m_val{0};
 #else
 	std::atomic<T> m_val{ 0 };
 #endif

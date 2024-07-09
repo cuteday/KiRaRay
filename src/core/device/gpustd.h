@@ -15,15 +15,27 @@
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
+#include <variant>
+#include <optional>
 
 #include "util/check.h"
 #include "cuda.h"
 #include "logger.h"
 #include "common.h"
 
+#include <cuda/std/variant>
+#include <cuda/std/optional>
+#include <cuda/std/span>
+
 NAMESPACE_BEGIN(krr)
 
 namespace gpu {
+
+#ifdef KRR_DEVICE_CODE
+	template <class T> using optional = cuda::std::optional<T>;
+#else 
+	template <class T> using optional = std::optional<T>;
+#endif
 
 	class memory_resource {
 		static constexpr size_t max_align = alignof(std::max_align_t);
@@ -564,7 +576,6 @@ namespace gpu {
 		T value;
 	};
 
-
 	template <typename... Ts> tuple(Ts &&...) -> tuple<std::decay_t<Ts>...>;
 
 	template <size_t I, typename T, typename... Ts> 
@@ -599,97 +610,5 @@ namespace gpu {
 			return get<Req>((const tuple<Ts...> &) t);
 	}
 
-	template <typename T> class optional {
-	public:
-		using value_type = T;
-
-		optional() = default;
-		KRR_CALLABLE optional(const T &v) : set(true) { new (ptr()) T(v); }
-		KRR_CALLABLE optional(T &&v) : set(true) { new (ptr()) T(std::move(v)); }
-		KRR_CALLABLE optional(const optional &v) : set(v.has_value()) {
-			if (v.has_value()) new (ptr()) T(v.value());
-		}
-		KRR_CALLABLE optional(optional &&v) : set(v.has_value()) {
-			if (v.has_value()) {
-				new (ptr()) T(std::move(v.value()));
-				v.reset();
-			}
-		}
-
-		KRR_CALLABLE optional &operator=(const T &v) {
-			reset();
-			new (ptr()) T(v);
-			set = true;
-			return *this;
-		}
-		KRR_CALLABLE optional &operator=(T &&v) {
-			reset();
-			new (ptr()) T(std::move(v));
-			set = true;
-			return *this;
-		}
-		KRR_CALLABLE optional &operator=(const optional &v) {
-			reset();
-			if (v.has_value()) {
-				new (ptr()) T(v.value());
-				set = true;
-			}
-			return *this;
-		}
-		KRR_CALLABLE optional &operator=(optional &&v) {
-			reset();
-			if (v.has_value()) {
-				new (ptr()) T(std::move(v.value()));
-				set = true;
-				v.reset();
-			}
-			return *this;
-		}
-
-		KRR_CALLABLE ~optional() { reset(); }
-
-		KRR_CALLABLE explicit operator bool() const { return set; }
-
-		KRR_CALLABLE T value_or(const T &alt) const { return set ? value() : alt; }
-
-		KRR_CALLABLE T *operator->() { return &value(); }
-		KRR_CALLABLE const T *operator->() const { return &value(); }
-		KRR_CALLABLE T &operator*() { return value(); }
-		KRR_CALLABLE const T &operator*() const { return value(); }
-		KRR_CALLABLE T &value() {
-			CHECK(set);
-			return *ptr();
-		}
-		KRR_CALLABLE const T &value() const {
-			CHECK(set);
-			return *ptr();
-		}
-
-		KRR_CALLABLE void reset() {
-			if (set) {
-				value().~T();
-				set = false;
-			}
-		}
-
-		KRR_CALLABLE bool has_value() const { return set; }
-
-	private:
-#ifdef __NVCC__
-		// Work-around NVCC bug
-		KRR_CALLABLE
-		T *ptr() { return reinterpret_cast<T *>(&optionalValue); }
-		KRR_CALLABLE
-		const T *ptr() const { return reinterpret_cast<const T *>(&optionalValue); }
-#else
-		KRR_CALLABLE
-		T *ptr() { return std::launder(reinterpret_cast<T *>(&optionalValue)); }
-		KRR_CALLABLE
-		const T *ptr() const { return std::launder(reinterpret_cast<const T *>(&optionalValue)); }
-#endif
-
-		std::aligned_storage_t<sizeof(T), alignof(T)> optionalValue;
-		bool set = false;
-	};
 } // namespace gpu end
 NAMESPACE_END(krr)

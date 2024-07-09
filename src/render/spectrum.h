@@ -381,8 +381,8 @@ public:
 	static const RGBColorSpace *lookup(Point2f r, Point2f g, Point2f b, Point2f w);
 	template <typename SpectrumType>
 	KRR_CALLABLE float lum(const SpectrumType &s, const SampledWavelengths &lambda) const;
-	KRR_CALLABLE XYZ toXYZ(RGB rgb) const { return XYZFromRGB * rgb.matrix(); }
-	KRR_CALLABLE RGB toRGB(XYZ xyz) const { return RGBFromXYZ * xyz.matrix(); }
+	KRR_CALLABLE XYZ toXYZ(RGB rgb) const { return XYZ(XYZFromRGB * rgb.matrix()); }
+	KRR_CALLABLE RGB toRGB(XYZ xyz) const { return RGB(RGBFromXYZ * xyz.matrix()); }
 	KRR_CALLABLE XYZ toXYZ(SampledSpectrum s, const SampledWavelengths &lambda) const;
 	KRR_CALLABLE RGB toRGB(SampledSpectrum s, const SampledWavelengths &lambda) const;
 

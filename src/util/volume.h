@@ -46,9 +46,6 @@ public:
 	KRR_HOST NanoVDBGridBaseImpl(nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> &&density,
 		DataType maxDensity) : NanoVDBGridBase(std::move(density)), maxDensity(maxDensity) {}
 
-	KRR_HOST NanoVDBGridBaseImpl(nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> &&density) :
-		NanoVDBGridBase(std::move(density)) { evalMaxDensity(); }
-
 	KRR_CALLABLE DataType getMaxDensity() const { return maxDensity; }
 
 protected:

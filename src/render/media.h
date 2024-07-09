@@ -167,7 +167,7 @@ public:
 		else sigma_t_spec = Spectrum::fromRGB(densityGrid.getValue(p), SpectrumType::RGBUnbounded,
 										lambda, *colorSpace) * scale;
 		Spectrum sigma_s_spec = sigma_t_spec * Spectrum::fromRGB(
-			albedoGrid ? albedoGrid.getValue(p) : albedo, SpectrumType::RGBBounded, lambda, *colorSpace);
+			albedoGrid ? RGB(albedoGrid.getValue(p)) : albedo, SpectrumType::RGBBounded, lambda, *colorSpace);
 		return {sigma_t_spec - sigma_s_spec, sigma_s_spec, &phase, Le(p, lambda)};
 	}
 

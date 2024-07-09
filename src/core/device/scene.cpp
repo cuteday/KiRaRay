@@ -124,7 +124,7 @@ void RTScene::uploadSceneLightData() {
 	mLightStorage.addPointers(mScene.lock()->getLights());
 
 	/* Upload main constant light buffer and light sampler. */
-	Log(Info, "A total of %zd light(s) processed!", mLightStorage.getPointers().size());
+	Log(Debug, "A total of %zd light(s) processed!", mLightStorage.getPointers().size());
 	if (!mLightStorage.getPointers().size())
 		Log(Error, "There's no light source in the scene! "
 			"Image will be dark, and may even cause crash...");

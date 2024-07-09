@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include "vector.h"
+#include "functors.h"
 
 NAMESPACE_BEGIN(krr)
 	

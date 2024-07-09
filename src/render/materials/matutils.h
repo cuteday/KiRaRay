@@ -83,7 +83,7 @@ namespace bsdf{
 	}
 
 	// eta: absolute eta (eta_inside / eta_outside), *etap is optional.
-	KRR_CALLABLE bool Refract(const Vector3f &wi, Vector3f &n, float eta, float* etap, Vector3f *wt) {
+	KRR_CALLABLE bool Refract(const Vector3f &wi, const Vector3f &n, float eta, float* etap, Vector3f *wt) {
 		// Compute $\cos \theta_\roman{t}$ using Snell's law
 		float cosThetaI	 = dot(n, wi);
 		// Potentially flip interface orientation for Snell's law

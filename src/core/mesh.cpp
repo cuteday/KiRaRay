@@ -39,7 +39,7 @@ void rt::InstanceData::getObjectData(std::shared_ptr<SceneGraphLeaf> object,
 		if ((material && material->hasEmission()) || mesh->Le.any()) {
 			rt::MaterialData &materialData = materials[material->getMaterialId()];
 			rt::MeshData &meshData		   = meshes[mesh->getMeshId()];
-			rt::TextureData &textureData = materialData.getTexture(Material::TextureType::Emissive);
+			rt::TextureData textureData    = materialData.getTexture(Material::TextureType::Emissive);
 			rt::InstanceData &instanceData = instances[inst->getInstanceId()];
 			RGB Le = material->hasEmission() ? RGB(textureData.getConstant()) : mesh->Le;
 			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld",
@@ -50,7 +50,7 @@ void rt::InstanceData::getObjectData(std::shared_ptr<SceneGraphLeaf> object,
 			size_t n_primitives = primitives.size();
 			gdata->primitives.alloc_and_copy_from_host(primitives);
 			std::vector<rt::DiffuseAreaLight> lights(n_primitives);
-			Log(Info, "Uploading a light with scale %f; emission %s", scale, Le.string().c_str());
+			Log(Debug, "Uploading a light with scale %f; emission %s", scale, Le.string().c_str());
 			for (size_t triId = 0; triId < n_primitives; triId++) {
 				lights[triId] =
 					rt::DiffuseAreaLight(Shape(&gdata->primitives[triId]), textureData, Le, false, scale);

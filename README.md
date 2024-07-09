@@ -21,13 +21,13 @@
 
 ### Build and run
 
-| *Windows (MSVC)* | [![Build](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml/badge.svg)](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml) |
+| *Windows (MSVC, C++17)* | [![Build](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml/badge.svg)](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml) |
 | --------- | ------------------------------------------------------------ |
 
 #### Requirements
 
-- Nvidia RTX GPU (Turing or higher).
 - [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix) **7.5+** and [CUDA](https://developer.nvidia.com/cuda-toolkit) **12.5+**.
+- CUDA Compute Capability 6+ (*Pascal*+, *Turing*+ is better).
 - [Vulkan SDK](https://vulkan.lunarg.com/) **1.3+**.
 
 This project is developed with on Windows (MSVC). It cannot compile on Linux. 

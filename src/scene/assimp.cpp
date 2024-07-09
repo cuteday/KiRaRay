@@ -166,7 +166,7 @@ Material::SharedPtr createMaterial(const aiMaterial *pAiMaterial, const string &
 	}
 
 	// Emissive color
-	RGB emissive = Vector3f::Zero();
+	RGB emissive{Vector3f::Zero()};
 	if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
 		emissive = RGB(color[0], color[1], color[2]);
 	}

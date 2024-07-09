@@ -106,23 +106,4 @@ public:
 	PhaseFunction phase{nullptr};
 };
 
-// the following routines are used to encode 64-bit payload pointers
-static KRR_DEVICE_FUNCTION void *unpackPointer(uint i0, uint i1) {
-	const uint64_t uptr = static_cast<uint64_t>(i0) << 32 | i1;
-	void *ptr			= reinterpret_cast<void *>(uptr);
-	return ptr;
-}
-
-static KRR_DEVICE_FUNCTION void packPointer(void *ptr, uint &i0, uint &i1) {
-	const uint64_t uptr = reinterpret_cast<uint64_t>(ptr);
-	i0					= uptr >> 32;
-	i1					= uptr & 0x00000000ffffffff;
-}
-
-template <typename T> static KRR_DEVICE_FUNCTION T *getPRD() {
-	const uint u0 = optixGetPayload_0();
-	const uint u1 = optixGetPayload_1();
-	return reinterpret_cast<T *>(unpackPointer(u0, u1));
-}
-
 NAMESPACE_END(krr)

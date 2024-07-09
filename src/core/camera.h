@@ -113,7 +113,7 @@ public:
 	const rt::CameraData& getCameraData() const { return mData; }
 
 	void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; }
-	void setFilmSize(Vector2f& size) { mData.filmSize = size; }
+	void setFilmSize(Vector2f size) { mData.filmSize = size; }
 	void setFocalDistance(float focalDistance) { mData.focalDistance = focalDistance; }
 	void setFocalLength(float focalLength) { mData.focalLength = focalLength; }
 	void setLensRadius(float lensRadius) { mData.lensRadius = lensRadius; }

@@ -77,7 +77,8 @@ RenderContext::RenderContext(nvrhi::IDevice* device) :
 }
 
 RenderContext::~RenderContext() { 
-	vk::Device device = mDevice->getNativeObject(nvrhi::ObjectTypes::VK_Device);
+	vk::Device device =
+		static_cast<vk::Device>(mDevice->getNativeObject(nvrhi::ObjectTypes::VK_Device));
 	device.waitIdle(); 
 	device.destroySemaphore(mCudaSemaphore);
 	//device.destroySemaphore(mVulkanSemaphore);	// [TODO] this is managed by RHI.

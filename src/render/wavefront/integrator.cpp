@@ -275,8 +275,6 @@ void WavefrontPathTracer::renderUI() {
 	ui::InputInt("Max bounces", &maxDepth, 1);
 	ui::SliderFloat("Russian roulette", &probRR, 0, 1);
 	ui::Checkbox("Enable NEE", &enableNEE);
-	// If MIS is disabled while NEE is enabled,
-	// The paths that hits the lights will not contribute.
 	if (mScene->getMedia().size()) 
 		if (ui::Checkbox("Enable medium", &enableMedium)) initialize();
 	ui::Text("Debugging");

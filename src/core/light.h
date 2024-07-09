@@ -153,11 +153,11 @@ class DiffuseAreaLight {
 public:
 	DiffuseAreaLight() = default;
 
-	DiffuseAreaLight(Shape &shape, Vector3f Le, bool twoSided = false, float scale = 1.f,
+	DiffuseAreaLight(const Shape &shape, Vector3f Le, bool twoSided = false, float scale = 1.f,
 					 const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		shape(shape), Le(Le), twoSided(twoSided), scale(scale), colorSpace(colorSpace) {}
 
-	DiffuseAreaLight(Shape &shape, const rt::TextureData &texture, RGB Le = {},
+	DiffuseAreaLight(const Shape &shape, const rt::TextureData &texture, RGB Le = {},
 					 bool twoSided = false, float scale = 1.f,
 					 const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		shape(shape), texture(texture), Le(Le), twoSided(twoSided), scale(scale), colorSpace(colorSpace) {}
