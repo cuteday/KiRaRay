@@ -185,20 +185,19 @@ void WavefrontPathTracer::resize(const Vector2i &size) {
 
 void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 	mScene = scene;
-	if (!backend) {
-		backend		= new OptixBackend();
-		auto params = OptixInitializeParameters()
-						  .setPTX(WAVEFRONT_PTX)
-						  .addRaygenEntry("Closest")
-						  .addRaygenEntry("Shadow")
-						  .addRaygenEntry("ShadowTr")
-						  .addRayType("Closest", true, true, false)
-						  .addRayType("Shadow", false, true, false)
-						  .addRayType("ShadowTr", true, true, false)
-						  .setMaxTraversableDepth(scene->getMaxGraphDepth());
-		backend->initialize(params);
-	}
+	if (!backend) backend		= new OptixBackend();
 	backend->setScene(scene);
+	auto params = OptixInitializeParameters()
+						.setPTX(WAVEFRONT_PTX)
+						.addRaygenEntry("Closest")
+						.addRaygenEntry("Shadow")
+						.addRaygenEntry("ShadowTr")
+						.addRayType("Closest", true, true, false)
+						.addRayType("Shadow", false, true, false)
+						.addRayType("ShadowTr", true, true, false)
+						.setMaxTraversableDepth(scene->getMaxGraphDepth());
+	backend->initialize(params);
+	backend->buildShaderBindingTable();
 	lightSampler = backend->getSceneData().lightSampler;
 	enableMedium = enableMedium && scene->getMedia().size();
 	initialize();

@@ -25,7 +25,7 @@ public:
 	void setScene(Scene::SharedPtr scene) override;
 	string getName() const override { return "MegakernelPathTracer"; }
 
-private:
+protected:
 	OptixBackend::SharedPtr optixBackend;
 	LaunchParameters<MegakernelPathTracer> launchParams;
 

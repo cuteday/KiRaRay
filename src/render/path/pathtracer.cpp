@@ -11,18 +11,17 @@ extern "C" char PATHTRACER_PTX[];
 void MegakernelPathTracer::initialize() {}
 
 void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
-	if (!optixBackend) {
-		optixBackend = std::make_shared<OptixBackend>();
-		auto params	 = OptixInitializeParameters()
-						  .setPTX(PATHTRACER_PTX)
-						  .addRaygenEntry("Pathtracer")
-						  .addRayType("Radiance", true, true, false)
-						  .addRayType("ShadowRay", true, true, false)
-						  .setMaxTraversableDepth(scene->getMaxGraphDepth());
-		optixBackend->initialize(params);
-	}
 	mScene = scene;
+	if (!optixBackend) optixBackend = std::make_shared<OptixBackend>();
 	optixBackend->setScene(scene);
+	auto params = OptixInitializeParameters()
+					  .setPTX(PATHTRACER_PTX)
+					  .addRaygenEntry("Pathtracer")
+					  .addRayType("Radiance", true, true, false)
+					  .addRayType("ShadowRay", true, true, false)
+					  .setMaxTraversableDepth(scene->getMaxGraphDepth());
+	optixBackend->initialize(params);
+	optixBackend->buildShaderBindingTable(); // SBT[Instances [RayTypes ...] ...]
 }
 
 void MegakernelPathTracer::renderUI() {
@@ -51,7 +50,6 @@ void MegakernelPathTracer::render(RenderContext *context) {
 		launchParams.sceneData	 = mScene->getSceneRT()->getSceneData();
 		launchParams.traversable = optixBackend->getRootTraversable();
 		launchParams.frameID	 = (uint)getFrameIndex();
-
 		optixBackend->launch(launchParams, "Pathtracer", getFrameSize()[0], getFrameSize()[1],
 			1, KRR_DEFAULT_STREAM);
 	}

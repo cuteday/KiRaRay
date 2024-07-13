@@ -332,7 +332,6 @@ void OptixBackend::setScene(Scene::SharedPtr _scene){
 	/* Should be called after initialization... */
 	scene = _scene;
 	scene->initializeSceneRT();		// upload bindless scene data to device buffers.
-	buildShaderBindingTable();		// SBT[Instances [RayTypes ...] ...]
 }
 
 // [TODO] Currently supports updating subgraph transforms only.
@@ -671,6 +670,7 @@ void OptixBackend::buildShaderBindingTable() {
 		Log(Fatal, "Currently supports no more than %zd ray types only,"
 		"but there are %zd ray types", OPTIX_MAX_RAY_TYPES, nRayTypes);
 	else if (nRayTypes == 0) Log(Fatal, "No ray types has been specified!");
+	if (!scene) Log(Fatal, "Load a scene before build optix SBT!");
 
 	raygenRecords.clear();
 	missRecords.clear();
