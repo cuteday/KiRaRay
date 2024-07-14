@@ -126,7 +126,7 @@ private:
 };
 
 struct OptixInitializeParameters {
-	char* ptx;
+	const char* ptx;
 	unsigned int maxTraversableDepth{6};
 	std::vector<string> raygenEntries;
 	std::vector<string> rayTypes;

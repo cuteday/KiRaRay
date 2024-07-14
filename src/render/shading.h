@@ -56,6 +56,11 @@ static KRR_DEVICE_FUNCTION void packPointer(void *ptr, uint &i0, uint &i1) {
 	i1					= uptr & 0x00000000ffffffff;
 }
 
+static KRR_DEVICE_FUNCTION std::pair<uint, uint> packPointer(void *ptr) {
+	const uint64_t uptr = reinterpret_cast<uint64_t>(ptr);
+	return { uptr >> 32, uptr & 0x00000000ffffffff };
+}
+
 template <typename T> static KRR_DEVICE_FUNCTION T *getPRD() {
 	const uint u0 = optixGetPayload_0();
 	const uint u1 = optixGetPayload_1();

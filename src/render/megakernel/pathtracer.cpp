@@ -12,9 +12,7 @@ void MegakernelPathTracer::compilePrograms() {
 	auto params = optixBackend->getParameters();
 	params.boundValues.clear();
 	params.addBoundValue(offsetof(LaunchParameters<MegakernelPathTracer>, spp),
-						 sizeof(launchParams.spp), &launchParams.spp, "Samples per pixel")
-		  .addBoundValue(offsetof(LaunchParameters<MegakernelPathTracer>, NEE),
-						sizeof(launchParams.NEE), &launchParams.NEE, "Enable NEE");
+						 sizeof(launchParams.spp), &launchParams.spp, "Samples per pixel");
 	optixBackend->initialize(params);
 	needsRecompile = false;
 }
@@ -44,7 +42,7 @@ void MegakernelPathTracer::renderUI() {
 	ui::InputInt("Max bounces", &launchParams.maxDepth);
 	ui::DragFloat("Radiance clip", &launchParams.clampThreshold, 0.1, 1, 500);
 	needsRecompile |= ui::InputInt("Samples per pixel", &launchParams.spp, 1, 1);
-	needsRecompile |= ui::Checkbox("Next event estimation", &launchParams.NEE);
+	ui::Checkbox("Next event estimation", &launchParams.NEE);
 	if (launchParams.NEE) 
 		ui::InputInt("Light sample count", &launchParams.lightSamples);
 	ui::Text("Debugging");

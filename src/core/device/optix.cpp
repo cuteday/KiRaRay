@@ -324,6 +324,7 @@ void OptixBackend::createOptixPipeline() {
 
 void OptixBackend::initialize(const OptixInitializeParameters &params) {
 	/* This function creates optix module&pipeline and builds SBT given specified parameters. */
+	if (!scene) Log(Fatal, "Scene is not set for OptixBackend, please call setScene() first.");
 	setParameters(params);
 	optixContext	= gpContext->optixContext;
 
