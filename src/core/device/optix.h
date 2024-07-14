@@ -194,12 +194,13 @@ public:
 	OptixTraversableHandle getRootTraversable() const;
 
 	void setParameters(const OptixInitializeParameters &params) { optixParameters = params; }
-	void getParameters(OptixInitializeParameters &params) const { params = optixParameters; }
+	OptixInitializeParameters getParameters() const { return optixParameters; }
+
+protected:
 	void createOptixModule();
 	void createOptixPipeline();
 	void buildShaderBindingTable();
 
-protected:
 	OptixProgramGroup createRaygenPG(const char *entrypoint) const;
 	OptixProgramGroup createMissPG(const char *entrypoint) const;
 	OptixProgramGroup createIntersectionPG(const char *closest, const char *any,

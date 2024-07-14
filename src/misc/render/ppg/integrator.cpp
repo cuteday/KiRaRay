@@ -29,7 +29,6 @@ void PPGPathTracer::resize(const Vector2i& size) {
 void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 	mScene = scene;
 	if (!backend) backend		= new OptixBackend();
-	backend->setScene(scene);
 	auto params = OptixInitializeParameters()
 						.setPTX(PPG_PTX)
 						.addRaygenEntry("Closest")
@@ -39,8 +38,8 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 						.addRayType("Shadow", false, true, false)
 						.addRayType("ShadowTr", true, true, false)
 						.setMaxTraversableDepth(scene->getMaxGraphDepth());
+	backend->setScene(scene);
 	backend->initialize(params);
-	backend->buildShaderBindingTable();
 	lightSampler	 = backend->getSceneData().lightSampler;
 	AABB aabb = scene->getBoundingBox();
 	Allocator& alloc = *gpContext->alloc;

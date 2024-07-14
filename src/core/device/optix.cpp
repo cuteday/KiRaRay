@@ -266,7 +266,13 @@ void OptixBackend::createOptixModule() {
 }
 
 void OptixBackend::createOptixPipeline() {
+	// clear previous pipeline and related data
+	cudaDeviceSynchronize();
 	optixPipelineDestroy(optixPipeline);
+	raygenPGs.clear();
+	missPGs.clear();
+	hitgroupPGs.clear();
+	entryPoints.clear();
 	// creating program groups
 	std::vector<OptixProgramGroup> allPGs;
 	// creating RAYGEN PG
@@ -300,7 +306,7 @@ void OptixBackend::createOptixPipeline() {
 											 log, &logSize, &optixPipeline),
 						 log);
 
-	Log(Info, "Setting max traversable graph depth to %d", optixParameters.maxTraversableDepth);
+	Log(Debug, "Setting max traversable graph depth to %d", optixParameters.maxTraversableDepth);
 	OPTIX_CHECK(
 		optixPipelineSetStackSize(/* [in] The pipeline to configure the
 									 stack size for */
@@ -317,15 +323,13 @@ void OptixBackend::createOptixPipeline() {
 }
 
 void OptixBackend::initialize(const OptixInitializeParameters &params) {
-	/* This function creates optix module and pipeline given specified parameters. */
-	char log[OPTIX_LOG_SIZE];
-	size_t logSize = sizeof(log);
-	// temporary workaround for setup context
+	/* This function creates optix module&pipeline and builds SBT given specified parameters. */
 	setParameters(params);
 	optixContext	= gpContext->optixContext;
 
 	createOptixModule();
 	createOptixPipeline();
+	buildShaderBindingTable();
 }
 
 void OptixBackend::setScene(Scene::SharedPtr _scene){
@@ -383,7 +387,7 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 	iasBuildInput.instanceArray.numInstances = instancesIAS.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
 	
-	Log(Info, "Building root IAS: %zd instances", instances.size());
+	Log(Debug, "Building root IAS: %zd instances", instances.size());
 	traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 									   {iasBuildInput}, accelBufferIAS, false);
 	CUDA_CHECK(cudaStreamSynchronize(KRR_DEFAULT_STREAM));
@@ -665,13 +669,14 @@ std::shared_ptr<OptixScene> OptixBackend::getOptixScene() const {
 }
 
 void OptixBackend::buildShaderBindingTable() {
+	// SBT[Instances [RayTypes ...] ...]
 	size_t nRayTypes = optixParameters.rayTypes.size();
 	if (OPTIX_MAX_RAY_TYPES < nRayTypes)
 		Log(Fatal, "Currently supports no more than %zd ray types only,"
 		"but there are %zd ray types", OPTIX_MAX_RAY_TYPES, nRayTypes);
 	else if (nRayTypes == 0) Log(Fatal, "No ray types has been specified!");
 	if (!scene) Log(Fatal, "Load a scene before build optix SBT!");
-
+	cudaDeviceSynchronize();
 	raygenRecords.clear();
 	missRecords.clear();
 	hitgroupRecords.clear();
@@ -715,7 +720,7 @@ void OptixBackend::buildShaderBindingTable() {
 		sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
 		SBT.push_back(sbt);
 	}
-	Log(Info, "Building SBT with %zd raygen entries, %zd miss records, %zd hitgroup records",
+	Log(Debug, "Building SBT with %zd raygen entries, %zd miss records, %zd hitgroup records",
 		raygenRecords.size(), missRecords.size(), hitgroupRecords.size());
 	CUDA_SYNC_CHECK();
 }
