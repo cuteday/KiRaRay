@@ -26,17 +26,14 @@ class MegakernelPathTracer;
 
 template <>
 struct LaunchParameters<MegakernelPathTracer> {
-	uint frameID{0};
 	Vector2i fbSize = Vector2i::Zero();
-	// per pixel debugging output
-	bool debugOutput	 = false;
+	// configuration
 	bool NEE			 = false; // enable next event estimation (and MIS)
-	Vector2i debugPixel	 = {960, 540};
 	int maxDepth		 = 10;
-	float probRR		 = 0.8;
-	float clampThreshold = 1e4f; // clamp max radiance contrib per frame
 	int spp				 = 1;
 	int lightSamples	 = 1;
+	float probRR		 = 0.8;
+	float clampThreshold = 1e4f; // clamp max radiance contrib per frame
 	// scene
 	rt::CameraData camera;
 	LightSampler lightSampler;
@@ -44,6 +41,10 @@ struct LaunchParameters<MegakernelPathTracer> {
 	const RGBColorSpace *colorSpace;
 	CudaRenderTarget colorBuffer;
 	OptixTraversableHandle traversable{0};
+	// misc
+	uint frameID{0};
+	bool debugOutput	= false;
+	Vector2i debugPixel = {960, 540};
 };
 
 struct PathData {

@@ -126,17 +126,17 @@ private:
 };
 
 struct OptixInitializeParameters {
-	char* ptx;
+	const char* ptx;
 	unsigned int maxTraversableDepth{6};
 	std::vector<string> raygenEntries;
 	std::vector<string> rayTypes;
+	std::vector<OptixModuleCompileBoundValueEntry> boundValues;
 	std::vector<std::tuple<bool, bool, bool>> rayClosestShaders;
 
 	OptixInitializeParameters& setMaxTraversableDepth(unsigned int depth) {
 		maxTraversableDepth = depth;
 		return *this;
 	}
-
 	OptixInitializeParameters& setPTX(char* ptx) {
 		this->ptx = ptx;
 		return *this;
@@ -149,6 +149,16 @@ struct OptixInitializeParameters {
 										  bool anyHit, bool intersect) {
 		rayTypes.push_back(typeName);
 		rayClosestShaders.push_back({closestHit, anyHit, intersect});
+		return *this;
+	}
+	OptixInitializeParameters& addBoundValue(size_t offset, size_t size, void* data,
+		char* annotation) {
+		OptixModuleCompileBoundValueEntry entry;
+		entry.pipelineParamOffsetInBytes = offset;
+		entry.sizeInBytes				 = size;
+		entry.boundValuePtr				 = data;
+		entry.annotation				 = annotation;
+		boundValues.push_back(entry);
 		return *this;
 	}
 };
@@ -183,7 +193,12 @@ public:
 	std::vector<string> getRaygenEntries() const { return optixParameters.raygenEntries; }
 	OptixTraversableHandle getRootTraversable() const;
 
+	void setParameters(const OptixInitializeParameters &params) { optixParameters = params; }
+	OptixInitializeParameters getParameters() const { return optixParameters; }
+
 protected:
+	void createOptixModule();
+	void createOptixPipeline();
 	void buildShaderBindingTable();
 
 	OptixProgramGroup createRaygenPG(const char *entrypoint) const;
@@ -210,7 +225,8 @@ protected:
 
 public:
 	static const size_t OPTIX_MAX_RAY_TYPES = 3;	// Radiance, Shadow, ShadowTransmission
-	static OptixModule createOptixModule(OptixDeviceContext optixContext, const char* ptx);
+	static OptixModule createOptixModule(OptixDeviceContext optixContext,
+										 const OptixInitializeParameters& params);
 	static OptixPipelineCompileOptions getPipelineCompileOptions();
 
 	static OptixProgramGroup createRaygenPG(OptixDeviceContext optixContext, OptixModule optixModule, const char* entrypoint);

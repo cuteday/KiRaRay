@@ -8,7 +8,7 @@
 #include "device/optix.h"
 #include "device/buffer.h"
 #include "device/context.h"
-#include "render/path/path.h"
+#include "path.h"
 
 NAMESPACE_BEGIN(krr)
 
@@ -20,12 +20,13 @@ public:
 
 	void renderUI() override;
 	void render(RenderContext *context) override;
-	void initialize() override;
-
+	void resize(const Vector2i &size) override;
 	void setScene(Scene::SharedPtr scene) override;
 	string getName() const override { return "MegakernelPathTracer"; }
 
-private:
+protected:
+	void compilePrograms();
+
 	OptixBackend::SharedPtr optixBackend;
 	LaunchParameters<MegakernelPathTracer> launchParams;
 
@@ -42,6 +43,9 @@ private:
 		p.launchParams.maxDepth = j.value("max_depth", 10);
 		p.launchParams.probRR = j.value("rr", 0.8);
 	}
+
+private:
+	bool needsRecompile{false};
 };
 
 NAMESPACE_END(krr)

@@ -31,7 +31,7 @@ OptixPipelineCompileOptions OptixBackend::getPipelineCompileOptions() {
 }
 
 OptixModule OptixBackend::createOptixModule(OptixDeviceContext optixContext,
-													 const char *ptx) {
+											const OptixInitializeParameters &params) {
 	OptixModuleCompileOptions moduleCompileOptions = {};
 	moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 #ifdef KRR_DEBUG_BUILD
@@ -45,6 +45,8 @@ OptixModule OptixBackend::createOptixModule(OptixDeviceContext optixContext,
 	moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 	moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
+	moduleCompileOptions.boundValues				   = params.boundValues.data();
+	moduleCompileOptions.numBoundValues				   = params.boundValues.size();
 	OptixPipelineCompileOptions pipelineCompileOptions = getPipelineCompileOptions();
 
 #if (OPTIX_VERSION >= 70700)
@@ -58,7 +60,7 @@ OptixModule OptixBackend::createOptixModule(OptixDeviceContext optixContext,
 	OptixModule optixModule;
 	OPTIX_CHECK_WITH_LOG(OPTIX_MODULE_CREATE(
 		optixContext, &moduleCompileOptions, &pipelineCompileOptions,
-		ptx, strlen(ptx), log, &logSize, &optixModule),
+		params.ptx, strlen(params.ptx), log, &logSize, &optixModule),
 		log);
 	logDebug(log);
 	return optixModule;
@@ -257,65 +259,84 @@ OptixProgramGroup OptixBackend::createIntersectionPG(
 	return createIntersectionPG(optixContext, optixModule, closest, any, intersect);
 }
 
-void OptixBackend::initialize(const OptixInitializeParameters &params) {
-	char log[OPTIX_LOG_SIZE];
-	size_t logSize = sizeof(log);
-	// temporary workaround for setup context
-	optixParameters = params;
-	optixContext	= gpContext->optixContext;
-	
+void OptixBackend::createOptixModule() {
+	optixModuleDestroy(optixModule);
 	// creating optix module from ptx
-	optixModule = createOptixModule(optixContext, params.ptx);
+	optixModule = createOptixModule(optixContext, optixParameters);
+}
+
+void OptixBackend::createOptixPipeline() {
+	// clear previous pipeline and related data
+	cudaDeviceSynchronize();
+	optixPipelineDestroy(optixPipeline);
+	raygenPGs.clear();
+	missPGs.clear();
+	hitgroupPGs.clear();
+	entryPoints.clear();
 	// creating program groups
 	std::vector<OptixProgramGroup> allPGs;
 	// creating RAYGEN PG
-	for (string raygenEntryName : params.raygenEntries) {
-		raygenPGs.push_back(createRaygenPG(
-			("__raygen__" + raygenEntryName).c_str()));
+	for (string raygenEntryName : optixParameters.raygenEntries) {
+		raygenPGs.push_back(createRaygenPG(("__raygen__" + raygenEntryName).c_str()));
 		entryPoints.insert({raygenEntryName, entryPoints.size()});
 	}
-	for (int rayType = 0; rayType < params.rayTypes.size(); rayType++) {
-		string rayTypeName				 = params.rayTypes[rayType];
-		const auto& [hasCH, hasAH, hasIS] = params.rayClosestShaders[rayType];
+	for (int rayType = 0; rayType < optixParameters.rayTypes.size(); rayType++) {
+		string rayTypeName				  = optixParameters.rayTypes[rayType];
+		const auto &[hasCH, hasAH, hasIS] = optixParameters.rayClosestShaders[rayType];
 		// creating MISS PG
 		missPGs.push_back(createMissPG(("__miss__" + rayTypeName).c_str()));
 		// creating CLOSEST PG
-		hitgroupPGs.push_back(createIntersectionPG(
-			hasCH ? ("__closesthit__" + rayTypeName).c_str() : nullptr,
-			hasAH ? ("__anyhit__" + rayTypeName).c_str() : nullptr,
-			hasIS ? ("__intersection__" + rayTypeName).c_str() : nullptr));		
+		hitgroupPGs.push_back(
+			createIntersectionPG(hasCH ? ("__closesthit__" + rayTypeName).c_str() : nullptr,
+								 hasAH ? ("__anyhit__" + rayTypeName).c_str() : nullptr,
+								 hasIS ? ("__intersection__" + rayTypeName).c_str() : nullptr));
 	}
 	allPGs.insert(allPGs.end(), raygenPGs.begin(), raygenPGs.end());
 	allPGs.insert(allPGs.end(), missPGs.begin(), missPGs.end());
 	allPGs.insert(allPGs.end(), hitgroupPGs.begin(), hitgroupPGs.end());
 	// creating optix pipeline from all program groups
 	OptixPipelineCompileOptions pipelineCompileOptions = getPipelineCompileOptions();
-	OptixPipelineLinkOptions pipelineLinkOptions = {};
-	pipelineLinkOptions.maxTraceDepth			 = 3;
+	OptixPipelineLinkOptions pipelineLinkOptions	   = {};
+	pipelineLinkOptions.maxTraceDepth				   = 3;
 
-	OPTIX_CHECK_WITH_LOG(
-		optixPipelineCreate(optixContext, &pipelineCompileOptions,
-							&pipelineLinkOptions, allPGs.data(), allPGs.size(),
-							log, &logSize, &optixPipeline), log);
-	
-	Log(Info, "Setting max traversable graph depth to %d", params.maxTraversableDepth);	
-	OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the
-											 stack size for */
-										  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024, 
-		std::min(static_cast<unsigned int>(31), 2 * params.maxTraversableDepth)  /* max traversable graph depth */));
-	/* [TODO] current setup on maxTraversableDepth is just a temporal workaround, 
+	char log[OPTIX_LOG_SIZE];
+	size_t logSize = sizeof(log);
+	OPTIX_CHECK_WITH_LOG(optixPipelineCreate(optixContext, &pipelineCompileOptions,
+											 &pipelineLinkOptions, allPGs.data(), allPGs.size(),
+											 log, &logSize, &optixPipeline),
+						 log);
+
+	Log(Debug, "Setting max traversable graph depth to %d", optixParameters.maxTraversableDepth);
+	OPTIX_CHECK(
+		optixPipelineSetStackSize(/* [in] The pipeline to configure the
+									 stack size for */
+								  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024,
+								  std::min(
+									  static_cast<unsigned int>(31), 2 * optixParameters
+																			 .maxTraversableDepth) /* max traversable graph depth */));
+	/* [TODO] current setup on maxTraversableDepth is just a temporal workaround,
 	 * making sure the actual depth (plus motion nodes) would never exceeds 2*graphDepth.
 	 * This is somewhat acceptable since its performace impact seems to be small.
-	 * But hopefully we could find a better solution about the actually depth. 
+	 * But hopefully we could find a better solution about the actually depth.
 	 */
 	Log(Debug, log);
+}
+
+void OptixBackend::initialize(const OptixInitializeParameters &params) {
+	/* This function creates optix module&pipeline and builds SBT given specified parameters. */
+	if (!scene) Log(Fatal, "Scene is not set for OptixBackend, please call setScene() first.");
+	setParameters(params);
+	optixContext	= gpContext->optixContext;
+
+	createOptixModule();
+	createOptixPipeline();
+	buildShaderBindingTable();
 }
 
 void OptixBackend::setScene(Scene::SharedPtr _scene){
 	/* Should be called after initialization... */
 	scene = _scene;
 	scene->initializeSceneRT();		// upload bindless scene data to device buffers.
-	buildShaderBindingTable();		// SBT[Instances [RayTypes ...] ...]
 }
 
 // [TODO] Currently supports updating subgraph transforms only.
@@ -367,7 +388,7 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 	iasBuildInput.instanceArray.numInstances = instancesIAS.size();
 	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
 	
-	Log(Info, "Building root IAS: %zd instances", instances.size());
+	Log(Debug, "Building root IAS: %zd instances", instances.size());
 	traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 									   {iasBuildInput}, accelBufferIAS, false);
 	CUDA_CHECK(cudaStreamSynchronize(KRR_DEFAULT_STREAM));
@@ -649,11 +670,17 @@ std::shared_ptr<OptixScene> OptixBackend::getOptixScene() const {
 }
 
 void OptixBackend::buildShaderBindingTable() {
+	// SBT[Instances [RayTypes ...] ...]
 	size_t nRayTypes = optixParameters.rayTypes.size();
 	if (OPTIX_MAX_RAY_TYPES < nRayTypes)
 		Log(Fatal, "Currently supports no more than %zd ray types only,"
 		"but there are %zd ray types", OPTIX_MAX_RAY_TYPES, nRayTypes);
 	else if (nRayTypes == 0) Log(Fatal, "No ray types has been specified!");
+	if (!scene) Log(Fatal, "Load a scene before build optix SBT!");
+	cudaDeviceSynchronize();
+	raygenRecords.clear();
+	missRecords.clear();
+	hitgroupRecords.clear();
 
 	for (const auto [raygenEntry, index] : entryPoints) {
 		RaygenRecord raygenRecord = {};
@@ -694,7 +721,7 @@ void OptixBackend::buildShaderBindingTable() {
 		sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
 		SBT.push_back(sbt);
 	}
-	Log(Info, "Building SBT with %zd raygen entries, %zd miss records, %zd hitgroup records",
+	Log(Debug, "Building SBT with %zd raygen entries, %zd miss records, %zd hitgroup records",
 		raygenRecords.size(), missRecords.size(), hitgroupRecords.size());
 	CUDA_SYNC_CHECK();
 }

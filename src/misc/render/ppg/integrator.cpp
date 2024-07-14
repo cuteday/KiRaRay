@@ -28,20 +28,18 @@ void PPGPathTracer::resize(const Vector2i& size) {
 
 void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 	mScene = scene;
-	if (!backend) {
-		backend		= new OptixBackend();
-		auto params = OptixInitializeParameters()
-						  .setPTX(PPG_PTX)
-						  .addRaygenEntry("Closest")
-						  .addRaygenEntry("Shadow")
-						  .addRaygenEntry("ShadowTr")
-						  .addRayType("Closest", true, true, false)
-						  .addRayType("Shadow", false, true, false)
-						  .addRayType("ShadowTr", true, true, false)
-						  .setMaxTraversableDepth(scene->getMaxGraphDepth());
-		backend->initialize(params);
-	}
+	if (!backend) backend		= new OptixBackend();
+	auto params = OptixInitializeParameters()
+						.setPTX(PPG_PTX)
+						.addRaygenEntry("Closest")
+						.addRaygenEntry("Shadow")
+						.addRaygenEntry("ShadowTr")
+						.addRayType("Closest", true, true, false)
+						.addRayType("Shadow", false, true, false)
+						.addRayType("ShadowTr", true, true, false)
+						.setMaxTraversableDepth(scene->getMaxGraphDepth());
 	backend->setScene(scene);
+	backend->initialize(params);
 	lightSampler	 = backend->getSceneData().lightSampler;
 	AABB aabb = scene->getBoundingBox();
 	Allocator& alloc = *gpContext->alloc;

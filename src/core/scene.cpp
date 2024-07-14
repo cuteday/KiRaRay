@@ -153,6 +153,7 @@ void Scene::initializeSceneRT() {
 	mGraph->setScene(shared_from_this());
 	mGraph->update(0); // must be done before preparing device data.
 	if (mSceneRT) {
+		// TODO: support switching scenes at runtime.
 		if (mSceneRT->getScene() == shared_from_this())
 			Log(Warning, "The RT scene data has been initialized once before."
 					 "I'm assuming you do not want to reinitialize it?");
