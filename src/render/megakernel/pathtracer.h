@@ -8,7 +8,7 @@
 #include "device/optix.h"
 #include "device/buffer.h"
 #include "device/context.h"
-#include "render/path/path.h"
+#include "path.h"
 
 NAMESPACE_BEGIN(krr)
 

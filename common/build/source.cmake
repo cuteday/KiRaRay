@@ -40,7 +40,7 @@ SET (KRR_RENDER_PASSES
 
 SET (KRR_SOURCE
 	${KRR_RENDER_PASSES}
-	${KRR_RENDER_SOURCE_DIR}/render/path/pathtracer.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/megakernel/pathtracer.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/bdpt/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/wavefront/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/wavefront/medium.cpp
@@ -123,7 +123,7 @@ INCLUDE_DIRECTORIES (${KRR_INCLUDE_ALL})
 INCLUDE (${KRR_RENDER_ROOT}/common/build/CompilePTX.cmake)
 # the argument's name must match the extern variable declared in host c++ code
 CUDA_COMPILE_EMBED(GBUFFER_PTX ${KRR_SHADER_REL_DIR}render/passes/gbuffer/device.cu krr-gbuffer krr_soa_generated) 
-CUDA_COMPILE_EMBED(PATHTRACER_PTX ${KRR_SHADER_REL_DIR}render/path/device.cu krr-path krr_soa_generated)
+CUDA_COMPILE_EMBED(PATHTRACER_PTX ${KRR_SHADER_REL_DIR}render/megakernel/device.cu krr-path krr_soa_generated)
 CUDA_COMPILE_EMBED(WAVEFRONT_PTX ${KRR_SHADER_REL_DIR}render/wavefront/device.cu krr-wavefront krr_soa_generated)
 CUDA_COMPILE_EMBED(BDPT_PTX ${KRR_SHADER_REL_DIR}render/bdpt/device.cu krr-bdpt krr_soa_generated)
 

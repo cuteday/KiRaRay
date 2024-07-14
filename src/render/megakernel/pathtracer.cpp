@@ -11,10 +11,10 @@ extern "C" char PATHTRACER_PTX[];
 void MegakernelPathTracer::compilePrograms() {
 	auto params = optixBackend->getParameters();
 	params.boundValues.clear();
-	params.addBoundValue(offsetof(LaunchParameters<MegakernelPathTracer>, NEE),
-						sizeof(launchParams.NEE), &launchParams.NEE, "Enable NEE")
-		  .addBoundValue(offsetof(LaunchParameters<MegakernelPathTracer>, spp),
-						sizeof(launchParams.spp), &launchParams.spp, "Samples per pixel");
+	params.addBoundValue(offsetof(LaunchParameters<MegakernelPathTracer>, spp),
+						 sizeof(launchParams.spp), &launchParams.spp, "Samples per pixel")
+		  .addBoundValue(offsetof(LaunchParameters<MegakernelPathTracer>, NEE),
+						sizeof(launchParams.NEE), &launchParams.NEE, "Enable NEE");
 	optixBackend->initialize(params);
 	needsRecompile = false;
 }
