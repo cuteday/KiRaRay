@@ -1,10 +1,12 @@
 #pragma once
 #include "common.h"
+#include "curand_kernel.h"
 
 #include "util/math_utils.h"
 #include "device/taggedptr.h"
 #include "util/lowdiscrepancy.h"
 #include "util/hash.h"
+#include "util/morton.h"
 
 NAMESPACE_BEGIN(krr)
 
@@ -198,8 +200,34 @@ private:
 	int dimension		= 0;
 };
 
+class CudaSampler {
+public:
+	// https://docs.nvidia.com/cuda/curand/device-api-overview.htm 
+	KRR_DEVICE void setPixelSample(Vector2ui samplePixel, uint sampleIndex) {
+		curand_init(seed, encodeMorton(samplePixel), sampleIndex, &state);
+	}
 
-class Sampler : public TaggedPointer<PCGSampler, LCGSampler, HaltonSampler> {
+	KRR_DEVICE float get1D() {
+		// as curand generates random number in (0, 1], we need to shift it to [0, 1)
+#ifdef KRR_DEVICE_CODE
+	 	float r = __uint_as_float(__float_as_uint(curand_uniform(&state)) - 1);
+#else 
+		float r = bit_cast<float>(bit_cast<uint32_t>(curand_uniform(&state)) - 1);
+#endif
+		return r;
+	}
+
+	KRR_DEVICE Vector2f get2D() {
+		return { get1D(), get1D() };
+	}
+
+private:
+	static constexpr int seed = KRR_DEFAULT_RND_SEED;
+	// TODO: other random sequence generators is much slower than Philox4_32_10?
+	curandStatePhilox4_32_10_t state;
+};
+
+class Sampler : public TaggedPointer<PCGSampler, LCGSampler, CudaSampler, HaltonSampler> {
 public:
 	using TaggedPointer::TaggedPointer;
 

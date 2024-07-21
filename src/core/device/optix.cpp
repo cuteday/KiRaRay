@@ -32,6 +32,9 @@ OptixPipelineCompileOptions OptixBackend::getPipelineCompileOptions() {
 
 OptixModule OptixBackend::createOptixModule(OptixDeviceContext optixContext,
 											const OptixInitializeParameters &params) {
+	// Handles debug options for optix module compilation.
+	// To use tools like cuda sanitizer, manually setting to OPTIX_COMPILE_OPTIMIZATION_LEVEL_0
+	// and OPTIX_COMPILE_DEBUG_LEVEL_FULL is recommended.
 	OptixModuleCompileOptions moduleCompileOptions = {};
 	moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 #ifdef KRR_DEBUG_BUILD

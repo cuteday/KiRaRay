@@ -153,9 +153,8 @@ KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() {
 	const uint32_t fbIndex = pixel[0] + pixel[1] * launchParams.fbSize[0];
 
 	rt::CameraData camera = launchParams.camera;
-	PCGSampler sampler;
-	sampler.setPixelSample(pixel, frameID);
-	sampler.advance(fbIndex * 256);
+	CudaSampler sampler;
+	sampler.setPixelSample(pixel, frameID * 512);
 
 	PathData path	  = {};
 	path.lightSampler = launchParams.sceneData.lightSampler;
@@ -169,8 +168,13 @@ KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() {
 		path.lambda		= SampledWavelengths::sampleUniform(sampler.get1D());
 
 		for (int &depth = path.depth; true; depth++) {
-			if (!traceRay(launchParams.traversable, path.ray, M_FLOAT_INF, RADIANCE_RAY_TYPE,
-						  OPTIX_RAY_FLAG_NONE, (void *) &path)) {
+			bool hit = traceRay(launchParams.traversable, path.ray, M_FLOAT_INF,
+								   RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, (void *) &path);
+#if (OPTIX_VERSION >= 80000) // SER enable	
+			// TODO: use better coherence hints
+			optixReorder(hit, 1);
+#endif
+			if (!hit) {
 				handleMiss(path);
 				break;
 			}
