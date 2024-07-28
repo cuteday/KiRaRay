@@ -310,7 +310,7 @@ int main(int argc, char* argv[]) {
 			printf("template <typename %s> class SOA<%s> {\npublic:\n",
 				soa.templateType.c_str(), workItemName.c_str());
 		else
-			printf("template <> class SOA<%s> {\n public:\n", soa.type.c_str());
+			printf("template <> class SOA<%s> {\npublic:\n", soa.type.c_str());
 		// Iterator [modified]
 		printf("    using value_type = %s;\n", workItemName.c_str());
 		printf("    using iterator = SOAIterator<value_type>;\n");
@@ -325,7 +325,7 @@ int main(int argc, char* argv[]) {
 
 		// Constructor
 		printf("    SOA() = default;\n");
-		printf("    SOA(int n, Allocator alloc) : nAlloc(n) {\n");
+		printf("    SOA(int n, Allocator alloc) : nAlloc(n), mAlloc(alloc) {\n");
 		for (const auto& member : soa.members) {
 			for (int i = 0; i < member.names.size(); ++i) {
 				std::string name = member.names[i];
@@ -353,7 +353,31 @@ int main(int argc, char* argv[]) {
 			}
 		}
 		printf("    }\n");
-		printf("    void resize(int n, Allocator alloc) { \n");
+		// Deconstructor 
+#if 0	// TODO: Implement deconstructor for SOAs.
+		printf("    ~SOA() {\n");
+		printf("        if (nAlloc == 0) return;\n");
+		for (const auto& member : soa.members) {
+			for (int i = 0; i < member.names.size(); ++i) {
+				std::string name = member.names[i];
+				if (!member.arraySizes[i].empty()) {
+					if (isFlatType(member.type) || member.numPointers > 0) {
+						printf("        for (int i = 0; i < %s; ++i)\n",
+							   member.arraySizes[i].c_str());
+						printf("            mAlloc.deallocate_object(this->%s[i]);\n", name.c_str(),
+							   member.GetType().c_str());
+					}
+				}
+				else {
+					if (isFlatType(member.type) || member.numPointers > 0)
+						printf("        mAlloc.deallocate_object(this->%s);\n",
+							name.c_str(), member.GetType().c_str());
+				}
+			}
+		}
+		printf("    }\n");
+#endif
+		printf("    void resize(int n) { \n");
 		for (const auto& member : soa.members) {
 			for (int i = 0; i < member.names.size(); ++i) {
 				std::string name = member.names[i];
@@ -361,23 +385,23 @@ int main(int argc, char* argv[]) {
 					printf("        for (int i = 0; i < %s; ++i)\n",
 						member.arraySizes[i].c_str());
 					if (isFlatType(member.type) || member.numPointers > 0) {
-						printf("            if (nAlloc) alloc.deallocate_object(this->%s[i]);\n", name.c_str());
-						printf("            this->%s[i] = alloc.allocate_object<%s>(n);\n",
+						printf("            if (nAlloc) mAlloc.deallocate_object(this->%s[i]);\n", name.c_str());
+						printf("            this->%s[i] = mAlloc.allocate_object<%s>(n);\n",
 							name.c_str(), member.GetType().c_str());
 					}
 					else {
 						assert(member.isConst == false && member.numPointers == 0);
-						printf("        this->%s[i].resize(n, alloc);\n", name.c_str());
+						printf("        this->%s[i].resize(n);\n", name.c_str());
 					}
 				}
 				else {
 					if (isFlatType(member.type) || member.numPointers > 0) {
-						printf("        if (nAlloc) alloc.deallocate_object(this->%s);\n", name.c_str());
-						printf("        this->%s = alloc.allocate_object<%s>(n);\n",
+						printf("        if (nAlloc) mAlloc.deallocate_object(this->%s);\n", name.c_str());
+						printf("        this->%s = mAlloc.allocate_object<%s>(n);\n",
 							name.c_str(), member.GetType().c_str());
 					}
 					else
-						printf("        this->%s.resize(n, alloc);\n", name.c_str());
+						printf("        this->%s.resize(n);\n", name.c_str());
 				}
 			}
 		}
@@ -479,25 +503,26 @@ int main(int argc, char* argv[]) {
 		printf("    }\n\n");
 
 		// Member definitions
-		printf("    int nAlloc{ };\n");
+		printf("    int nAlloc{ 0 };\n");
+		printf("	Allocator mAlloc{ };\n");
 		for (const auto& member : soa.members) {
 			for (int i = 0; i < member.names.size(); ++i) {
 				std::string name = member.names[i];
 				if (!member.arraySizes[i].empty()) {
 					if (isFlatType(member.type) || member.numPointers > 0)
-						printf("    %s * /*KRR_RESTRICT*/ %s[%s];\n",
+						printf("    %s * /*KRR_RESTRICT*/ %s[%s] = {nullptr};\n",
 							member.GetType().c_str(), name.c_str(),
 							member.arraySizes[i].c_str());
 					else
-						printf("    SOA<%s> %s[%s];\n", member.type.c_str(), name.c_str(),
+						printf("    SOA<%s> %s[%s] = {};\n", member.type.c_str(), name.c_str(),
 							member.arraySizes[i].c_str());
 				}
 				else {
 					if (isFlatType(member.type) || member.numPointers > 0)
-						printf("    %s * KRR_RESTRICT %s;\n", member.GetType().c_str(),
+						printf("    %s * KRR_RESTRICT %s {nullptr};\n", member.GetType().c_str(),
 							name.c_str());
 					else
-						printf("    SOA<%s> %s;\n", member.type.c_str(), name.c_str());
+						printf("    SOA<%s> %s {};\n", member.type.c_str(), name.c_str());
 				}
 			}
 		}
