@@ -89,6 +89,7 @@ SET_SOURCE_FILES_PROPERTIES (
 	${KRR_RENDER_SOURCE_DIR}/render/wavefront/integrator.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/wavefront/medium.cpp
 	${KRR_RENDER_SOURCE_DIR}/render/passes/denoise/denoise.cpp
+	${KRR_RENDER_SOURCE_DIR}/render/passes/errormeasure/errormeasure.cpp
 	${KRR_RENDER_SOURCE_DIR}/util/tables.cpp
 	PROPERTIES LANGUAGE CUDA
 )

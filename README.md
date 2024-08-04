@@ -70,6 +70,10 @@ build/src/kiraray.exe common/configs/example_cbox.json
 
 **Python binding.** Several simple interfaces are exposed to python scripting via [pybind11](https://github.com/pybind/pybind11), including a OptiX denoiser wrapper for denoising NumPy or PyTorch tensors, see [scripts](common/scripts) for details.
 
+#### Known Build Issues
+- In CUDA 12.5 there exist some CUDA-only expressions in thrust headers. If you use CUDA 12.5, you may consider disable the thrust routines in host code (as done in [this commit](https://github.com/cuteday/KiRaRay/commit/c25c2fab44f0ba18cd99b60a4bc757ec0e1ab2a6)) or update to 12.6.
+- In CUDA 12.6 there is a compile error in NVTX related code referenced by thrust (`MemoryBarrier` undefined). While I do not know why, I temporarily disabled NVTX as a workaround by defining the `NVTX_DISABLE` macro.
+
 ### Galleries
 
 <p align=center>

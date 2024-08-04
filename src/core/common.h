@@ -31,6 +31,7 @@ typedef uint32_t uint;
 typedef unsigned char uchar;
 
 #define KRR_COMMON_H
+#define NVTX_DISABLE
 
 #if !defined(NAMESPACE_BEGIN)
 #define NAMESPACE_BEGIN(name) namespace name {

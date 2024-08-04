@@ -25,22 +25,22 @@ void WavefrontPathTracer::initialize() {
 	maxQueueSize	 = getFrameSize()[0] * getFrameSize()[1];
 	cudaDeviceSynchronize(); // necessary, preventing kernel accessing memories tobe free'ed...
 	for (int i = 0; i < 2; i++) 
-		if (rayQueue[i]) rayQueue[i]->resize(maxQueueSize, alloc);
+		if (rayQueue[i]) rayQueue[i]->resize(maxQueueSize);
 		else rayQueue[i] = alloc.new_object<RayQueue>(maxQueueSize, alloc);
-	if (missRayQueue) missRayQueue->resize(maxQueueSize, alloc);
+	if (missRayQueue) missRayQueue->resize(maxQueueSize);
 	else missRayQueue = alloc.new_object<MissRayQueue>(maxQueueSize, alloc);
-	if (hitLightRayQueue) hitLightRayQueue->resize(maxQueueSize, alloc);
+	if (hitLightRayQueue) hitLightRayQueue->resize(maxQueueSize);
 	else hitLightRayQueue = alloc.new_object<HitLightRayQueue>(maxQueueSize, alloc);
-	if (shadowRayQueue) shadowRayQueue->resize(maxQueueSize, alloc);
+	if (shadowRayQueue) shadowRayQueue->resize(maxQueueSize);
 	else shadowRayQueue = alloc.new_object<ShadowRayQueue>(maxQueueSize, alloc);
-	if (scatterRayQueue) scatterRayQueue->resize(maxQueueSize, alloc);
+	if (scatterRayQueue) scatterRayQueue->resize(maxQueueSize);
 	else scatterRayQueue = alloc.new_object<ScatterRayQueue>(maxQueueSize, alloc);
-	if (pixelState) pixelState->resize(maxQueueSize, alloc);
+	if (pixelState) pixelState->resize(maxQueueSize);
 	else pixelState = alloc.new_object<PixelStateBuffer>(maxQueueSize, alloc);
 	if (enableMedium) {
-		if (mediumSampleQueue) mediumSampleQueue->resize(maxQueueSize, alloc);
+		if (mediumSampleQueue) mediumSampleQueue->resize(maxQueueSize);
 		else mediumSampleQueue = alloc.new_object<MediumSampleQueue>(maxQueueSize, alloc);
-		if (mediumScatterQueue) mediumScatterQueue->resize(maxQueueSize, alloc);
+		if (mediumScatterQueue) mediumScatterQueue->resize(maxQueueSize);
 		else mediumScatterQueue = alloc.new_object<MediumScatterQueue>(maxQueueSize, alloc);
 	}
 	if (!camera) camera = alloc.new_object<rt::CameraData>();

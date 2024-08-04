@@ -55,9 +55,9 @@ void PPGPathTracer::initialize() {
 	// However, SD-Tree has some recursive routines that may exceed that size;
 	CUDA_CHECK(cudaDeviceSetLimit(cudaLimitStackSize, 4 * 1024));
 	cudaDeviceSynchronize();
-	if (guidedPathState) guidedPathState->resize(maxQueueSize, alloc);
+	if (guidedPathState) guidedPathState->resize(maxQueueSize);
 	else guidedPathState = alloc.new_object<GuidedPathStateBuffer>(maxQueueSize, alloc);
-	if (guidedRayQueue) guidedRayQueue->resize(maxQueueSize, alloc);
+	if (guidedRayQueue) guidedRayQueue->resize(maxQueueSize);
 	else guidedRayQueue = alloc.new_object<GuidedRayQueue>(maxQueueSize, alloc);
 	/* @addition VAPG */
 	if (m_image)  m_image->resize(getFrameSize());
