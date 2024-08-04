@@ -11,7 +11,7 @@
 
 #define METRIC_IN_SRGB					0
 #define CLAMP_PIXEL_ERROR				1
-#define DISCARD_FIREFLIES				1
+#define DISCARD_FIREFLIES				0
 
 
 NAMESPACE_BEGIN(krr)
@@ -114,23 +114,17 @@ float calc_metric(const CudaRenderTarget & frame, const RGBA *reference,
 			default:
 				error = rel_mse(y, ref);
 		}
+#if CLAMP_PIXEL_ERROR
+		error = min(error, CLAMP_PIXEL_ERROR_THRESHOLD);
+#endif
 		error_buffer[i] = error;
 	}, KRR_DEFAULT_STREAM);
 
 #if DISCARD_FIREFLIES
-	thrust::sort(thrust::device.on(KRR_DEFAULT_STREAM), error_buffer,
-				 error_buffer + n_elements);
+	thrust::sort(thrust::device.on(KRR_DEFAULT_STREAM), error_buffer, error_buffer + n_elements);
 	n_elements = n_elements * (1.f - DISCARD_FIREFLIES_PRECENTAGE);
 #endif
-
-	return thrust::transform_reduce(thrust::device, 
-				error_buffer, error_buffer + n_elements,
-				[] KRR_HOST_DEVICE (const float &val) -> float {
-#if CLAMP_PIXEL_ERROR 
-					return min(val, CLAMP_PIXEL_ERROR_THRESHOLD);
-#endif
-					return val;
-				}, 0.f, thrust::plus<float>()) / n_elements;
+	return thrust::reduce(thrust::device, error_buffer, error_buffer + n_elements, 0.f, thrust::plus<float>()) / n_elements;
 }
 
 NAMESPACE_END(krr)
