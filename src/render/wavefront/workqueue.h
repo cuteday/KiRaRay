@@ -1,7 +1,9 @@
 #pragma once
 #include "common.h"
 #include <atomic>
+#ifdef __NVCC__
 #include <thrust/sort.h>
+#endif
 
 #include "device/cuda.h"
 #include "device/atomic.h"
@@ -99,8 +101,10 @@ public:
 
 	template <typename Compare> 
 	void sort(Compare comp, size_t max_elements, CUstream stream) {
+#ifdef __NVCC__
 		thrust::sort_by_key(thrust::device.on(stream), m_keys.data(),
 							m_keys.data() + max_elements, this->begin(), comp);
+#endif
 	}
 
 	void resize(int n, Allocator alloc) {
