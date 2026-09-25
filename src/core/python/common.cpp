@@ -7,6 +7,7 @@ PYBIND11_MODULE(pykrr_common, m) {
 	// used to find necessary dlls...
 	m.attr("vulkan_root")  = KRR_VULKAN_ROOT;
 	m.attr("pytorch_root") = KRR_PYTORCH_ROOT;
+	m.attr("project_root") = KRR_PROJECT_DIR;
 }
 
 NAMESPACE_END(krr)

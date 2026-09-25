@@ -70,6 +70,7 @@ public:
 
 	bool createWindowDeviceAndSwapChain(const DeviceCreationParameters &params,
 										const char *windowTitle);
+	bool createHeadlessDevice(const DeviceCreationParameters &params);
 
 	void addRenderPassToFront(RenderPass::SharedPtr pController);
 	void addRenderPassToBack(RenderPass::SharedPtr pController);
@@ -89,6 +90,8 @@ public:
 
 protected:
 	bool mwindowVisible = false;
+	bool mHeadless = false;
+	bool mGlfwInitialized = false;
 
 	DeviceCreationParameters mDeviceParams;
 	GLFWwindow *mWindow = nullptr;
@@ -107,6 +110,7 @@ protected:
 	double mFrameTimeSum			  = .0;
 	int mNumberOfAccumulatedFrames	  = 0;
 	uint32_t mFrameIndex = 0;
+	uint64_t mSeed = 0;
 	
 	nvrhi::vulkan::DeviceHandle mNvrhiDevice;
 	nvrhi::DeviceHandle mValidationLayer;
@@ -166,11 +170,15 @@ public:
 	virtual bool onKeyEvent(io::KeyboardEvent &keyEvent);
 
 	[[nodiscard]] GLFWwindow *getWindow() const { return mWindow; }
+	[[nodiscard]] bool isHeadless() const { return mHeadless; }
 	[[nodiscard]] size_t getFrameIndex() const { return mFrameIndex; }
+	void setFrameIndex(uint32_t frameIndex) { mFrameIndex = frameIndex; }
+	[[nodiscard]] uint64_t getSeed() const { return mSeed; }
+	void setSeed(uint64_t seed) { mSeed = seed; }
 	[[nodiscard]] RenderContext *getRenderContext() const { return mRenderContext.get(); }
 
 	virtual nvrhi::ITexture *getCurrentBackBuffer() const {
-		return mSwapChainImages[mSwapChainIndex].rhiHandle;
+		return getBackBuffer(mSwapChainIndex);
 	}
 	virtual nvrhi::ITexture *getBackBuffer(size_t index) const {
 		if (index < mSwapChainImages.size()) return mSwapChainImages[index].rhiHandle;

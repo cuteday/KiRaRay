@@ -583,6 +583,7 @@ public:
 	KRR_HOST STree(const AABB& aabb, Allocator alloc);
 
 	KRR_HOST void clear();
+	KRR_HOST void release();
 
 	KRR_HOST void subdivideAll();
 

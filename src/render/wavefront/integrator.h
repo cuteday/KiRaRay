@@ -27,7 +27,7 @@ public:
 	KRR_REGISTER_PASS_DEC(WavefrontPathTracer);
 
 	WavefrontPathTracer() = default;
-	virtual ~WavefrontPathTracer() = default;
+	~WavefrontPathTracer() override;
 
 	void resize(const Vector2i& size) override;
 	void setScene(Scene::SharedPtr scene) override;
@@ -101,6 +101,10 @@ public:
 		p.enableClamp  = j.value("enable_clamp", false);
 		p.clampMax	   = j.value("clamp_max", 1e3f);
 	}
+
+protected:
+	// CUDA lambdas capture a non-owning copy of the pass.
+	WavefrontPathTracer *mResourceOwner{};
 };
 
 NAMESPACE_END(krr)

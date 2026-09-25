@@ -38,6 +38,9 @@ OPTION (KRR_RENDER_SPECTRAL
 	ON
 )
 
+include(CTest)
+option(KRR_ENABLE_GPU_TESTS "Enable local GPU rendering tests" OFF)
+
 ###############################################################################
 # Build type and C++ compiler setup
 ###############################################################################
@@ -157,6 +160,9 @@ endif()
 
 
 ADD_SUBDIRECTORY (src)
+if(BUILD_TESTING)
+	add_subdirectory(tests)
+endif()
 if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 	SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_DIRS} PARENT_SCOPE)	# exporting KRR_INCLUDE_DIRS to parent scope
 endif()

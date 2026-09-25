@@ -6,10 +6,29 @@
 
 NAMESPACE_BEGIN(krr)
 
+namespace {
+	template <typename T> void releaseBuffer(TypedBuffer<T> &buffer) noexcept {
+		try { buffer.clear(); } catch (...) {}
+	}
+}
+
+void SceneObject::release() noexcept {
+	if (is<rt::MaterialData>()) {
+		auto *material = static_cast<rt::MaterialData *>(data->data());
+		for (auto &texture : material->mTextures) texture.release();
+	} else if (is<rt::InstanceData>()) {
+		auto *instance = static_cast<rt::InstanceData *>(data->data());
+		releaseBuffer(instance->primitives);
+		releaseBuffer(instance->lights);
+	} else if (is<rt::InfiniteLight>()) {
+		static_cast<rt::InfiniteLight *>(data->data())->release();
+	}
+}
+
 void RTScene::uploadManagedObject(SceneGraphLeaf::SharedPtr leaf, SceneObject object) {
 	mManagedObjects[leaf] = object;
 	object.getObjectData(leaf, true);
-	cudaMemcpy(object.ptr(), object.data->data(), object.data->size(), cudaMemcpyHostToDevice);
+	CUDA_CHECK(cudaMemcpy(object.ptr(), object.data->data(), object.data->size(), cudaMemcpyHostToDevice));
 }
 
 void RTScene::updateManagedObject(SceneGraphLeaf::SharedPtr leaf) {
@@ -22,6 +41,21 @@ void RTScene::updateManagedObject(SceneGraphLeaf::SharedPtr leaf) {
 }
 
 RTScene::RTScene(Scene::SharedPtr scene) : mScene(scene) {}
+
+RTScene::~RTScene() {
+	cudaDeviceSynchronize();
+	mOptixScene.reset();
+	for (auto &mesh : mMeshes) {
+		releaseBuffer(mesh.positions);
+		releaseBuffer(mesh.normals);
+		releaseBuffer(mesh.texcoords);
+		releaseBuffer(mesh.tangents);
+		releaseBuffer(mesh.indices);
+	}
+	// GPU records borrow the allocations retained in their host mirrors.
+	for (auto &[leaf, object] : mManagedObjects) object.release();
+	releaseBuffer(mLightSamplerBuffer);
+}
 
 std::shared_ptr<Scene> RTScene::getScene() const { return mScene.lock(); }
 

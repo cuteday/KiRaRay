@@ -27,10 +27,10 @@ public:
 		nextUint();
 	}
 
-	KRR_CALLABLE void setPixelSample(Vector2ui samplePixel, uint sampleIndex) {
+	KRR_CALLABLE void setPixelSample(Vector2ui samplePixel, uint sampleIndex, uint64_t seed = 0) {
 		uint s0 = interleave_32bit(samplePixel);
 		uint s1 = sampleIndex;
-		setSeed(s0, s1);
+		setSeed(uint64_t(s0) ^ (seed ? MixBits(seed) : 0), s1);
 	}
 
 	// return u in [0, 1)
@@ -99,9 +99,14 @@ public:
 
 	KRR_CALLABLE void setSeed(uint seed) { state = seed; }
 
-	KRR_CALLABLE void setPixelSample(Vector2ui samplePixel, uint sampleIndex) {
+	KRR_CALLABLE void setPixelSample(Vector2ui samplePixel, uint sampleIndex, uint64_t seed = 0) {
 		uint v0 = interleave_32bit(Vector2ui(samplePixel));
 		uint v1 = sampleIndex;
+		if (seed) {
+			uint64_t mixedSeed = MixBits(seed);
+			v0 ^= uint(mixedSeed);
+			v1 ^= uint(mixedSeed >> 32);
+		}
 		state	= blockCipherTEA(v0, v1, 16)[0];
 	}
 
@@ -203,8 +208,9 @@ private:
 class CudaSampler {
 public:
 	// https://docs.nvidia.com/cuda/curand/device-api-overview.htm 
-	KRR_DEVICE void setPixelSample(Vector2ui samplePixel, uint sampleIndex) {
-		curand_init(seed, encodeMorton(samplePixel), sampleIndex, &state);
+	KRR_DEVICE void setPixelSample(Vector2ui samplePixel, uint sampleIndex, uint64_t seed = 0) {
+		curand_init(uint64_t(KRR_DEFAULT_RND_SEED) ^ seed, encodeMorton(samplePixel), sampleIndex,
+			&state);
 	}
 
 	KRR_DEVICE float get1D() {
@@ -222,7 +228,6 @@ public:
 	}
 
 private:
-	static constexpr int seed = KRR_DEFAULT_RND_SEED;
 	// TODO: other random sequence generators is much slower than Philox4_32_10?
 	curandStatePhilox4_32_10_t state;
 };

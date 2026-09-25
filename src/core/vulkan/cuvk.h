@@ -8,6 +8,8 @@
 #include <dxgi1_2.h>
 #include <VersionHelpers.h>
 #include <vulkan/vulkan_win32.h>
+#else
+#include <unistd.h>
 #endif /* _WIN64 */
 #include <nvrhi/nvrhi.h>
 #include <nvrhi/vulkan.h>
@@ -181,7 +183,7 @@ public:
 
 private:
 	vk::Semaphore vk_sem;
-	cudaExternalSemaphore_t cuda_sem;
+	cudaExternalSemaphore_t cuda_sem{};
 };
 
 class CuVkHandler {
@@ -293,6 +295,7 @@ public:
 		if (desc.byteSize == 0) return nullptr;
 
 		auto *buffer = new nvrhi::vulkan::Buffer(m_context, m_device.getAllocator());
+		auto handle = nvrhi::BufferHandle::Create(buffer);
 		buffer->desc   = desc;
 
 		vk::BufferUsageFlags usageFlags =
@@ -364,12 +367,13 @@ public:
 				buffer->deviceAddress = m_context.device.getBufferAddress(addressInfo);
 			}
 		}
-		return nvrhi::BufferHandle::Create(buffer);
+		return handle;
 	}
 
 	nvrhi::TextureHandle createExternalTexture(nvrhi::TextureDesc desc) {
 		nvrhi::vulkan::Texture *texture =
 			new nvrhi::vulkan::Texture(m_context, m_device.getAllocator());
+		auto handle = nvrhi::TextureHandle::Create(texture);
 		assert(texture);
 		
 	 	nvrhi::vulkan::fillTextureInfo(texture, desc);
@@ -392,7 +396,7 @@ public:
 			m_context.nameVKObject(texture->memory, vk::DebugReportObjectTypeEXT::eDeviceMemory,
 								   desc.debugName.c_str());
 		}
-		return nvrhi::TextureHandle::Create(texture);
+		return handle;
 	}
 
 	void createExternalSemaphore(vk::Semaphore& vkSem, bool timeline = false) const {
@@ -418,7 +422,12 @@ public:
 	CuVkSemaphore createCuVkSemaphore(bool timeline = false) const { 
 		CuVkSemaphore sem;
 		createExternalSemaphore(sem.vulkan(), timeline);
-		sem.cuda() = importVulkanSemaphoreToCuda(sem.vulkan(), timeline);
+		try {
+			sem.cuda() = importVulkanSemaphoreToCuda(sem.vulkan(), timeline);
+		} catch (...) {
+			m_context.device.destroySemaphore(sem.vulkan());
+			throw;
+		}
 		return sem;
 	}
 	
@@ -450,7 +459,14 @@ public:
 				device, memory, VkExternalMemoryHandleTypeFlagBits(handleType));
 #endif
 
-			CUDA_CHECK(cudaImportExternalMemory(&cudaMem, &externalMemoryHandleDesc));
+			auto result = cudaImportExternalMemory(&cudaMem, &externalMemoryHandleDesc);
+#ifdef _WIN64
+			if (handleType == vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32)
+				CloseHandle(externalMemoryHandleDesc.handle.win32.handle);
+#else
+			if (result != cudaSuccess) close(externalMemoryHandleDesc.handle.fd);
+#endif
+			CUDA_CHECK(result);
 	}
 
 	void importVulkanBufferToCudaPtr(void **cudaPtr, cudaExternalMemory_t &cudaMem,
@@ -466,8 +482,8 @@ public:
 		CUDA_CHECK(cudaExternalMemoryGetMappedBuffer(cudaPtr, cudaMem, &externalMemBufferDesc));
 	}
 
-	cudaMipmappedArray_t importVulkanTextureToCudaMipmappedArray(nvrhi::TextureHandle tex, 
-		uint32_t cudaUsageFlags) {
+	cudaMipmappedArray_t importVulkanTextureToCudaMipmappedArray(nvrhi::TextureHandle tex,
+		uint32_t cudaUsageFlags, cudaExternalMemory_t &cudaMem) {
 		auto getChannelBits = [](nvrhi::FormatInfo format) -> std::array<size_t, 4> {
 			size_t n_channels =
 				size_t(format.hasRed) + format.hasBlue + format.hasGreen + format.hasAlpha;
@@ -476,7 +492,6 @@ public:
 					bits_per_channel * format.hasBlue, bits_per_channel * format.hasAlpha};
 		};
 
-		cudaExternalMemory_t cudaMem{};
 		auto *vk_texture = dynamic_cast<nvrhi::vulkan::Texture *>(tex.Get());
 		const nvrhi::TextureDesc& texture_desc = tex->getDesc();
 		importVulkanMemoryToCuda(cudaMem, vk_texture->memory,
@@ -510,9 +525,9 @@ public:
 	}
 	
 	cudaSurfaceObject_t mapVulkanTextureToCudaSurface(nvrhi::TextureHandle texture,
-													  uint32_t cudaUsageFlags) {
-		cudaMipmappedArray_t mipmappedArray =
-			importVulkanTextureToCudaMipmappedArray(texture, cudaUsageFlags);
+		uint32_t cudaUsageFlags, cudaMipmappedArray_t &mipmappedArray,
+		cudaExternalMemory_t &cudaMem) {
+		mipmappedArray = importVulkanTextureToCudaMipmappedArray(texture, cudaUsageFlags, cudaMem);
 		
 		cudaArray_t array;
 		CUDA_CHECK(cudaGetMipmappedArrayLevel(&array, mipmappedArray, 0));
@@ -538,51 +553,15 @@ public:
 	}
 
 	int initCUDA() {
-		int current_device	   = 0;
-		int device_count	   = 0;
-		int devices_prohibited = 0;
-
-		cudaDeviceProp deviceProp;
-		CUDA_CHECK(cudaGetDeviceCount(&device_count));
-
-		if (device_count == 0) {
-			Log(Error, "CUDA error: no devices supporting CUDA.\n");
-			exit(EXIT_FAILURE);
-		}
-
-		// Find the GPU which is selected by Vulkan
+		int currentDevice = 0;
+		cudaDeviceProp deviceProp{};
+		CUDA_CHECK(cudaGetDevice(&currentDevice));
+		CUDA_CHECK(cudaGetDeviceProperties(&deviceProp, currentDevice));
 		uint8_t vkDeviceUUID[VK_UUID_SIZE];
 		getDeviceUUID(vkDeviceUUID);
-		while (current_device < device_count) {
-			CUDA_CHECK(cudaGetDeviceProperties(&deviceProp, current_device));
-			int computeMode;
-			CUDA_CHECK(cudaDeviceGetAttribute(&computeMode, cudaDevAttrComputeMode, current_device));
-
-			if (computeMode != cudaComputeModeProhibited) {
-				// Compare the cuda device UUID with vulkan UUID
-				int ret = memcmp((void *) &deviceProp.uuid, vkDeviceUUID, VK_UUID_SIZE);
-				if (ret == 0) {
-					CUDA_CHECK(cudaSetDevice(current_device));
-					CUDA_CHECK(cudaGetDeviceProperties(&deviceProp, current_device));
-					Log(Info, "GPU Device %d: \"%s\" with compute capability %d.%d\n\n",
-						   current_device, deviceProp.name, deviceProp.major, deviceProp.minor);
-
-					return current_device;
-				}
-
-			} else {
-				devices_prohibited++;
-			}
-			current_device++;
-		}
-
-		if (devices_prohibited == device_count) {
-			Log(Error, "CUDA error:"
-							" No Vulkan-CUDA Interop capable GPU found.\n");
-			exit(EXIT_FAILURE);
-		}
-
-		return -1;
+		if (memcmp(&deviceProp.uuid, vkDeviceUUID, VK_UUID_SIZE) != 0)
+			throw std::runtime_error("Vulkan and CUDA must use the same GPU.");
+		return currentDevice;
 	}
 
 	
@@ -614,7 +593,14 @@ public:
 #endif
 		cudaExternalSemaphore_t cudaSem{};
 		externalSemaphoreHandleDesc.flags = 0;
-		CUDA_CHECK(cudaImportExternalSemaphore(&cudaSem, &externalSemaphoreHandleDesc));
+		auto result = cudaImportExternalSemaphore(&cudaSem, &externalSemaphoreHandleDesc);
+#ifdef _WIN64
+		if (handleType == vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32)
+			CloseHandle(externalSemaphoreHandleDesc.handle.win32.handle);
+#else
+		if (result != cudaSuccess) close(externalSemaphoreHandleDesc.handle.fd);
+#endif
+		CUDA_CHECK(result);
 		return cudaSem;
 	}
 
@@ -624,7 +610,7 @@ public:
 		memset(&extSemaphoreWaitParams, 0, sizeof(extSemaphoreWaitParams));
 		extSemaphoreWaitParams.params.fence.value = value;
 		extSemaphoreWaitParams.flags			  = 0;
-		cudaWaitExternalSemaphoresAsync(extSem, &extSemaphoreWaitParams, numSems, stream);
+		CUDA_CHECK(cudaWaitExternalSemaphoresAsync(extSem, &extSemaphoreWaitParams, numSems, stream));
 	}
 
 	static void cudaSignalExternalSemaphore(CUstream stream, size_t value,
@@ -634,7 +620,7 @@ public:
 
 		extSemaphoreSignalParams.params.fence.value = value;
 		extSemaphoreSignalParams.flags				= 0;
-		cudaSignalExternalSemaphoresAsync(extSem, &extSemaphoreSignalParams, numSems, stream);
+		CUDA_CHECK(cudaSignalExternalSemaphoresAsync(extSem, &extSemaphoreSignalParams, numSems, stream));
 	}
 
 private:

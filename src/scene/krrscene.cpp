@@ -5,8 +5,9 @@
 NAMESPACE_BEGIN(krr)
 using namespace importer;
 
-bool SceneImporter::loadModel(const fs::path filepath, Scene::SharedPtr pScene,
+bool SceneImporter::loadModel(const fs::path filename, Scene::SharedPtr pScene,
 					  SceneGraphNode::SharedPtr node, const json &params) {
+	const fs::path filepath = File::resolve(filename);
 	bool success{};
 	string format = filepath.extension().string();
 	if (format == ".obj" || format == ".gltf" || format == ".glb" || format == ".fbx") {
@@ -21,7 +22,7 @@ bool SceneImporter::loadModel(const fs::path filepath, Scene::SharedPtr pScene,
 		Log(Fatal, "Unsupported file format: %s...", format.c_str());
 		return false;
 	}
-	if (!success) Log(Error, "Failed to load scene file from %ls...", filepath.c_str());
+	if (!success) throw std::runtime_error("Failed to load scene file: " + filepath.string());
 	return success;
 }
 

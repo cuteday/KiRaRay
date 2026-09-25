@@ -187,9 +187,11 @@ class TextureData {
 public:
 	RGBA mValue{};
 	cudaTextureObject_t mCudaTexture{};
+	cudaArray_t mCudaArray{};
 	bool mValid{};
 
 	void initializeFromHost(Texture::SharedPtr texture);
+	void release() noexcept;
 
 	KRR_CALLABLE bool isValid() const { return mValid; }
 	KRR_CALLABLE cudaTextureObject_t getCudaTexture() const {

@@ -154,7 +154,7 @@ KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() {
 
 	rt::CameraData camera = launchParams.camera;
 	CudaSampler sampler;
-	sampler.setPixelSample(pixel, frameID * 512);
+	sampler.setPixelSample(pixel, frameID * 512, launchParams.seed);
 
 	PathData path	  = {};
 	path.lightSampler = launchParams.sceneData.lightSampler;

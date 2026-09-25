@@ -208,6 +208,7 @@ private:
 class InfiniteLight {
 public:
 	InfiniteLight() = default;
+	void release() noexcept { image.release(); }
 
 	InfiniteLight(const Matrix3f &rotation, RGB tint, float scale = 1, float sceneRadius = 1e5f,
 				  const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :

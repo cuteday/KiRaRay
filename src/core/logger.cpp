@@ -97,7 +97,7 @@ void Logger::log(Level level, const string& msg, bool terminate) {
 		}
 	}
 
-	if (level < Level::Error || terminate) exit(1);
+	if (level < Level::Error || terminate) throw std::runtime_error(msg);
 }
 
 NAMESPACE_END(krr)

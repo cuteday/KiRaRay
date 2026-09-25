@@ -128,12 +128,15 @@ public:
 	template <typename T> 
 	SceneObject(T *ptr): TaggedPointer(ptr) {
 		data = std::make_shared<Blob>(sizeof(T));
+		// Keep the mirror safe to release if population fails.
+		new (data->data()) T();
 	}
 
 	void getObjectData(SceneGraphLeaf::SharedPtr object, bool initialize = false) const {
 		auto func = [&](auto ptr) -> void { ptr->getObjectData(object, data, initialize); };
 		return dispatch(func);
 	}
+	void release() noexcept;
 
 	std::shared_ptr<Blob> data;
 };
@@ -144,7 +147,7 @@ public:
 	using SharedPtr = std::shared_ptr<RTScene>;
 
 	RTScene(std::shared_ptr<Scene> scene);
-	~RTScene() = default;
+	~RTScene();
 
 	void updateAccelStructure();
 	void uploadSceneData(const OptixSceneParameters& parameters);

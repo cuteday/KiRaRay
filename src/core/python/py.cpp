@@ -17,24 +17,70 @@
 
 NAMESPACE_BEGIN(krr)
 
-void run(const json& config) {
-	if (!gpContext) gpContext = std::make_unique<Context>(); 
-	{
-		RenderApp app;
-		app.loadConfig(config);
-		app.run();
+namespace {
+	std::unique_ptr<DenoiseBackend> sDenoiser;
+	DenoiseBackend &getDenoiser() {
+		Context::ensureInitialized();
+		if (!sDenoiser) sDenoiser = std::make_unique<DenoiseBackend>();
+		return *sDenoiser;
 	}
+
+	struct DenoiseBuffers {
+		CUDABuffer rgb, normals, albedo, result;
+		~DenoiseBuffers() {
+			cudaDeviceSynchronize();
+			for (auto *buffer : {&rgb, &normals, &albedo, &result})
+				if (buffer->data()) cudaFree(reinterpret_cast<void *>(buffer->data()));
+		}
+	};
+}
+
+void run(const json& config) {
+	RenderApp app;
+	app.loadConfig(config);
+	app.run();
+}
+
+py::array_t<float> renderImage(HeadlessRenderer &renderer, int64_t frames, uint64_t seed) {
+	auto pixels = renderer.render(frames, seed);
+	const auto size = renderer.getFrameSize();
+	py::array_t<float> image({size[1], size[0], 3});
+	std::memcpy(image.mutable_data(), pixels.data(), pixels.size() * sizeof(float));
+	return image;
+}
+
+json getBuildInfo() {
+	json info = {{"spectral", bool(KRR_RENDER_SPECTRAL)}, {"cuda_version", CUDART_VERSION},
+		{"optix_version", OPTIX_VERSION}, {"build_type", KRR_BUILD_TYPE},
+		{"project_root", KRR_PROJECT_DIR}};
+#ifdef _MSC_FULL_VER
+	info["msvc_version"] = _MSC_FULL_VER;
+#endif
+	if (gpContext) {
+		int driver = 0;
+		cudaDriverGetVersion(&driver);
+		info["device"] = gpContext->deviceProps.name;
+		info["driver_version"] = driver;
+		info["tracked_bytes"] = CUDATrackedMemory::singleton.BytesAllocated();
+	}
+	return info;
 }
 
 py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::forcecast> rgb,
 			std::optional<py::array_t<float, py::array::c_style | py::array::forcecast>> normals,
 			std::optional<py::array_t<float, py::array::c_style | py::array::forcecast>> albedo) {
-	static bool initialized{};
-	static DenoiseBackend denoiser;
-	if (!initialized) {
-		if (!gpContext) gpContext = std::make_unique<Context>();
-		initialized = true;
+	if (rgb.ndim() != 3 || rgb.shape(0) <= 0 || rgb.shape(1) <= 0 ||
+		(rgb.shape(2) != 3 && rgb.shape(2) != 4))
+		throw std::invalid_argument("rgb must have shape [height, width, 3 or 4]");
+	if (normals.has_value() != albedo.has_value())
+		throw std::invalid_argument("normals and albedo must be supplied together");
+	for (const auto *guide : {&normals, &albedo}) {
+		if (guide->has_value() && (guide->value().ndim() != 3 ||
+			guide->value().shape(0) != rgb.shape(0) || guide->value().shape(1) != rgb.shape(1) ||
+			guide->value().shape(2) != rgb.shape(2)))
+			throw std::invalid_argument("guides must match the rgb shape");
 	}
+	auto &denoiser = getDenoiser();
 	Vector2i size = { (int)rgb.shape()[1], (int)rgb.shape()[0] };
 	Log(Info, "Processing image with %lld channels...", rgb.shape()[2]);
 	if(rgb.shape()[2] != 3 && rgb.shape()[2] != 4)
@@ -53,8 +99,11 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 	py::array_t<float> result = py::array_t<float>(buf_rgb.size);
 	py::buffer_info buf_result = result.request();
 
-	CUDABuffer gpumem_rgb(buf_rgb.size * sizeof(float)), gpumem_albedo, gpumem_normals;
-	CUDABuffer gpumem_result(buf_result.size * sizeof(float));
+	DenoiseBuffers buffers;
+	auto &gpumem_rgb = buffers.rgb, &gpumem_albedo = buffers.albedo;
+	auto &gpumem_normals = buffers.normals, &gpumem_result = buffers.result;
+	gpumem_rgb.resize(buf_rgb.size * sizeof(float));
+	gpumem_result.resize(buf_result.size * sizeof(float));
 	gpumem_rgb.copy_from_host((float *) buf_rgb.ptr, buf_rgb.size);
 
 	if (hasGeometry) {
@@ -79,9 +128,7 @@ py::array_t<float> denoise(py::array_t<float, py::array::c_style | py::array::fo
 torch::Tensor denoise_torch_tensor(torch::Tensor rgb, 
 	std::optional<torch::Tensor> normals, 
 	std::optional<torch::Tensor> albedo) {
-	static bool initialized{};
-	static DenoiseBackend denoiser;
-	if (!gpContext) gpContext = std::make_unique<Context>();
+	auto &denoiser = getDenoiser();
 
 	Vector2i size = {(int) rgb.size(1), (int) rgb.size(0)};
 	Log(Info, "Processing image with %lld channels...", rgb.size(2));
@@ -108,6 +155,33 @@ torch::Tensor denoise_torch_tensor(torch::Tensor rgb,
 
 PYBIND11_MODULE(pykrr, m) { 
 	m.doc() = "KiRaRay python binding!";
+	// Driver resources must be released before Windows starts unloading DLLs.
+	py::module_::import("atexit").attr("register")(py::cpp_function([] {
+		Renderer::closeActive();
+		sDenoiser.reset();
+		gpContext.reset();
+	}));
+
+	py::class_<HeadlessRenderer>(m, "HeadlessRenderer")
+		.def(py::init([](const json &config, const string &assetRoot) {
+			return std::make_unique<HeadlessRenderer>(config, fs::path(assetRoot));
+		}), "config"_a, "asset_root"_a = "")
+		.def("render", &renderImage, "frames"_a, "seed"_a = 0)
+		.def("close", &HeadlessRenderer::close)
+		.def_property_readonly("closed", &HeadlessRenderer::isClosed)
+		.def("__enter__", [](HeadlessRenderer &renderer) -> HeadlessRenderer & {
+			if (renderer.isClosed()) throw std::runtime_error("Renderer is closed");
+			return renderer;
+		}, py::return_value_policy::reference_internal)
+		.def("__exit__", [](HeadlessRenderer &renderer, py::object, py::object, py::object) {
+			renderer.close();
+		});
+	m.def("render", [](const json &config, int64_t frames, uint64_t seed,
+		const string &assetRoot) {
+		HeadlessRenderer renderer(config, fs::path(assetRoot));
+		return renderImage(renderer, frames, seed);
+	}, "config"_a, "frames"_a, "seed"_a = 0, "asset_root"_a = "");
+	m.def("get_build_info", &getBuildInfo);
 
 	m.def("run", &run,
 		"Run KiRaRay renderer with specified configuration file",

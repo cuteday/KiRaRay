@@ -26,7 +26,6 @@ void rt::InstanceData::getObjectData(std::shared_ptr<SceneGraphLeaf> object,
 	auto inst  = std::dynamic_pointer_cast<MeshInstance>(object);
 	auto gdata = reinterpret_cast<rt::InstanceData *>(data->data());
 	if (initialize) {
-		new (gdata) rt::InstanceData();
 		auto scene		   = inst->getNode()->getGraph()->getScene()->getSceneRT();
 		auto &meshes	   = scene->getMeshData();
 		auto &instances	   = scene->getInstanceData();

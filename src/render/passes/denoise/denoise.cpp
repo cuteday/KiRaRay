@@ -1,4 +1,5 @@
 #include "denoise.h"
+#include <utility>
 #include "util/check.h"
 #include "render/profiler/profiler.h"
 #include "device/context.h"
@@ -6,45 +7,83 @@
 
 NAMESPACE_BEGIN(krr)
 
-void DenoiseBackend::initialize() {
-	CUcontext cudaContext;
-	cuCtxGetCurrent(&cudaContext);
-	CHECK(cudaContext != nullptr);
-	const OptixDeviceContext &optixContext = gpContext->optixContext;
+DenoiseBackend::DenoiseBackend(DenoiseBackend &&other) noexcept {
+	*this = std::move(other);
+}
+
+DenoiseBackend &DenoiseBackend::operator=(DenoiseBackend &&other) noexcept {
+	if (this == &other) return *this;
+	cleanup();
+	resolution = other.resolution;
+	pixelFormat = other.pixelFormat;
+	haveGeometryBuffer = other.haveGeometryBuffer;
+	initialized = std::exchange(other.initialized, false);
+	denoiserHandle = std::exchange(other.denoiserHandle, nullptr);
+	memorySizes = other.memorySizes;
+	std::swap(denoiserState, other.denoiserState);
+	std::swap(scratchBuffer, other.scratchBuffer);
+	std::swap(intensity, other.intensity);
+	return *this;
+}
+
+void DenoiseBackend::cleanup() noexcept {
+	if (denoiserHandle || denoiserState.data() || scratchBuffer.data() || intensity.data())
+		cudaDeviceSynchronize();
 	if (denoiserHandle) optixDenoiserDestroy(denoiserHandle);
+	denoiserHandle = nullptr;
+	for (auto *buffer : {&denoiserState, &scratchBuffer, &intensity}) {
+		if (buffer->data()) cudaFree(reinterpret_cast<void *>(buffer->data()));
+		*buffer = CUDABuffer{};
+	}
+	initialized = false;
+}
 
-	OptixDenoiserOptions options = {};
+void DenoiseBackend::initialize() {
+	if (resolution[0] <= 0 || resolution[1] <= 0)
+		throw std::invalid_argument("Denoiser resolution must be positive.");
+	const OptixDeviceContext &optixContext = Context::ensureInitialized().optixContext;
+	cleanup();
+	try {
+		OptixDenoiserOptions options = {};
 #if (OPTIX_VERSION >= 70300)
-	if (haveGeometryBuffer)
-		options.guideAlbedo = options.guideNormal = 1;
+		if (haveGeometryBuffer)
+			options.guideAlbedo = options.guideNormal = 1;
 
-	OPTIX_CHECK(optixDenoiserCreate(optixContext, OPTIX_DENOISER_MODEL_KIND_HDR, &options,
-									&denoiserHandle));
+		OPTIX_CHECK(optixDenoiserCreate(optixContext, OPTIX_DENOISER_MODEL_KIND_HDR, &options,
+			&denoiserHandle));
 #else
-	options.inputKind = haveGeometryBuffer ? 
-		(pixelFormat == PixelFormat::FLOAT3 ? OPTIX_DENOISER_INPUT_Color3f_ALBEDO_NORMAL : OPTIX_DENOISER_INPUT_Color4f_ALBEDO_NORMAL) : 
-		(pixelFormat == PixelFormat::FLOAT3 ? OPTIX_DENOISER_INPUT_Color3f : OPTIX_DENOISER_INPUT_Color4f);
+		options.inputKind = haveGeometryBuffer ?
+			(pixelFormat == PixelFormat::FLOAT3 ? OPTIX_DENOISER_INPUT_Color3f_ALBEDO_NORMAL :
+				OPTIX_DENOISER_INPUT_Color4f_ALBEDO_NORMAL) :
+			(pixelFormat == PixelFormat::FLOAT3 ? OPTIX_DENOISER_INPUT_Color3f :
+				OPTIX_DENOISER_INPUT_Color4f);
 
-	OPTIX_CHECK(optixDenoiserCreate(optixContext, &options, &denoiserHandle));
+		OPTIX_CHECK(optixDenoiserCreate(optixContext, &options, &denoiserHandle));
 
-	OPTIX_CHECK(optixDenoiserSetModel(denoiserHandle, OPTIX_DENOISER_MODEL_KIND_HDR, nullptr, 0));
+		OPTIX_CHECK(optixDenoiserSetModel(denoiserHandle, OPTIX_DENOISER_MODEL_KIND_HDR, nullptr, 0));
 #endif
-	// re-create compute memory resources.
-	OPTIX_CHECK(optixDenoiserComputeMemoryResources(denoiserHandle, resolution[0], resolution[1],
-													&memorySizes));
+		OPTIX_CHECK(optixDenoiserComputeMemoryResources(denoiserHandle, resolution[0], resolution[1],
+			&memorySizes));
 
-	denoiserState.resize(memorySizes.stateSizeInBytes);
-	scratchBuffer.resize(memorySizes.withoutOverlapScratchSizeInBytes);
-	intensity.resize(sizeof(float));
+		denoiserState.resize(memorySizes.stateSizeInBytes);
+		scratchBuffer.resize(memorySizes.withoutOverlapScratchSizeInBytes);
+		intensity.resize(sizeof(float));
 
-	OPTIX_CHECK(optixDenoiserSetup(denoiserHandle, 0 /* stream */, resolution[0], resolution[1],
-								   CUdeviceptr(denoiserState.data()), memorySizes.stateSizeInBytes,
-								   CUdeviceptr(scratchBuffer.data()),
-								   memorySizes.withoutOverlapScratchSizeInBytes));
+		OPTIX_CHECK(optixDenoiserSetup(denoiserHandle, 0 /* stream */, resolution[0], resolution[1],
+			denoiserState.data(), memorySizes.stateSizeInBytes, scratchBuffer.data(),
+			memorySizes.withoutOverlapScratchSizeInBytes));
+		initialized = true;
+	} catch (...) {
+		cleanup();
+		throw;
+	}
 }
 
 void DenoiseBackend::denoise(CUstream stream, float *rgb, float *normal, float *albedo, float *result) {
-	std::array<OptixImage2D, 3> inputLayers;
+	if (!initialized) initialize();
+	if (!rgb || !result || (haveGeometryBuffer && (!normal || !albedo)))
+		throw std::invalid_argument("Denoiser input buffers are missing.");
+	std::array<OptixImage2D, 3> inputLayers{};
 	int inputPixelStride = pixelFormat == PixelFormat::FLOAT3 ? sizeof(RGB) : sizeof(RGBA);
 	int outputPixelStride = pixelFormat == PixelFormat::FLOAT3 ? sizeof(RGB) : sizeof(RGBA);
 	int nLayers = haveGeometryBuffer ? 3 : 1;
@@ -65,7 +104,7 @@ void DenoiseBackend::denoise(CUstream stream, float *rgb, float *normal, float *
 	} else
 		CHECK(normal == nullptr && albedo == nullptr);
 
-	OptixImage2D outputImage;
+	OptixImage2D outputImage{};
 	outputImage.width			   = resolution[0];
 	outputImage.height			   = resolution[1];
 	outputImage.rowStrideInBytes   = resolution[0] * outputPixelStride;
@@ -88,19 +127,19 @@ void DenoiseBackend::denoise(CUstream stream, float *rgb, float *normal, float *
 	params.blendFactor		   = 0; 
 
 #if (OPTIX_VERSION >= 70300)
-	OptixDenoiserGuideLayer guideLayer;
+	OptixDenoiserGuideLayer guideLayer{};
 	if (haveGeometryBuffer) {
 		guideLayer.albedo = inputLayers[1];
 		guideLayer.normal = inputLayers[2];
 	}
 
-	OptixDenoiserLayer layers;
+	OptixDenoiserLayer layers{};
 	layers.input  = inputLayers[0];
 	layers.output = outputImage;
 
 	OPTIX_CHECK(optixDenoiserInvoke(
 		denoiserHandle, stream /* stream */, &params, CUdeviceptr(denoiserState.data()),
-		memorySizes.stateSizeInBytes, &guideLayer, &layers, nLayers /* # layers to denoise */,
+		memorySizes.stateSizeInBytes, &guideLayer, &layers, 1 /* # layers to denoise */,
 		0 /* offset x */, 0 /* offset y */, CUdeviceptr(scratchBuffer.data()),
 		memorySizes.withoutOverlapScratchSizeInBytes));
 #else
@@ -115,19 +154,26 @@ void DenoiseBackend::denoise(CUstream stream, float *rgb, float *normal, float *
 void DenoiseBackend::resize(Vector2i size) { 
 	if (resolution == size) return;
 	resolution = size; 
-	initialize();
+	initialized = false;
 }
 
 void DenoiseBackend::setHaveGeometry(bool haveGeometry) {
 	if (haveGeometryBuffer == haveGeometry) return;
 	haveGeometryBuffer	= haveGeometry;
-	initialize();
+	initialized = false;
 }
 
 void DenoiseBackend::setPixelFormat(PixelFormat format) {
 	if (pixelFormat == format) return;
 	pixelFormat = format;
-	initialize();
+	initialized = false;
+}
+
+DenoisePass::~DenoisePass() {
+	if (mColorBuffer.data()) {
+		cudaDeviceSynchronize();
+		cudaFree(mColorBuffer.data());
+	}
 }
 
 void DenoisePass::render(RenderContext *context) {

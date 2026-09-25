@@ -46,13 +46,11 @@ void File::setCwd(const fs::path &cwd) {
 
 json File::loadJSON(const fs::path& filepath) {
 	if (!fs::exists(filepath)) {
-		Log(Error, "Cannot locate file at %s", filepath.string().c_str());
-		return {};
+		throw std::runtime_error("Cannot locate JSON file: " + filepath.string());
 	}
 	std::ifstream f(filepath);
 	if (f.fail()) {
-		Log(Error, "Failed to read JSON file at %s", filepath.string().c_str());
-		return {};
+		throw std::runtime_error("Failed to read JSON file: " + filepath.string());
 	}
 	json file = json::parse(f, nullptr, true, true);
 	return file;

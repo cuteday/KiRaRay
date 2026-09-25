@@ -27,7 +27,7 @@ Image::~Image() { if (mData) delete[] mData; }
 bool Image::loadImage(const fs::path &filepath, bool flip, bool srgb) {
 	Vector2i size;
 	int channels;
-	string filename = filepath.string();
+	string filename = File::resolve(filepath).string();
 	string format	= filepath.extension().string();
 	uchar *data		= nullptr;
 	
@@ -194,6 +194,14 @@ void Material::renderUI() {
 
 namespace rt {
 
+void TextureData::release() noexcept {
+	if (mCudaTexture) cudaDestroyTextureObject(mCudaTexture);
+	if (mCudaArray) cudaFreeArray(mCudaArray);
+	mCudaTexture = 0;
+	mCudaArray = nullptr;
+	mValid = false;
+}
+
 void TextureData::initializeFromHost(Texture::SharedPtr texture) {
 	mValid = texture.get() != nullptr;
 	if (!texture) return;
@@ -222,16 +230,15 @@ void TextureData::initializeFromHost(Texture::SharedPtr texture) {
 		channelDesc = cudaCreateChannelDesc<uchar4>();
 	}
 
-	cudaArray_t cudaArray;
 	// create internal cuda array for texture object
-	CUDA_CHECK(cudaMallocArray(&cudaArray, &channelDesc, size[0], size[1]));
+	CUDA_CHECK(cudaMallocArray(&mCudaArray, &channelDesc, size[0], size[1]));
 	// transfer data to cuda array
-	CUDA_CHECK(cudaMemcpy2DToArray(cudaArray, 0, 0, (void*)image->data(), pitch,
+	CUDA_CHECK(cudaMemcpy2DToArray(mCudaArray, 0, 0, (void*)image->data(), pitch,
 								   pitch, size[1], cudaMemcpyHostToDevice));
 
 	cudaResourceDesc resDesc = {};
 	resDesc.resType			 = cudaResourceTypeArray;
-	resDesc.res.array.array	 = cudaArray;
+	resDesc.res.array.array	 = mCudaArray;
 
 	cudaTextureDesc texDesc			  = {};
 	texDesc.addressMode[0]			  = cudaAddressModeWrap;
@@ -256,7 +263,6 @@ void MaterialData::getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedP
 	auto material = std::dynamic_pointer_cast<Material>(object);
 	auto gdata = reinterpret_cast<MaterialData *>(data->data());
 	if (initialize) {
-		new (gdata) MaterialData();
 		for (size_t tex_idx = 0; tex_idx < (size_t) Material::TextureType::Count; tex_idx++) 
 			gdata->mTextures[tex_idx].initializeFromHost(material->mTextures[tex_idx]);
 		

@@ -385,7 +385,7 @@ int main(int argc, char* argv[]) {
 					printf("        for (int i = 0; i < %s; ++i)\n",
 						member.arraySizes[i].c_str());
 					if (isFlatType(member.type) || member.numPointers > 0) {
-						printf("            if (nAlloc) mAlloc.deallocate_object(this->%s[i]);\n", name.c_str());
+						printf("            if (nAlloc) mAlloc.deallocate_object(this->%s[i], nAlloc);\n", name.c_str());
 						printf("            this->%s[i] = mAlloc.allocate_object<%s>(n);\n",
 							name.c_str(), member.GetType().c_str());
 					}
@@ -396,7 +396,7 @@ int main(int argc, char* argv[]) {
 				}
 				else {
 					if (isFlatType(member.type) || member.numPointers > 0) {
-						printf("        if (nAlloc) mAlloc.deallocate_object(this->%s);\n", name.c_str());
+						printf("        if (nAlloc) mAlloc.deallocate_object(this->%s, nAlloc);\n", name.c_str());
 						printf("        this->%s = mAlloc.allocate_object<%s>(n);\n",
 							name.c_str(), member.GetType().c_str());
 					}

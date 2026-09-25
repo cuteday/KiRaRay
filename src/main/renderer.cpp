@@ -1,9 +1,12 @@
 #include "renderer.h"
 #include "common.h"
+#include "renderoptions.h"
+#include <atomic>
 
 NAMESPACE_BEGIN(krr)
 
 namespace { // status bits
+std::atomic<Renderer *> sActiveRenderer{};
 static bool sShowUI				 = true;
 static bool sSaveHDR			 = false;
 static bool sSaveFrames			 = false;
@@ -13,16 +16,134 @@ static Vector2ui sCursorPos		 = Vector2ui::Zero();
 static size_t sSaveFrameInterval = 2;
 }
 
-RenderApp::RenderApp() {
-	if (!gpContext) gpContext = std::make_unique<Context>();
+Renderer::Renderer() : mPreviousAssetRoot(File::cwd()), mPreviousOutputDir(File::outputDir()) {
+	Renderer *expected = nullptr;
+	if (!sActiveRenderer.compare_exchange_strong(expected, this))
+		throw std::runtime_error("Only one renderer may be active at a time");
 }
+
+Renderer::~Renderer() { close(); }
+
+void Renderer::closeActive() noexcept {
+	if (auto *renderer = sActiveRenderer.load()) renderer->close();
+}
+
+void Renderer::validateConfig(const json &config) {
+	RenderOptions::validateConfig(config);
+	for (const auto &pass : config.at("passes")) {
+		const string name = pass.at("name");
+		if (!RenderPassFactory::isRegistered(name))
+			throw std::invalid_argument("Unknown render pass: " + name);
+	}
+}
+
+void Renderer::clearScene() {
+	std::exception_ptr error;
+	try {
+		if (gpContext) CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
+		if (mNvrhiDevice) mNvrhiDevice->waitForIdle();
+	} catch (...) {
+		error = std::current_exception();
+	}
+	mRenderPasses.clear();
+	if (mRenderContext) mRenderContext->setScene(nullptr);
+	mScene.reset();
+	if (error) std::rethrow_exception(error);
+}
+
+void Renderer::close() noexcept {
+	if (mClosed) return;
+	mClosed = true;
+	try {
+		clearScene();
+	} catch (const std::exception &e) {
+		Log(Error, "Scene cleanup: %s", e.what());
+	}
+	try {
+		shutdown();
+	} catch (const std::exception &e) {
+		Log(Error, "Device cleanup: %s", e.what());
+	}
+	try {
+		File::setCwd(mPreviousAssetRoot);
+		File::setOutputDir(mPreviousOutputDir);
+	} catch (const std::exception &e) {
+		Log(Error, "Restoring renderer paths: %s", e.what());
+	}
+	sActiveRenderer = nullptr;
+}
+
+void Renderer::initializePasses() {
+	setScene(mScene);
+	for (auto &pass : mRenderPasses) {
+		pass->resize(getFrameSize());
+		pass->initialize();
+	}
+	mNvrhiDevice->waitForIdle();
+}
+
+void Renderer::renderPasses() {
+	for (auto &pass : mRenderPasses) pass->beginFrame(getRenderContext());
+	for (auto &pass : mRenderPasses) {
+		if (!pass->enabled()) continue;
+		if (pass->isCudaPass()) getRenderContext()->sychronizeCuda();
+		pass->render(getRenderContext());
+		if (pass->isCudaPass()) getRenderContext()->sychronizeVulkan();
+	}
+	for (auto &pass : mRenderPasses) pass->endFrame(getRenderContext());
+}
+
+HeadlessRenderer::HeadlessRenderer(const json &config, const fs::path &assetRoot) {
+	validateConfig(config);
+	fs::path root = assetRoot.empty() ? fs::path(KRR_PROJECT_DIR) : fs::absolute(assetRoot);
+	if (!fs::is_directory(root))
+		throw std::invalid_argument("asset_root must be an existing directory");
+	File::setCwd(root);
+	mConfig = config;
+	if (config.contains("resolution")) {
+		mDeviceParams.backBufferWidth = config.at("resolution").at(0);
+		mDeviceParams.backBufferHeight = config.at("resolution").at(1);
+	}
+}
+
+std::vector<float> HeadlessRenderer::render(int64_t frames, uint64_t seed) {
+	if (mClosed) throw std::runtime_error("Renderer is closed");
+	try {
+		RenderOptions::validate(frames, seed);
+		const json config = mConfig;
+		loadConfig(config);
+		if (!mNvrhiDevice && !createHeadlessDevice(mDeviceParams))
+			throw std::runtime_error("Failed to initialize the offscreen device");
+		setFrameIndex(0);
+		setSeed(seed);
+		initializePasses();
+		getRenderContext()->clear();
+		for (int64_t frame = 0; frame < frames; ++frame) {
+			setFrameIndex(uint32_t(frame + 1));
+			for (auto &pass : mRenderPasses) pass->tick(0.f);
+			mScene->update(getFrameIndex(), 0.0);
+			renderPasses();
+			mNvrhiDevice->runGarbageCollection();
+		}
+		auto image = getRenderContext()->readback();
+		for (auto &pass : mRenderPasses) pass->finalize();
+		clearScene();
+		return image;
+	} catch (...) {
+		close();
+		throw;
+	}
+}
+
+RenderApp::RenderApp() = default;
+RenderApp::~RenderApp() { close(); }
 
 void RenderApp::backBufferResizing() { 
 	if (mpUIRenderer) mpUIRenderer->resizing();
 	DeviceManager::backBufferResizing();
 }
 
-void RenderApp::backBufferResized() {
+void Renderer::backBufferResized() {
 	DeviceManager::backBufferResized();
 	if (mScene)
 		mScene->getCamera()->setAspectRatio((float) 
@@ -30,6 +151,8 @@ void RenderApp::backBufferResized() {
 			mDeviceParams.backBufferHeight);
 	CUDA_SYNC_CHECK();
 }
+
+void RenderApp::backBufferResized() { Renderer::backBufferResized(); }
 
 bool RenderApp::onMouseEvent(io::MouseEvent &mouseEvent) {
 	if (io::MouseEvent::Type::Move == mouseEvent.type) {
@@ -62,9 +185,12 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 	return false;
 }
 
-void RenderApp::setScene(Scene::SharedPtr scene) {
+void Renderer::setScene(Scene::SharedPtr scene) {
 	mScene = scene;
-	mRenderContext->setScene(scene);
+	if (mRenderContext) mRenderContext->setScene(scene);
+	if (scene)
+		scene->getCamera()->setAspectRatio(float(mDeviceParams.backBufferWidth) /
+			mDeviceParams.backBufferHeight);
 	for (auto p : mRenderPasses) if (p) p->setScene(scene);
 }
 
@@ -87,14 +213,7 @@ void RenderApp::render() {
 	DeviceManager::beginFrame();
 	
 	mpUIRenderer->beginFrame(getRenderContext());
-	for (auto it : mRenderPasses) it->beginFrame(getRenderContext());
-	for (auto it : mRenderPasses) {
-		if (!it->enabled()) continue;
-		if (it->isCudaPass()) getRenderContext()->sychronizeCuda();
-		it->render(getRenderContext());
-		if (it->isCudaPass()) getRenderContext()->sychronizeVulkan();
-	}
-	for (auto it : mRenderPasses) it->endFrame(getRenderContext());
+	renderPasses();
 
 	if (sRequestScreenshot) {
 		captureFrame(sSaveHDR);
@@ -169,7 +288,10 @@ void RenderApp::renderUI() {
 			static char saveConfigBuf[512] = "common/configs/saved_config.json";
 			strcpy(loadConfigBuf, mConfigPath.c_str());
 			ui::InputText("Load path: ", loadConfigBuf, sizeof(loadConfigBuf));
-			if (ui::Button("Load config")) loadConfig(fs::path(loadConfigBuf));
+			if (ui::Button("Load config")) {
+				loadConfigFrom(fs::path(loadConfigBuf));
+				initializePasses();
+			}
 			ui::InputText("Save path: ", saveConfigBuf, sizeof(saveConfigBuf));
 			if (ui::Button("Save config")) saveConfig(saveConfigBuf);
 		}
@@ -255,7 +377,12 @@ void RenderApp::saveConfig(string path) {
 	logSuccess("Saved config file to " + filepath.string());
 }
 
-void RenderApp::loadConfig(const json config) {
+void Renderer::loadConfig(const json &config) {
+	if (mClosed) throw std::runtime_error("Renderer is closed");
+	validateConfig(config);
+	Context::ensureInitialized();
+	clearScene();
+	gpContext->resetState();
 	// set global configurations if eligiable
 	if (config.contains("global"))
 		gpContext->updateGlobalConfig(config.at("global"));
@@ -281,6 +408,7 @@ void RenderApp::loadConfig(const json config) {
 			} else {
 				pass = RenderPassFactory::createInstance(name);
 			}
+			if (!pass) throw std::invalid_argument("Cannot configure render pass: " + name);
 			pass->setEnable(p.value("enable", true));
 			addRenderPassToBack(pass);
 		}
@@ -290,7 +418,8 @@ void RenderApp::loadConfig(const json config) {
 	if (config.contains("model")) {
 		if (!scene) scene = std::make_shared<Scene>();
 		string model = config["model"].get<string>();
-		SceneImporter::loadModel(model, scene);
+		if (!SceneImporter::loadModel(model, scene))
+			throw std::runtime_error("Failed to load model: " + model);
 	}
 	if (config.contains("environment")) {
 		if (!scene) Log(Fatal, "Import a model before doing scene configurations!");
@@ -303,42 +432,43 @@ void RenderApp::loadConfig(const json config) {
 	if (config.contains("scene")) {
 		if(!scene) scene = std::make_shared<Scene>();
 		SceneImporter importer;
-		importer.import(config["scene"], scene /* attach to root by default */);
+		if (!importer.import(config["scene"], scene))
+			throw std::runtime_error("Failed to import scene");
 	}
 	if (scene) mScene = scene;
 	if (config.contains("resolution")) {
 		Vector2i windowDimension = config.at("resolution");
 		mDeviceParams.backBufferWidth = windowDimension[0];
 		mDeviceParams.backBufferHeight = windowDimension[1];
-		updateWindowSize();
+		if (mWindow) updateWindowSize();
 	}	
 	mConfig		= config;
 }
 
-void RenderApp::loadConfigFrom(fs::path path) {
+void Renderer::loadConfigFrom(fs::path path) {
 	json config = File::loadJSON(path);
 	loadConfig(config);	
 	mConfigPath = path.string();
 }
 
 void RenderApp::initialize() { 
-	createWindowDeviceAndSwapChain(mDeviceParams, KRR_PROJECT_NAME);
-	setScene(mScene);
+	if (!createWindowDeviceAndSwapChain(mDeviceParams, KRR_PROJECT_NAME))
+		throw std::runtime_error("Failed to initialize the window device");
 	mpUIRenderer = std::make_shared<UIRenderer>(this);
 	mpUIRenderer->initialize();
-	for (auto pass : mRenderPasses) pass->initialize();
-	mNvrhiDevice->waitForIdle();
+	initializePasses();
 }
 
 void RenderApp::finalize() { 
 	for (auto pass : mRenderPasses) 
 		pass->finalize();
+	close();
+}
+
+void RenderApp::close() noexcept {
 	mpUIRenderer.reset();
-	mRenderPasses.clear();
-	mScene.reset();
-	// Destroy created vulkan resources before destroy vulkan device
-	shutdown();
-	gpContext.reset();
+	mProfilerUI.reset();
+	Renderer::close();
 }
 
 NAMESPACE_END(krr)

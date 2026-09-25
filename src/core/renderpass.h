@@ -45,7 +45,9 @@ protected:
 											const std::string name = "");
 
 	vkrhi::TextureHandle mTexture;
-	cudaSurfaceObject_t mCudaSurface;
+	cudaSurfaceObject_t mCudaSurface{};
+	cudaMipmappedArray_t mCudaArray{};
+	cudaExternalMemory_t mCudaMemory{};
 };
 
 class RenderTarget {
@@ -120,6 +122,8 @@ public:
 	void resize(const Vector2i size);
 	void sychronizeCuda();
 	void sychronizeVulkan();
+	void clear();
+	std::vector<float> readback();
 
 private: 
 	friend class CudaScope;
@@ -132,7 +136,8 @@ private:
 	vkrhi::CuVkSemaphore mCudaSemaphore;
 	vkrhi::CuVkSemaphore mVulkanSemaphore; 
 	uint64_t mCudaSemaphoreValue{};
-	CUstream mCudaStream;
+	CUstream mCudaStream{};
+	bool mOwnsVulkanSemaphore = true;
 };
 
 class RenderPass{
@@ -185,6 +190,8 @@ protected:
 	[[nodiscard]] vk::Device getVulkanNativeDevice() const;
 	[[nodiscard]] vkrhi::vulkan::IDevice *getVulkanDevice() const;
 	[[nodiscard]] size_t getFrameIndex() const;
+	[[nodiscard]] uint64_t getSeed() const;
+	[[nodiscard]] bool isHeadless() const;
 	[[nodiscard]] Vector2i getFrameSize() const;
 
 	friend void to_json(json &j, const RenderPass &p) {
@@ -224,6 +231,9 @@ public:
 			return 0;
 		}
 		return it->second();
+	}
+	static bool isRegistered(const std::string &name) {
+		return getMap()->count(name) != 0;
 	}
 
 	static RenderPass::SharedPtr deserizeInstance(std::string const &s, const json &serde) {

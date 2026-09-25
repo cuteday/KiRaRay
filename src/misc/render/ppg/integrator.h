@@ -17,7 +17,7 @@ public:
 	enum class RenderMode { Interactive, Offline };
 
 	PPGPathTracer() = default;
-	virtual ~PPGPathTracer() = default;
+	~PPGPathTracer() override;
 	void initialize();
 
 	void resize(const Vector2i& size) override;
@@ -55,7 +55,9 @@ public:
 	/* @addition VAPG filter the raw pixel estimate using a simple box filter. */
 	void filterFrame(Film *image);
 
-	GuidedRayQueue *guidedRayQueue;
+	GuidedRayQueue *guidedRayQueue{};
+	size_t m_guidingTrainedFrames{};
+	size_t m_trainFramesThisIteration{};
 
 	STree* m_sdTree{ 0 };
 	EDistribution m_distribution{ EDistribution::ERadiance };	/* The target distribution (radiance or radiance * bsdf). */
