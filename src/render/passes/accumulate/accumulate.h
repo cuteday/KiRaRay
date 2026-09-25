@@ -20,6 +20,7 @@ public:
 	enum class Precision { Float, Double, Count };
 
 	AccumulatePass() = default;
+	~AccumulatePass() override;
 	void finalize() override;
 
 	void renderUI() override;
@@ -61,7 +62,8 @@ private:
 	Precision mPrecision { Precision::Float };
 	uint mMaxAccumCount{ 0U };
 	uint mSaveEvery{ 0U };
-	CUDABuffer *mAccumBuffer;
+	CUDABuffer *mAccumBuffer{};
+	size_t mLastResetFrame{};
 	RenderTask mTask;
 	bool mSaveOnFinish{}, mExitOnFinish{};
 };

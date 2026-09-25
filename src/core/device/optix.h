@@ -58,12 +58,14 @@ protected:
 
 	std::weak_ptr<Scene> scene;
 	OptixSceneParameters config;
+	size_t lastUpdatedFrame{};
 };
 
 class OptixSceneSingleLevel : public OptixScene {
 public:
 	using SharedPtr = std::shared_ptr<OptixSceneSingleLevel>;
 	OptixSceneSingleLevel(std::shared_ptr<Scene> scene, const OptixSceneParameters &config = {});
+	~OptixSceneSingleLevel() override;
 
 	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
 	std::vector<std::weak_ptr<MeshInstance>> getReferencedMeshes() const override { return referencedMeshes; }
@@ -106,6 +108,7 @@ public:
 
 	using SharedPtr = std::shared_ptr<OptixSceneMultiLevel>;
 	OptixSceneMultiLevel(std::shared_ptr<Scene> scene, const OptixSceneParameters &config = {});
+	~OptixSceneMultiLevel() override;
 	
 
 	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }
@@ -167,7 +170,7 @@ class OptixBackend {
 public:
 	using SharedPtr = std::shared_ptr<OptixBackend>;
 	OptixBackend()	= default; 
-	~OptixBackend() = default;
+	~OptixBackend();
 
 	void initialize(const OptixInitializeParameters& params);
 	void setScene(std::shared_ptr<Scene> _scene);
@@ -175,13 +178,12 @@ public:
 	void launch(const LaunchParameters<Integrator>& parameters, string entryPoint, 
 		int width, int height, int depth = 1, CUstream stream = 0) {
 		if (height * width * depth == 0) return;
-		static LaunchParameters<Integrator> *launchParams{nullptr};
-		if (!launchParams) cudaMalloc(&launchParams, sizeof(LaunchParameters<Integrator>));
 		if (!entryPoints.count(entryPoint))
 			Log(Fatal, "The entrypoint %s is not initialized!", entryPoint.c_str());
-		cudaMemcpyAsync(launchParams, &parameters, sizeof(LaunchParameters<Integrator>),
-						cudaMemcpyHostToDevice, stream);
-		OPTIX_CHECK(optixLaunch(optixPipeline, stream, CUdeviceptr(launchParams),
+		launchParams.resize(sizeof(LaunchParameters<Integrator>));
+		CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(launchParams.data()), &parameters,
+			sizeof(LaunchParameters<Integrator>), cudaMemcpyHostToDevice, stream));
+		OPTIX_CHECK(optixLaunch(optixPipeline, stream, launchParams.data(),
 								sizeof(LaunchParameters<Integrator>), &SBT[entryPoints[entryPoint]],
 								width, height, depth));
 	}
@@ -197,6 +199,7 @@ public:
 	OptixInitializeParameters getParameters() const { return optixParameters; }
 
 protected:
+	void releasePipeline() noexcept;
 	void createOptixModule();
 	void createOptixPipeline();
 	void buildShaderBindingTable();
@@ -206,9 +209,10 @@ protected:
 	OptixProgramGroup createIntersectionPG(const char *closest, const char *any,
 										   const char *intersect) const;
 
-	OptixModule optixModule;
-	OptixPipeline optixPipeline;
-	OptixDeviceContext optixContext;
+	OptixModule optixModule{};
+	OptixPipeline optixPipeline{};
+	OptixDeviceContext optixContext{};
+	CUDABuffer launchParams;
 
 	std::vector<OptixProgramGroup> raygenPGs;
 	std::vector<OptixProgramGroup> missPGs;

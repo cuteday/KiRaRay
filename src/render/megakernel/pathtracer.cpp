@@ -58,6 +58,7 @@ void MegakernelPathTracer::render(RenderContext *context) {
 	launchParams.sceneData	 = mScene->getSceneRT()->getSceneData();
 	launchParams.traversable = optixBackend->getRootTraversable();
 	launchParams.frameID	 = (uint) getFrameIndex();
+	launchParams.seed		 = getSeed();
 	{
 		PROFILE("Megakernel Path Tracer");
 		if (needsRecompile) compilePrograms();

@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-09-25T09:53:55.982816+00:00",
+  "config": {
+    "resolution": [
+      128,
+      128
+    ],
+    "passes": [
+      {
+        "name": "WavefrontPathTracer",
+        "params": {
+          "nee": true,
+          "rr": 0.8,
+          "max_depth": 10
+        }
+      },
+      {
+        "name": "AccumulatePass",
+        "params": {
+          "spp": 0,
+          "mode": "accumulate",
+          "save_on_finish": false,
+          "exit_on_finish": false
+        }
+      }
+    ],
+    "scene": {
+      "camera": {
+        "mData": {
+          "aspectRatio": 1.0,
+          "focalDistance": 10.0,
+          "focalLength": 21.0,
+          "lensRadius": 0.0
+        }
+      },
+      "cameraController": {
+        "mData": {
+          "pitch": 0.0003333091735839844,
+          "radius": 3.1123313903808594,
+          "target": [
+            -0.011140584014356136,
+            1.0211291313171387,
+            -0.2837386131286621
+          ],
+          "yaw": 0.000348508358001709
+        }
+      },
+      "model": [
+        {
+          "model": "common/assets/scenes/cbox/cbox.obj",
+          "name": "Cornell Box"
+        }
+      ]
+    }
+  },
+  "config_sha256": "256429ad2730ea1943dc56ecababc769b0aab2ec726a19df77958bdfb22c2348",
+  "reference_frames": 16384,
+  "reference_seed": 20260925,
+  "regression_frames": 128,
+  "regression_seed": 17,
+  "normalized_rmse_threshold": 0.11399067914912477,
+  "calibration_margin": 1.5,
+  "calibration": [
+    {
+      "frames": 128,
+      "measurements": [
+        {
+          "seed": 17,
+          "mse": 1.3174559936747456,
+          "normalized_rmse": 0.07599378609941651
+        },
+        {
+          "seed": 29,
+          "mse": 1.1235690467707953,
+          "normalized_rmse": 0.07017944129896798
+        },
+        {
+          "seed": 43,
+          "mse": 1.0427570951781238,
+          "normalized_rmse": 0.06760854663247998
+        },
+        {
+          "seed": 71,
+          "mse": 1.0395029446482986,
+          "normalized_rmse": 0.06750297060560195
+        },
+        {
+          "seed": 113,
+          "mse": 1.1031324390202153,
+          "normalized_rmse": 0.06953826507661989
+        }
+      ],
+      "threshold": 0.11399067914912477
+    }
+  ],
+  "fault_checks": {
+    "black": {
+      "mse": 228.12871457363352,
+      "normalized_rmse": 1.0
+    },
+    "half_exposure": {
+      "mse": 57.03217864340838,
+      "normalized_rmse": 0.5
+    }
+  },
+  "elapsed_seconds": 25.4607653,
+  "renderer": {
+    "build_type": "Release",
+    "cuda_version": 13020,
+    "device": "NVIDIA GeForce RTX 5080",
+    "driver_version": 13040,
+    "msvc_version": 194435227,
+    "optix_version": 90100,
+    "project_root": "D:/Projects/KiRaRay",
+    "spectral": true,
+    "tracked_bytes": 37803100
+  },
+  "revision": "60b1dd3e8b052d055faa2e24af629f5288b14e43",
+  "working_tree": "M .github/workflows/main.yml\n M CMakeLists.txt\n M README.md\n M common/scripts/README.md\n M common/scripts/krr.py\n M src/core/device/context.cpp\n M src/core/device/context.h\n M src/core/device/optix.cpp\n M src/core/device/optix.h\n M src/core/device/scene.cpp\n M src/core/device/scene.h\n M src/core/file.cpp\n M src/core/light.cpp\n M src/core/light.h\n M src/core/logger.cpp\n M src/core/python/common.cpp\n M src/core/python/py.cpp\n M src/core/renderpass.cpp\n M src/core/renderpass.h\n M src/core/sampler.h\n M src/core/texture.cpp\n M src/core/texture.h\n M src/core/vulkan/cuvk.h\n M src/core/vulkan/shader.h\n M src/core/window.cpp\n M src/core/window.h\n M src/main/kiraray.cpp\n M src/main/renderer.cpp\n M src/main/renderer.h\n M src/misc/render/ppg/integrator.cpp\n M src/misc/render/ppg/integrator.h\n M src/misc/render/ppg/tree.h\n M src/misc/render/ppg/treemanip.cpp\n M src/render/megakernel/device.cu\n M src/render/megakernel/path.h\n M src/render/megakernel/pathtracer.cpp\n M src/render/passes/accumulate/accumulate.cu\n M src/render/passes/accumulate/accumulate.h\n M src/render/passes/denoise/denoise.cpp\n M src/render/passes/denoise/denoise.h\n M src/render/wavefront/integrator.cpp\n M src/render/wavefront/integrator.h\n M src/scene/krrscene.cpp\n M src/util/soac.cpp\n?? common/scripts/image_metrics.py\n?? src/main/renderoptions.h\n?? tests/",
+  "python": "3.9.12 (main, Apr  4 2022, 05:22:27) [MSC v.1916 64 bit (AMD64)]",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "module_dir": null,
+  "build_dir": "D:\\Projects\\KiRaRay\\build\\cuda13.2"
+}

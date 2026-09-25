@@ -12,7 +12,7 @@ void HomogeneousMedium::getObjectData(SceneGraphLeaf::SharedPtr leaf, Blob::Shar
 									  bool initialize) const {
 	auto object = std::dynamic_pointer_cast<HomogeneousVolume>(leaf);
 	auto gdata = reinterpret_cast<HomogeneousMedium* >(data->data());
-	new (gdata) HomogeneousMedium(object->sigma_t, object->albedo, object->Le, object->g);
+	*gdata = HomogeneousMedium(object->sigma_t, object->albedo, object->Le, object->g);
 }
 
 template <typename GridType>

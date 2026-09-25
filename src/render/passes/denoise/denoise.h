@@ -18,6 +18,11 @@ public:
 	};
 
 	DenoiseBackend() = default;
+	~DenoiseBackend() { cleanup(); }
+	DenoiseBackend(const DenoiseBackend &) = delete;
+	DenoiseBackend &operator=(const DenoiseBackend &) = delete;
+	DenoiseBackend(DenoiseBackend &&other) noexcept;
+	DenoiseBackend &operator=(DenoiseBackend &&other) noexcept;
 
 	void initialize();	
 
@@ -30,11 +35,12 @@ public:
 	void setPixelFormat(PixelFormat format);
 
 private:
-	Vector2i resolution;
+	void cleanup() noexcept;
+	Vector2i resolution{Vector2i::Zero()};
 	PixelFormat pixelFormat{PixelFormat::FLOAT4};
 	bool haveGeometryBuffer{}, initialized{};
 	OptixDenoiser denoiserHandle{};
-	OptixDenoiserSizes memorySizes;
+	OptixDenoiserSizes memorySizes{};
 	CUDABuffer denoiserState, scratchBuffer, intensity;
 };
 
@@ -44,6 +50,10 @@ public:
 	using SharedPtr = std::shared_ptr<DenoisePass>;
 	KRR_REGISTER_PASS_DEC(DenoisePass);
 	KRR_CLASS_DEFINE(DenoisePass, mUseGeometry);
+	DenoisePass() = default;
+	~DenoisePass() override;
+	DenoisePass(DenoisePass &&) = default;
+	DenoisePass &operator=(DenoisePass &&) = default;
 
 	void render(RenderContext* context) override;
 	void renderUI() override;

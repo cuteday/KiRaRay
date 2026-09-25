@@ -163,18 +163,22 @@ OptixScene::buildASFromInputs(OptixDeviceContext optixContext, CUstream cudaStre
 	size_t tempSizeInBytes =
 		update ? blasBufferSizes.tempUpdateSizeInBytes : blasBufferSizes.tempSizeInBytes;
 	CUDA_CHECK(cudaMalloc(&tempBuffer, tempSizeInBytes));
+	auto freeBuffer = [](void *buffer) { cudaFree(buffer); };
+	std::unique_ptr<void, decltype(freeBuffer)> tempOwner(tempBuffer, freeBuffer);
 	
 	OptixTraversableHandle traversableHandle{0};
 
 	if (compact) {
 		uint64_t *compactedSizePtr;
 		CUDA_CHECK(cudaMalloc(&compactedSizePtr, sizeof(uint64_t)));
+		std::unique_ptr<void, decltype(freeBuffer)> sizeOwner(compactedSizePtr, freeBuffer);
 		OptixAccelEmitDesc emitDesc;
 		emitDesc.type	= OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
 		emitDesc.result = (CUdeviceptr) compactedSizePtr;
 
 		void *uncompactedBuffer;
 		CUDA_CHECK(cudaMalloc(&uncompactedBuffer, blasBufferSizes.outputSizeInBytes));
+		std::unique_ptr<void, decltype(freeBuffer)> uncompactedOwner(uncompactedBuffer, freeBuffer);
 
 		OPTIX_CHECK(optixAccelBuild(
 			optixContext, cudaStream, &accelOptions, buildInputs.data(), buildInputs.size(),
@@ -186,7 +190,6 @@ OptixScene::buildASFromInputs(OptixDeviceContext optixContext, CUstream cudaStre
 		uint64_t compactedSize;
 		CUDA_CHECK(cudaMemcpyAsync(&compactedSize, compactedSizePtr, sizeof(uint64_t),
 								   cudaMemcpyDeviceToHost, cudaStream));
-		CUDA_CHECK(cudaFree(compactedSizePtr));
 		CUDA_CHECK(cudaStreamSynchronize(cudaStream));
 
 		// Compact the acceleration structure
@@ -194,7 +197,6 @@ OptixScene::buildASFromInputs(OptixDeviceContext optixContext, CUstream cudaStre
 		OPTIX_CHECK(optixAccelCompact(optixContext, cudaStream, traversableHandle,
 									  CUdeviceptr(accelBuffer.data()), compactedSize,
 									  &traversableHandle));
-		CUDA_CHECK(cudaFree(uncompactedBuffer));
 		
 	} else {
 		accelBuffer.resize(blasBufferSizes.outputSizeInBytes);
@@ -203,7 +205,6 @@ OptixScene::buildASFromInputs(OptixDeviceContext optixContext, CUstream cudaStre
 			CUdeviceptr(tempBuffer), tempSizeInBytes, CUdeviceptr(accelBuffer.data()),
 			blasBufferSizes.outputSizeInBytes, &traversableHandle, nullptr, 0));
 	}
-	CUDA_CHECK(cudaFree(tempBuffer));
 	CUDA_CHECK(cudaStreamSynchronize(cudaStream));
 	return traversableHandle;
 }
@@ -263,19 +264,11 @@ OptixProgramGroup OptixBackend::createIntersectionPG(
 }
 
 void OptixBackend::createOptixModule() {
-	optixModuleDestroy(optixModule);
 	// creating optix module from ptx
 	optixModule = createOptixModule(optixContext, optixParameters);
 }
 
 void OptixBackend::createOptixPipeline() {
-	// clear previous pipeline and related data
-	cudaDeviceSynchronize();
-	optixPipelineDestroy(optixPipeline);
-	raygenPGs.clear();
-	missPGs.clear();
-	hitgroupPGs.clear();
-	entryPoints.clear();
 	// creating program groups
 	std::vector<OptixProgramGroup> allPGs;
 	// creating RAYGEN PG
@@ -330,10 +323,33 @@ void OptixBackend::initialize(const OptixInitializeParameters &params) {
 	if (!scene) Log(Fatal, "Scene is not set for OptixBackend, please call setScene() first.");
 	setParameters(params);
 	optixContext	= gpContext->optixContext;
+	CUDA_CHECK(cudaDeviceSynchronize());
+	releasePipeline();
 
 	createOptixModule();
 	createOptixPipeline();
 	buildShaderBindingTable();
+}
+
+OptixBackend::~OptixBackend() {
+	cudaDeviceSynchronize();
+	releasePipeline();
+	if (launchParams.data()) cudaFree(reinterpret_cast<void *>(launchParams.data()));
+}
+
+void OptixBackend::releasePipeline() noexcept {
+	if (optixPipeline) optixPipelineDestroy(optixPipeline);
+	optixPipeline = nullptr;
+	for (auto group : raygenPGs) optixProgramGroupDestroy(group);
+	for (auto group : missPGs) optixProgramGroupDestroy(group);
+	for (auto group : hitgroupPGs) optixProgramGroupDestroy(group);
+	raygenPGs.clear();
+	missPGs.clear();
+	hitgroupPGs.clear();
+	if (optixModule) optixModuleDestroy(optixModule);
+	optixModule = nullptr;
+	entryPoints.clear();
+	SBT.clear();
 }
 
 void OptixBackend::setScene(Scene::SharedPtr _scene){
@@ -344,7 +360,6 @@ void OptixBackend::setScene(Scene::SharedPtr _scene){
 
 // [TODO] Currently supports updating subgraph transforms only.
 void OptixScene::update() {
-	static size_t lastUpdatedFrame = 0;
 	auto lastUpdates			   = scene.lock()->getSceneGraph()->getLastUpdateRecord();
 	if ((lastUpdates.updateFlags & SceneGraphNode::UpdateFlags::SubgraphUpdates)
 		!= SceneGraphNode::UpdateFlags::None && lastUpdatedFrame < lastUpdates.frameIndex) {		
@@ -592,8 +607,19 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 }
 
 OptixSceneMultiLevel::InstanceBuildInput::~InstanceBuildInput() { 
-	accelBuffer.free(); 
-	transformBuffer.free();
+	if (accelBuffer.data()) cudaFree(reinterpret_cast<void *>(accelBuffer.data()));
+	if (transformBuffer.data()) cudaFree(reinterpret_cast<void *>(transformBuffer.data()));
+}
+
+OptixSceneSingleLevel::~OptixSceneSingleLevel() {
+	if (accelBufferIAS.data()) cudaFree(reinterpret_cast<void *>(accelBufferIAS.data()));
+	for (auto &buffer : accelBuffersGAS)
+		if (buffer.data()) cudaFree(reinterpret_cast<void *>(buffer.data()));
+}
+
+OptixSceneMultiLevel::~OptixSceneMultiLevel() {
+	for (auto &buffer : accelBuffersGAS)
+		if (buffer.data()) cudaFree(reinterpret_cast<void *>(buffer.data()));
 }
 
 OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene,
@@ -684,6 +710,7 @@ void OptixBackend::buildShaderBindingTable() {
 	raygenRecords.clear();
 	missRecords.clear();
 	hitgroupRecords.clear();
+	SBT.clear();
 
 	for (const auto [raygenEntry, index] : entryPoints) {
 		RaygenRecord raygenRecord = {};

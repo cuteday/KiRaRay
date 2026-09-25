@@ -21,7 +21,7 @@ public:
 	KRR_REGISTER_PASS_DEC(ErrorMeasurePass);
 
 	ErrorMeasurePass() = default;
-	~ErrorMeasurePass() = default;
+	~ErrorMeasurePass() override;
 	void beginFrame(RenderContext* context) override;
 	void render(RenderContext* context) override;
 	void renderUI() override;

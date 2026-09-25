@@ -181,10 +181,10 @@ public:
 		const char *entryName = "main",
 		const std::vector<ShaderMacro> *pDefines = nullptr) {
 		if (!entryName) entryName = "main";
-		std::filesystem::path shaderFilePath = File::resolve(fileName);
+		std::filesystem::path shaderFilePath = fs::path(KRR_PROJECT_DIR) / fileName;
 
 		auto content = File::readFile(shaderFilePath, false);
-		if (!content) Log(Error, "Failed to read file from %s", fileName);
+		if (!content) throw std::runtime_error("Failed to read shader: " + shaderFilePath.string());
 		std::vector<char> text((char *) content->data(),
 							   (char *) content->data() + content->size()); // shader text
 

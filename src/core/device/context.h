@@ -14,8 +14,10 @@ class Context{
 public:
 	using SharedPtr = std::shared_ptr<Context>;
 
-	Context() { initialize(); }
+	Context();
 	~Context() { finalize(); }
+	static Context &ensureInitialized();
+	void resetState() { globalConfig = json::object(); exit = false; }
 
 	void setGlobalConfig(const json &config);
 	void setDefaultVkDevice(nvrhi::vulkan::IDevice *device);
@@ -26,14 +28,14 @@ public:
 	bool shouldQuit() const { return exit; };
 
 	void initialize();
-	void finalize();
+	void finalize() noexcept;
 	void terminate();
 
 	json globalConfig{};
-	CUcontext cudaContext;
+	CUcontext cudaContext{};
 	CUstream cudaStream{ 0 };
 	cudaDeviceProp deviceProps;
-	OptixDeviceContext optixContext;
+	OptixDeviceContext optixContext{};
 	nvrhi::vulkan::IDevice *defaultVkDevice{};
 	std::unique_ptr<Allocator> alloc;
 	// signal bits

@@ -248,12 +248,16 @@ KRR_HOST STree::STree(const AABB& aabb, Allocator alloc) {
 }
 
 KRR_HOST void STree::clear() {
-	forEachDTreeWrapper([](DTreeWrapper* dtree) {
-		dtree->clear();	/* free the memories of the quadtrees */
-		});
+	release();
 	std::vector<STreeNode> nodes(1);
 	nodes.front().initialize();
 	m_nodes.alloc_and_copy_from_host(nodes);	// initialize the super root tree node
+}
+
+KRR_HOST void STree::release() {
+	if (!m_nodes.size()) return;
+	forEachDTreeWrapper([](DTreeWrapper *dtree) { dtree->clear(); });
+	m_nodes.clear();
 }
 
 KRR_HOST void STree::subdivideAll() {

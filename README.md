@@ -77,7 +77,7 @@ CUDA 13.2-specific compiler options are version-gated; CUDA 12 builds do not rec
 
 #### VS Code and clangd
 
-VS Code and clangd configuration files are local to each workspace and ignored by Git. Use the clangd and CMake Tools extensions with Ninja's compilation database in `build/release`. Clangd **22.1.6** was tested with CUDA 13.2; older versions bundled with Visual Studio cannot parse its headers. Configure clangd to remove NVCC-only flags, preserve CUDA parsing for `.cpp` sources compiled by NVCC, and use the selected toolkit's `--cuda-path`.
+VS Code and clangd configuration files are local to each workspace and ignored by Git. See the [clangd setup guide](common/doc/clangd.md) for a tested **clangd 22.1.6** setup, local configuration examples, NVCC flag filtering, and CUDA language overrides. The guide applies to both VS Code and Cursor and explains how to select your build directory and CUDA toolkit.
 
 For Windows host-code debugging, select the **Debug** CMake variant. In Cursor, use CodeLLDB (`lldb`); Cursor does not support the MSVC debugger type (`cppvsdbg`). VS Code can use either CodeLLDB or the C/C++ extension's MSVC debugger. Some renderer CUDA files still produce Clang/NVCC host-device declaration or macro diagnostics; the NVCC build remains the authoritative compiler check.
 
@@ -92,6 +92,11 @@ build/release/bin/kiraray.exe common/configs/example_cbox.json
 > The two necessary entries in the configuration are `model` (specifying the relative path to the scene file) and `passes` (describing the render pipeline). Once compiled, directly run `kiraray` without specifying configuration (this [example configuration](common/configs/example_cbox.json) will be used) to get a feel for this toy renderer.
 
 #### Usage
+
+**Headless rendering and tests.** The Python API can render a config without a window and return
+an owned RGB NumPy array. CTest runs a small CPU suite; local GPU smoke and image regression tests
+are enabled with `-DKRR_ENABLE_GPU_TESTS=ON`. See [testing](tests/README.md) for build selection,
+commands, artifacts, and reference updates, and [Python usage](common/scripts/README.md) for the API.
 
 **Camera controlling.** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
 

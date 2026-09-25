@@ -8,6 +8,13 @@ namespace {
 static const char *metricNames[] = { "MSE", "MAPE", "SMAPE", "RelMSE" };
 }
 
+ErrorMeasurePass::~ErrorMeasurePass() {
+	if (mReferenceImageBuffer.data()) {
+		cudaDeviceSynchronize();
+		cudaFree(mReferenceImageBuffer.data());
+	}
+}
+
 void ErrorMeasurePass::beginFrame(RenderContext* context) {
 	if (!mFrameNumber) reset();
 	mFrameNumber++;
@@ -93,6 +100,8 @@ bool ErrorMeasurePass::loadReferenceImage(const string &path) {
 	mReferenceImage = std::make_shared<Image>();
  	bool success = mReferenceImage->loadImage(path, true, false);
 	if (success) {
+		if (mReferenceImage->getFormat() != Image::Format::RGBAfloat)
+			throw std::invalid_argument("ErrorMeasurePass requires a floating-point reference image");
 		// TODO: find out why saving an exr image yields this permutation on pixel format?
 		// This should be deleted once new reference images are updated.
 		auto permute = [](auto pixel) {
@@ -103,7 +112,7 @@ bool ErrorMeasurePass::loadReferenceImage(const string &path) {
 			return res;
 		};
 		mReferenceImage->process(permute);
-		mReferenceImageBuffer.resize(mReferenceImage->getSizeInBytes());
+		mReferenceImageBuffer.resize(mReferenceImage->getSizeInBytes() / sizeof(RGBA));
 		mReferenceImageBuffer.copy_from_host(reinterpret_cast<RGBA*>(mReferenceImage->data()), 
 			mReferenceImage->getSizeInBytes() / sizeof(RGBA));
 		reset();

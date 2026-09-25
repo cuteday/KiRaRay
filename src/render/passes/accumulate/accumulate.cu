@@ -9,6 +9,14 @@
 
 NAMESPACE_BEGIN(krr)
 
+AccumulatePass::~AccumulatePass() {
+	if (mAccumBuffer) {
+		cudaDeviceSynchronize();
+		if (mAccumBuffer->data()) cudaFree(reinterpret_cast<void *>(mAccumBuffer->data()));
+		delete mAccumBuffer;
+	}
+}
+
 size_t AccumulatePass::getPixelSize() const {
 	switch (mPrecision) {
 		case AccumulatePass::Precision::Float:
@@ -45,8 +53,10 @@ void acculumate(Array4<DType> *accumBuffer, CudaRenderTarget currentBuffer, size
 			}
 			if (mode == AccumulatePass::Mode::MovingAverage)
 				currentBuffer.write(accumBuffer[i].template cast<float>(), i);
-			else
-				currentBuffer.write((accumBuffer[i] * currentWeight).template cast<float>(), i);
+			else {
+				size_t count = maxAccumCount ? min(accumCount + 1, maxAccumCount) : accumCount + 1;
+				currentBuffer.write((accumBuffer[i] / DType(count)).template cast<float>(), i);
+			}
 		},
 		KRR_DEFAULT_STREAM);
 }
@@ -54,12 +64,11 @@ void acculumate(Array4<DType> *accumBuffer, CudaRenderTarget currentBuffer, size
 void AccumulatePass::render(RenderContext *context) {
 	PROFILE("Accumulate pass");
 	if (mScene->getChanges()) reset();
-	static size_t lastResetFrame = 0;
 	auto lastSceneUpdates		 = mScene->getSceneGraph()->getLastUpdateRecord();
 	if (lastSceneUpdates.updateFlags != SceneGraphNode::UpdateFlags::None &&
-		lastResetFrame < lastSceneUpdates.frameIndex) {
+		mLastResetFrame < lastSceneUpdates.frameIndex) {
 		reset();
-		lastResetFrame = lastSceneUpdates.frameIndex;
+		mLastResetFrame = lastSceneUpdates.frameIndex;
 	}
 
 	RGBA *accumBuffer			   = (RGBA *) mAccumBuffer->data();
@@ -81,7 +90,7 @@ void AccumulatePass::render(RenderContext *context) {
 void AccumulatePass::endFrame(RenderContext *context) {
 	if (mTask.getBudgetType() != BudgetType::None && mTask.isFinished() && mExitOnFinish)
 		gpContext->requestExit();
-	if (mSaveEvery && mAccumCount % mSaveEvery == 0) {
+	if (!isHeadless() && mSaveEvery && mAccumCount % mSaveEvery == 0) {
 		string outputName = gpContext->getGlobalConfig().contains("name")
 								? gpContext->getGlobalConfig()["name"]
 								: "result" + std::to_string(mAccumCount);
@@ -90,10 +99,11 @@ void AccumulatePass::endFrame(RenderContext *context) {
 }
 
 void AccumulatePass::saveImage(fs::path path) {
+	if (!mAccumCount) return;
 	Image frame(getFrameSize(), Image::Format::RGBAfloat, false);
 	size_t nPixels = getFrameSize()[0] * getFrameSize()[1];
 	CUDABuffer tmpBuffer(nPixels * sizeof(Vector4f));
-	const float weight = 1.0f / mAccumCount;
+	const float weight = mMode == Mode::MovingAverage ? 1.f : 1.f / mAccumCount;
 	if (mPrecision == Precision::Float) {
 		thrust::transform(thrust::device, reinterpret_cast<Array4f *>(mAccumBuffer->data()),
 						  reinterpret_cast<Array4f *>(mAccumBuffer->data()) + nPixels,
@@ -107,6 +117,7 @@ void AccumulatePass::saveImage(fs::path path) {
 			[=] KRR_DEVICE(const Array4d &d) -> RGBA { return (d * weight).cast<float>(); });
 	}
 	tmpBuffer.copy_to_host(frame.data(), nPixels * sizeof(RGBA));
+	tmpBuffer.free();
 	CUDA_SYNC_CHECK();
 	frame.saveImage(path, true);
 }
@@ -117,7 +128,7 @@ void AccumulatePass::resize(const Vector2i &size) {
 }
 
 void AccumulatePass::finalize() {
-	if (mSaveOnFinish) {
+	if (mSaveOnFinish || (isHeadless() && mSaveEvery)) {
 		cudaDeviceSynchronize();
 		string outputName = gpContext->getGlobalConfig().contains("name")
 								? gpContext->getGlobalConfig()["name"]

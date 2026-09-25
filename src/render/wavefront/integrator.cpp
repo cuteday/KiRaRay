@@ -19,7 +19,35 @@
 NAMESPACE_BEGIN(krr)
 extern "C" char WAVEFRONT_PTX[];
 
+WavefrontPathTracer::~WavefrontPathTracer() {
+	if (mResourceOwner != this) return;
+	cudaDeviceSynchronize();
+	delete backend;
+	if (!gpContext || !gpContext->alloc) return;
+	Allocator &alloc = *gpContext->alloc;
+	auto releaseQueue = [&](auto *queue) {
+		if (queue) {
+			queue->resize(0);
+			alloc.delete_object(queue);
+		}
+	};
+	try {
+		for (auto *queue : rayQueue) releaseQueue(queue);
+		releaseQueue(missRayQueue);
+		releaseQueue(hitLightRayQueue);
+		releaseQueue(shadowRayQueue);
+		releaseQueue(scatterRayQueue);
+		releaseQueue(mediumSampleQueue);
+		releaseQueue(mediumScatterQueue);
+		releaseQueue(pixelState);
+		if (camera) alloc.delete_object(camera);
+	} catch (const std::exception &e) {
+		Log(Error, "Failed to release wavefront buffers: %s", e.what());
+	}
+}
+
 void WavefrontPathTracer::initialize() {
+	mResourceOwner = this;
 	/* [TODO] Disable missRayQueue if no environment light exist. */
 	Allocator &alloc = *gpContext->alloc;
 	maxQueueSize	 = getFrameSize()[0] * getFrameSize()[1];
@@ -50,7 +78,7 @@ void WavefrontPathTracer::initialize() {
 void WavefrontPathTracer::traceClosest(int depth) {
 	PROFILE("Trace intersect rays");
 	// Telling whether volume rendering is enabled by mediumSampleQueue is null?
-	static LaunchParameters <WavefrontPathTracer> params = {};
+	LaunchParameters<WavefrontPathTracer> params = {};
 	params.traversable		   = backend->getRootTraversable();
 	params.sceneData		   = backend->getSceneData();
 	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
@@ -66,7 +94,7 @@ void WavefrontPathTracer::traceClosest(int depth) {
 
 void WavefrontPathTracer::traceShadow() {
 	PROFILE("Trace shadow rays");
-	static LaunchParameters <WavefrontPathTracer> params = {};
+	LaunchParameters<WavefrontPathTracer> params = {};
 	params.traversable		   = backend->getRootTraversable();
 	params.sceneData		   = backend->getSceneData();
 	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
@@ -184,6 +212,7 @@ void WavefrontPathTracer::resize(const Vector2i &size) {
 }
 
 void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
+	mResourceOwner = this;
 	mScene = scene;
 	if (!backend) backend		= new OptixBackend();
 	auto params = OptixInitializeParameters()
@@ -208,13 +237,14 @@ void WavefrontPathTracer::beginFrame(RenderContext* context) {
 	cudaMemcpyAsync(camera, &mScene->getCamera()->getCameraData(), sizeof(rt::CameraData),
 					cudaMemcpyHostToDevice, KRR_DEFAULT_STREAM);
 	size_t frameIndex = getFrameIndex();
+	uint64_t seed = getSeed();
 	auto frameSize = getFrameSize();
 	GPUParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) { // reset per-pixel sample state
 			Vector2i pixelCoord		   = {pixelId % frameSize[0], pixelId / frameSize[0]};
 			pixelState->L[pixelId]	   = Spectrum::Zero();
 			pixelState->pixel[pixelId] = RGB::Zero();
-			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel);
+			pixelState->sampler[pixelId].setPixelSample(pixelCoord, frameIndex * samplesPerPixel, seed);
 			pixelState->sampler[pixelId].advance(256 * pixelId);
 			pixelState->lambda[pixelId]  = SampledWavelengths::sampleUniform(pixelState->sampler[pixelId].get1D());
 	}, KRR_DEFAULT_STREAM);

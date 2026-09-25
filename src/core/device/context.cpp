@@ -9,10 +9,10 @@
 NAMESPACE_BEGIN(krr)
 
 using namespace gpu;
+CUDATrackedMemory CUDATrackedMemory::singleton;
 std::unique_ptr<Context> gpContext;
 std::shared_ptr<RenderPassFactory::map_type> RenderPassFactory::map = nullptr;
 std::shared_ptr<RenderPassFactory::configured_map_type> RenderPassFactory::configured_map = nullptr;
-CUDATrackedMemory CUDATrackedMemory::singleton;
 
 namespace {
 	static void optixContextLogCallback(unsigned int level,
@@ -23,30 +23,45 @@ namespace {
 	}
 }
 
+Context::Context() {
+	try {
+		initialize();
+	} catch (...) {
+		finalize();
+		throw;
+	}
+}
+
+Context &Context::ensureInitialized() {
+	if (!gpContext) gpContext = std::make_unique<Context>();
+	return *gpContext;
+}
+
 void Context::initialize() {
 	logInfo("Initializing device context");
 
 	// initialize optix and cuda 
-	cudaFree(0);
-	int numDevices;
-	cudaGetDeviceCount(&numDevices);
+	int numDevices{};
+	CUDA_CHECK(cudaGetDeviceCount(&numDevices));
 	if (numDevices == 0)
-		logFatal("No CUDA capable devices found!");
+		throw std::runtime_error("No CUDA capable devices found!");
 	logInfo("Found " + to_string(numDevices) + " CUDA device(s).");
 	OPTIX_CHECK(optixInit());
 
 	// set up context
-	const int deviceID = 0;
-	CUDA_CHECK(cudaSetDevice(deviceID));
+	int deviceID{};
+	CUDA_CHECK(cudaGetDevice(&deviceID));
+	CUDA_CHECK(cudaFree(0));
 	CUDA_CHECK(cudaStreamCreate(&cudaStream));
 	
-	cudaGetDeviceProperties(&deviceProps, deviceID);
+	CUDA_CHECK(cudaGetDeviceProperties(&deviceProps, deviceID));
 	Log(Success, "KiRaRay is running on " + string(deviceProps.name));
 	if (!deviceProps.concurrentManagedAccess)
 		Log(Debug, "Concurrent access of managed memory is not supported.");
 
 	CUresult cuRes = cuCtxGetCurrent(&cudaContext);
-	if (cuRes != CUDA_SUCCESS) Log(Error, "Error querying current context: error code " + cuRes);
+	if (cuRes != CUDA_SUCCESS)
+		throw std::runtime_error("Error querying current CUDA context: " + std::to_string(cuRes));
 
 	OptixDeviceContextOptions optixContextOptions = {};
 	//optixContextOptions.validationMode = OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL;
@@ -68,12 +83,20 @@ void Context::initialize() {
 #endif
 }
 
-void Context::finalize(){
-	CUDA_SYNC_CHECK();
-	CUDATrackedMemory::singleton.release();
-	optixDeviceContextDestroy(optixContext);
+void Context::finalize() noexcept {
+	if (cudaStream) cudaStreamSynchronize(cudaStream);
+	if (optixContext) optixDeviceContextDestroy(optixContext);
+	optixContext = nullptr;
+	if (cudaStream) cudaStreamDestroy(cudaStream);
+	cudaStream = nullptr;
+	if (alloc) {
+		try {
+			CUDATrackedMemory::singleton.release();
+		} catch (...) {}
+	}
 	alloc.reset();
-	cuCtxDestroy(cudaContext);
+	defaultVkDevice = nullptr;
+	cudaContext = nullptr;
 }
 
 void Context::terminate() { 

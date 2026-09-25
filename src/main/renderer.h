@@ -14,10 +14,47 @@
 
 NAMESPACE_BEGIN(krr)
 
-class RenderApp : public DeviceManager{
+class Renderer : public DeviceManager {
+public:
+	Renderer();
+	~Renderer() override;
+	Renderer(const Renderer &) = delete;
+	Renderer &operator=(const Renderer &) = delete;
+
+	void setScene(Scene::SharedPtr scene);
+	void loadConfigFrom(fs::path path);
+	void loadConfig(const json &config);
+	virtual void close() noexcept;
+	static void closeActive() noexcept;
+	bool isClosed() const { return mClosed; }
+
+protected:
+	static void validateConfig(const json &config);
+	void initializePasses();
+	void renderPasses();
+	void clearScene();
+	void backBufferResized() override;
+
+	Scene::SharedPtr mScene;
+	json mConfig{};
+	string mConfigPath{};
+	bool mClosed{};
+
+private:
+	fs::path mPreviousAssetRoot;
+	fs::path mPreviousOutputDir;
+};
+
+class HeadlessRenderer : public Renderer {
+public:
+	HeadlessRenderer(const json &config, const fs::path &assetRoot = {});
+	std::vector<float> render(int64_t frames, uint64_t seed = 0);
+};
+
+class RenderApp : public Renderer {
 public:
 	RenderApp();
-	virtual ~RenderApp() = default;
+	~RenderApp() override;
 
 	void backBufferResizing() override;
 	void backBufferResized() override;
@@ -26,27 +63,21 @@ public:
 
 	void initialize();
 	void finalize();
+	void close() noexcept override;
 
 	virtual bool onMouseEvent(io::MouseEvent &mouseEvent) override;
 	virtual bool onKeyEvent(io::KeyboardEvent &keyEvent) override;
 
-	void setScene(Scene::SharedPtr scene);
-	
 	void run();
 	void renderUI();
 
 	void captureFrame(bool hdr = false, fs::path filename = "");
 	
 	void saveConfig(string path);
-	void loadConfigFrom(fs::path path);
-	void loadConfig(const json config);
 
 private:
-	Scene::SharedPtr mScene;
 	UIRenderer::SharedPtr mpUIRenderer;
 	ProfilerUI::UniquePtr mProfilerUI;
-	json mConfig{};
-	string mConfigPath{};
 };
 
 NAMESPACE_END(krr)

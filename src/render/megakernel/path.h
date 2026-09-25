@@ -43,6 +43,7 @@ struct LaunchParameters<MegakernelPathTracer> {
 	OptixTraversableHandle traversable{0};
 	// misc
 	uint frameID{0};
+	uint64_t seed{0};
 	bool debugOutput	= false;
 	Vector2i debugPixel = {960, 540};
 };

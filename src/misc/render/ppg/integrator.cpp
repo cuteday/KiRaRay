@@ -14,11 +14,40 @@ NAMESPACE_BEGIN(krr)
 extern "C" char PPG_PTX[];
 
 namespace {
-static size_t guiding_trained_frames		  = 0;
-static size_t train_frames_this_iteration	  = 0;
 const static char *spatial_filter_names[]	  = { "Nearest", "StochasticBox", "Box" };
 const static char *directional_filter_names[] = { "Nearest", "Box" };
 const static char *distribution_names[]		  = { "Radiance", "Partial", "Full" };
+}
+
+PPGPathTracer::~PPGPathTracer() {
+	if (mResourceOwner != this) return;
+	cudaDeviceSynchronize();
+	if (!gpContext || !gpContext->alloc) return;
+	Allocator &alloc = *gpContext->alloc;
+	try {
+		if (guidedRayQueue) {
+			guidedRayQueue->resize(0);
+			alloc.delete_object(guidedRayQueue);
+		}
+		if (guidedPathState) {
+			guidedPathState->resize(0);
+			alloc.delete_object(guidedPathState);
+		}
+		if (m_sdTree) {
+			m_sdTree->release();
+			alloc.delete_object(m_sdTree);
+		}
+		if (m_image) {
+			m_image->clear();
+			alloc.delete_object(m_image);
+		}
+		if (m_pixelEstimate) {
+			m_pixelEstimate->clear();
+			alloc.delete_object(m_pixelEstimate);
+		}
+	} catch (const std::exception &e) {
+		Log(Error, "Failed to release guiding buffers: %s", e.what());
+	}
 }
 
 void PPGPathTracer::resize(const Vector2i& size) {
@@ -27,6 +56,7 @@ void PPGPathTracer::resize(const Vector2i& size) {
 }
 
 void PPGPathTracer::setScene(Scene::SharedPtr scene) {
+	mResourceOwner = this;
 	mScene = scene;
 	if (!backend) backend		= new OptixBackend();
 	auto params = OptixInitializeParameters()
@@ -43,7 +73,10 @@ void PPGPathTracer::setScene(Scene::SharedPtr scene) {
 	lightSampler	 = backend->getSceneData().lightSampler;
 	AABB aabb = scene->getBoundingBox();
 	Allocator& alloc = *gpContext->alloc;
-	if (m_sdTree) alloc.deallocate_object(m_sdTree);
+	if (m_sdTree) {
+		m_sdTree->release();
+		alloc.delete_object(m_sdTree);
+	}
 	m_sdTree = alloc.new_object<STree>(aabb, alloc);
 	initialize();
 }
@@ -72,7 +105,7 @@ void PPGPathTracer::initialize() {
 
 void PPGPathTracer::traceClosest(int depth) {
 	PROFILE("Trace intersect rays");
-	static LaunchParameters<PPGPathTracer> params = {};
+	LaunchParameters<PPGPathTracer> params = {};
 	params.traversable			  = backend->getRootTraversable();
 	params.sceneData			  = backend->getSceneData();
 	params.colorSpace			  = KRR_DEFAULT_COLORSPACE;
@@ -88,7 +121,7 @@ void PPGPathTracer::traceClosest(int depth) {
 
 void PPGPathTracer::traceShadow() {
 	PROFILE("Trace shadow rays");
-	static LaunchParameters<PPGPathTracer> params = {};
+	LaunchParameters<PPGPathTracer> params = {};
 	params.traversable			  = backend->getRootTraversable();
 	params.sceneData			  = backend->getSceneData();
 	params.colorSpace			  = KRR_DEFAULT_COLORSPACE;
@@ -281,7 +314,7 @@ void PPGPathTracer::beginFrame(RenderContext* context) {
 	// [offline mode] always training when auto-train enabled
 	// but the last iteration (the render iteration) do not need training anymore.
 	enableLearning = (enableLearning || m_autoBuild) && !m_isFinalIter;	
-	train_frames_this_iteration = (1 << m_iter) * m_sppPerPass;
+	m_trainFramesThisIteration = (1 << m_iter) * m_sppPerPass;
 }
 
 void PPGPathTracer::endFrame(RenderContext* context) {
@@ -299,15 +332,15 @@ void PPGPathTracer::endFrame(RenderContext* context) {
 										   m_distribution, pixelState->lambda[pixelId],
 										   pixelEstimate);
 		});
-		++guiding_trained_frames;
+		++m_guidingTrainedFrames;
 	}
 	m_task.tickFrame();
 	if (m_task.isFinished() || (m_isFinalIter &&
-		guiding_trained_frames >= train_frames_this_iteration)) {
+		m_guidingTrainedFrames >= m_trainFramesThisIteration)) {
 		gpContext->requestExit();
 	}
 	if (m_autoBuild && !m_isFinalIter && 
-		guiding_trained_frames >= train_frames_this_iteration) {
+		m_guidingTrainedFrames >= m_trainFramesThisIteration) {
 		nextIteration();
 	}
 	CUDA_SYNC_CHECK();
@@ -332,8 +365,8 @@ void PPGPathTracer::renderUI() {
 	ui::Text("Current iteration: %d", m_iter);
 	ui::DragFloat("Bsdf sampling fraction", &m_bsdfSamplingFraction, 0.01, 0, 1);
 	ui::Text("Frames this iteration: %d / %d", 
-		guiding_trained_frames, train_frames_this_iteration);
-	ui::ProgressBar((float)guiding_trained_frames / train_frames_this_iteration);
+		m_guidingTrainedFrames, m_trainFramesThisIteration);
+	ui::ProgressBar((float)m_guidingTrainedFrames / m_trainFramesThisIteration);
 	if (ui::Button("Next guiding iteration")) {
 		nextIteration();
 	}
@@ -362,7 +395,7 @@ void PPGPathTracer::resetGuiding() {
 	m_sdTree->clear();
 	m_image->reset();
 	m_isBuilt = m_isFinalIter = false;
-	m_iter = guiding_trained_frames = 0;
+	m_iter = m_guidingTrainedFrames = 0;
 	CUDA_SYNC_CHECK();
 }
 
@@ -372,13 +405,13 @@ void PPGPathTracer::nextIteration() {
 		return;
 	}
 	buildSDTree();		// this is performed at the end of each iteration
-	guiding_trained_frames = 0;
+	m_guidingTrainedFrames = 0;
 	m_sdTree->gatherStatistics();
 	resetSDTree();		// this is performed at the beginning of each iteration
 	if (m_distribution == EDistribution::EFull) {
 		*m_pixelEstimate = *m_image;
 		filterFrame(m_pixelEstimate);
-		if (m_saveIntermediate)
+		if (m_saveIntermediate && !isHeadless())
 			m_pixelEstimate->save(File::outputDir() /
 								  ("iteration_" + std::to_string(m_iter) + ".exr"));
 	}
@@ -407,7 +440,7 @@ void PPGPathTracer::nextIteration() {
 }
 
 void PPGPathTracer::finalize() { 
-	if (m_renderMode == RenderMode::Offline) {
+	if (m_renderMode == RenderMode::Offline || (isHeadless() && m_saveIntermediate)) {
 		cudaDeviceSynchronize();
 		string output_name = gpContext->getGlobalConfig().contains("name") ? 
 			gpContext->getGlobalConfig()["name"] : "result";
