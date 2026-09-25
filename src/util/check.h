@@ -54,7 +54,7 @@ NAMESPACE_BEGIN(krr)
 #define CHECK_LOG(EXPR, LOG, ...)                                                                  \
 	do {                                                                                           \
 		if (!(EXPR)) {                                                                             \
-			Log(Fatal, "Error (%s: line %d): "##LOG, __FILE__, __LINE__, ##__VA_ARGS__);           \
+			Log(Fatal, "Error (%s: line %d): " LOG, __FILE__, __LINE__, ##__VA_ARGS__);            \
 		}                                                                                          \
 	} while (0)
 

@@ -1,4 +1,10 @@
-CMAKE_MINIMUM_REQUIRED ( VERSION 3.19 )
+CMAKE_MINIMUM_REQUIRED ( VERSION 3.24 )
+
+# Choose the installed GPU(s) unless the caller selected target architectures.
+# Set this before project() so CUDA compiler detection uses the same setting.
+if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES AND NOT DEFINED ENV{CUDAARCHS})
+	set(CMAKE_CUDA_ARCHITECTURES native CACHE STRING "CUDA architectures to build for")
+endif()
 
 PROJECT (KiRaRay
 	DESCRIPTION "A simple implememtation of an optix renderer."
@@ -67,49 +73,22 @@ add_compile_definitions ("$<$<CONFIG:Debug>:KRR_DEBUG_BUILD>")
 # CUDA compiler setup
 ###############################################################################
 
-enable_language (CUDA)
+find_package(CUDAToolkit REQUIRED)
 
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_EXTENSIONS OFF)
-set(CUDA_LINK_LIBRARIES_KEYWORD PUBLIC)
-
-set(CUDA_VERBOSE_BUILD ON)
-
-find_library(
-	CUDA_CUBLASLT_LIBRARY cublasLt
-	${CUDA_TOOLKIT_ROOT_DIR}/lib64
-	${CUDA_TOOLKIT_ROOT_DIR}/lib
-)
-
-if (NOT CUDA_INCLUDE_DIRS)
-	message(STATUS "Setting CUDA include directory to: ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
-	set(CUDA_INCLUDE_DIRS ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-endif()
-
-# auto detect compute arch, from https://stackoverflow.com/a/69353718
-if (NOT DEFINED ENV{CUDA_ARCH})
-	include(FindCUDA/select_compute_arch)
-	CUDA_DETECT_INSTALLED_GPUS(INSTALLED_GPU_CCS_1)
-	string(STRIP "${INSTALLED_GPU_CCS_1}" INSTALLED_GPU_CCS_2)
-	string(REPLACE " " ";" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
-	string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
-	list(REMOVE_ITEM CUDA_ARCH_LIST "86+PTX")
-	list(SORT CUDA_ARCH_LIST)
-	message(STATUS "Automatically detected GPU architecture: ${CUDA_ARCH_LIST}")
-	list(POP_BACK CUDA_ARCH_LIST CMAKE_CUDA_ARCHITECTURES)
-	set(ENV{CUDA_ARCH} ${CMAKE_CUDA_ARCHITECTURES})
-	string(APPEND CMAKE_CUDA_ARCHITECTURES "-virtual")
-	message(STATUS "Adopted GPU architecture: ${CMAKE_CUDA_ARCHITECTURES}")
-else()
-  	message(STATUS "Specified GPU architecture: ${CMAKE_CUDA_ARCHITECTURES}")
-endif()
-message ("Find CUDA ${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR}")
+set(CUDA_INCLUDE_DIRS ${CUDAToolkit_INCLUDE_DIRS})
+message(STATUS "CUDA toolkit: ${CUDAToolkit_VERSION}")
+message(STATUS "CUDA architectures: ${CMAKE_CUDA_ARCHITECTURES}")
 
 add_library (krr_cuda_cfg INTERFACE)
 target_compile_options (
 	krr_cuda_cfg
 	INTERFACE
+		# CUDA's CCCL headers require the conforming MSVC preprocessor.
+		"$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:preprocessor>"
+		"$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CXX_COMPILER_ID:MSVC>>:-Xcompiler=/Zc:preprocessor>"
 		"$<$<COMPILE_LANGUAGE:CUDA>:--std=c++17;--use_fast_math;--expt-relaxed-constexpr;--extended-lambda;--forward-unknown-to-host-compiler>"
 		# Do not add debugging symbols when generating PTX files for OptiX (not supported).
 		"$<$<COMPILE_LANGUAGE:CUDA>:$<IF:$<AND:$<CONFIG:Debug>,$<NOT:$<BOOL:$<TARGET_PROPERTY:CUDA_PTX_COMPILATION>>>>,-g,-lineinfo>>"

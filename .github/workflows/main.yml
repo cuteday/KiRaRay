@@ -2,91 +2,115 @@ name: Building
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 env:
-  BUILD_TYPE: Release           # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  OptiX_INSTALL_DIR: ${{github.workspace}}/optix
+  BUILD_TYPE: Release
 
 jobs:
   build:
-    # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
-    # You can convert this to a matrix build if you need cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    name: CUDA ${{ matrix.config.cuda }} / OptiX ${{ matrix.config.optix }} / spectral ${{ matrix.spectral }}
+    runs-on: windows-2022
     strategy:
       fail-fast: false
-      matrix: 
-        cuda: ["12.5.0"]
-        cuda_arch: ["75"]
-        os: ["windows-2019"]
+      matrix:
         spectral: ["ON", "OFF"]
-        visual_studio: ["Visual Studio 16 2019"]
-    
-    runs-on: ${{matrix.os}}
+        config:
+          # CUDA 12.5 requires an older host compiler than the runner's default.
+          - cuda: "12.5.0"
+            toolset: "v142,version=14.29"
+            optix: "8.0.0"
+            optix_ref: f60c1e44f18426f426a2ed948f28515b3cf67b8a
+          - cuda: "13.2.0"
+            toolset: "v143,version=14.44"
+            optix: "9.1.0"
+            optix_ref: f1f6dd803f3159992d248178f6e09421c6eb8b6d
+
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
-      
-    - name: Configure Pagefile
-      if:  ${{matrix.os == 'windows-2019'}}
-      uses: al-cheb/configure-pagefile-action@v1.3
-      with:
-        minimum-size: 4GB
-        maximum-size: 64GB
-    - name: Set up pagefile
-      if:  ${{matrix.os == 'windows-2019'}}
-      run: |
-        (Get-CimInstance Win32_PageFileUsage).AllocatedBaseSize
+      - name: Configure pagefile
+        uses: al-cheb/configure-pagefile-action@9b6da52fb72a3c6147c1aad2df22d8d905681adc # v1.5
+        with:
+          minimum-size: 4GB
+          maximum-size: 16GB
 
-    - name: Checkout Kiraray
-      uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
+      - name: Checkout KiRaRay
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
 
-    - name: Download optix include
-      uses: actions/checkout@v4
-      with:
-        repository: cuteday/optix-headers
-        ref: 'main'
-        path: optix
-      
-    - name: Install OpenGL
-      if:  ${{matrix.os != 'windows-2019'}}
-      run: sudo apt-get install -y --no-install-recommends libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libxext-dev libxfixes-dev libgl1-mesa-dev
-    
-    - name: Install cmake
-      uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: "~3.25.0"
+      - name: Checkout OptiX headers
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: NVIDIA/optix-dev
+          ref: ${{ matrix.config.optix_ref }}
+          path: optix
 
-    - name: Install CUDA
-      uses: Jimver/cuda-toolkit@master
-      with:
-        # Cuda version
-        cuda: ${{matrix.cuda}}
-        # Only installs specified subpackages, must be in the form of a JSON array. For example, if you only want to install nvcc and visual studio integration: ["nvcc", "visual_studio_integration"] double quotes required! Note that if you want to use this on Linux, 'network' method MUST be used.
-        # sub-packages: '["nvcc", "visual_studio_integration", "cublas_dev", "curand_dev", "nvrtc_dev", "cudart"]'
-        # Installation method, can be either 'local' or 'network'. 'local' downloads the entire installer with all packages and runs that (you can still only install certain packages with sub-packages on Windows). 'network' downloads a smaller executable which only downloads necessary packages which you can define in subPackages
-        method: "local"
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          # Keep the bundled pybind11 2.11 on a supported Python version.
+          python-version: "3.11"
+          architecture: x64
 
-    - name: Check CUDA compiler
-      run: nvcc -V
+      - name: Install CMake
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
+        with:
+          cmakeVersion: "3.31.6"
+          ninjaVersion: "1.13.2"
 
-    - name: Install Vulkan SDK
-      uses: humbletim/install-vulkan-sdk@v1.1.1
-      with:
-        version: latest
-        cache: true
+      - name: Install ATL for the CUDA 12.5 host compiler
+        if: matrix.config.cuda == '12.5.0'
+        run: |
+          $installerRoot = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer"
+          $vsPath = & "$installerRoot/vswhere.exe" -latest -version '[17.0,18.0)' -products '*' -property installationPath
+          if (-not $vsPath) { throw 'Visual Studio 2022 was not found.' }
+          $atlPattern = "$vsPath/VC/Tools/MSVC/14.29.*/atlmfc/include/atlbase.h"
+          if (-not (Test-Path $atlPattern)) {
+            $arguments = @('modify', '--installPath', "`"$vsPath`"", '--quiet', '--norestart',
+              '--add', 'Microsoft.VisualStudio.Component.VC.14.29.16.11.ATL')
+            $process = Start-Process -FilePath "$installerRoot/setup.exe" -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+            if ($process.ExitCode -notin @(0, 3010)) { throw "ATL installation failed: $($process.ExitCode)" }
+          }
+          if (-not (Test-Path $atlPattern)) { throw 'ATL headers for MSVC v142 were not installed.' }
 
-    - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      env:
-        CUDA_ARCH: ${{matrix.cuda_arch}}
-      run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_CUDA_ARCHITECTURES=${{matrix.cuda_arch}}-virtual -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DOptiX_INSTALL_DIR=${{env.OptiX_INSTALL_DIR}} -DKRR_RENDER_SPECTRAL=${{matrix.spectral}}
-      
-    - name: Build
-      run: | 
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 2
+      - name: Install CUDA
+        uses: Jimver/cuda-toolkit@b8bf9c6c28f8a92fbb04dcfcaee872e60c57462d # v0.2.36
+        with:
+          cuda: ${{ matrix.config.cuda }}
+          method: local
+          log-file-suffix: cuda-${{ matrix.config.cuda }}-spectral-${{ matrix.spectral }}.txt
+
+      - name: Check CUDA compiler
+        run: nvcc --version
+
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@30ba978f977e81b72d091fc8888feb1fb26f9aff # v1.2
+        with:
+          version: "1.4.313.1"
+          cache: true
+
+      - name: Configure CMake
+        # Hosted runners have no NVIDIA GPU, so do not use native detection.
+        run: >-
+          cmake -S . -B build
+          -G "Visual Studio 17 2022" -A x64
+          -T "${{ matrix.config.toolset }},host=x64,cuda=$env:CUDA_PATH"
+          "-DCUDAToolkit_ROOT=$env:CUDA_PATH"
+          -DCMAKE_CUDA_ARCHITECTURES=75-virtual
+          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          "-DOptiX_INSTALL_DIR=$env:GITHUB_WORKSPACE/optix"
+          "-DPython_EXECUTABLE=$env:pythonLocation/python.exe"
+          -DKRR_RENDER_SPECTRAL=${{ matrix.spectral }}
+
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel 2

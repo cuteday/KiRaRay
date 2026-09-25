@@ -1,0 +1,42 @@
+# The workspace uses clangd 22.1.6 (see .vscode/setup-clangd.ps1).
+# Match --cuda-path to the toolkit selected in CMake when switching CUDA versions.
+# Keep CMake's includes and defines while stripping nvcc-only driver options.
+If:
+  PathExclude: src/ext/.*
+CompileFlags:
+  Add:
+    - --cuda-path=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2
+    - -std=c++17
+    # Continue indexing after Clang/NVCC host-device compatibility diagnostics.
+    - -ferror-limit=0
+  Remove:
+    - -forward-unknown-to-host-compiler
+    - --forward-unknown-to-host-compiler
+    - -Xcompiler*
+    - /wd*
+    - /D_ENABLE_EXTENDED_ALIGNED_STORAGE
+    - -Xcudafe*
+    - --diag_suppress=*
+    - -arch=*
+    - --generate-code=*
+    - -rdc=*
+    - --use_fast_math
+    - --expt-relaxed-constexpr
+    - --extended-lambda
+    - -lineinfo
+    - -ptx
+    - --ptx
+    - --skip-ptx-semantics-check
+---
+# These .cpp files have LANGUAGE CUDA in common/build/source.cmake. clangd
+# discards nvcc's '-x cu', so explicitly retain their CUDA language mode.
+If:
+  PathMatch:
+    - src/core/light\.cpp
+    - src/render/(media|color|spectrum)\.cpp
+    - src/render/wavefront/(integrator|medium)\.cpp
+    - src/render/passes/(denoise/denoise|errormeasure/errormeasure)\.cpp
+    - src/util/tables\.cpp
+    - src/misc/render/ppg/(integrator|medium)\.cpp
+CompileFlags:
+  Add: [-xcuda]

@@ -1,0 +1,19 @@
+{
+    "cmake.generator": "Ninja",
+    "cmake.buildDirectory": "${workspaceFolder}/build/release",
+    "cmake.configureSettings": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true
+    },
+    "clangd.path": "${workspaceFolder}/build/tools/clangd_22.1.6/bin/clangd.exe",
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/build/release",
+        "--background-index",
+        "--completion-style=detailed",
+        "--header-insertion=never"
+    ],
+    "files.associations": {
+        "*.cu": "cuda-cpp",
+        "*.cuh": "cuda-cpp"
+    },
+    "dotnet.defaultSolution": "build/ci-checks/vs-cuda13.2-optix9.1-14.44/KiRaRay.sln"
+}

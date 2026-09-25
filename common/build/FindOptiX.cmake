@@ -1,39 +1,29 @@
 ################################################################################
 # Optix
 ################################################################################
-if(NOT DEFINED ENV{OptiX_INSTALL_DIR} AND NOT DEFINED OptiX_INSTALL_DIR)
-	if(NOT DEFINED ENV{OPTIX_ROOT})
-		message("Try to find OptiX SDK in PROGRAMDATA directory.")
-		if(NOT DEFINED ENV{PROGRAMDATA})
-			message(FATAL_ERROR "PROGRAMDATA is not defined. OPTIX_ROOT has to be specified manually.")
-		else()
-			# Transform the path to generic style
-			file(TO_CMAKE_PATH "$ENV{PROGRAMDATA}" PROGRAMDATA)
-			# Find the directory with prefix of "OptiX SDK" in PROGRAMDATA directory
-			file(GLOB OPTIX_ROOT "${PROGRAMDATA}/NVIDIA Corporation/OptiX SDK*")
-			# If there are multiple directories, use the first one
-			list(GET OPTIX_ROOT 0 OPTIX_ROOT)
-			# If there is no directory, popup an error message
-			if(NOT OPTIX_ROOT)
-				message(FATAL_ERROR "OPTIX_ROOT has to be specified manually.")
-			else ()
-				message(STATUS "Found OptiX SDK at ${OPTIX_ROOT}")
-			endif()
-		endif()
-	else()
-		set( OPTIX_ROOT $ENV{OPTIX_ROOT} )
-	endif()
+if(OptiX_INSTALL_DIR)
+	# An explicit CMake selection takes precedence over the environment.
+	set(OPTIX_ROOT "${OptiX_INSTALL_DIR}")
+elseif(DEFINED ENV{OptiX_INSTALL_DIR} AND NOT "$ENV{OptiX_INSTALL_DIR}" STREQUAL "")
+	set(OPTIX_ROOT "$ENV{OptiX_INSTALL_DIR}")
+elseif(DEFINED ENV{OPTIX_ROOT} AND NOT "$ENV{OPTIX_ROOT}" STREQUAL "")
+	set(OPTIX_ROOT "$ENV{OPTIX_ROOT}")
 else()
-	if(DEFINED ENV{OptiX_INSTALL_DIR})
-		set( OPTIX_ROOT $ENV{OptiX_INSTALL_DIR} )
-	else()
-		set( OPTIX_ROOT ${OptiX_INSTALL_DIR} )
+	# Prefer the newest installed SDK when no version was selected.
+	file(TO_CMAKE_PATH "$ENV{PROGRAMDATA}" PROGRAMDATA)
+	file(GLOB OPTIX_ROOT "${PROGRAMDATA}/NVIDIA Corporation/OptiX SDK*")
+	if(NOT OPTIX_ROOT)
+		message(FATAL_ERROR "OptiX SDK not found. Set OptiX_INSTALL_DIR to the SDK root.")
 	endif()
-	message(STATUS "Using specified OptiX path at ${OPTIX_ROOT}")
+	list(SORT OPTIX_ROOT COMPARE NATURAL ORDER DESCENDING)
+	list(GET OPTIX_ROOT 0 OPTIX_ROOT)
 endif()
 
+file(TO_CMAKE_PATH "${OPTIX_ROOT}" OPTIX_ROOT)
+if(NOT EXISTS "${OPTIX_ROOT}/include/optix.h")
+	message(FATAL_ERROR "OptiX headers not found at ${OPTIX_ROOT}/include. Set OptiX_INSTALL_DIR to the SDK root.")
+endif()
 message(STATUS "Found OptiX SDK at ${OPTIX_ROOT}")
-# Guess the OptiX install directory by OPTIX_ROOT
-set(OptiX_INSTALL_DIR ${OPTIX_ROOT} CACHE PATH "Path to OptiX installation location")
-# Include the OptiX header directory
-set(OptiX_INCLUDE_DIR ${OPTIX_ROOT}/include CACHE PATH "Path to OptiX include directory")
+set(OptiX_INSTALL_DIR "${OPTIX_ROOT}" CACHE PATH "Path to OptiX installation location")
+# Refresh this derived path when selecting another SDK in an existing build.
+set(OptiX_INCLUDE_DIR "${OPTIX_ROOT}/include" CACHE PATH "Path to OptiX include directory" FORCE)

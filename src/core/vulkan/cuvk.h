@@ -554,9 +554,11 @@ public:
 		uint8_t vkDeviceUUID[VK_UUID_SIZE];
 		getDeviceUUID(vkDeviceUUID);
 		while (current_device < device_count) {
-			cudaGetDeviceProperties(&deviceProp, current_device);
+			CUDA_CHECK(cudaGetDeviceProperties(&deviceProp, current_device));
+			int computeMode;
+			CUDA_CHECK(cudaDeviceGetAttribute(&computeMode, cudaDevAttrComputeMode, current_device));
 
-			if ((deviceProp.computeMode != cudaComputeModeProhibited)) {
+			if (computeMode != cudaComputeModeProhibited) {
 				// Compare the cuda device UUID with vulkan UUID
 				int ret = memcmp((void *) &deviceProp.uuid, vkDeviceUUID, VK_UUID_SIZE);
 				if (ret == 0) {

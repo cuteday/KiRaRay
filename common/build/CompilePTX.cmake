@@ -12,6 +12,29 @@ if (NOT BIN2C)
 	)
 endif ()
 
+# OptiX modules need a virtual PTX target instead of native machine code.
+# A module contains one PTX image; use the lowest requested architecture so
+# the same image can be JIT-compiled for each of the selected GPUs.
+set(KRR_PTX_ARCHITECTURE "${CMAKE_CUDA_ARCHITECTURES}")
+if (KRR_PTX_ARCHITECTURE STREQUAL "native")
+	set(KRR_PTX_ARCHITECTURE "${CMAKE_CUDA_ARCHITECTURES_NATIVE}")
+	if (NOT KRR_PTX_ARCHITECTURE)
+		message(FATAL_ERROR "No native CUDA architecture detected; set CMAKE_CUDA_ARCHITECTURES explicitly.")
+	endif()
+endif()
+if (KRR_PTX_ARCHITECTURE)
+	list(TRANSFORM KRR_PTX_ARCHITECTURE REPLACE "-(real|virtual)$" "")
+	foreach (arch IN LISTS KRR_PTX_ARCHITECTURE)
+		if (NOT arch MATCHES "^[0-9]+[af]?$")
+			message(FATAL_ERROR "OptiX PTX requires native or explicit numeric CMAKE_CUDA_ARCHITECTURES.")
+		endif()
+	endforeach()
+	list(SORT KRR_PTX_ARCHITECTURE COMPARE NATURAL)
+	list(GET KRR_PTX_ARCHITECTURE 0 KRR_PTX_ARCHITECTURE)
+	string(APPEND KRR_PTX_ARCHITECTURE "-virtual")
+endif()
+message(STATUS "OptiX PTX architecture: ${KRR_PTX_ARCHITECTURE}")
+
 # this macro defines cmake rules that execute the following four steps:
 # 1) compile the given cuda file ${cuda_file} to an intermediary PTX file
 # 2) use the 'bin2c' tool (that comes with CUDA) to
@@ -26,7 +49,13 @@ macro (CUDA_COMPILE_EMBED output_var cuda_file lib_name dependencies)
 	
 	add_library ("${lib_name}" OBJECT "${cuda_file}")
 	set_property (TARGET "${lib_name}" PROPERTY CUDA_PTX_COMPILATION ON)
-	if (CUDA_VERSION_MAJOR EQUAL 11 AND CUDA_VERSION_MINOR LESS 2)
+	set_property (TARGET "${lib_name}" PROPERTY CUDA_ARCHITECTURES "${KRR_PTX_ARCHITECTURE}")
+	# CUDA 13.2 checks PTX with ptxas, which cannot resolve OptiX intrinsics.
+	# OptiX validates and compiles these modules when they are loaded instead.
+	if (CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA" AND CMAKE_CUDA_COMPILER_VERSION VERSION_GREATER_EQUAL 13.2)
+		target_compile_options("${lib_name}" PRIVATE --skip-ptx-semantics-check)
+	endif()
+	if (CUDAToolkit_VERSION_MAJOR EQUAL 11 AND CUDAToolkit_VERSION_MINOR LESS 2)
 		target_compile_options ("${lib_name}" PRIVATE
 								-Xcudafe=--display_error_number -Xcudafe=--diag_suppress=3089)
 	else ()

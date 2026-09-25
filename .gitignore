@@ -40,7 +40,10 @@ tempCodeRunnerFile.py
 *.app
 
 # IDE
-.vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/setup-clangd.ps1
 .vs
 CMakeSettings.json
 
