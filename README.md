@@ -77,13 +77,9 @@ CUDA 13.2-specific compiler options are version-gated; CUDA 12 builds do not rec
 
 #### VS Code and clangd
 
-The workspace settings use Ninja and the compilation database in `build/release`. Install the recommended clangd and CMake Tools extensions, configure the project, and reload VS Code. On a fresh clone, download the pinned workspace-local language server with:
+VS Code and clangd configuration files are local to each workspace and ignored by Git. Use the clangd and CMake Tools extensions with Ninja's compilation database in `build/release`. Clangd **22.1.6** was tested with CUDA 13.2; older versions bundled with Visual Studio cannot parse its headers. Configure clangd to remove NVCC-only flags, preserve CUDA parsing for `.cpp` sources compiled by NVCC, and use the selected toolkit's `--cuda-path`.
 
-~~~powershell
-powershell -ExecutionPolicy Bypass -File .vscode/setup-clangd.ps1
-~~~
-
-The setup uses clangd **22.1.6** because the older version bundled with Visual Studio cannot parse CUDA 13's headers. When switching CUDA toolkits, update `--cuda-path` in `.clangd` as well as the CMake configuration. `.clangd` removes NVCC-only flags and preserves CUDA parsing for `.cpp` sources compiled by NVCC. Some renderer CUDA files still produce Clang/NVCC host-device declaration or macro diagnostics; the NVCC build remains the authoritative compiler check.
+For Windows host-code debugging, select the **Debug** CMake variant. In Cursor, use CodeLLDB (`lldb`); Cursor does not support the MSVC debugger type (`cppvsdbg`). VS Code can use either CodeLLDB or the C/C++ extension's MSVC debugger. Some renderer CUDA files still produce Clang/NVCC host-device declaration or macro diagnostics; the NVCC build remains the authoritative compiler check.
 
 #### Running
 
