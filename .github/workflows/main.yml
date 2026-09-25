@@ -94,10 +94,41 @@ jobs:
         run: nvcc --version
 
       - name: Install Vulkan SDK
-        uses: humbletim/install-vulkan-sdk@30ba978f977e81b72d091fc8888feb1fb26f9aff # v1.2
-        with:
-          version: "1.4.313.1"
-          cache: true
+        # The SDK contains multiple embedded archives. Extracting the EXE with
+        # 7-Zip only produced Bin/, leaving out the headers and import libraries.
+        run: |
+          $version = '1.4.313.1'
+          $sha256 = '2ce4c7b226d025c3be836ff667bd70c6764f407c69738c31e360dcb6352a34db'
+          $installer = Join-Path $env:RUNNER_TEMP "vulkansdk-windows-X64-$version.exe"
+          $sdkRoot = Join-Path $env:RUNNER_TEMP "VulkanSDK/$version"
+          if (-not (Test-Path -LiteralPath $installer)) {
+            Invoke-WebRequest -Uri "https://sdk.lunarg.com/sdk/download/$version/windows/vulkansdk-windows-X64-$version.exe" -OutFile $installer
+          }
+          if ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash -ne $sha256) {
+            throw 'Vulkan SDK installer SHA256 mismatch.'
+          }
+
+          # Use LunarG's unattended installer without changing system settings.
+          $installLog = Join-Path $env:RUNNER_TEMP 'vulkan-install.log'
+          $errorLog = Join-Path $env:RUNNER_TEMP 'vulkan-install-error.log'
+          $arguments = @('--root', "`"$sdkRoot`"", '--accept-licenses', '--default-answer',
+            '--confirm-command', 'install', 'copy_only=1')
+          $process = Start-Process -FilePath $installer -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $installLog -RedirectStandardError $errorLog
+          if ($process.ExitCode -ne 0) {
+            Get-Content -LiteralPath $installLog, $errorLog -Tail 80
+            throw "Vulkan SDK installation failed: $($process.ExitCode)"
+          }
+
+          $requiredFiles = @('Include/vulkan/vulkan.h', 'Lib/vulkan-1.lib',
+            'Include/dxc/dxcapi.h', 'Lib/dxcompiler.lib', 'Bin/dxc.exe', 'Bin/dxcompiler.dll')
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path -LiteralPath (Join-Path $sdkRoot $file) -PathType Leaf)) {
+              throw "Vulkan SDK installation is incomplete: missing $file in $sdkRoot"
+            }
+          }
+          "VULKAN_SDK=$sdkRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Join-Path $sdkRoot 'Bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Write-Output "Vulkan SDK $version installed and verified at $sdkRoot"
 
       - name: Configure CMake
         # Hosted runners have no NVIDIA GPU, so do not use native detection.
