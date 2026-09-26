@@ -28,23 +28,20 @@ void TextureCache::Reset() {
 
 void TextureCache::SetGenerateMipmaps(bool generateMipmaps) { m_GenerateMipmaps = generateMipmaps; }
 
-bool TextureCache::FindTextureInCache(const std::filesystem::path &path,
+bool TextureCache::FindTextureInCache(const std::filesystem::path &path, bool sRGB,
 									  std::shared_ptr<TextureData> &texture) {
 	std::lock_guard<std::shared_mutex> guard(m_LoadedTexturesMutex);
-
-	// First see if this texture is already loaded (or being loaded).
-
-	texture = m_LoadedTextures[path.generic_string()];
-	if (texture) {
+	auto key = std::make_pair(path.generic_string(), sRGB);
+	auto it = m_LoadedTextures.find(key);
+	if (it != m_LoadedTextures.end()) {
+		texture = it->second;
 		return true;
 	}
 
-	// Allocate a new texture slot for this file name and return it. Load the file later in a thread
-	// pool. LoadTextureFromFileAsync function for a given scene is only called from one thread, so
-	// there is no chance of loading the same texture twice.
-
-	texture									= CreateTextureData();
-	m_LoadedTextures[path.generic_string()] = texture;
+	texture = CreateTextureData();
+	texture->path = key.first;
+	texture->forceSRGB = sRGB;
+	m_LoadedTextures.emplace(std::move(key), texture);
 
 	++m_TexturesRequested;
 
@@ -67,27 +64,23 @@ std::shared_ptr<TextureData> TextureCache::CreateTextureData() {
 
 bool TextureCache::FillTextureData(const Image::SharedPtr image,
 								   const std::shared_ptr<TextureData> &texture) const {
-	int width = 0, height = 0, originalChannels = 0, channels = 0;
-
-	bool is_hdr = image->getFormat() == Image::Format::RGBAfloat;
-	originalChannels = image->getChannels();
-
-	if (originalChannels == 3) {
-		channels = 4;
-	} else {
-		channels = originalChannels;
-	}
-	width = image->getSize()[0], height = image->getSize()[1];
-	
-	int bytesPerPixel = channels * (is_hdr ? 4 : 1);
-	size_t sizeInBytes	  = width * height * bytesPerPixel;
-	unsigned char *bitmap = new unsigned char[sizeInBytes];
-	memcpy(bitmap, image->data(), sizeInBytes);
-
-	if (!bitmap) {
-		logMessage(m_ErrorLogSeverity, "Couldn't load generic texture '%s'", texture->path.c_str());
+	if (!image || !image->isValid() || !image->data()) {
+		logMessage(m_ErrorLogSeverity, "Couldn't load texture from an invalid image: '%s'",
+				   texture->path.c_str());
 		return false;
 	}
+
+	bool is_hdr = image->getFormat() == Image::Format::RGBAfloat;
+	int originalChannels = image->getChannels();
+	int channels = originalChannels == 3 ? 4 : originalChannels;
+	int width = image->getSize()[0], height = image->getSize()[1];
+	size_t bytesPerPixel = channels * image->getElementSize();
+	auto data = std::make_shared<Blob>(size_t(width) * height * bytesPerPixel);
+	if (!*data) {
+		logMessage(m_ErrorLogSeverity, "Couldn't allocate texture data: '%s'", texture->path.c_str());
+		return false;
+	}
+	memcpy(data->data(), image->data(), data->size());
 
 	texture->originalBitsPerPixel = static_cast<uint32_t>(originalChannels) * (is_hdr ? 32 : 8);
 	texture->width				  = static_cast<uint32_t>(width);
@@ -100,11 +93,8 @@ bool TextureCache::FillTextureData(const Image::SharedPtr image,
 	texture->dataLayout[0].resize(1);
 	texture->dataLayout[0][0].dataOffset = 0;
 	texture->dataLayout[0][0].rowPitch	 = static_cast<size_t>(width * bytesPerPixel);
-	texture->dataLayout[0][0].dataSize = static_cast<size_t>(sizeInBytes);
-
-	texture->data = std::make_shared<Blob>(bitmap, sizeInBytes);
-	bitmap		  = nullptr; // ownership transferred to the blob
-
+	texture->dataLayout[0][0].dataSize = data->size();
+	texture->data = std::move(data);
 	switch (channels) {
 		case 1:
 			texture->format = is_hdr ? nvrhi::Format::R32_FLOAT : nvrhi::Format::R8_UNORM;
@@ -118,7 +108,7 @@ bool TextureCache::FillTextureData(const Image::SharedPtr image,
 														   : nvrhi::Format::RGBA8_UNORM);
 			break;
 		default:
-			texture->data.reset(); // release the bitmap data
+			texture->data.reset();
 			logMessage(m_ErrorLogSeverity, "Unsupported number of components (%d) for texture '%s'",
 					   channels, texture->path.c_str());
 			return false;
@@ -283,21 +273,18 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromFile(const std::file
 	std::shared_ptr<TextureData> texture;
 	fs::path absolutePath = File::resolve(path);
 
-	if (FindTextureInCache(absolutePath, texture)) return texture;
-
-	texture->forceSRGB = sRGB;
-	texture->path	   = absolutePath.generic_string();
-
-	auto image = Image::createFromFile(absolutePath, false, sRGB);
-
-	if (image->isValid()) {
-		if (FillTextureData(image, texture)) {
-			TextureLoaded(texture);
-			FinalizeTexture(texture, passes, commandList);
+	if (FindTextureInCache(absolutePath, sRGB, texture)) return texture;
+	try {
+		auto image = Image::createFromFile(absolutePath, false, sRGB);
+		if (!FillTextureData(image, texture)) {
+			UnloadTexture(texture);
+			return nullptr;
 		}
-	} else {
-		Log(Error, "Failed to load texture from an invalid image!");
-		return nullptr;
+		TextureLoaded(texture);
+		FinalizeTexture(texture, passes, commandList);
+	} catch (...) {
+		UnloadTexture(texture);
+		throw;
 	}
 	++m_TexturesLoaded;
 	return texture;
@@ -308,18 +295,11 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromImage(
 								   nvrhi::ICommandList *commandList,
 								   CommonRenderPasses *passes) {
 	std::shared_ptr<TextureData> texture = std::make_shared<TextureData>();
-	texture->forceSRGB = image->isSrgb();
-	
-	if (image->isValid()) {
-		if (FillTextureData(image, texture)) {
-			TextureLoaded(texture);
-			FinalizeTexture(texture, passes, commandList);
-		}
-	} else {
-		Log(Error, "Failed to load texture from an invalid image!");
-		return nullptr;
-	}
-	
+	texture->forceSRGB = image && image->isSrgb();
+	if (!FillTextureData(image, texture)) return nullptr;
+	TextureLoaded(texture);
+	FinalizeTexture(texture, passes, commandList);
+
 	++m_TexturesLoaded;
 	return texture;
 }
@@ -327,21 +307,20 @@ std::shared_ptr<LoadedTexture> TextureCache::LoadTextureFromImage(
 std::shared_ptr<LoadedTexture>
 TextureCache::LoadTextureFromFileDeferred(const std::filesystem::path &path, bool sRGB) {
 	std::shared_ptr<TextureData> texture;
-
-	if (FindTextureInCache(path, texture)) return texture;
-
-	texture->forceSRGB = sRGB;
-	texture->path	   = path.generic_string();
-
-	auto image = Image::createFromFile(path, false, sRGB);
-	if (image->isValid()) {
-		if (FillTextureData(image, texture)) {
-			TextureLoaded(texture);
-
-			std::lock_guard<std::mutex> guard(m_TexturesToFinalizeMutex);
-
-			m_TexturesToFinalize.push(texture);
+	fs::path absolutePath = File::resolve(path);
+	if (FindTextureInCache(absolutePath, sRGB, texture)) return texture;
+	try {
+		auto image = Image::createFromFile(absolutePath, false, sRGB);
+		if (!FillTextureData(image, texture)) {
+			UnloadTexture(texture);
+			return nullptr;
 		}
+		TextureLoaded(texture);
+		std::lock_guard<std::mutex> guard(m_TexturesToFinalizeMutex);
+		m_TexturesToFinalize.push(texture);
+	} catch (...) {
+		UnloadTexture(texture);
+		throw;
 	}
 
 	++m_TexturesLoaded;
@@ -349,9 +328,10 @@ TextureCache::LoadTextureFromFileDeferred(const std::filesystem::path &path, boo
 	return texture;
 }
 
-std::shared_ptr<TextureData> TextureCache::GetLoadedTexture(std::filesystem::path const &path) {
+std::shared_ptr<TextureData> TextureCache::GetLoadedTexture(std::filesystem::path const &path, bool sRGB) {
 	std::lock_guard<std::shared_mutex> guard(m_LoadedTexturesMutex);
-	return m_LoadedTextures[path.generic_string()];
+	auto it = m_LoadedTextures.find({File::resolve(path).generic_string(), sRGB});
+	return it != m_LoadedTextures.end() ? it->second : nullptr;
 }
 
 bool TextureCache::ProcessRenderingThreadCommands(CommonRenderPasses &passes,
@@ -413,17 +393,20 @@ bool TextureCache::IsTextureLoaded(const std::shared_ptr<LoadedTexture> &_textur
 }
 
 bool TextureCache::IsTextureFinalized(const std::shared_ptr<LoadedTexture> &texture) {
-	return texture->texture != nullptr;
+	return texture && texture->texture != nullptr;
 }
 
 bool TextureCache::UnloadTexture(const std::shared_ptr<LoadedTexture> &texture) {
-	const auto &it = m_LoadedTextures.find(texture->path);
-
-	if (it == m_LoadedTextures.end()) return false;
-
-	m_LoadedTextures.erase(it);
-
-	return true;
+	if (!texture) return false;
+	std::lock_guard<std::shared_mutex> guard(m_LoadedTexturesMutex);
+	for (bool sRGB : {false, true}) {
+		auto it = m_LoadedTextures.find({texture->path, sRGB});
+		if (it != m_LoadedTextures.end() && it->second == texture) {
+			m_LoadedTextures.erase(it);
+			return true;
+		}
+	}
+	return false;
 }
 
 NAMESPACE_END(krr)

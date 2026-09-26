@@ -5,7 +5,7 @@
 #include <nvrhi/nvrhi.h>
 #include <atomic>
 #include <filesystem>
-#include <unordered_map>
+#include <map>
 #include <memory>
 #include <shared_mutex>
 #include <queue>
@@ -61,9 +61,11 @@ struct TextureData : public LoadedTexture {
 
 class TextureCache {
 protected:
+	using TextureMap = std::map<std::pair<std::string, bool>, std::shared_ptr<TextureData>>;
+
 	nvrhi::DeviceHandle m_Device;
 	nvrhi::CommandListHandle m_CommandList;
-	std::unordered_map<std::string, std::shared_ptr<TextureData>> m_LoadedTextures;
+	TextureMap m_LoadedTextures;
 	mutable std::shared_mutex m_LoadedTexturesMutex;
 
 	std::queue<std::shared_ptr<TextureData>> m_TexturesToFinalize;
@@ -81,7 +83,7 @@ protected:
 	std::atomic<uint32_t> m_TexturesLoaded	  = 0;
 	uint32_t m_TexturesFinalized			  = 0;
 
-	bool FindTextureInCache(const std::filesystem::path &path,
+	bool FindTextureInCache(const std::filesystem::path &path, bool sRGB,
 							std::shared_ptr<TextureData> &texture);
 	std::shared_ptr<Blob> ReadTextureFile(const std::filesystem::path &path) const;
 	bool FillTextureData(const Image::SharedPtr image,
@@ -155,13 +157,13 @@ public:
 	uint32_t GetNumberOfRequestedTextures() { return m_TexturesRequested.load(); }
 	uint32_t GetNumberOfFinalizedTextures() { return m_TexturesFinalized; }
 
-	std::shared_ptr<TextureData> GetLoadedTexture(std::filesystem::path const &path);
+	std::shared_ptr<TextureData> GetLoadedTexture(std::filesystem::path const &path, bool sRGB = false);
 
 	// Texture cache traversal
 	// Note: the iterator locks all cache write-accesses for the duration its lifespan !
 	class Iterator {
 	public:
-		typedef std::unordered_map<std::string, std::shared_ptr<TextureData>>::iterator CacheIter;
+		using CacheIter = TextureMap::iterator;
 
 		Iterator &operator++() {
 			++m_Iterator;
