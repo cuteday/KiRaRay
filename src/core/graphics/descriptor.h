@@ -28,16 +28,13 @@ public:
 		if (m_DescriptorIndex >= 0) assert(!m_Manager.expired());
 		return m_DescriptorIndex;
 	}
-	void Reset() {
-		m_DescriptorIndex = -1;
-		m_Manager.reset();
-	}
+	void Reset();
 
 	// Movable but non-copyable
 	DescriptorHandle(const DescriptorHandle &)			  = delete;
-	DescriptorHandle(DescriptorHandle &&)				  = default;
+	DescriptorHandle(DescriptorHandle &&other) noexcept;
 	DescriptorHandle &operator=(const DescriptorHandle &) = delete;
-	DescriptorHandle &operator=(DescriptorHandle &&)	  = default;
+	DescriptorHandle &operator=(DescriptorHandle &&other) noexcept;
 };
 
 class DescriptorTableManager : public std::enable_shared_from_this<DescriptorTableManager> {
@@ -50,6 +47,8 @@ protected:
 			nvrhi::hash_combine(hash, item.type);
 			nvrhi::hash_combine(hash, item.format);
 			nvrhi::hash_combine(hash, item.dimension);
+			nvrhi::hash_combine(hash, item.arrayElement);
+			nvrhi::hash_combine(hash, item.overrideComponentMapping);
 			nvrhi::hash_combine(hash, item.rawData[0]);
 			nvrhi::hash_combine(hash, item.rawData[1]);
 			return hash;
@@ -61,7 +60,9 @@ protected:
 		bool operator()(const nvrhi::BindingSetItem &a, const nvrhi::BindingSetItem &b) const {
 			return a.resourceHandle == b.resourceHandle && a.type == b.type &&
 				   a.format == b.format && a.dimension == b.dimension &&
-				   a.subresources == b.subresources;
+				   a.arrayElement == b.arrayElement &&
+				   a.overrideComponentMapping == b.overrideComponentMapping &&
+				   a.rawData[0] == b.rawData[0] && a.rawData[1] == b.rawData[1];
 		}
 	};
 
@@ -72,7 +73,7 @@ protected:
 	std::unordered_map<nvrhi::BindingSetItem, DescriptorIndex, BindingSetItemHasher,
 					   BindingSetItemsEqual>
 		m_DescriptorIndexMap;
-	std::vector<bool> m_AllocatedDescriptors;
+	std::vector<uint32_t> m_DescriptorRefCounts;
 	int m_SearchStart = 0;
 
 public:
@@ -81,6 +82,7 @@ public:
 
 	nvrhi::IDescriptorTable *GetDescriptorTable() const { return m_DescriptorTable; }
 
+	// Each acquisition must be paired with ReleaseDescriptor.
 	DescriptorIndex CreateDescriptor(nvrhi::BindingSetItem item);
 	DescriptorHandle CreateDescriptorHandle(nvrhi::BindingSetItem item);
 	nvrhi::BindingSetItem GetDescriptor(DescriptorIndex index);

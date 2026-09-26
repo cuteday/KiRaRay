@@ -46,7 +46,9 @@ Only spectral builds register the 128×128 reference regression.
 Each enabled graphics API runs the same GPU cases. Vulkan retains the original
 test names; D3D12 tests have a `_d3d12` suffix and separate artifact directories.
 Use `-L vulkan` or `-L d3d12` to select an API. Readback exercises 64 cumulative
-CUDA updates on persistent resources, then resizes and repeats. Both backends
+CUDA updates on persistent resources, then resizes and repeats. It also checks
+descriptor ownership, slot reuse, binding-cache identity, texture pixel copies,
+color-space cache entries, and failed-load retries. Both backends
 compare against the same reviewed spectral reference; tests never regenerate it.
 
 The `benchmark` label selects benchmark unit tests and an optional 32×32 GPU smoke test.

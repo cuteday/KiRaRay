@@ -43,7 +43,7 @@ if(KRR_ENABLE_GPU_TESTS)
 			ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${KRR_VULKAN_ROOT}/Bin")
 	endfunction()
 
-	add_executable(krr_test_readback render/test_readback.cu)
+	add_executable(krr_test_readback render/test_readback.cu render/test_textureloader.cpp)
 	target_link_libraries(krr_test_readback PRIVATE krr_lib)
 	set(KRR_TEST_GRAPHICS_APIS vulkan)
 	if(KRR_ENABLE_D3D12)
