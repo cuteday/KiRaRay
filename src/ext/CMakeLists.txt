@@ -3,9 +3,6 @@
 ###############################################################################
 INCLUDE (${KRR_RENDER_ROOT}/common/build/FindOptiX.cmake)
 INCLUDE (${KRR_RENDER_ROOT}/common/build/FindPyTorch.cmake)
-FIND_PACKAGE(Vulkan REQUIRED)
-CMAKE_PATH(GET Vulkan_INCLUDE_DIR PARENT_PATH VULKAN_ROOT)
-SET(KRR_VULKAN_ROOT ${VULKAN_ROOT} CACHE PATH "Path to dected vulkan installation.")
 
 ###############################################################################
 # third party libraries
@@ -14,10 +11,20 @@ SET(KRR_VULKAN_ROOT ${VULKAN_ROOT} CACHE PATH "Path to dected vulkan installatio
 SET (CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 STRING (REGEX REPLACE "/W[3|4]" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
+set(NVRHI_WITH_VULKAN ON)
+set(NVRHI_WITH_DX11 OFF)
+set(NVRHI_WITH_DX12 ${KRR_ENABLE_D3D12})
+set(NVRHI_WITH_NVAPI OFF)
+set(NVRHI_INSTALL OFF)
+# Let NVRHI provide current headers before FindVulkan discovers the SDK loader.
 ADD_SUBDIRECTORY(nvrhi)
+FIND_PACKAGE(Vulkan REQUIRED)
+CMAKE_PATH(GET Vulkan_INCLUDE_DIR PARENT_PATH VULKAN_ROOT)
+SET(KRR_VULKAN_ROOT ${VULKAN_ROOT} CACHE PATH "Path to detected Vulkan SDK" FORCE)
+get_target_property(NVRHI_VULKAN_INCLUDES Vulkan::Headers INTERFACE_INCLUDE_DIRECTORIES)
 SET(NVRHI_INCLUDE_DIRS 
 	${CMAKE_CURRENT_SOURCE_DIR}/nvrhi/include
-	${CMAKE_CURRENT_SOURCE_DIR}/nvrhi/thirdparty/Vulkan-Headers/include
+	${NVRHI_VULKAN_INCLUDES}
 )
 SET(NVRHI_INCLUDE_DIRS ${NVRHI_INCLUDE_DIRS} PARENT_SCOPE)
 
@@ -89,30 +96,25 @@ TARGET_LINK_LIBRARIES(krr_ext INTERFACE
 	pbrtParser
 	zlibstatic
 	Vulkan::Vulkan
+	nvrhi
 	nvrhi_vk
-	Vulkan-Headers
+	Vulkan::Headers
 	openvdb
 )
+if(KRR_ENABLE_D3D12)
+	target_link_libraries(krr_ext INTERFACE nvrhi_d3d12 dxgi dxguid)
+	target_compile_definitions(krr_ext INTERFACE KRR_ENABLE_D3D12=1)
+endif()
 
 if (KRR_ENABLE_PYTORCH)
 TARGET_LINK_LIBRARIES(krr_ext INTERFACE torch_lib)
 endif()
 
-# shaderc for runtime compilation of glsl(shaderc) and hlsl(dxc) shaders
-# add_library(shaderc UNKNOWN IMPORTED) # shaderc is not used currently.
-# if(WIN32)
-# 	# use the version in the SDK
-# 	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION $ENV{VULKAN_SDK}/Lib/shaderc_shared.lib)
-# 	set_property(TARGET shaderc PROPERTY INTERFACE_INCLUDE_DIRECTORIES $ENV{VULKAN_SDK}/Include)
-# 	target_link_libraries(krr_ext INTERFACE shaderc)
-# else()
-# 	target_link_directories(krr_ext INTERFACE $ENV{VULKAN_SDK}/lib)
-# 	target_link_libraries(krr_ext INTERFACE shaderc_combined glslang MachineIndependent OSDependent OGLCompiler GenericCodeGen SPIRV SPIRV-Tools-opt SPIRV-Tools)
-# endif()
-add_library(dxc UNKNOWN IMPORTED)
+# DXC compiles HLSL to SPIR-V or DXIL at runtime.
 if (WIN32)
-	set_target_properties(dxc PROPERTIES IMPORTED_LOCATION $ENV{VULKAN_SDK}/Lib/dxcompiler.lib)
-	set_property(TARGET dxc PROPERTY INTERFACE_INCLUDE_DIRECTORIES $ENV{VULKAN_SDK}/Include)
+	add_library(dxc UNKNOWN IMPORTED)
+	set_target_properties(dxc PROPERTIES IMPORTED_LOCATION "${KRR_VULKAN_ROOT}/Lib/dxcompiler.lib")
+	set_property(TARGET dxc PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${KRR_VULKAN_ROOT}/Include")
 	target_link_libraries(krr_ext INTERFACE dxc)
 else()
 	target_link_libraries(krr_ext INTERFACE dxcompiler)
@@ -132,5 +134,5 @@ SET(KRR_EXT_INCLUDES
 SET(KRR_EXT_INCLUDES ${KRR_EXT_INCLUDES} PARENT_SCOPE)
 
 TARGET_INCLUDE_DIRECTORIES(krr_ext INTERFACE
-	KRR_EXT_INCLUDES
+	${KRR_EXT_INCLUDES}
 )

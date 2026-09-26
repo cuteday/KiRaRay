@@ -3,7 +3,10 @@ struct Constants
     float2 invDisplaySize;
 };
 
-[[vk::push_constant]] ConstantBuffer<Constants> g_Const;
+#if KRR_SHADER_VULKAN
+[[vk::push_constant]]
+#endif
+ConstantBuffer<Constants> g_Const;
 
 struct VS_INPUT
 {

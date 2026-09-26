@@ -1,4 +1,5 @@
 #include "errormeasure.h"
+#include "graphics/ui.h"
 #include "metrics.h"
 #include "render/profiler/profiler.h"
 

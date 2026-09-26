@@ -39,6 +39,11 @@ Both entry points accept a config dictionary or JSON path, with optional `asset_
 relative assets. Assets default to the project root; config paths resolve from the caller's
 working directory. The config chooses the integrator and pass order.
 
+The top-level `graphics_api` config field selects `"vulkan"` (the default) or
+`"d3d12"`. Both use CUDA/OptiX for ray tracing. `krr.get_build_info()["graphics_apis"]`
+lists the backends compiled into the selected build. Create a new renderer to
+change graphics API.
+
 The result is an owned, contiguous `float32[height, width, 3]` RGB array, with top-to-bottom
 rows. It contains the final pass output. For linear HDR, use wavefront and accumulation
 without tone mapping or denoising. Frames count pipeline executions, not necessarily SPP.

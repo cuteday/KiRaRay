@@ -1,4 +1,5 @@
 #include <cuda.h>
+#include "graphics/ui.h"
 #include <cuda_runtime.h>
 #include <thrust/sort.h>
 #include <thrust/execution_policy.h>

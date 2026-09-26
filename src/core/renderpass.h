@@ -1,144 +1,13 @@
 #pragma once
-#include <nvrhi/vulkan.h>
-#include <vulkan/cuvk.h>
 
 #include "common.h"
 #include "logger.h"
-
-#include "device/buffer.h"
-#include "device/cuda.h"
 #include "device/optix.h"
-#include "scene.h"
+#include "graphics/rendercontext.h"
 
 NAMESPACE_BEGIN(krr)
 
-namespace vkrhi { using namespace nvrhi; }
-
 class DeviceManager;
-
-class RenderTexture {
-public:
-	using SharedPtr = std::shared_ptr<RenderTexture>;
-
-	RenderTexture(vkrhi::IDevice *device, vkrhi::TextureHandle texture);
-	~RenderTexture();
-
-	static RenderTexture::SharedPtr create(vkrhi::IDevice *device, 
-		const Vector2i size, vkrhi::Format format, const std::string name = "");
-
-	operator vkrhi::TextureHandle() const { return mTexture; }
-	operator vkrhi::ITexture *() const { return mTexture.Get(); }
-	operator CudaRenderTarget() const { return getCudaRenderTarget(); }
-	vkrhi::ITexture *getVulkanTexture() const { return mTexture.Get(); }
-
-	Vector2i getSize() const {
-		auto &textureDesc = mTexture->getDesc();
-		return Vector2i{textureDesc.width, textureDesc.height};
-	}
-
-	CudaRenderTarget getCudaRenderTarget() const {
-		return CudaRenderTarget{mCudaSurface, getSize()[0], getSize()[1]};
-	}
-
-protected:
-	static vkrhi::TextureDesc getVulkanDesc(const Vector2i size, vkrhi::Format format,
-											const std::string name = "");
-
-	vkrhi::TextureHandle mTexture;
-	cudaSurfaceObject_t mCudaSurface{};
-	cudaMipmappedArray_t mCudaArray{};
-	cudaExternalMemory_t mCudaMemory{};
-};
-
-class RenderTarget {
-public:
-	using SharedPtr = std::shared_ptr<RenderTarget>;
-	RenderTarget(vkrhi::IDevice *device) : mDevice(device) {}
-	~RenderTarget() = default;
-
-	vkrhi::IFramebuffer *getFramebuffer() const { return mFramebuffer.Get(); }
-	RenderTexture *getColorTexture() const { return mColor.get(); }
-	RenderTexture *getDepthTexture() const { return mDepth.get(); }
-	RenderTexture *getDiffuseTexture() const { return mDiffuse.get(); }
-	RenderTexture *getSpecularTexture() const { return mSpecular.get(); }
-	RenderTexture *getNormalTexture() const { return mNormal.get(); }
-	RenderTexture *getEmissiveTexture() const { return mEmissive.get(); }
-	RenderTexture *getMotionTexture() const { return mMotion.get(); }
-
-	void setDepthEnabled(bool enable) { mEnableDepth = enable; resize(mSize); }
-	void setDiffuseEnabled(bool enable) { mEnableDiffuse = enable; resize(mSize); }
-	void setSpecularEnabled(bool enable) { mEnableSpecular = enable; resize(mSize); }
-	void setNormalEnabled(bool enable) { mEnableNormal = enable; resize(mSize); }
-	void setEmissiveEnabled(bool enable) { mEnableEmissive = enable; resize(mSize); }
-	void setMotionEnabled(bool enable) { mEnableMotion = enable; resize(mSize); }
-
-	void resize(const Vector2i size);
-	Vector2i getSize() const { return mSize; }
-	bool isUpdateNeeded(const Vector2i size) const { return size != mSize; };
-
-protected:
-	vkrhi::FramebufferHandle mFramebuffer;
-	RenderTexture::SharedPtr mColor{}; 
-	RenderTexture::SharedPtr mDepth{};
-	RenderTexture::SharedPtr mDiffuse{};
-	RenderTexture::SharedPtr mSpecular{};
-	RenderTexture::SharedPtr mNormal{};
-	RenderTexture::SharedPtr mEmissive{};
-	RenderTexture::SharedPtr mMotion{};
-
-	bool mEnableDepth{};
-	bool mEnableDiffuse{};
-	bool mEnableSpecular{};
-	bool mEnableNormal{};
-	bool mEnableEmissive{};
-	bool mEnableMotion{};
-
-	Vector2i mSize{};
-	vkrhi::IDevice *mDevice{};
-};
-
-class RenderContext {
-public:
-	struct CudaScope {
-		CudaScope(RenderContext *_ctx): ctx(_ctx) { ctx->sychronizeVulkan(); }
-		~CudaScope() { ctx->sychronizeCuda(); }
-		RenderContext* ctx;
-	};
-	using SharedPtr = std::shared_ptr<RenderContext>;
-	RenderContext(nvrhi::IDevice* device);
-	~RenderContext();
-
-	nvrhi::IDevice *getDevice() const { return mDevice; }
-	nvrhi::ICommandList *getCommandList() const { return mCommandList.Get(); }
-	nvrhi::IFramebuffer *getFramebuffer() const { return mRenderTarget->getFramebuffer(); }
-	RenderTexture *getColorTexture() const { return mRenderTarget->getColorTexture(); } 
-	CUstream getCudaStream() const { return mCudaStream; }
-	RenderTarget::SharedPtr getRenderTarget() const { return mRenderTarget; }
-	Scene::SharedPtr getScene() const { return mScene; }
-	vkrhi::CuVkSemaphore getCudaSemaphore() const { return mCudaSemaphore; }
-	vkrhi::CuVkSemaphore getVulkanSemaphore() const { return mVulkanSemaphore; }
-	
-	void setScene(Scene::SharedPtr scene);
-	void resize(const Vector2i size);
-	void sychronizeCuda();
-	void sychronizeVulkan();
-	void clear();
-	std::vector<float> readback();
-
-private: 
-	friend class CudaScope;
-	friend class DeviceManager;
-	nvrhi::IDevice* mDevice;
-	Scene::SharedPtr mScene;
-	nvrhi::CommandListHandle mCommandList;
-	RenderTarget::SharedPtr mRenderTarget;
-	std::unique_ptr<vkrhi::CuVkHandler> mCudaHandler;
-	vkrhi::CuVkSemaphore mCudaSemaphore;
-	vkrhi::CuVkSemaphore mVulkanSemaphore; 
-	uint64_t mCudaSemaphoreValue{};
-	CUstream mCudaStream{};
-	bool mOwnsVulkanSemaphore = true;
-};
 
 class RenderPass{
 private:
@@ -178,8 +47,7 @@ public:
 	virtual bool onMouseEvent(const io::MouseEvent& mouseEvent) { return false; }
 	virtual bool onKeyEvent(const io::KeyboardEvent& keyEvent) { return false; }
 
-	// Is this render pass contains any cuda operations? 
-	// Used mainly for synchronization between these two GAPIs.
+	// CUDA-only passes share a handoff; mixed passes manage CudaScope themselves.
 	virtual bool isCudaPass() const { return true; }	
 
 	virtual string getName() const { return "RenderPass"; }
@@ -187,8 +55,7 @@ public:
 
 protected:
 	[[nodiscard]] DeviceManager *getDeviceManager() const; 
-	[[nodiscard]] vk::Device getVulkanNativeDevice() const;
-	[[nodiscard]] vkrhi::vulkan::IDevice *getVulkanDevice() const;
+	[[nodiscard]] nvrhi::IDevice *getDevice() const;
 	[[nodiscard]] size_t getFrameIndex() const;
 	[[nodiscard]] uint64_t getSeed() const;
 	[[nodiscard]] bool isHeadless() const;

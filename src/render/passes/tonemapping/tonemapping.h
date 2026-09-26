@@ -2,7 +2,7 @@
 #include <cuda_runtime.h>
 
 #include "common.h"
-#include "window.h"
+#include "graphics/device.h"
 #include "renderpass.h"
 
 #include "device/buffer.h"

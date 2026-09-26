@@ -5,10 +5,10 @@
 #include <common.h>
 #include <input.h>
 #include <renderpass.h>
-#include <vulkan/shader.h>
+#include <graphics/shader.h>
 
 #include <imgui.h>
-#include <nvrhi/vulkan.h>
+#include <nvrhi/nvrhi.h>
 
 NAMESPACE_BEGIN(krr)
 
@@ -42,6 +42,7 @@ private:
 
 public:
 	using RenderPass::RenderPass;
+	bool isCudaPass() const override { return false; }
 	using SharedPtr = std::shared_ptr<UIRenderer>;
 	~UIRenderer() { ImGui::DestroyContext(); }
 	string getName() const override { return "UIRenderer"; }

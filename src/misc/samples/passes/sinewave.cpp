@@ -1,26 +1,30 @@
+#include <nvrhi/utils.h>
 #include <common.h>
 #include <logger.h>
 #include <krrmath/clipspace.h>
-#include <nvrhi/vulkan.h>
+#include <nvrhi/nvrhi.h>
 #include <util/check.h>
 #include <renderpass.h>
 
 #include "deviceprog.h"
 #include "main/renderer.h"
-#include "vulkan/textureloader.h"
-#include "vulkan/shader.h"
-#include "vulkan/cuvk.h"
+#include "graphics/textureloader.h"
+#include "graphics/shader.h"
+#include "graphics/interop.h"
 
 NAMESPACE_BEGIN(krr)
 
-using namespace vkrhi;
-using namespace cuvk;
 
 const char g_WindowTitle[] = "Sine Wave Simulator";
 
 class WaveRenderer: public RenderPass {
 public:
 	using RenderPass::RenderPass;
+	~WaveRenderer() override {
+		try { finalize(); }
+		catch (const std::exception &error) { Log(Error, "Sinewave cleanup: %s", error.what()); }
+	}
+	bool isCudaPass() const override { return false; }
 
 	struct ConstantBufferEntry {
 		Matrix4f mvp;
@@ -29,19 +33,12 @@ public:
 	
 	void initialize() {
 		m_sim = SineWaveSimulation(256, 256);
-		m_CuVkHandler = std::make_shared<CuVkHandler>(getVulkanDevice());
-	
-		// initialize CUDA
-		int cuda_device = m_CuVkHandler->initCUDA();	// selected cuda device 
-		if (cuda_device == -1) {
-			Log(Error, "No CUDA-Vulkan interop capable device found\n");
-			exit(EXIT_FAILURE);
-		}
-		m_sim.initCudaLaunchConfig(cuda_device);
-		CUDA_CHECK(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
+		int cudaDevice{};
+		CUDA_CHECK(cudaGetDevice(&cudaDevice));
+		m_sim.initCudaLaunchConfig(cudaDevice);
 		
 		// creating the shader modules
-		ShaderLoader shaderLoader(getVulkanDevice());
+		ShaderLoader shaderLoader(getDevice());
 		m_vertexShader = shaderLoader.createShader(
 			"src/misc/samples/passes/shaders/sinewave.hlsl", "main_vs", nullptr, nvrhi::ShaderType::Vertex);
 		m_pixelShader = shaderLoader.createShader(
@@ -66,9 +63,9 @@ public:
 				.setElementStride(sizeof(float))
 				.setBufferIndex(1),
 		};
-		m_inputLayout = getVulkanDevice()->createInputLayout(attributes, std::size(attributes), m_vertexShader);
+		m_inputLayout = getDevice()->createInputLayout(attributes, std::size(attributes), m_vertexShader);
 
-		m_commandList = getVulkanDevice()->createCommandList();
+		m_commandList = getDevice()->createCommandList();
 		m_commandList->open();
 
 		nvrhi::BufferDesc indexBufferDesc;
@@ -76,28 +73,27 @@ public:
 		indexBufferDesc.byteSize			= sizeof(uint32_t) * (m_sim.getWidth() - 1) * (m_sim.getHeight() - 1) * 6;
 		indexBufferDesc.debugName			= "IndexBuffer";
 		indexBufferDesc.initialState		= nvrhi::ResourceStates::CopyDest;
-		m_indexBuffer						= getVulkanDevice()->createBuffer(indexBufferDesc);
+		m_indexBuffer						= getDevice()->createBuffer(indexBufferDesc);
 	
 		nvrhi::BufferDesc xyBufferDesc;
 		xyBufferDesc.isVertexBuffer = true;
 		xyBufferDesc.byteSize		= sizeof(Vector2f) * m_sim.getWidth() * m_sim.getHeight();
 		xyBufferDesc.debugName		= "XYBuffer";
 		xyBufferDesc.initialState	= nvrhi::ResourceStates::CopyDest;
-		m_xyBuffer					= getVulkanDevice()->createBuffer(xyBufferDesc);
+		m_xyBuffer					= getDevice()->createBuffer(xyBufferDesc);
 
 		nvrhi::BufferDesc heightBufferDesc;
 		heightBufferDesc.isVertexBuffer = true;
 		heightBufferDesc.byteSize		= sizeof(float) * m_sim.getWidth() * m_sim.getHeight();
 		heightBufferDesc.debugName		= "HeightBuffer";
-		heightBufferDesc.initialState	= nvrhi::ResourceStates::CopyDest;
-		m_heightBuffer = m_CuVkHandler->createExternalBuffer(heightBufferDesc);
+		m_heightMapping = std::make_unique<CudaBufferMapping>(getDevice(), heightBufferDesc);
+		m_heightBuffer = m_heightMapping->getBuffer();
 
-		m_constantBuffer = getVulkanDevice()->createBuffer(nvrhi::utils::CreateStaticConstantBufferDesc(
+		m_constantBuffer = getDevice()->createBuffer(nvrhi::utils::CreateStaticConstantBufferDesc(
 										  sizeof(ConstantBufferEntry), "ConstantBuffer")
 				.setInitialState(nvrhi::ResourceStates::ConstantBuffer)
 				.setKeepInitialState(true));
 
-		m_commandList->beginTrackingBufferState(m_heightBuffer, nvrhi::ResourceStates::CopyDest);
 		m_commandList->beginTrackingBufferState(m_indexBuffer, nvrhi::ResourceStates::CopyDest);
 		m_commandList->beginTrackingBufferState(m_xyBuffer, nvrhi::ResourceStates::CopyDest);
 		
@@ -134,37 +130,51 @@ public:
 		Log(Info, "Specifying state for the buffers");		
 		m_commandList->setPermanentBufferState(m_indexBuffer, nvrhi::ResourceStates::IndexBuffer);
 		m_commandList->setPermanentBufferState(m_xyBuffer, nvrhi::ResourceStates::VertexBuffer);
-		m_commandList->setPermanentBufferState(m_heightBuffer, nvrhi::ResourceStates::VertexBuffer);
 		
 		m_commandList->close();
-		getVulkanDevice()->executeCommandList(m_commandList);
+		getDevice()->executeCommandList(m_commandList);
 
-		m_CuVkHandler->importVulkanBufferToCudaPtr((void**)&m_cudaHeightData, m_cudaHeightMem, m_heightBuffer);
-		m_sim.initSimulation(m_cudaHeightData);
+		m_sim.initSimulation(static_cast<float *>(m_heightMapping->getPointer()));
 
 		Log(Info, "Creating binding set and layout");
 		nvrhi::BindingSetDesc bindingSetDesc;
 		bindingSetDesc.bindings = {
 			nvrhi::BindingSetItem::ConstantBuffer(0, m_constantBuffer, nvrhi::EntireBuffer)
 		};
-		if (!nvrhi::utils::CreateBindingSetAndLayout(getVulkanDevice(), nvrhi::ShaderType::All, 0,
+		if (!nvrhi::utils::CreateBindingSetAndLayout(getDevice(), nvrhi::ShaderType::All, 0,
 													 bindingSetDesc, m_bindingLayout, m_bindingSet))
 			logError("Failed to create the binding set and layout");
 		Log(Info, "Finished simulator initialization");
 	}
 
-	void tick(float seconds) override { m_sim.stepSimulation(seconds, m_stream); }
+	void tick(float seconds) override { m_elapsedTime = seconds; }
+
+	void finalize() override {
+		if (m_context) {
+			m_context->removeSharedBuffer(m_heightBuffer);
+			m_context = nullptr;
+		}
+		m_heightMapping.reset();
+		m_heightBuffer = nullptr;
+	}
 
 	void resizing() override { m_pipeline = nullptr; }
 
-	void render(RenderContext *context) override { 
+	void render(RenderContext *context) override {
+		if (!m_context) {
+			context->addSharedBuffer(m_heightBuffer);
+			m_context = context;
+		}
+		{
+			RenderContext::CudaScope cudaScope(context);
+			m_sim.stepSimulation(m_elapsedTime, context->getCudaStream());
+		}
 		nvrhi::FramebufferHandle framebuffer = context->getFramebuffer();
-		CUDA_SYNC_CHECK();
 
 		auto &fbInfo = framebuffer->getFramebufferInfo();
 
 		if (!m_pipeline) {
-			Log(Info, "Initializing vulkan graphics pipeline");
+			Log(Info, "Initializing graphics pipeline");
 			nvrhi::GraphicsPipelineDesc psoDesc;
 			psoDesc.VS			   = m_vertexShader;
 			psoDesc.PS			   = m_pixelShader;
@@ -173,7 +183,7 @@ public:
 			psoDesc.primType	   = nvrhi::PrimitiveType::TriangleList;
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
 			psoDesc.renderState.rasterState.fillMode = nvrhi::RasterFillMode::Wireframe;
-			m_pipeline = getVulkanDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+			m_pipeline = getDevice()->createGraphicsPipeline(psoDesc, framebuffer);
 			Log(Info, "Finished initializing pipeline");
 		}
 	
@@ -206,16 +216,14 @@ public:
 		m_commandList->drawIndexed(args);
 		
 		m_commandList->close();
-		getVulkanDevice()->executeCommandList(m_commandList);
+		getDevice()->executeCommandList(m_commandList);
 	}
 
 private:
-	cudaStream_t m_stream{0};
-
-	std::shared_ptr<CuVkHandler> m_CuVkHandler;
+	std::unique_ptr<CudaBufferMapping> m_heightMapping;
+	RenderContext *m_context = nullptr;
 	SineWaveSimulation m_sim;
-	float *m_cudaHeightData;
-	cudaExternalMemory_t m_cudaHeightMem;
+	float m_elapsedTime = 0.f;
 	
 	nvrhi::ShaderHandle m_vertexShader, m_pixelShader; 
 	nvrhi::BufferHandle m_heightBuffer, m_xyBuffer, m_indexBuffer, m_constantBuffer;

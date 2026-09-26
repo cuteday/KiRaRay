@@ -1,11 +1,11 @@
 #pragma once
 
-#include "window.h"
+#include "graphics/device.h"
 #include "scene.h"
 #include "camera.h"
 #include "file.h"
 
-#include "vulkan/uirender.h"
+#include "graphics/uirender.h"
 #include "device/buffer.h"
 #include "device/context.h"
 #include "scene/importer.h"

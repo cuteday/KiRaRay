@@ -1,5 +1,5 @@
 #pragma once
-#include "window.h"
+#include "graphics/device.h"
 #include "scene.h"
 #include "camera.h"
 #include "file.h"

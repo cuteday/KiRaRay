@@ -21,6 +21,16 @@ int main() {
 		json config = {{"resolution", {32, 32}}, {"scene", json::object()},
 			{"passes", {{{"name", "WavefrontPathTracer"}, {"params", json::object()}}}}};
 		RenderOptions::validateConfig(config);
+		for (const char *api : {"vulkan", "d3d12"}) {
+			json selected = config;
+			selected["graphics_api"] = api;
+			RenderOptions::validateConfig(selected);
+		}
+		for (const json &api : {json("d3d11"), json("Vulkan"), json(""), json(1), json(nullptr)}) {
+			json invalid = config;
+			invalid["graphics_api"] = api;
+			rejects([&] { RenderOptions::validateConfig(invalid); });
+		}
 		RenderOptions::validate(1, 0);
 		RenderOptions::validate(128, std::numeric_limits<uint64_t>::max());
 		RenderOptions::validateBenchmark(1, 0, 0);

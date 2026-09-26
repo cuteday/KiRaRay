@@ -10,7 +10,7 @@
 
 #include "renderpass.h"
 #include "metrics.h"
-#include "window.h"
+#include "graphics/device.h"
 
 NAMESPACE_BEGIN(krr)
 

@@ -1,5 +1,5 @@
 #include "scenegraph.h"
-#include "window.h"
+#include "graphics/ui.h"
 #include "scene.h"
 #include "render/profiler/profiler.h"
 

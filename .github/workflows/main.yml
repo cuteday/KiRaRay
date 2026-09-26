@@ -71,21 +71,6 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install -r tests/requirements.txt
 
-      - name: Install ATL for the CUDA 12.5 host compiler
-        if: matrix.config.cuda == '12.5.0'
-        run: |
-          $installerRoot = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer"
-          $vsPath = & "$installerRoot/vswhere.exe" -latest -version '[17.0,18.0)' -products '*' -property installationPath
-          if (-not $vsPath) { throw 'Visual Studio 2022 was not found.' }
-          $atlPattern = "$vsPath/VC/Tools/MSVC/14.29.*/atlmfc/include/atlbase.h"
-          if (-not (Test-Path $atlPattern)) {
-            $arguments = @('modify', '--installPath', "`"$vsPath`"", '--quiet', '--norestart',
-              '--add', 'Microsoft.VisualStudio.Component.VC.14.29.16.11.ATL')
-            $process = Start-Process -FilePath "$installerRoot/setup.exe" -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
-            if ($process.ExitCode -notin @(0, 3010)) { throw "ATL installation failed: $($process.ExitCode)" }
-          }
-          if (-not (Test-Path $atlPattern)) { throw 'ATL headers for MSVC v142 were not installed.' }
-
       - name: Install CUDA
         uses: Jimver/cuda-toolkit@b8bf9c6c28f8a92fbb04dcfcaee872e60c57462d # v0.2.36
         with:
@@ -145,6 +130,7 @@ jobs:
           "-DOptiX_INSTALL_DIR=$env:GITHUB_WORKSPACE/optix"
           "-DPython_EXECUTABLE=$env:pythonLocation/python.exe"
           -DKRR_RENDER_SPECTRAL=${{ matrix.spectral }}
+          -DKRR_ENABLE_D3D12=ON
           -DBUILD_TESTING=ON -DKRR_ENABLE_GPU_TESTS=OFF
 
       - name: Build

@@ -41,6 +41,10 @@ OPTION (KRR_RENDER_SPECTRAL
 include(CTest)
 option(KRR_ENABLE_GPU_TESTS "Enable local GPU rendering tests" OFF)
 option(KRR_PROFILE_OPTIX "Retain OptiX source information in optimized builds" OFF)
+option(KRR_ENABLE_D3D12 "Build the Windows D3D12 graphics backend" ${WIN32})
+if(KRR_ENABLE_D3D12 AND NOT WIN32)
+	message(FATAL_ERROR "The D3D12 backend requires Windows")
+endif()
 
 ###############################################################################
 # Build type and C++ compiler setup
@@ -140,31 +144,6 @@ if (Python_FOUND)
 else()
 	message("Did not find python, disable python binding")
 endif()
-
-# Resolve the atlbase.h issue when building with IDEs other than Visual Studio
-if(${CMAKE_CXX_COMPILER_ID} EQUAL MSVC)
-	# atlbase.h is required under Windows build.
-	# Test for the presense of "atlbase.h"
-	include(CheckIncludeFileCXX)
-	CHECK_INCLUDE_FILE_CXX("atlbase.h" HAVE_ATLBASE_H)
-	# Try to find atlbase.h within MSVC
-	if(NOT HAVE_ATLBASE_H)
-		message(STATUS "atlbase.h not found. Trying to find it within atlmfc directory in the current MSVC installation.")
-		# Find MSVC executable directory
-		get_filename_component(MSVC_EXECUTABLE_DIR ${CMAKE_CXX_COMPILER} DIRECTORY)
-		# Try to find atlmfc directory within the current toolchain directory
-		find_path(ATLMFC_INCLUDE_DIR "atlmfc" PATHS "${MSVC_DIR}/../../..")
-		# If atlmfc directory is found, append it to the include directories
-		if(ATLMFC_INCLUDE_DIR)
-			message(STATUS "Found atlmfc directory at ${ATLMFC_INCLUDE_DIR}")
-			# Include atlbase.h
-			include_directories(${ATLMFC_INCLUDE_DIR})
-		else()
-			message(FATAL_ERROR "atlmfc directory not found. Please specify it manually.")
-		endif()
-	endif()
-endif()
-
 
 ADD_SUBDIRECTORY (src)
 if(BUILD_TESTING)

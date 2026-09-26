@@ -28,11 +28,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path, required=True)
+    parser.add_argument("--graphics-api", choices=("vulkan", "d3d12"), default="vulkan")
     args = parser.parse_args()
     if Path.cwd() != IMPORT_CWD:
         raise AssertionError("Importing krr changed the process working directory")
     args.artifacts.mkdir(parents=True, exist_ok=True)
     config = load_config(args.config)
+    config["graphics_api"] = args.graphics_api
     config["resolution"] = [32, 32]
     write_json(args.artifacts / "config.json", config)
     cwd = Path.cwd()

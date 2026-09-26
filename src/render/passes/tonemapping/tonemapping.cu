@@ -1,4 +1,5 @@
 #include "tonemapping.h"
+#include "graphics/ui.h"
 
 #include "device/cuda.h"
 #include "device/context.h"

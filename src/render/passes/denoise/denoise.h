@@ -6,7 +6,7 @@
 #include "device/buffer.h"
 
 #include "renderpass.h"
-#include "window.h"
+#include "graphics/device.h"
 
 NAMESPACE_BEGIN(krr)
 

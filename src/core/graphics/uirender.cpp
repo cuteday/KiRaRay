@@ -1,6 +1,7 @@
 #include <stddef.h>
+#include "graphics/ui.h"
 
-#include <window.h>
+#include <graphics/device.h>
 #include "render/profiler/profiler.h"
 #include "uirender.h"
 #include "shader.h"
@@ -105,10 +106,10 @@ bool UIRenderer::createFontTexture(nvrhi::ICommandList *commandList) {
 }
 
 void UIRenderer::initialize() {
-	this->device = getVulkanDevice();
+	this->device = getDevice();
 	if (!this->device) Log(Fatal, "Set device for UIRenderer before initialization!");
 	
-	auto shaderLoader = std::make_unique<ShaderLoader>(getVulkanDevice());
+	auto shaderLoader = std::make_unique<ShaderLoader>(getDevice());
 
 	m_commandList = device->createCommandList();
 	m_commandList->open();

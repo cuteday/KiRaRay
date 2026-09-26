@@ -1,9 +1,10 @@
+#include <nvrhi/utils.h>
 #include <common.h>
 #include <logger.h>
-#include <nvrhi/vulkan.h>
+#include <nvrhi/nvrhi.h>
 
 #include <main/renderer.h>
-#include <vulkan/shader.h>
+#include <graphics/shader.h>
 #include <renderpass.h>
 
 NAMESPACE_BEGIN(krr)
@@ -19,9 +20,10 @@ private:
 
 public:
 	using RenderPass::RenderPass;
+	bool isCudaPass() const override { return false; }
 
 	void initialize() {
-		ShaderLoader shaderLoader(getVulkanDevice());
+		ShaderLoader shaderLoader(getDevice());
 		m_VertexShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_vs", nullptr,
 													nvrhi::ShaderType::Vertex);
 		m_PixelShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_ps", nullptr,
@@ -29,7 +31,7 @@ public:
 
 		if (!m_VertexShader || !m_PixelShader)
 			Log(Fatal, "Shader initialization failed");
-		m_CommandList = getVulkanDevice()->createCommandList();
+		m_CommandList = getDevice()->createCommandList();
 	}
 
 	void resizing() override { m_Pipeline = nullptr; }
@@ -46,7 +48,7 @@ public:
 			psoDesc.primType = nvrhi::PrimitiveType::TriangleList;
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
 
-			m_Pipeline = getVulkanDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+			m_Pipeline = getDevice()->createGraphicsPipeline(psoDesc, framebuffer);
 		}
 
 		m_CommandList->open();
@@ -64,7 +66,7 @@ public:
 		args.vertexCount = 3;
 		m_CommandList->draw(args);
 		m_CommandList->close();
-		getVulkanDevice()->executeCommandList(m_CommandList);
+		getDevice()->executeCommandList(m_CommandList);
 	}
 };
 

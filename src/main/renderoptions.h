@@ -20,6 +20,11 @@ struct RenderOptions {
 
 	static void validateConfig(const nlohmann::json &config) {
 		if (!config.is_object()) throw std::invalid_argument("config must be an object");
+		if (config.contains("graphics_api")) {
+			const auto &api = config.at("graphics_api");
+			if (!api.is_string() || (api != "vulkan" && api != "d3d12"))
+				throw std::invalid_argument("graphics_api must be 'vulkan' or 'd3d12'");
+		}
 		if (config.contains("resolution")) {
 			const auto &size = config.at("resolution");
 			if (!size.is_array() || size.size() != 2)

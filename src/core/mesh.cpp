@@ -1,8 +1,11 @@
 #pragma once
 #include "mesh.h"
 #include "shape.h"
-#include "window.h"
+#include "graphics/ui.h"
 #include "scenegraph.h"
+#include "scene.h"
+#include "device/scene.h"
+#include "light.h"
 
 NAMESPACE_BEGIN(krr)
 

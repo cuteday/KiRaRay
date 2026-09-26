@@ -45,21 +45,34 @@ if(KRR_ENABLE_GPU_TESTS)
 
 	add_executable(krr_test_readback render/test_readback.cu)
 	target_link_libraries(krr_test_readback PRIVATE krr_lib)
-	krr_gpu_test(krr_readback readback $<TARGET_FILE:krr_test_readback>)
-	krr_gpu_test(krr_render_smoke cornell_wavefront_smoke
-		${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/render/smoke.py
-		--config ${KRR_TEST_CASE}/config.json
-		--artifacts ${KRR_TEST_ARTIFACTS}/cornell_wavefront_smoke)
-	krr_gpu_test(krr_benchmark_smoke cornell_wavefront_benchmark
-		${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/render/benchmark_smoke.py
-		--config ${KRR_TEST_CASE}/config.json
-		--artifacts ${KRR_TEST_ARTIFACTS}/cornell_wavefront_benchmark)
-	set_tests_properties(krr_benchmark_smoke PROPERTIES LABELS "gpu;smoke;benchmark")
-	if(KRR_RENDER_SPECTRAL)
-		krr_gpu_test(krr_render_regression cornell_wavefront_regression
-			${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/render/regression.py
-			--case ${KRR_TEST_CASE}
-			--artifacts ${KRR_TEST_ARTIFACTS}/cornell_wavefront_regression)
-		set_tests_properties(krr_render_regression PROPERTIES LABELS "gpu;regression")
+	set(KRR_TEST_GRAPHICS_APIS vulkan)
+	if(KRR_ENABLE_D3D12)
+		list(APPEND KRR_TEST_GRAPHICS_APIS d3d12)
 	endif()
+	foreach(api IN LISTS KRR_TEST_GRAPHICS_APIS)
+		set(suffix "")
+		if(NOT api STREQUAL "vulkan")
+			set(suffix "_${api}")
+		endif()
+		krr_gpu_test(krr_readback${suffix} readback${suffix}
+			$<TARGET_FILE:krr_test_readback> ${api})
+		krr_gpu_test(krr_render_smoke${suffix} cornell_wavefront_smoke${suffix}
+			${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/render/smoke.py
+			--config ${KRR_TEST_CASE}/config.json --graphics-api ${api}
+			--artifacts ${KRR_TEST_ARTIFACTS}/cornell_wavefront_smoke${suffix})
+		krr_gpu_test(krr_benchmark_smoke${suffix} cornell_wavefront_benchmark${suffix}
+			${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/render/benchmark_smoke.py
+			--config ${KRR_TEST_CASE}/config.json --graphics-api ${api}
+			--artifacts ${KRR_TEST_ARTIFACTS}/cornell_wavefront_benchmark${suffix})
+		set_tests_properties(krr_readback${suffix} krr_render_smoke${suffix}
+			PROPERTIES LABELS "gpu;smoke;${api}")
+		set_tests_properties(krr_benchmark_smoke${suffix} PROPERTIES LABELS "gpu;smoke;benchmark;${api}")
+		if(KRR_RENDER_SPECTRAL)
+			krr_gpu_test(krr_render_regression${suffix} cornell_wavefront_regression${suffix}
+				${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/render/regression.py
+				--case ${KRR_TEST_CASE} --graphics-api ${api}
+				--artifacts ${KRR_TEST_ARTIFACTS}/cornell_wavefront_regression${suffix})
+			set_tests_properties(krr_render_regression${suffix} PROPERTIES LABELS "gpu;regression;${api}")
+		endif()
+	endforeach()
 endif()

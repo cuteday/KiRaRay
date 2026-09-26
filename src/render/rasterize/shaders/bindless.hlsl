@@ -111,7 +111,10 @@ struct MaterialSample {
 
 ConstantBuffer<ViewConstants> g_ViewConstants : register(b0);
 ConstantBuffer<LightConstants> g_LightConstants : register(b1);
-[[vk::push_constant]] ConstantBuffer<RenderConstants> g_RenderConstants : register(b2);
+#if KRR_SHADER_VULKAN
+[[vk::push_constant]]
+#endif
+ConstantBuffer<RenderConstants> g_RenderConstants : register(b2);
 
 StructuredBuffer<MeshData> t_MeshData : register(t0);
 StructuredBuffer<InstanceData> t_InstanceData : register(t1);
@@ -120,8 +123,14 @@ StructuredBuffer<LightData> t_LightData : register(t3);
 SamplerState s_MaterialSampler : register(s0);
 // the above bindings are implicitly assigned to register space 0.
 // the bindless buffer arrays below actually bind to a register range.
-[[vk::binding(0, 1)]] ByteAddressBuffer t_BindlessBuffers[] : register(t0, space1);	// register space, check it out later
-[[vk::binding(1, 1)]] Texture2D t_BindlessTextures[] : register(t0, space2);
+#if KRR_SHADER_VULKAN
+[[vk::binding(0, 1)]]
+#endif
+ByteAddressBuffer t_BindlessBuffers[] : register(t0, space1);	// register space, check it out later
+#if KRR_SHADER_VULKAN
+[[vk::binding(1, 1)]]
+#endif
+Texture2D t_BindlessTextures[] : register(t0, space2);
 
 float getMetallic(float3 diffuse, float3 specular) {
 	float d = dot(diffuse, float3(0.299, 0.587, 0.114));
@@ -146,17 +155,17 @@ MaterialSample EvaluateSceneMaterial(float2 uv, float3 normal, float3 tangent, M
 		specularColor = t_BindlessTextures[material.specularTextureIndex].Sample(s_MaterialSampler, uv);
 	result.normal = normal;
 	if (material.normalTextureIndex >= 0){
-		float3 normal = t_BindlessTextures[material.normalTextureIndex].Sample(s_MaterialSampler, uv);
+		float3 normal = t_BindlessTextures[material.normalTextureIndex].Sample(s_MaterialSampler, uv).xyz;
 		normal = 2 * normal - 1;	// rgb to normal
 		result.normal = normal;
 	}
 	result.emissive = 0;
 	if (material.emissiveTextureIndex >= 0)
-		result.emissive = t_BindlessTextures[material.emissiveTextureIndex].Sample(s_MaterialSampler, uv);
+		result.emissive = t_BindlessTextures[material.emissiveTextureIndex].Sample(s_MaterialSampler, uv).rgb;
 	
 	if (material.metalRough) {
 		result.diffuse  = lerp(baseColor.rgb, 0, specularColor[2]);
-		result.specular = lerp(0, baseColor, specularColor[2]);
+		result.specular = lerp(0, baseColor.rgb, specularColor[2]);
 		result.metallic = specularColor[2];
 		result.roughness = specularColor[1];
 	} else {
@@ -267,7 +276,7 @@ void vs_main(
 	o_position = clipSpacePosition;
 	// world-space shading data.
 	o_vertex.uv = texcoord;
-	o_vertex.position = worldSpacePosition;
+	o_vertex.position = worldSpacePosition.xyz;
 	o_vertex.normal = mul(instance.transform, float4(normal, 1)).xyz;
 	o_vertex.tangent = mul(instance.transform, float4(tangent, 1)).xyz;
 }
