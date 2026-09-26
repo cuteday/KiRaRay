@@ -54,6 +54,11 @@ tables remain available for later rendering or denoising calls.
 See [tests](../../tests/README.md) for CTest and reference-generation commands. Python calls
 are synchronous; concurrent rendering and zero-copy output are not supported.
 
+`HeadlessRenderer.benchmark(frames=64, warmup=8, seed=0)` returns an image and synchronized
+batch timings. Warm-up samples remain in the image, while setup and readback are excluded
+from measured rendering time. See [benchmarks](../../benchmarks/README.md) for repeated runs,
+NVTX capture ranges, and the optional Nsight profiler backends.
+
 The [headless CLI example](render_headless.py) reads a config and writes its final image to
 the chosen directory. Run it from the project root with the build selected above:
 

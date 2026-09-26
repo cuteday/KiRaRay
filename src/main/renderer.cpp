@@ -1,7 +1,11 @@
-#include "renderer.h"
 #include "common.h"
+#undef NVTX_DISABLE
+#include <nvtx3/nvToolsExt.h>
+#include "renderer.h"
 #include "renderoptions.h"
 #include <atomic>
+#include <chrono>
+#include <cuda_profiler_api.h>
 
 NAMESPACE_BEGIN(krr)
 
@@ -14,6 +18,68 @@ static bool sLockCamera			 = false;
 static bool sRequestScreenshot	 = false;
 static Vector2ui sCursorPos		 = Vector2ui::Zero();
 static size_t sSaveFrameInterval = 2;
+
+class NvtxRange {
+public:
+	NvtxRange(bool enabled, const char *name) : mEnabled(enabled) {
+		if (mEnabled) nvtxRangePushA(name);
+	}
+	~NvtxRange() { if (mEnabled) nvtxRangePop(); }
+private:
+	bool mEnabled;
+};
+
+class CaptureScope {
+public:
+	CaptureScope(bool capture, const std::function<void()> &begin,
+		const std::function<void()> &end) : mCapture(capture), mBegin(begin), mEnd(end) {}
+	~CaptureScope() {
+		try { end(); } catch (...) {}
+	}
+	void begin() {
+		if (mCapture) {
+			CUDA_CHECK(cudaProfilerStart());
+			mProfilerStarted = true;
+		}
+		if (mBegin) mBegin();
+		mCallbackStarted = true;
+	}
+	void end() {
+		std::exception_ptr error;
+		if (mCallbackStarted) {
+			mCallbackStarted = false;
+			try {
+				if (mEnd) mEnd();
+			} catch (...) { error = std::current_exception(); }
+		}
+		if (mProfilerStarted) {
+			mProfilerStarted = false;
+			try {
+				CUDA_CHECK(cudaProfilerStop());
+			} catch (...) { if (!error) error = std::current_exception(); }
+		}
+		if (error) std::rethrow_exception(error);
+	}
+private:
+	bool mCapture, mProfilerStarted{}, mCallbackStarted{};
+	const std::function<void()> &mBegin, &mEnd;
+};
+
+class BatchScope {
+public:
+	BatchScope(bool &active, bool measure) : mActive(active),
+		mProfilerEnabled(Profiler::instance().isEnabled()) {
+		mActive = true;
+		if (measure) Profiler::instance().setEnabled(false);
+	}
+	~BatchScope() {
+		mActive = false;
+		Profiler::instance().setEnabled(mProfilerEnabled);
+	}
+private:
+	bool &mActive;
+	bool mProfilerEnabled;
+};
 }
 
 Renderer::Renderer() : mPreviousAssetRoot(File::cwd()), mPreviousOutputDir(File::outputDir()) {
@@ -82,10 +148,11 @@ void Renderer::initializePasses() {
 	mNvrhiDevice->waitForIdle();
 }
 
-void Renderer::renderPasses() {
+void Renderer::renderPasses(bool annotate) {
 	for (auto &pass : mRenderPasses) pass->beginFrame(getRenderContext());
 	for (auto &pass : mRenderPasses) {
 		if (!pass->enabled()) continue;
+		NvtxRange range(annotate, annotate ? pass->getName().c_str() : "");
 		if (pass->isCudaPass()) getRenderContext()->sychronizeCuda();
 		pass->render(getRenderContext());
 		if (pass->isCudaPass()) getRenderContext()->sychronizeVulkan();
@@ -93,12 +160,14 @@ void Renderer::renderPasses() {
 	for (auto &pass : mRenderPasses) pass->endFrame(getRenderContext());
 }
 
-HeadlessRenderer::HeadlessRenderer(const json &config, const fs::path &assetRoot) {
+HeadlessRenderer::HeadlessRenderer(const json &config, const fs::path &assetRoot, bool validation) {
 	validateConfig(config);
 	fs::path root = assetRoot.empty() ? fs::path(KRR_PROJECT_DIR) : fs::absolute(assetRoot);
 	if (!fs::is_directory(root))
 		throw std::invalid_argument("asset_root must be an existing directory");
 	File::setCwd(root);
+	mDeviceParams.enableDebugRuntime = validation;
+	mDeviceParams.enableNvrhiValidationLayer = validation;
 	mConfig = config;
 	if (config.contains("resolution")) {
 		mDeviceParams.backBufferWidth = config.at("resolution").at(0);
@@ -107,9 +176,41 @@ HeadlessRenderer::HeadlessRenderer(const json &config, const fs::path &assetRoot
 }
 
 std::vector<float> HeadlessRenderer::render(int64_t frames, uint64_t seed) {
+	return renderBatch(frames, 0, seed, false, false).image;
+}
+
+HeadlessRenderer::BenchmarkResult HeadlessRenderer::benchmark(int64_t frames, int64_t warmup,
+	uint64_t seed, bool capture, const std::function<void()> &onCaptureBegin,
+	const std::function<void()> &onCaptureEnd) {
+	return renderBatch(frames, warmup, seed, true, capture, onCaptureBegin, onCaptureEnd);
+}
+
+HeadlessRenderer::BenchmarkResult HeadlessRenderer::renderBatch(int64_t frames, int64_t warmup,
+	uint64_t seed, bool measure, bool capture, const std::function<void()> &onCaptureBegin,
+	const std::function<void()> &onCaptureEnd) {
 	if (mClosed) throw std::runtime_error("Renderer is closed");
+	if (mBatchActive) throw std::runtime_error("Renderer is already rendering");
 	try {
-		RenderOptions::validate(frames, seed);
+		using Clock = std::chrono::steady_clock;
+		const auto totalStart = Clock::now();
+		auto milliseconds = [](auto start, auto end) {
+			return std::chrono::duration<double, std::milli>(end - start).count();
+		};
+		RenderOptions::validateBenchmark(frames, warmup, seed);
+		BatchScope batch(mBatchActive, measure);
+		BenchmarkResult result;
+		auto synchronize = [&] {
+			CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
+			mNvrhiDevice->waitForIdle();
+		};
+		auto renderFrame = [&](int64_t frame) {
+			NvtxRange range(measure, "krr.frame");
+			setFrameIndex(uint32_t(frame + 1));
+			for (auto &pass : mRenderPasses) pass->tick(0.f);
+			mScene->update(getFrameIndex(), 0.0);
+			renderPasses(measure);
+			mNvrhiDevice->runGarbageCollection();
+		};
 		const json config = mConfig;
 		loadConfig(config);
 		if (!mNvrhiDevice && !createHeadlessDevice(mDeviceParams))
@@ -118,17 +219,38 @@ std::vector<float> HeadlessRenderer::render(int64_t frames, uint64_t seed) {
 		setSeed(seed);
 		initializePasses();
 		getRenderContext()->clear();
-		for (int64_t frame = 0; frame < frames; ++frame) {
-			setFrameIndex(uint32_t(frame + 1));
-			for (auto &pass : mRenderPasses) pass->tick(0.f);
-			mScene->update(getFrameIndex(), 0.0);
-			renderPasses();
-			mNvrhiDevice->runGarbageCollection();
+		if (measure) synchronize();
+		const auto setupEnd = Clock::now();
+		{
+			NvtxRange range(measure, "krr.warmup");
+			for (int64_t frame = 0; frame < warmup; ++frame) renderFrame(frame);
+			if (measure && warmup) synchronize();
 		}
-		auto image = getRenderContext()->readback();
+		const auto warmupEnd = Clock::now();
+		CaptureScope captureScope(capture, onCaptureBegin, onCaptureEnd);
+		captureScope.begin();
+		if (mClosed) throw std::runtime_error("Renderer was closed by a capture callback");
+		{
+			NvtxRange range(measure, "krr.measure");
+			const auto renderStart = Clock::now();
+			for (int64_t frame = warmup; frame < warmup + frames; ++frame) renderFrame(frame);
+			if (measure) synchronize();
+			result.timings["render_ms"] = milliseconds(renderStart, Clock::now());
+		}
+		captureScope.end();
+		if (mClosed) throw std::runtime_error("Renderer was closed by a capture callback");
+		const auto readbackStart = Clock::now();
+		result.image = getRenderContext()->readback();
+		const auto readbackEnd = Clock::now();
 		for (auto &pass : mRenderPasses) pass->finalize();
 		clearScene();
-		return image;
+		const auto finalizeEnd = Clock::now();
+		result.timings["setup_ms"] = milliseconds(totalStart, setupEnd);
+		result.timings["warmup_ms"] = milliseconds(setupEnd, warmupEnd);
+		result.timings["readback_ms"] = milliseconds(readbackStart, readbackEnd);
+		result.timings["finalize_ms"] = milliseconds(readbackEnd, finalizeEnd);
+		result.timings["total_ms"] = milliseconds(totalStart, finalizeEnd);
+		return result;
 	} catch (...) {
 		close();
 		throw;

@@ -24,7 +24,9 @@ GPU tests fail if the required device is unavailable. The normal project build s
 the CUDA, OptiX, and Vulkan development dependencies even when only CPU tests will run.
 
 CPU executables do not initialize a GPU or link the renderer. Python metric tests import
-NumPy and the independent `image_metrics.py` module. Run them directly with:
+NumPy and the independent `image_metrics.py` module. Benchmark unit tests cover argument
+validation, timing summaries, process failures, and synthetic profiler reports without a GPU
+or installed profiler. Run the Python tests directly with:
 
 ```powershell
 $env:PYTHONPATH = "$PWD/common/scripts"
@@ -40,6 +42,11 @@ that invalid configs, missing models, and invalid frame counts fail cleanly and 
 subsequent render, config dictionaries are snapshotted, exit requests cannot shorten a batch,
 and configured saves occur only after successful completion. It runs in spectral and RGB builds.
 Only spectral builds register the 128×128 reference regression.
+
+The `benchmark` label selects benchmark unit tests and an optional 32×32 GPU smoke test.
+The latter compares warmed benchmark batches with ordinary rendering, checks timing values,
+repeatability, independent arrays, capture callbacks, and cleanup after callback errors. It
+uses the same timeout and GPU lock as the other smoke tests and requires no profiler tools.
 
 CTest supplies the exact native module directory through `KRR_MODULE_DIR`, avoiding imports
 from another build. It also supplies `KRR_BUILD_DIR` and the source script directory.
@@ -119,7 +126,7 @@ in `cases/<name>/`. Register them in `tests/CMakeLists.txt` with appropriate lab
 Keep rendering thresholds and assertions here. Reusable image calculations belong in
 `common/scripts/image_metrics.py` and must remain independent of native renderer imports.
 
-Future benchmark scripts and their own configs belong in a top-level `benchmarks/` directory,
-with results beneath `<build>/benchmarks/<configuration>/<run>/`. They should import `krr` and
-generic image metrics rather than importing the test runners. No benchmark scaffold is needed
-until those scripts are added.
+Benchmark scripts and their own configs live in the top-level `benchmarks/` directory, with
+results beneath `<build>/benchmarks/<configuration>/<run>/`. See the [benchmark guide](../benchmarks/README.md)
+for timing runs, optional profiler captures, and offline analysis. Benchmarks import `krr`
+and reusable helpers rather than importing test runners.

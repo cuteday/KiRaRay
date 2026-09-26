@@ -40,6 +40,7 @@ OPTION (KRR_RENDER_SPECTRAL
 
 include(CTest)
 option(KRR_ENABLE_GPU_TESTS "Enable local GPU rendering tests" OFF)
+option(KRR_PROFILE_OPTIX "Retain OptiX source information in optimized builds" OFF)
 
 ###############################################################################
 # Build type and C++ compiler setup
@@ -69,8 +70,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_DEBUG_POSTFIX "")
 
+if(MSVC)
+	# Support mutex initialization with older runtimes bundled by Python environments.
+	add_compile_definitions(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+endif()
+
 # the CONFIG inherently comes from CMAKE_BUILD_TYPE
 add_compile_definitions ("$<$<CONFIG:Debug>:KRR_DEBUG_BUILD>")
+add_compile_definitions ("KRR_BUILD_TYPE=\"$<CONFIG>\"")
 
 ###############################################################################
 # CUDA compiler setup

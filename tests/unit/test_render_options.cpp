@@ -23,6 +23,11 @@ int main() {
 		RenderOptions::validateConfig(config);
 		RenderOptions::validate(1, 0);
 		RenderOptions::validate(128, std::numeric_limits<uint64_t>::max());
+		RenderOptions::validateBenchmark(1, 0, 0);
+		RenderOptions::validateBenchmark(1, int64_t(std::numeric_limits<uint32_t>::max()) - 1, 0);
+		rejects([] { RenderOptions::validateBenchmark(0, 8, 0); });
+		rejects([] { RenderOptions::validateBenchmark(1, -1, 0); });
+		rejects([] { RenderOptions::validateBenchmark(std::numeric_limits<uint32_t>::max(), 1, 0); });
 		rejects([] { RenderOptions::validate(0, 0); });
 		rejects([] { RenderOptions::validate(-1, 0); });
 		rejects([] { RenderOptions::validate(int64_t(std::numeric_limits<uint32_t>::max()) + 1, 0); });

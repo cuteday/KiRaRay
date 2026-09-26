@@ -1,0 +1,4 @@
+# Use Python >= 3.10 and rebuild pykrr for that interpreter.
+-r requirements.txt
+# Upstream PR #59 fixes Windows injection and executable discovery; 1.0.0 is broken on Windows.
+nsight-python @ git+https://github.com/NVIDIA/nsight-python.git@e11f4db8f0dea0219c1f367a370a10fd37c851d9

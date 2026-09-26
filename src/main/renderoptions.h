@@ -12,6 +12,12 @@ struct RenderOptions {
 			throw std::invalid_argument("frames must be a positive 32-bit integer");
 	}
 
+	static void validateBenchmark(int64_t frames, int64_t warmup, uint64_t seed) {
+		validate(frames, seed);
+		if (warmup < 0 || warmup > std::numeric_limits<uint32_t>::max() - frames)
+			throw std::invalid_argument("warmup must be nonnegative and warmup + frames must fit in 32 bits");
+	}
+
 	static void validateConfig(const nlohmann::json &config) {
 		if (!config.is_object()) throw std::invalid_argument("config must be an object");
 		if (config.contains("resolution")) {

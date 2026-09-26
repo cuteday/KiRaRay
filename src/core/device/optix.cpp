@@ -37,7 +37,7 @@ OptixModule OptixBackend::createOptixModule(OptixDeviceContext optixContext,
 	// and OPTIX_COMPILE_DEBUG_LEVEL_FULL is recommended.
 	OptixModuleCompileOptions moduleCompileOptions = {};
 	moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
-#ifdef KRR_DEBUG_BUILD
+#if defined(KRR_DEBUG_BUILD) || KRR_PROFILE_OPTIX
 	moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #if (OPTIX_VERSION >= 70400)
 	moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_MODERATE;
@@ -393,18 +393,17 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 		instanceData.visibilityMask	   = 255;
 		instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 		instanceData.traversableHandle = traversablesGAS[instance->getMesh()->getMeshId()];
-		// [TODO] Check WHY we should use cudaMemcpy here (instead of memcpy on CPU)? 
-		// [TODO] invoke 1 cudaMemcpy here.
-		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
-				   cudaMemcpyHostToDevice);
+		std::memcpy(instanceData.transform, transform.data(), sizeof(float) * 12);
 		referencedMeshes.push_back(instance);
 	}
 
 	// build IAS
+	// Keep OptiX build inputs in device memory, separate from host instance records.
+	instanceBufferIAS.alloc_and_copy_from_host(instancesIAS);
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = instancesIAS.size();
-	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
+	iasBuildInput.instanceArray.instances	 = instanceBufferIAS.data();
 	
 	Log(Debug, "Building root IAS: %zd instances", instances.size());
 	traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
@@ -510,8 +509,7 @@ OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node, std::optional<Motion
 				"SBT HG offset start from %d.",
 				child->getName().c_str(), node->getName().c_str(), records, sbtOffset);
 			sbtOffset += records;
-			cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
-					   cudaMemcpyHostToDevice);
+			std::memcpy(instanceData.transform, transform.data(), sizeof(float) * 12);
 		}
 		child.next(false);	// next sibling within this subgraph
 	}
@@ -524,8 +522,7 @@ OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node, std::optional<Motion
 		instanceData.visibilityMask = 255;
 		instanceData.flags			= OPTIX_INSTANCE_FLAG_NONE;
 		instanceData.traversableHandle = traversablesGAS[meshInstance->getMesh()->getMeshId()];
-		cudaMemcpy(instanceData.transform, transform.data(), sizeof(float) * 12,
-							   cudaMemcpyHostToDevice);
+		std::memcpy(instanceData.transform, transform.data(), sizeof(float) * 12);
 		Log(Debug, "The node \"%s\" has a mesh instance %s (#%d)", 
 			node->getName().c_str(), meshInstance->getName().c_str(), referencedMeshes.size());
 		referencedMeshes.push_back(meshInstance);
@@ -535,10 +532,11 @@ OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node, std::optional<Motion
 	Log(Debug, "Building IAS for node \"%s\": %zd instances", 
 		node->getName().c_str(), buildInput->instances.size());
 	if (buildInput->instances.size() == 0) Log(Error, "Empty instance build input!");
+	buildInput->instanceBuffer.alloc_and_copy_from_host(buildInput->instances);
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = buildInput->instances.size();
-	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) buildInput->instances.data();
+	iasBuildInput.instanceArray.instances	 = buildInput->instanceBuffer.data();
 	
 	buildInput->traversable = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 												{iasBuildInput}, buildInput->accelBuffer, false);
@@ -594,24 +592,26 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	instanceData.visibilityMask	   = 255;
 	instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 	instanceData.traversableHandle = traversable;
-	cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
-			   cudaMemcpyHostToDevice, KRR_DEFAULT_STREAM);
+	std::memcpy(instanceData.transform, transform.data(), sizeof(float) * 12);
 	instanceBuildInputs.push_back(rootBuildInput);
 
+	rootBuildInput->instanceBuffer.alloc_and_copy_from_host(rootBuildInput->instances);
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = 1;  /* the one and only root desu */
-	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) rootBuildInput->instances.data();
+	iasBuildInput.instanceArray.instances	 = rootBuildInput->instanceBuffer.data();
 	traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 									   {iasBuildInput}, rootBuildInput->accelBuffer, false);
 }
 
 OptixSceneMultiLevel::InstanceBuildInput::~InstanceBuildInput() { 
+	if (instanceBuffer.data()) cudaFree(reinterpret_cast<void *>(instanceBuffer.data()));
 	if (accelBuffer.data()) cudaFree(reinterpret_cast<void *>(accelBuffer.data()));
 	if (transformBuffer.data()) cudaFree(reinterpret_cast<void *>(transformBuffer.data()));
 }
 
 OptixSceneSingleLevel::~OptixSceneSingleLevel() {
+	if (instanceBufferIAS.data()) cudaFree(reinterpret_cast<void *>(instanceBufferIAS.data()));
 	if (accelBufferIAS.data()) cudaFree(reinterpret_cast<void *>(accelBufferIAS.data()));
 	for (auto &buffer : accelBuffersGAS)
 		if (buffer.data()) cudaFree(reinterpret_cast<void *>(buffer.data()));
@@ -627,7 +627,15 @@ OptixSceneSingleLevel::OptixSceneSingleLevel(Scene::SharedPtr scene,
 	OptixScene (scene, config) {
 	if (config.enableMotionBlur) 
 		Log(Error, "Single-level scene does not support motion blur!");
-	buildAccelStructure();
+	try {
+		buildAccelStructure();
+	} catch (...) {
+		if (instanceBufferIAS.data()) cudaFree(reinterpret_cast<void *>(instanceBufferIAS.data()));
+		if (accelBufferIAS.data()) cudaFree(reinterpret_cast<void *>(accelBufferIAS.data()));
+		for (auto &buffer : accelBuffersGAS)
+			if (buffer.data()) cudaFree(reinterpret_cast<void *>(buffer.data()));
+		throw;
+	}
 }
 
 OptixSceneMultiLevel::OptixSceneMultiLevel(Scene::SharedPtr scene,
@@ -651,17 +659,17 @@ void OptixSceneSingleLevel::updateAccelStructure() {
 		if (instance->isUpdated()) { /* global transformation has been changed */
 			OptixInstance &instanceData = instancesIAS[idx];
 			Affine3f transform			= instance->getNode()->getGlobalTransform();
-			cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
-							cudaMemcpyHostToDevice, KRR_DEFAULT_STREAM);
+			std::memcpy(instanceData.transform, transform.data(), sizeof(float) * 12);
 			needsRebuild = true;
 		}
 	}
 
 	if (!needsRebuild) return;
+	instanceBufferIAS.alloc_and_copy_from_host(instancesIAS);
 	OptixBuildInput iasBuildInput			 = {};
 	iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 	iasBuildInput.instanceArray.numInstances = instancesIAS.size();
-	iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instancesIAS.data();
+	iasBuildInput.instanceArray.instances	 = instanceBufferIAS.data();
 	Log(Debug, "Updating single-level root IAS with %zd instances", instancesIAS.size());
 
 	traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
@@ -679,16 +687,16 @@ void OptixSceneMultiLevel::updateAccelStructure() {
 				instance->updateLocalTransform();
 				OptixInstance &instanceData = instanceInput->instances[idx];
 				Affine3f transform			= instance->getLocalTransform();
-				cudaMemcpyAsync(instanceData.transform, transform.data(), sizeof(float) * 12,
-								cudaMemcpyHostToDevice, KRR_DEFAULT_STREAM);
+				std::memcpy(instanceData.transform, transform.data(), sizeof(float) * 12);
 				needsRebuild = true;
 			}
 		}
 		if (!needsRebuild) continue;
+		instanceInput->instanceBuffer.alloc_and_copy_from_host(instanceInput->instances);
 		OptixBuildInput iasBuildInput			 = {};
 		iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 		iasBuildInput.instanceArray.numInstances = instanceInput->instances.size();
-		iasBuildInput.instanceArray.instances	 = (CUdeviceptr) instanceInput->instances.data();
+		iasBuildInput.instanceArray.instances	 = instanceInput->instanceBuffer.data();
 		traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 										   {iasBuildInput}, instanceInput->accelBuffer, false, true);
 	}
