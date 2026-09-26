@@ -13,12 +13,16 @@ set_tests_properties(krr_sampler krr_render_options PROPERTIES LABELS "cpu;unit"
 if(Python_FOUND)
 	add_test(NAME krr_image_metrics
 		COMMAND ${Python_EXECUTABLE} -m unittest discover
-		-s ${CMAKE_CURRENT_SOURCE_DIR}/unit -p test_*.py -v)
-	set_tests_properties(krr_image_metrics PROPERTIES
+		-s ${CMAKE_CURRENT_SOURCE_DIR}/unit -p test_image_metrics.py -v)
+	add_test(NAME krr_benchmarks
+		COMMAND ${Python_EXECUTABLE} -m unittest discover
+		-s ${CMAKE_CURRENT_SOURCE_DIR}/unit -p test_benchmarks.py -v)
+	set_tests_properties(krr_image_metrics krr_benchmarks PROPERTIES
 		LABELS "cpu;unit" TIMEOUT 30
 		ENVIRONMENT "PYTHONPATH=${KRR_RENDER_ROOT}/common/scripts")
+	set_tests_properties(krr_benchmarks PROPERTIES LABELS "cpu;unit;benchmark")
 else()
-	message(WARNING "Python was not found; Python image metric tests are unavailable")
+	message(WARNING "Python was not found; Python unit tests are unavailable")
 endif()
 
 if(KRR_ENABLE_GPU_TESTS)
@@ -46,6 +50,11 @@ if(KRR_ENABLE_GPU_TESTS)
 		${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/render/smoke.py
 		--config ${KRR_TEST_CASE}/config.json
 		--artifacts ${KRR_TEST_ARTIFACTS}/cornell_wavefront_smoke)
+	krr_gpu_test(krr_benchmark_smoke cornell_wavefront_benchmark
+		${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/render/benchmark_smoke.py
+		--config ${KRR_TEST_CASE}/config.json
+		--artifacts ${KRR_TEST_ARTIFACTS}/cornell_wavefront_benchmark)
+	set_tests_properties(krr_benchmark_smoke PROPERTIES LABELS "gpu;smoke;benchmark")
 	if(KRR_RENDER_SPECTRAL)
 		krr_gpu_test(krr_render_regression cornell_wavefront_regression
 			${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/render/regression.py

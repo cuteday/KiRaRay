@@ -75,7 +75,8 @@ protected:
 	void updateAccelStructure() override; // update single-level accel structure
 private:
 	std::vector<std::weak_ptr<MeshInstance>> referencedMeshes;
-	gpu::vector<OptixInstance> instancesIAS;
+	std::vector<OptixInstance> instancesIAS;
+	CUDABuffer instanceBufferIAS{};
 	CUDABuffer accelBufferIAS{};
 
 	std::vector<OptixTraversableHandle> traversablesGAS;
@@ -95,7 +96,8 @@ public:
 		~InstanceBuildInput();
 
 		CUDABuffer accelBuffer;
-		gpu::vector<OptixInstance> instances;
+		CUDABuffer instanceBuffer;
+		std::vector<OptixInstance> instances;
 		OptixTraversableHandle traversable;
 
 		/* [optional] used if this node has a motion transform, and motion blur is enabled. */

@@ -41,18 +41,40 @@ void run(const json& config) {
 	app.run();
 }
 
-py::array_t<float> renderImage(HeadlessRenderer &renderer, int64_t frames, uint64_t seed) {
-	auto pixels = renderer.render(frames, seed);
-	const auto size = renderer.getFrameSize();
+py::array_t<float> imageArray(const std::vector<float> &pixels, const Vector2i &size) {
 	py::array_t<float> image({size[1], size[0], 3});
 	std::memcpy(image.mutable_data(), pixels.data(), pixels.size() * sizeof(float));
 	return image;
 }
 
+py::array_t<float> renderImage(HeadlessRenderer &renderer, int64_t frames, uint64_t seed) {
+	auto pixels = renderer.render(frames, seed);
+	return imageArray(pixels, renderer.getFrameSize());
+}
+
+py::dict benchmark(HeadlessRenderer &renderer, int64_t frames, int64_t warmup, uint64_t seed,
+	bool capture, py::object onCaptureBegin, py::object onCaptureEnd) {
+	for (const auto *callback : {&onCaptureBegin, &onCaptureEnd})
+		if (!callback->is_none() && !PyCallable_Check(callback->ptr())) {
+			renderer.close();
+			throw std::invalid_argument("capture callbacks must be callable or None");
+		}
+	auto batch = renderer.benchmark(frames, warmup, seed, capture,
+		[&] { if (!onCaptureBegin.is_none()) onCaptureBegin(); },
+		[&] { if (!onCaptureEnd.is_none()) onCaptureEnd(); });
+	py::dict result;
+	result["image"] = imageArray(batch.image, renderer.getFrameSize());
+	result["timings"] = py::cast(batch.timings);
+	result["frames"] = frames;
+	result["warmup_frames"] = warmup;
+	return result;
+}
+
 json getBuildInfo() {
 	json info = {{"spectral", bool(KRR_RENDER_SPECTRAL)}, {"cuda_version", CUDART_VERSION},
 		{"optix_version", OPTIX_VERSION}, {"build_type", KRR_BUILD_TYPE},
-		{"project_root", KRR_PROJECT_DIR}};
+		{"project_root", KRR_PROJECT_DIR}, {"optix_profiling", bool(KRR_PROFILE_OPTIX)},
+		{"debug_build", KRR_DEBUG_SELECT(true, false)}};
 #ifdef _MSC_FULL_VER
 	info["msvc_version"] = _MSC_FULL_VER;
 #endif
@@ -163,10 +185,13 @@ PYBIND11_MODULE(pykrr, m) {
 	}));
 
 	py::class_<HeadlessRenderer>(m, "HeadlessRenderer")
-		.def(py::init([](const json &config, const string &assetRoot) {
-			return std::make_unique<HeadlessRenderer>(config, fs::path(assetRoot));
-		}), "config"_a, "asset_root"_a = "")
+		.def(py::init([](const json &config, const string &assetRoot, bool validation) {
+			return std::make_unique<HeadlessRenderer>(config, fs::path(assetRoot), validation);
+		}), "config"_a, "asset_root"_a = "", "validation"_a = true)
 		.def("render", &renderImage, "frames"_a, "seed"_a = 0)
+		.def("benchmark", &benchmark, py::kw_only(), "frames"_a, "warmup"_a = 8,
+			"seed"_a = 0, "capture"_a = false, "on_capture_begin"_a = py::none(),
+			"on_capture_end"_a = py::none())
 		.def("close", &HeadlessRenderer::close)
 		.def_property_readonly("closed", &HeadlessRenderer::isClosed)
 		.def("__enter__", [](HeadlessRenderer &renderer) -> HeadlessRenderer & {

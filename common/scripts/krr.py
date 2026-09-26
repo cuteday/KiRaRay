@@ -74,9 +74,11 @@ def _config(value):
 class HeadlessRenderer:
     """Render independent batches through the configured passes, without a window."""
 
-    def __init__(self, config, *, asset_root=None):
+    def __init__(self, config, *, asset_root=None, validation=True):
+        if not isinstance(validation, bool):
+            raise ValueError("validation must be a boolean")
         self._renderer = pykrr.HeadlessRenderer(
-            _config(config), "" if asset_root is None else os.fspath(asset_root))
+            _config(config), "" if asset_root is None else os.fspath(asset_root), validation)
 
     def render(self, *, frames, seed=0):
         """Return the final pipeline's RGB float32 image, with top-to-bottom rows."""
@@ -86,6 +88,33 @@ class HeadlessRenderer:
             if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed < 2**64:
                 raise ValueError("seed must be an unsigned 64-bit integer")
             return self._renderer.render(frames, seed)
+        except Exception:
+            self.close()
+            raise
+
+    def benchmark(self, *, frames, warmup=8, seed=0, capture=False,
+                  on_capture_begin=None, on_capture_end=None):
+        """Time a fresh batch; warm-up samples remain in the returned image.
+
+        render_ms covers the synchronized measured frame range, including CPU
+        submissions and interop. Capture hooks run outside that timing range.
+        """
+        try:
+            if isinstance(frames, bool) or not isinstance(frames, int) or not 0 < frames < 2**32:
+                raise ValueError("frames must be a positive 32-bit integer")
+            if (isinstance(warmup, bool) or not isinstance(warmup, int) or
+                    warmup < 0 or warmup + frames >= 2**32):
+                raise ValueError("warmup must be nonnegative and warmup + frames must fit in 32 bits")
+            if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed < 2**64:
+                raise ValueError("seed must be an unsigned 64-bit integer")
+            if not isinstance(capture, bool):
+                raise ValueError("capture must be a boolean")
+            if any(callback is not None and not callable(callback)
+                   for callback in (on_capture_begin, on_capture_end)):
+                raise ValueError("capture callbacks must be callable or None")
+            return self._renderer.benchmark(
+                frames=frames, warmup=warmup, seed=seed, capture=capture,
+                on_capture_begin=on_capture_begin, on_capture_end=on_capture_end)
         except Exception:
             self.close()
             raise
