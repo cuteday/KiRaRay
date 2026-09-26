@@ -1,5 +1,5 @@
 #include "light.h"
-#include "window.h"
+#include "scenegraph.h"
 
 #include <cmath>
 

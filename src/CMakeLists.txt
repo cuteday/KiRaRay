@@ -36,7 +36,7 @@ SET(KRR_SECONDARY_LIBS_ALL
 ADD_LIBRARY ( krr_lib STATIC
 	${KRR_CORE_SOURCE}
 	${KRR_SOURCE}
-	${KRR_SOURCE_VULKAN}
+	${KRR_GRAPHICS_SOURCE}
 	# SOA (for dependency need, generate soa file before building libraray)
 	${KRR_SOA_GENERATED}
 	# PTX

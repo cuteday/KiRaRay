@@ -67,6 +67,8 @@ py::dict benchmark(HeadlessRenderer &renderer, int64_t frames, int64_t warmup, u
 	result["timings"] = py::cast(batch.timings);
 	result["frames"] = frames;
 	result["warmup_frames"] = warmup;
+	result["graphics_api"] = renderer.getDeviceParams().graphicsApi == nvrhi::GraphicsAPI::D3D12
+		? "d3d12" : "vulkan";
 	return result;
 }
 
@@ -75,6 +77,10 @@ json getBuildInfo() {
 		{"optix_version", OPTIX_VERSION}, {"build_type", KRR_BUILD_TYPE},
 		{"project_root", KRR_PROJECT_DIR}, {"optix_profiling", bool(KRR_PROFILE_OPTIX)},
 		{"debug_build", KRR_DEBUG_SELECT(true, false)}};
+	info["graphics_apis"] = json::array({"vulkan"});
+#ifdef KRR_ENABLE_D3D12
+	info["graphics_apis"].push_back("d3d12");
+#endif
 #ifdef _MSC_FULL_VER
 	info["msvc_version"] = _MSC_FULL_VER;
 #endif

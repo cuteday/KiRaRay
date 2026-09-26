@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path, required=True)
+    parser.add_argument("--graphics-api", choices=("vulkan", "d3d12"), default="vulkan")
     args = parser.parse_args()
     args.artifacts.mkdir(parents=True, exist_ok=True)
     config = load_config(args.case / "config.json")
@@ -22,6 +23,7 @@ def main():
         raise RuntimeError("This reference requires a spectral build")
     if config_hash(config) != baseline["config_sha256"]:
         raise RuntimeError("Test config differs from the reference; review and regenerate it explicitly")
+    config["graphics_api"] = args.graphics_api
     reference = np.load(args.case / "reference_spectral.npy", allow_pickle=False)
     validate_image(reference, config["resolution"])
     write_json(args.artifacts / "config.json", config)

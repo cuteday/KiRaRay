@@ -1,4 +1,5 @@
 #include <optix_types.h>
+#include "graphics/ui.h"
 
 #include "device/cuda.h"
 #include "pathtracer.h"

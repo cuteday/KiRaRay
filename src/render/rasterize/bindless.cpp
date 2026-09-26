@@ -1,6 +1,8 @@
 #include "bindless.h"
-#include "window.h"
-#include "vulkan/scene.h"
+#include <nvrhi/utils.h>
+#include "graphics/ui.h"
+#include "graphics/device.h"
+#include "graphics/scene.h"
 #include "render/profiler/profiler.h"
 
 NAMESPACE_BEGIN(krr)
@@ -11,23 +13,23 @@ protected:
 	uint mSampleCount{};
 
 public:
-	vkrhi::TextureHandle depth;
-	vkrhi::TextureHandle diffuse;
-	vkrhi::TextureHandle specular;
-	vkrhi::TextureHandle normals;
-	vkrhi::TextureHandle emissive;
+	nvrhi::TextureHandle depth;
+	nvrhi::TextureHandle diffuse;
+	nvrhi::TextureHandle specular;
+	nvrhi::TextureHandle normals;
+	nvrhi::TextureHandle emissive;
 
 	virtual bool isUpdateNeeded(Vector2i size, uint sampleCount) {
 		return mSize != size || mSampleCount != sampleCount;
 	}
 
-	virtual void initialize(vkrhi::vulkan::IDevice* device,
+	virtual void initialize(nvrhi::IDevice* device,
 		Vector2i size,
 		uint sampleCount) {
-		vkrhi::TextureDesc desc;
+		nvrhi::TextureDesc desc;
 		desc.width			  = size[0];
 		desc.height			  = size[1];
-		desc.initialState	  = vkrhi::ResourceStates::DepthWrite;
+		desc.initialState	  = nvrhi::ResourceStates::DepthWrite;
 		desc.keepInitialState = true;
 		desc.isRenderTarget	  = true;
 		desc.useClearValue	  = true;
@@ -35,80 +37,80 @@ public:
 		desc.isUAV			  = false;
 		desc.sampleCount	  = sampleCount;
 		desc.mipLevels		  = 1;
-		desc.format			  = vkrhi::Format::D24S8;
-		desc.clearValue		  = vkrhi::Color(1.f);
+		desc.format			  = nvrhi::Format::D24S8;
+		desc.clearValue		  = nvrhi::Color(1.f, 0.f, 0.f, 0.f);
 		desc.debugName		  = "DepthBuffer";
-		desc.dimension = sampleCount > 1 ? vkrhi::TextureDimension::Texture2DMS
-										 : vkrhi::TextureDimension::Texture2D;
+		desc.dimension = sampleCount > 1 ? nvrhi::TextureDimension::Texture2DMS
+										 : nvrhi::TextureDimension::Texture2D;
 		depth				= device->createTexture(desc);
 	
 		mSize = size;
 		mSampleCount = sampleCount;
 	}
 
-	virtual void clear(vkrhi::ICommandList* commandList) {
-		const vkrhi::FormatInfo depthFormatInfo = vkrhi::getFormatInfo(depth->getDesc().format);
-		commandList->clearDepthStencilTexture(depth, vkrhi::AllSubresources, 
+	virtual void clear(nvrhi::ICommandList* commandList) {
+		const nvrhi::FormatInfo depthFormatInfo = nvrhi::getFormatInfo(depth->getDesc().format);
+		commandList->clearDepthStencilTexture(depth, nvrhi::AllSubresources,
 			true, 1.f, depthFormatInfo.hasStencil, 0);
 	}
 };
 
 class RenderTargets : public GBufferRenderTargets {
 public:
-	vkrhi::TextureHandle color;		// potentially a MSAA texture
+	nvrhi::TextureHandle color;		// potentially a MSAA texture
 
-	virtual void initialize(vkrhi::vulkan::IDevice *device, Vector2i size,
+	virtual void initialize(nvrhi::IDevice *device, Vector2i size,
 							uint sampleCount) override {
 		GBufferRenderTargets::initialize(device, size, sampleCount);
 
-		vkrhi::TextureDesc desc;
+		nvrhi::TextureDesc desc;
 		desc.width			  = size[0];
 		desc.height			  = size[1];
-		desc.initialState	  = vkrhi::ResourceStates::RenderTarget;
+		desc.initialState	  = nvrhi::ResourceStates::RenderTarget;
 		desc.keepInitialState = true;
 		desc.isRenderTarget	  = true;
 		desc.useClearValue	  = true;
 		desc.sampleCount	  = sampleCount;
 		desc.mipLevels		  = 1;
-		desc.format			  = vkrhi::Format::RGBA32_FLOAT;
-		desc.clearValue		  = vkrhi::Color(0.f);
+		desc.format			  = nvrhi::Format::RGBA32_FLOAT;
+		desc.clearValue		  = nvrhi::Color(0.f);
 		desc.debugName		  = "ColorBuffer";
-		desc.dimension = sampleCount > 1 ? vkrhi::TextureDimension::Texture2DMS
-										 : vkrhi::TextureDimension::Texture2D;
+		desc.dimension = sampleCount > 1 ? nvrhi::TextureDimension::Texture2DMS
+										 : nvrhi::TextureDimension::Texture2D;
 		color		   = device->createTexture(desc);
 	}
 
-	virtual void clear(vkrhi::ICommandList *commandList) {
+	virtual void clear(nvrhi::ICommandList *commandList) {
 		GBufferRenderTargets::clear(commandList);
-		commandList->clearTextureFloat(color, vkrhi::AllSubresources,
-											  vkrhi::Color(0.f));
+		commandList->clearTextureFloat(color, nvrhi::AllSubresources,
+											  nvrhi::Color(0.f));
 	}
 };
 
 void BindlessRender::initialize() {
-	mShaderLoader = std::make_shared<ShaderLoader>(getVulkanDevice());
-	mBindingCache = std::make_shared<BindingCache>(getVulkanDevice());
-	mHelperPass	  = std::make_shared<CommonRenderPasses>(getVulkanDevice(), mShaderLoader);
+	mShaderLoader = std::make_shared<ShaderLoader>(getDevice());
+	mBindingCache = std::make_shared<BindingCache>(getDevice());
+	mHelperPass	  = std::make_shared<CommonRenderPasses>(getDevice(), mShaderLoader);
 	mRenderTargets = std::make_unique<RenderTargets>();
 	
 	mVertexShader = mShaderLoader->createShader(
 		"src/render/rasterize/shaders/bindless.hlsl", "vs_main", nullptr,
-		vkrhi::ShaderType::Vertex);
+		nvrhi::ShaderType::Vertex);
 	mPixelShader = mShaderLoader->createShader(
 		"src/render/rasterize/shaders/bindless.hlsl", "ps_main", nullptr,
-		vkrhi::ShaderType::Pixel);
+		nvrhi::ShaderType::Pixel);
 
-	vkrhi::BindlessLayoutDesc bindlessLayoutDesc;
-	bindlessLayoutDesc.visibility	  = vkrhi::ShaderType::All;
+	nvrhi::BindlessLayoutDesc bindlessLayoutDesc;
+	bindlessLayoutDesc.visibility	  = nvrhi::ShaderType::All;
 	bindlessLayoutDesc.firstSlot	  = 0;
 	bindlessLayoutDesc.maxCapacity	  = 1024;
 	bindlessLayoutDesc.registerSpaces = {
 		nvrhi::BindingLayoutItem::RawBuffer_SRV(1),
 		nvrhi::BindingLayoutItem::Texture_SRV(2)};
-	mBindlessLayout = getVulkanDevice()->createBindlessLayout(bindlessLayoutDesc);
+	mBindlessLayout = getDevice()->createBindlessLayout(bindlessLayoutDesc);
 	mDescriptorTableManager = std::make_shared<DescriptorTableManager>(
-		getVulkanDevice(), mBindlessLayout);
-	/* Initialize scene data on vulkan device. */
+		getDevice(), mBindlessLayout);
+	/* Initialize graphics scene data. */
 	if (mScene->getLights().size() == 0) {
 		Log(Warning, "The scene does not contain any light, adding a default sun light.");
 		auto graph	  = mScene->getSceneGraph();
@@ -117,49 +119,49 @@ void BindlessRender::initialize() {
 		sunLight->setDirection({0.5f, -0.8f, 0.5f});
 		sunLight->setName("Sunlight");
 	}
-	// TODO: It seems possible to share the device buffer between vulkan and cuda/optix.
-	mScene->initializeSceneVK(getVulkanDevice(), mDescriptorTableManager);
-	std::shared_ptr<VKScene> scene = mScene->mSceneVK;
+	// TODO: It seems possible to share the device buffer between graphics and CUDA/OptiX.
+	mScene->initializeGraphicsScene(getDevice(), mDescriptorTableManager);
+	std::shared_ptr<GraphicsScene> scene = mScene->mGraphicsScene;
 
-	mCommandList = getVulkanDevice()->createCommandList();
+	mCommandList = getDevice()->createCommandList();
 	
 	/* Create constant buffers */
-	vkrhi::BufferDesc constantsBufferDesc;
+	nvrhi::BufferDesc constantsBufferDesc;
 	constantsBufferDesc.byteSize		 = sizeof(ViewConstants);
 	constantsBufferDesc.debugName		 = "ViewConstants";
 	constantsBufferDesc.isConstantBuffer = true;
 	constantsBufferDesc.isVolatile		 = true;
 	constantsBufferDesc.maxVersions		 = 16U;
-	mViewConstants						 = getVulkanDevice()->createBuffer(constantsBufferDesc);
+	mViewConstants						 = getDevice()->createBuffer(constantsBufferDesc);
 
 	constantsBufferDesc.byteSize  = sizeof(LightConstants);
 	constantsBufferDesc.debugName = "LightData";
-	mLightConstants				  = getVulkanDevice()->createBuffer(constantsBufferDesc);
+	mLightConstants				  = getDevice()->createBuffer(constantsBufferDesc);
 
 	/* Create binding set */
-	vkrhi::BindingSetDesc bindingSetDesc;
+	nvrhi::BindingSetDesc bindingSetDesc;
 	bindingSetDesc.bindings = {
-		vkrhi::BindingSetItem::ConstantBuffer(0, mViewConstants),
-		vkrhi::BindingSetItem::ConstantBuffer(1, mLightConstants),
-		vkrhi::BindingSetItem::PushConstants(2, sizeof(uint)),
+		nvrhi::BindingSetItem::ConstantBuffer(0, mViewConstants),
+		nvrhi::BindingSetItem::ConstantBuffer(1, mLightConstants),
+		nvrhi::BindingSetItem::PushConstants(2, sizeof(uint)),
 		/* Mesh data constants (for indexing bindless buffers) */
-		vkrhi::BindingSetItem::StructuredBuffer_SRV(0, scene->getGeometryBuffer()),
+		nvrhi::BindingSetItem::StructuredBuffer_SRV(0, scene->getGeometryBuffer()),
 		/* Instance data constants (for transforming&indexing mesh) */
-		vkrhi::BindingSetItem::StructuredBuffer_SRV(1, scene->getInstanceBuffer()),
+		nvrhi::BindingSetItem::StructuredBuffer_SRV(1, scene->getInstanceBuffer()),
 		/* Material data constants (for indexing bindless buffers) */
-		vkrhi::BindingSetItem::StructuredBuffer_SRV(2, scene->getMaterialBuffer()),
+		nvrhi::BindingSetItem::StructuredBuffer_SRV(2, scene->getMaterialBuffer()),
 		/* Light data constants */
-		vkrhi::BindingSetItem::StructuredBuffer_SRV(3, scene->getLightBuffer()),
-		vkrhi::BindingSetItem::Sampler(0, mHelperPass->m_AnisotropicWrapSampler)
+		nvrhi::BindingSetItem::StructuredBuffer_SRV(3, scene->getLightBuffer()),
+		nvrhi::BindingSetItem::Sampler(0, mHelperPass->m_AnisotropicWrapSampler)
 	};
-	vkrhi::utils::CreateBindingSetAndLayout(
-		getVulkanDevice(), vkrhi::ShaderType::All, 0, bindingSetDesc,
+	nvrhi::utils::CreateBindingSetAndLayout(
+		getDevice(), nvrhi::ShaderType::All, 0, bindingSetDesc,
 		mBindingLayout, mBindingSet);
 }
 
 void BindlessRender::render(RenderContext *context) {
 	PROFILE("Bindless Rendering");
-	vkrhi::IFramebuffer *framebuffer = context->getFramebuffer();
+	nvrhi::IFramebuffer *framebuffer = context->getFramebuffer();
 	const auto &fbInfo				 = framebuffer->getFramebufferInfo();
 	int sampleCount = 1;
 	switch (mMSAA) {
@@ -171,29 +173,29 @@ void BindlessRender::render(RenderContext *context) {
 	if (!mRenderTargets ||
 		mRenderTargets->isUpdateNeeded(Vector2i{fbInfo.width, fbInfo.height},
 									   sampleCount)) {
-		mRenderTargets->initialize(getVulkanDevice(),
+		mRenderTargets->initialize(getDevice(),
 			Vector2i{fbInfo.width, fbInfo.height}, sampleCount);
 		mGraphicsPipeline = nullptr;
 	}
 
 	if (!mGraphicsPipeline) {
 		/* Either first frame, or the backbuffer resized, or... */
-		vkrhi::FramebufferDesc framebufferDesc;
-		framebufferDesc.addColorAttachment(mRenderTargets->color, vkrhi::AllSubresources);
+		nvrhi::FramebufferDesc framebufferDesc;
+		framebufferDesc.addColorAttachment(mRenderTargets->color, nvrhi::AllSubresources);
 		framebufferDesc.setDepthAttachment(mRenderTargets->depth);
-		mFramebuffer = getVulkanDevice()->createFramebuffer(framebufferDesc);
+		mFramebuffer = getDevice()->createFramebuffer(framebufferDesc);
 
-		vkrhi::GraphicsPipelineDesc pipelineDesc;
+		nvrhi::GraphicsPipelineDesc pipelineDesc;
 		pipelineDesc.VS				= mVertexShader;
 		pipelineDesc.PS				= mPixelShader;
-		pipelineDesc.primType		= vkrhi::PrimitiveType::TriangleList;
+		pipelineDesc.primType		= nvrhi::PrimitiveType::TriangleList;
 		pipelineDesc.bindingLayouts = {mBindingLayout, mBindlessLayout};
 		pipelineDesc.renderState.rasterState.frontCounterClockwise = true;
-		pipelineDesc.renderState.rasterState.cullMode = vkrhi::RasterCullMode::None;
+		pipelineDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
 		pipelineDesc.renderState.depthStencilState.depthTestEnable = true;
 		pipelineDesc.renderState.depthStencilState.depthFunc =
-			vkrhi::ComparisonFunc::LessOrEqual;
-		mGraphicsPipeline = getVulkanDevice()->createGraphicsPipeline(pipelineDesc, mFramebuffer);
+			nvrhi::ComparisonFunc::LessOrEqual;
+		mGraphicsPipeline = getDevice()->createGraphicsPipeline(pipelineDesc, mFramebuffer);
 	}
 	mCommandList->open();
 	mRenderTargets->clear(mCommandList);
@@ -215,13 +217,13 @@ void BindlessRender::render(RenderContext *context) {
 	mCommandList->writeBuffer(mLightConstants, &lightConstants, sizeof(lightConstants));
 
 	/* Draw geometries. */
-	vkrhi::GraphicsState state;
+	nvrhi::GraphicsState state;
 	state.pipeline	  = mGraphicsPipeline;
 	state.framebuffer = mFramebuffer;
 	state.bindings	  = {mBindingSet,
 						 mDescriptorTableManager->GetDescriptorTable()};
 	state.viewport.addViewportAndScissorRect(
-		vkrhi::Viewport(0, fbInfo.width, 0, fbInfo.height, 0.f, 1.f));
+		nvrhi::Viewport(0, fbInfo.width, 0, fbInfo.height, 0.f, 1.f));
 	mCommandList->setGraphicsState(state);
 
 	for (int instanceId = 0; instanceId < mScene->getMeshInstances().size(); instanceId++) {
@@ -229,7 +231,7 @@ void BindlessRender::render(RenderContext *context) {
 		auto instance = mScene->getMeshInstances()[instanceId];
 		auto mesh	  = instance->getMesh();
 
-		vkrhi::DrawArguments args;
+		nvrhi::DrawArguments args;
 		args.instanceCount = 1;
 		args.vertexCount   = mesh->indices.size() * 3;
 		mCommandList->draw(args);
@@ -239,11 +241,11 @@ void BindlessRender::render(RenderContext *context) {
 	// We may not draw to the backbuffer directly due to unknown format and depth buffer.
 	auto& resolvedColor = framebuffer->getDesc().colorAttachments[0].texture;
 	if (sampleCount > 1)
-		mCommandList->resolveTexture(resolvedColor, vkrhi::TextureSubresourceSet(0, 1, 0, 1),
-			mRenderTargets->color, vkrhi::TextureSubresourceSet(0, 1, 0, 1));
+		mCommandList->resolveTexture(resolvedColor, nvrhi::TextureSubresourceSet(0, 1, 0, 1),
+			mRenderTargets->color, nvrhi::TextureSubresourceSet(0, 1, 0, 1));
 	else mHelperPass->BlitTexture(mCommandList, framebuffer, mRenderTargets->color, mBindingCache.get());
 	mCommandList->close();
-	getVulkanDevice()->executeCommandList(mCommandList);
+	getDevice()->executeCommandList(mCommandList);
 }
 
 void BindlessRender::renderUI() {

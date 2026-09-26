@@ -1,4 +1,5 @@
 #include "denoise.h"
+#include "graphics/ui.h"
 #include <utility>
 #include "util/check.h"
 #include "render/profiler/profiler.h"

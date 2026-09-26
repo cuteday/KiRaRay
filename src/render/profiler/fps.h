@@ -1,9 +1,10 @@
 #pragma once
+#include "graphics/ui.h"
 #include <vector>
 
 #include "common.h"
 #include "logger.h"
-#include "window.h"
+#include "graphics/device.h"
 
 #include "device/timer.h"
 #include "util/ema.h"

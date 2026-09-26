@@ -1,4 +1,7 @@
 #include "common.h"
+#include "graphics/ui.h"
+#include "graphics/binding.h"
+#include "graphics/helperpass.h"
 #undef NVTX_DISABLE
 #include <nvtx3/nvToolsExt.h>
 #include "renderer.h"
@@ -96,6 +99,10 @@ void Renderer::closeActive() noexcept {
 
 void Renderer::validateConfig(const json &config) {
 	RenderOptions::validateConfig(config);
+#ifndef KRR_ENABLE_D3D12
+	if (config.value("graphics_api", string("vulkan")) == "d3d12")
+		throw std::invalid_argument("This build does not include the D3D12 backend");
+#endif
 	for (const auto &pass : config.at("passes")) {
 		const string name = pass.at("name");
 		if (!RenderPassFactory::isRegistered(name))
@@ -106,6 +113,7 @@ void Renderer::validateConfig(const json &config) {
 void Renderer::clearScene() {
 	std::exception_ptr error;
 	try {
+		if (mRenderContext) mRenderContext->endCuda();
 		if (gpContext) CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
 		if (mNvrhiDevice) mNvrhiDevice->waitForIdle();
 	} catch (...) {
@@ -153,10 +161,11 @@ void Renderer::renderPasses(bool annotate) {
 	for (auto &pass : mRenderPasses) {
 		if (!pass->enabled()) continue;
 		NvtxRange range(annotate, annotate ? pass->getName().c_str() : "");
-		if (pass->isCudaPass()) getRenderContext()->sychronizeCuda();
+		if (pass->isCudaPass()) getRenderContext()->beginCuda();
+		else getRenderContext()->endCuda();
 		pass->render(getRenderContext());
-		if (pass->isCudaPass()) getRenderContext()->sychronizeVulkan();
 	}
+	getRenderContext()->endCuda();
 	for (auto &pass : mRenderPasses) pass->endFrame(getRenderContext());
 }
 
@@ -332,7 +341,7 @@ void RenderApp::tick(double elapsedTime) {
 void RenderApp::render() {
 	if (sSaveFrames && getFrameIndex() % sSaveFrameInterval == 0)
 		sRequestScreenshot = true;
-	DeviceManager::beginFrame();
+	if (!DeviceManager::beginFrame()) return;
 	
 	mpUIRenderer->beginFrame(getRenderContext());
 	renderPasses();
@@ -346,12 +355,11 @@ void RenderApp::render() {
 	renderUI();
 	mpUIRenderer->render(getRenderContext());
 	mpUIRenderer->endFrame(getRenderContext());
-	mNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, mPresentSemaphore, 0);
 	// Blit render buffer, from the render texture (usually HDR) to swapchain texture.
 	mCommandList->open();
 	mHelperPass->BlitTexture(
 		mCommandList, mSwapChainFramebuffers[getCurrentBackBufferIndex()],
-							 getRenderContext()->getColorTexture()->getVulkanTexture(),
+							 getRenderContext()->getColorTexture()->getTexture(),
 							 mBindingCache.get());
 	mCommandList->close();
 	mNvrhiDevice->executeCommandList(mCommandList,
@@ -391,6 +399,7 @@ void RenderApp::renderUI() {
 			if (ui::MenuItem("Screen shot")) sRequestScreenshot = true;
 			ui::EndMenu();
 		}
+		ui::Text("API: %s", getGraphicsAPI() == nvrhi::GraphicsAPI::D3D12 ? "D3D12" : "Vulkan");
 		if (showCursorPos)
 			ui::BeginMenu(formatString("[%d, %d]", sCursorPos[0], sCursorPos[1]).c_str(), false);
 		if (showFps) 
@@ -442,29 +451,37 @@ void RenderApp::renderUI() {
 
 void RenderApp::captureFrame(bool hdr, fs::path filename) {
 	string extension = hdr ? ".exr" : ".png";
+	getRenderContext()->endCuda();
 
-	vkrhi::TextureHandle renderTexture = getRenderContext()->getColorTexture()->getVulkanTexture();
-	vkrhi::TextureDesc textureDesc	   = renderTexture->getDesc();
-	textureDesc.format				   = vkrhi::Format::RGBA32_FLOAT;
+	nvrhi::TextureHandle renderTexture = getRenderContext()->getColorTexture()->getTexture();
+	nvrhi::TextureDesc textureDesc	   = renderTexture->getDesc();
+	textureDesc.format				   = nvrhi::Format::RGBA32_FLOAT;
 	textureDesc.initialState		   = nvrhi::ResourceStates::RenderTarget;
 	textureDesc.isRenderTarget		   = true;
 	textureDesc.keepInitialState	   = true;
+	textureDesc.sharedResourceFlags = nvrhi::SharedResourceFlags::None;
 	auto stagingTexture				   = getDevice()->createStagingTexture(
-		   textureDesc, vkrhi::CpuAccessMode::Read);
+		   textureDesc, nvrhi::CpuAccessMode::Read);
+	if (!stagingTexture) throw std::runtime_error("Could not create screenshot storage");
 	auto commandList = getDevice()->createCommandList();
 	commandList->open();
-	commandList->copyTexture(stagingTexture, vkrhi::TextureSlice(),
-							 renderTexture, vkrhi::TextureSlice());
+	commandList->copyTexture(stagingTexture, nvrhi::TextureSlice(),
+							 renderTexture, nvrhi::TextureSlice());
 	commandList->close();
 	getDevice()->executeCommandList(commandList);
+	getDevice()->waitForIdle();
 	
+	Image screenshot(getFrameSize(), Image::Format::RGBAfloat);
 	size_t pitch;
 	auto *data =
-		getDevice()->mapStagingTexture(stagingTexture, vkrhi::TextureSlice(),
-									   vkrhi::CpuAccessMode::Read, &pitch);
+		getDevice()->mapStagingTexture(stagingTexture, nvrhi::TextureSlice(),
+									   nvrhi::CpuAccessMode::Read, &pitch);
 
-	Image screenshot(getFrameSize(), Image::Format::RGBAfloat);
-	memcpy(screenshot.data(), data, screenshot.getSizeInBytes());
+	if (!data) throw std::runtime_error("Could not map screenshot storage");
+	const size_t rowBytes = size_t(textureDesc.width) * sizeof(float) * 4;
+	for (uint32_t y = 0; y < textureDesc.height; ++y)
+		memcpy(static_cast<unsigned char *>(screenshot.data()) + y * rowBytes,
+			static_cast<const unsigned char *>(data) + y * pitch, rowBytes);
 	getDevice()->unmapStagingTexture(stagingTexture);
 
 	fs::path filepath(filename);
@@ -502,6 +519,11 @@ void RenderApp::saveConfig(string path) {
 void Renderer::loadConfig(const json &config) {
 	if (mClosed) throw std::runtime_error("Renderer is closed");
 	validateConfig(config);
+	const auto graphicsApi = config.value("graphics_api", string("vulkan")) == "d3d12"
+		? nvrhi::GraphicsAPI::D3D12 : nvrhi::GraphicsAPI::VULKAN;
+	if (mNvrhiDevice && mDeviceParams.graphicsApi != graphicsApi)
+		throw std::invalid_argument("Changing graphics_api requires a new renderer");
+	mDeviceParams.graphicsApi = graphicsApi;
 	Context::ensureInitialized();
 	clearScene();
 	gpContext->resetState();

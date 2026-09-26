@@ -18,21 +18,35 @@ class CudaRenderTarget {
 public:
 	CudaRenderTarget() = default;
 	KRR_CALLABLE CudaRenderTarget(cudaSurfaceObject_t cudaFrame, int width,
-								  int height) :
-		mCudaFrame(cudaFrame), width(width), height(height) {}
+								  int height, int channels = 4) :
+		mCudaFrame(cudaFrame), width(width), height(height), channels(channels) {}
 	~CudaRenderTarget() = default;
 
 	KRR_DEVICE RGBA read(int x, int y) const {
 		float4 res{};
 #ifdef __NVCC__
-		surf2Dread(&res, mCudaFrame, x * sizeof(float4), height - 1 - y);
+		if (channels == 1) {
+			surf2Dread(&res.x, mCudaFrame, x * sizeof(float), height - 1 - y);
+		} else if (channels == 2) {
+			float2 value{};
+			surf2Dread(&value, mCudaFrame, x * sizeof(float2), height - 1 - y);
+			res.x = value.x;
+			res.y = value.y;
+		} else {
+			surf2Dread(&res, mCudaFrame, x * sizeof(float4), height - 1 - y);
+		}
 		return RGBA(res);
 #endif
 		return {};
 	}
 	KRR_DEVICE void write(const RGBA &value, int x, int y) {
 #ifdef __NVCC__
-		surf2Dwrite(float4(value), mCudaFrame, x * sizeof(float4), height - 1 - y);
+		if (channels == 1)
+			surf2Dwrite(value[0], mCudaFrame, x * sizeof(float), height - 1 - y);
+		else if (channels == 2)
+			surf2Dwrite(make_float2(value[0], value[1]), mCudaFrame, x * sizeof(float2), height - 1 - y);
+		else
+			surf2Dwrite(float4(value), mCudaFrame, x * sizeof(float4), height - 1 - y);
 #endif
 	}
 	KRR_DEVICE RGBA read(int idx) const {
@@ -49,7 +63,7 @@ public:
 	KRR_CALLABLE bool isValid() const { return mCudaFrame != 0; }
 
 	cudaSurfaceObject_t mCudaFrame{};
-	int width, height;
+	int width{}, height{}, channels{4};
 };
 
 template <typename F>

@@ -1,10 +1,10 @@
-#include "window.h"
+#include "graphics/device.h"
+#include "graphics/ui.h"
 #include "scene.h"
 
 #include "device/context.h"
 #include "render/profiler/profiler.h"
-#include "scene.h"
-#include "vulkan/scene.h"
+#include "graphics/scene.h"
 
 NAMESPACE_BEGIN(krr)
 
@@ -26,7 +26,7 @@ bool Scene::update(size_t frameIndex, double currentTime) {
 	if (mSceneRT && std::dynamic_pointer_cast<OptixSceneSingleLevel>(mSceneRT->getOptixScene()))
 		mSceneRT->updateAccelStructure();
 	if (mSceneRT) mSceneRT->updateSceneData();
-	if (mSceneVK) mSceneVK->update();
+	if (mGraphicsScene) mGraphicsScene->update();
 	return mHasChanges = hasChanges;
 }
 

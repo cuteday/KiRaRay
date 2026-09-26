@@ -1,5 +1,6 @@
 #include "gbuffer.h"
-#include "window.h"
+#include "graphics/ui.h"
+#include "graphics/device.h"
 #include "render/profiler/profiler.h"
 
 NAMESPACE_BEGIN(krr)

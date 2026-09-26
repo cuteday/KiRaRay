@@ -9,6 +9,9 @@ Benchmark configs live in `cases/` and reuse project assets. The initial Cornell
 Future cases can select other integrators and passes through their own configs. Benchmarks
 do not import test runners or alter image regression references.
 
+Set `"graphics_api": "d3d12"` in a benchmark config to select D3D12; the default
+is Vulkan. Results record `graphics_api` separately from the profiling `backend`.
+
 ## Build and run
 
 Build an optimized `Release` or `RelWithDebInfo` configuration using the usual CUDA, OptiX,
@@ -24,7 +27,7 @@ python benchmarks/run.py run --build-dir build/release --frames 64 --warmup 8 --
 For multi-configuration generators, also select `--configuration Release`. The runner reads
 the interpreter from `CMakeCache.txt`; `--python` explicitly overrides it and must match the
 native module's Python ABI. `--allow-debug` permits development checks, but these results
-should not be used to compare optimized renderer performance. Vulkan/NVRHI validation is
+should not be used to compare optimized renderer performance. Graphics/NVRHI validation is
 disabled by default for benchmark workers; add `--validation` when investigating correctness.
 
 ```powershell
@@ -38,7 +41,7 @@ fixed at zero and each repetition uses the requested seed. The default case prod
 sample per pixel per frame; other pass configurations may behave differently.
 
 `render_ms` measures elapsed wall time around the measured native frame loop and waits for
-its CUDA/Vulkan work to complete. It includes frame submission and synchronization, making
+its CUDA and graphics work to complete. It includes frame submission and synchronization, making
 it an end-to-end rendering throughput measurement. It is not the sum of individual kernel
 durations. Setup, warm-up, readback, and finalization have separate timing fields. Capture
 callbacks are excluded from `render_ms`; `total_ms` includes them. The old interactive
@@ -67,12 +70,14 @@ python benchmarks/run.py profile --build-dir build/release --tool ncu --kernel-r
 NCU uses kernel replay, preserves `.ncu-rep`, and collects the basic metric set unless
 `--metrics` selects explicit metrics. Start with a small frame count or kernel filter because
 a wavefront frame launches many kernels. Range replay is unsuitable for this renderer's
-CUDA/Vulkan external-resource interop. OptiX profiling exposes user kernels with some NVIDIA
+CUDA/graphics external-resource interop. OptiX profiling exposes user kernels with some NVIDIA
 internal implementation hidden. For OptiX source information in an optimized build, configure
 with `-DKRR_PROFILE_OPTIX=ON` and rebuild. This preserves the default OptiX optimization level
 and adds debug information; NVCC already includes line information in optimized builds.
 
-Nsight Systems captures CUDA, Vulkan, and NVTX activity. Both CLI captures use native CUDA
+Nsight Systems defaults to CUDA, Vulkan, and NVTX activity. For a D3D12 config, use
+`--nsys-trace cuda,nvtx` to capture CUDA/OptiX work; D3D12 API tracing is not wired into
+the runner yet. Both CLI captures use native CUDA
 profiler start/stop calls around the warmed measured interval, excluding setup and readback.
 NVTX frame/pass ranges provide context for navigating the reports. Profilers can alter
 execution timing through replay, serialization, and instrumentation; use ordinary `run`

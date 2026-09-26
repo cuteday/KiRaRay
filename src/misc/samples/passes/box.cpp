@@ -1,14 +1,15 @@
+#include <nvrhi/utils.h>
 #include <common.h>
 #include <logger.h>
 #include <renderpass.h>
 #include <krrmath/clipspace.h>
-#include <nvrhi/vulkan.h>
+#include <nvrhi/nvrhi.h>
 #include <util/check.h>
 
 #include "main/renderer.h"
-#include "vulkan/helperpass.h"
-#include "vulkan/textureloader.h"
-#include "vulkan/shader.h"
+#include "graphics/helperpass.h"
+#include "graphics/textureloader.h"
+#include "graphics/shader.h"
 
 NAMESPACE_BEGIN(krr)
 
@@ -86,6 +87,7 @@ private:
 
 public:
 	using RenderPass::RenderPass;
+	bool isCudaPass() const override { return false; }
 
 	// This example uses a single large constant buffer with multiple views to
 	// draw multiple versions of the same model. The alignment and size of
@@ -103,7 +105,7 @@ public:
 
 	void initialize() override {
 		std::shared_ptr<ShaderLoader> shaderLoader =
-			std::make_shared<ShaderLoader>(getVulkanDevice());
+			std::make_shared<ShaderLoader>(getDevice());
 		m_VertexShader = shaderLoader->createShader(
 			"src/misc/samples/passes/shaders/box.hlsl", "main_vs", nullptr,
 			nvrhi::ShaderType::Vertex);
@@ -115,7 +117,7 @@ public:
 			Log(Fatal, "Shader initialization failed");
 		}
 
-		m_ConstantBuffer = getVulkanDevice()->createBuffer(
+		m_ConstantBuffer = getDevice()->createBuffer(
 			nvrhi::utils::CreateStaticConstantBufferDesc(
 				sizeof(ConstantBufferEntry) * c_NumViews, "ConstantBuffer")
 				.setInitialState(nvrhi::ResourceStates::ConstantBuffer)
@@ -133,13 +135,13 @@ public:
 				.setOffset(offsetof(Vertex, uv))
 				.setElementStride(sizeof(Vertex)),
 		};
-		m_InputLayout = getVulkanDevice()->createInputLayout(
+		m_InputLayout = getDevice()->createInputLayout(
 			attributes, uint32_t(std::size(attributes)), m_VertexShader);
 
-		CommonRenderPasses commonPasses(getVulkanDevice(), shaderLoader);
-		TextureCache textureCache(getVulkanDevice(), nullptr);
+		CommonRenderPasses commonPasses(getDevice(), shaderLoader);
+		TextureCache textureCache(getDevice(), nullptr);
 
-		m_CommandList = getVulkanDevice()->createCommandList();
+		m_CommandList = getDevice()->createCommandList();
 		m_CommandList->open();
 
 		nvrhi::BufferDesc vertexBufferDesc;
@@ -147,7 +149,7 @@ public:
 		vertexBufferDesc.isVertexBuffer = true;
 		vertexBufferDesc.debugName		= "VertexBuffer";
 		vertexBufferDesc.initialState	= nvrhi::ResourceStates::CopyDest;
-		m_VertexBuffer = getVulkanDevice()->createBuffer(vertexBufferDesc);
+		m_VertexBuffer = getDevice()->createBuffer(vertexBufferDesc);
 
 		m_CommandList->beginTrackingBufferState(
 			m_VertexBuffer, nvrhi::ResourceStates::CopyDest);
@@ -161,7 +163,7 @@ public:
 		indexBufferDesc.isIndexBuffer = true;
 		indexBufferDesc.debugName	  = "IndexBuffer";
 		indexBufferDesc.initialState  = nvrhi::ResourceStates::CopyDest;
-		m_IndexBuffer = getVulkanDevice()->createBuffer(indexBufferDesc);
+		m_IndexBuffer = getDevice()->createBuffer(indexBufferDesc);
 
 		m_CommandList->beginTrackingBufferState(
 			m_IndexBuffer, nvrhi::ResourceStates::CopyDest);
@@ -176,7 +178,7 @@ public:
 		m_Texture = texture->texture;
 
 		m_CommandList->close();
-		getVulkanDevice()->executeCommandList(m_CommandList);
+		getDevice()->executeCommandList(m_CommandList);
 
 		if (!texture->texture) {
 			logFatal("Couldn't load the texture");
@@ -201,7 +203,7 @@ public:
 			// Create the binding layout (if it's empty -- so, on the first
 			// iteration) and the binding set.
 			if (!nvrhi::utils::CreateBindingSetAndLayout(
-					getVulkanDevice(), nvrhi::ShaderType::All, 0,
+					getDevice(), nvrhi::ShaderType::All, 0,
 					bindingSetDesc, m_BindingLayout,
 					m_BindingSets[viewIndex])) {
 				logFatal("Couldn't create the binding set or layout");
@@ -231,7 +233,7 @@ public:
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
 
 			m_Pipeline =
-				getVulkanDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+				getDevice()->createGraphicsPipeline(psoDesc, framebuffer);
 		}
 
 		m_CommandList->open();
@@ -283,7 +285,7 @@ public:
 		}
 
 		m_CommandList->close();
-		getVulkanDevice()->executeCommandList(m_CommandList);
+		getDevice()->executeCommandList(m_CommandList);
 	}
 };
 

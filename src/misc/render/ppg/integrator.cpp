@@ -1,5 +1,6 @@
 #include "common.h"
-#include "window.h"
+#include "graphics/ui.h"
+#include "graphics/device.h"
 #include "file.h"
 
 #include "util/check.h"

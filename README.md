@@ -19,7 +19,7 @@
 
 ### Build and run
 
-| *Windows (MSVC, C++17)* | [![Build](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml/badge.svg)](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml) |
+| *Windows (MSVC)* | [![Build](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml/badge.svg)](https://github.com/cuteday/KiRaRay/actions/workflows/main.yml) |
 | --------- | ------------------------------------------------------------ |
 
 #### Requirements
@@ -29,14 +29,19 @@
 - CUDA Compute Capability: Turing+ (7.5+)
 - [Vulkan SDK](https://vulkan.lunarg.com/) **1.3+**.
 
-This project is developed with on Windows (MSVC). It cannot compile on Linux. 
-
 #### Cloning the repository
 
 *KiRaRay* uses thirdparty dependencies as submodules so fetch them recursively when cloning:
 
 ~~~bash
 git clone --recursive https://github.com/cuteday/KiRaRay.git
+~~~
+
+When updating an existing checkout, synchronize the NVRHI submodule URL:
+
+~~~bash
+git submodule sync --recursive
+git submodule update --init --recursive
 ~~~
 
 #### Building
@@ -58,6 +63,7 @@ The default CUDA architecture is `native`, targeting the installed GPU. Set `-DC
 | `OptiX_INSTALL_DIR`     | auto-detect | When auto-detection failed to find the correct OptiX path, this variable needs to be manually specified to point to the OptiX installation. |
 | `KRR_RENDER_SPECTRAL`   | ON          | Whether to build spectral render. If turned OFF, the RGB renderer is build. |
 | `KRR_PYTHON_PATH` | auto-detect | Manually specify this to enable Python binding for a specific version of Python. |
+| `KRR_ENABLE_D3D12` | ON on Windows | Build the D3D12 graphics backend alongside Vulkan. |
 
 #### Running
 
@@ -70,6 +76,11 @@ build/release/bin/kiraray.exe common/configs/example_cbox.json
 > The two necessary entries in the configuration are `model` (specifying the relative path to the scene file) and `passes` (describing the render pipeline). Once compiled, directly run `kiraray` without specifying configuration (this [example configuration](common/configs/example_cbox.json) will be used) to get a feel for this toy renderer.
 
 #### Usage
+
+**Graphics API.** Vulkan is the default. Add `"graphics_api": "d3d12"` to a config
+to use D3D12, including headless rendering and benchmarks. Both graphics backends
+use the existing CUDA/OptiX integrators. See [graphics backends](src/core/graphics/README.md)
+for implementation boundaries and interop ownership.
 
 **Headless rendering and tests.** The Python API can render a config without a window and return
 an owned RGB NumPy array. CTest runs a small CPU suite; local GPU smoke and image regression tests

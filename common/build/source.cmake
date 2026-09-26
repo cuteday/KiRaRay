@@ -18,7 +18,6 @@ SET ( KRR_CORE_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/core/camera.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/light.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/mesh.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/window.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/logger.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/file.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/renderpass.cpp
@@ -69,15 +68,26 @@ SET (KRR_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/data/named_spectrum.cpp
 )
 
-SET (KRR_SOURCE_VULKAN
-	${KRR_RENDER_SOURCE_DIR}/core/vulkan/binding.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/vulkan/cuvk.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/vulkan/descriptor.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/vulkan/scene.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/vulkan/helperpass.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/vulkan/uirender.cpp
-	${KRR_RENDER_SOURCE_DIR}/core/vulkan/textureloader.cpp
+SET (KRR_GRAPHICS_SOURCE
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/device.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/rendercontext.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/rendertarget.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/interop.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/binding.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/descriptor.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/scene.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/helperpass.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/shader.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/uirender.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/textureloader.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/vulkan/device.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/graphics/vulkan/interop.cpp
 )
+if(KRR_ENABLE_D3D12)
+	list(APPEND KRR_GRAPHICS_SOURCE
+		${KRR_RENDER_SOURCE_DIR}/core/graphics/d3d12/device.cpp
+		${KRR_RENDER_SOURCE_DIR}/core/graphics/d3d12/interop.cpp)
+endif()
 
 SET_SOURCE_FILES_PROPERTIES (
 	# some files are set to be compiled by nvcc so cuda can resolve 

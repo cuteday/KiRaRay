@@ -12,14 +12,14 @@
 #include "render/lightsampler.h"
 #include "render/media.h"
 
-#include <nvrhi/vulkan.h>
+#include <nvrhi/nvrhi.h>
 
 NAMESPACE_BEGIN(krr)
 
 using namespace io;
 
 class RTScene;
-class VKScene;
+class GraphicsScene;
 class DescriptorTableManager;
 
 class Scene : public std::enable_shared_from_this<Scene> {
@@ -75,12 +75,12 @@ public:
 	bool mEnableAnimation = true;
 
 	std::shared_ptr<RTScene> mSceneRT;
-	std::shared_ptr<VKScene> mSceneVK;
+	std::shared_ptr<GraphicsScene> mGraphicsScene;
 	void initializeSceneRT();
-	void initializeSceneVK(nvrhi::vulkan::IDevice* device,
+	void initializeGraphicsScene(nvrhi::IDevice* device,
 		std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr);
 	std::shared_ptr<RTScene> getSceneRT() const { return mSceneRT; }
-	std::shared_ptr<VKScene> getSceneVK() const { return mSceneVK; }
+	std::shared_ptr<GraphicsScene> getGraphicsScene() const { return mGraphicsScene; }
 };
 
 NAMESPACE_END(krr)

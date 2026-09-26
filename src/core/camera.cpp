@@ -1,5 +1,7 @@
 #include "camera.h"
-#include "window.h"
+#include "graphics/ui.h"
+#include "scene.h"
+#include "device/scene.h"
 
 NAMESPACE_BEGIN(krr)
 

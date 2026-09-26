@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <optix_stubs.h>
 
 #include "logger.h"
 #include "context.h"
@@ -95,7 +96,6 @@ void Context::finalize() noexcept {
 		} catch (...) {}
 	}
 	alloc.reset();
-	defaultVkDevice = nullptr;
 	cudaContext = nullptr;
 }
 
@@ -106,11 +106,7 @@ void Context::terminate() {
 
 void Context::setGlobalConfig(const json &config) { globalConfig = config; }
 
-void Context::setDefaultVkDevice(nvrhi::vulkan::IDevice *device) { defaultVkDevice = device; }
-
 json Context::getGlobalConfig() const { return globalConfig; }
-
-nvrhi::vulkan::IDevice *Context::getDefaultVkDevice() const { return defaultVkDevice; }
 
 void Context::updateGlobalConfig(const json &config) { globalConfig.update(config); }
 

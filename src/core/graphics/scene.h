@@ -6,25 +6,24 @@
 #include "descriptor.h"
 #include "textureloader.h"
 
-#include <nvrhi/vulkan.h>
+#include <nvrhi/nvrhi.h>
 
 NAMESPACE_BEGIN(krr)
 
-namespace vkrhi {using namespace nvrhi;}
 
 namespace rs {
 class MeshBuffers {
 public:
-	vkrhi::BufferHandle indexBuffer; 
-	vkrhi::BufferHandle vertexBuffer;
+	nvrhi::BufferHandle indexBuffer;
+	nvrhi::BufferHandle vertexBuffer;
 	DescriptorHandle indexBufferDescriptor;
 	DescriptorHandle vertexBufferDescriptor;
-	std::array<vkrhi::BufferRange, size_t(VertexAttribute::Count)> vertexBufferRanges;
+	std::array<nvrhi::BufferRange, size_t(VertexAttribute::Count)> vertexBufferRanges;
 
 	bool hasAttribute(VertexAttribute attr) const {
 		return vertexBufferRanges[(int) attr].byteSize != 0;
 	}
-	vkrhi::BufferRange& getVertexBufferRange(VertexAttribute attr) {
+	nvrhi::BufferRange& getVertexBufferRange(VertexAttribute attr) {
 		return vertexBufferRanges[(int) attr];
 	}
 };
@@ -37,7 +36,7 @@ public:
 	bool hasTexture(Material::TextureType textureType) const {
 		return textures[(size_t) textureType].get();
 	}
-	[[nodiscard]] vkrhi::ITexture *
+	[[nodiscard]] nvrhi::ITexture *
 		getTexture(Material::TextureType textureType) const {
 		if (!hasTexture(textureType)) {
 			Log(Error, "Attempt to get texture that a material do not pocess.");
@@ -103,39 +102,40 @@ struct LightData {
 };
 }
 
-class VKScene {
+class GraphicsScene {
 public:
-	using SharedPtr = std::shared_ptr<VKScene>;
+	using SharedPtr = std::shared_ptr<GraphicsScene>;
 
-	VKScene() = default;
-	VKScene(Scene::SharedPtr scene, vkrhi::vulkan::IDevice *device,
+	GraphicsScene() = default;
+	GraphicsScene(Scene::SharedPtr scene, nvrhi::IDevice *device,
 			std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr);
-	~VKScene() = default;
+	~GraphicsScene() = default;
 
-	[[nodiscard]] vkrhi::IBuffer *getMaterialBuffer() const { return mMaterialConstantsBuffer; }
-	[[nodiscard]] vkrhi::IBuffer *getLightBuffer() const { return mLightDataBuffer; }
-	[[nodiscard]] vkrhi::IBuffer *getInstanceBuffer() const { return mInstanceDataBuffer; }
-	[[nodiscard]] vkrhi::IBuffer* getGeometryBuffer() const { return mMeshDataBuffer; }
+	[[nodiscard]] nvrhi::IBuffer *getMaterialBuffer() const { return mMaterialConstantsBuffer; }
+	[[nodiscard]] nvrhi::IBuffer *getLightBuffer() const { return mLightDataBuffer; }
+	[[nodiscard]] nvrhi::IBuffer *getInstanceBuffer() const { return mInstanceDataBuffer; }
+	[[nodiscard]] nvrhi::IBuffer* getGeometryBuffer() const { return mMeshDataBuffer; }
 
 	void update();
 
 protected:	
 	friend Scene;
-	void createMeshBuffers(vkrhi::ICommandList *commandList);
-	void createMaterialTextures(vkrhi::ICommandList *commandList);
+	void createMeshBuffers(nvrhi::ICommandList *commandList);
+	void createMaterialTextures(nvrhi::ICommandList *commandList);
 	void createMaterialBuffer();	
 	void createInstanceBuffer();
 	void createGeometryBuffer();
 	void createLightBuffer();
 	
-	void writeMaterialBuffer(vkrhi::ICommandList *commandList);
-	void writeInstanceBuffer(vkrhi::ICommandList *commandList);
-	void writeGeometryBuffer(vkrhi::ICommandList *commandList);
-	void writeLightBuffer(vkrhi::ICommandList *commandList);
+	void writeMaterialBuffer(nvrhi::ICommandList *commandList);
+	void writeInstanceBuffer(nvrhi::ICommandList *commandList);
+	void writeGeometryBuffer(nvrhi::ICommandList *commandList);
+	void writeLightBuffer(nvrhi::ICommandList *commandList);
 
+	size_t mLastUpdatedFrame = 0;
 	std::weak_ptr<Scene> mScene{};
-	vkrhi::vulkan::DeviceHandle mDevice{};
-	vkrhi::CommandListHandle mCommandList;
+	nvrhi::DeviceHandle mDevice{};
+	nvrhi::CommandListHandle mCommandList;
 	std::shared_ptr<DescriptorTableManager> mDescriptorTable{};
 	std::shared_ptr<TextureCache> mTextureLoader;
 
@@ -145,10 +145,10 @@ protected:
 	std::vector<rs::MaterialTextures> mMaterialTextures;
 	std::vector<rs::MeshData> mMeshData;
 	std::vector<rs::InstanceData> mInstanceData;
-	vkrhi::BufferHandle mMaterialConstantsBuffer;
-	vkrhi::BufferHandle mLightDataBuffer;
-	vkrhi::BufferHandle mMeshDataBuffer;
-	vkrhi::BufferHandle mInstanceDataBuffer;
+	nvrhi::BufferHandle mMaterialConstantsBuffer;
+	nvrhi::BufferHandle mLightDataBuffer;
+	nvrhi::BufferHandle mMeshDataBuffer;
+	nvrhi::BufferHandle mInstanceDataBuffer;
 };
 
 NAMESPACE_END(krr)

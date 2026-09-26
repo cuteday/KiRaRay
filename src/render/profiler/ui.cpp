@@ -1,7 +1,8 @@
 #include <optional>
+#include "graphics/ui.h"
 
 #include "ui.h"
-#include "window.h"
+#include "graphics/device.h"
 
 NAMESPACE_BEGIN(krr)
 

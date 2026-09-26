@@ -58,6 +58,7 @@ def main(argv=None):
                         seed=request["seed"], capture=request["backend"] in ("ncu", "nsys")))
         np.save(directory / "render.npy", image, allow_pickle=False)
         output = {"schema_version": 1, "status": "passed", "backend": request["backend"],
+                  "graphics_api": request["config"].get("graphics_api", "vulkan"),
                   "profiled": request["backend"] != "timing", "runs": runs,
                   "build": krr.get_build_info(), "python": {"executable": sys.executable,
                   "version": platform.python_version()}, "revision": request["revision"],

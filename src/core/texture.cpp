@@ -11,7 +11,7 @@
 #include <cstdio>
 
 #include "texture.h"
-#include "window.h"
+#include "graphics/ui.h"
 #include "logger.h"
 #include "util/image.h"
 

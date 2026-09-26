@@ -8,7 +8,10 @@ struct BlitConstants {
 	float sharpenFactor;
 };
 
-[[vk::push_constant]] ConstantBuffer<BlitConstants> g_Blit;
+#if KRR_SHADER_VULKAN
+[[vk::push_constant]]
+#endif
+ConstantBuffer<BlitConstants> g_Blit;
 
 void main(
 	in uint iVertex : SV_VertexID,

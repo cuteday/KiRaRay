@@ -1,57 +1,44 @@
-// https://www.khronos.org/blog/understanding-vulkan-synchronization
+#include <nvrhi/utils.h>
 #include <common.h>
 #include <logger.h>
 #include <renderpass.h>
-#include <nvrhi/vulkan.h>
+#include <nvrhi/nvrhi.h>
 
 #include "main/renderer.h"
-#include "vulkan/textureloader.h"
-#include "vulkan/shader.h"
-#include "vulkan/cuvk.h"
+#include "graphics/textureloader.h"
+#include "graphics/shader.h"
 #include "deviceprog.h"
 
 NAMESPACE_BEGIN(krr)
 
-static const char *g_WindowTitle = "HelloVkCuda";
+static const char *g_WindowTitle = "HelloGraphicsCuda";
 
-class HelloVkCuda : public RenderPass {
+class HelloGraphicsCuda : public RenderPass {
 private:
 	nvrhi::ShaderHandle m_VertexShader;
 	nvrhi::ShaderHandle m_PixelShader;
 	nvrhi::GraphicsPipelineHandle m_Pipeline;
 	nvrhi::CommandListHandle m_CommandList;
-	std::shared_ptr<vkrhi::CuVkHandler> m_CuVkHandler;
 	float m_ElapsedTime{};
-	CUstream m_CudaStream{};
-	vkrhi::CuVkSemaphore m_CudaUpdateVkSem, m_VkUpdateCudaSem;
 	
 public:
 	using RenderPass::RenderPass;
-
-	~HelloVkCuda() { 
-		getVulkanNativeDevice().destroySemaphore(m_CudaUpdateVkSem);
-		getVulkanNativeDevice().destroySemaphore(m_VkUpdateCudaSem);
-	}
+	bool isCudaPass() const override { return false; }
 
 	void initialize() override {
-		ShaderLoader shaderLoader(getVulkanDevice());
+		ShaderLoader shaderLoader(getDevice());
 
 		m_VertexShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_vs", nullptr,
 													nvrhi::ShaderType::Vertex);
 		m_PixelShader = shaderLoader.createShader("src/misc/samples/passes/shaders/triangle.hlsl", "main_ps", nullptr,
 													nvrhi::ShaderType::Pixel);
 		
-		m_CuVkHandler = std::make_shared<vkrhi::CuVkHandler>(getVulkanDevice());
 
 		if (!m_VertexShader || !m_PixelShader) 
 			Log(Fatal, "Shader initialization failed");
 		
-		//CUDA_CHECK(cudaStreamCreate(&m_CudaStream));
-		m_CudaStream = KRR_DEFAULT_STREAM;
 
-		m_CommandList = getVulkanDevice()->createCommandList();
-		m_CudaUpdateVkSem = m_CuVkHandler->createCuVkSemaphore();
-		m_VkUpdateCudaSem = m_CuVkHandler->createCuVkSemaphore();
+		m_CommandList = getDevice()->createCommandList();
 	}
 
 	void resizing() override { 
@@ -72,10 +59,9 @@ public:
 			psoDesc.PS		 = m_PixelShader;
 			psoDesc.primType = nvrhi::PrimitiveType::TriangleList;
 			psoDesc.renderState.depthStencilState.depthTestEnable = false;
-			m_Pipeline = getVulkanDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+			m_Pipeline = getDevice()->createGraphicsPipeline(psoDesc, framebuffer);
 		}
 
-		getVulkanDevice()->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_VkUpdateCudaSem, 0);
 		m_CommandList->open();
 		nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.f));
 		nvrhi::GraphicsState state;
@@ -88,13 +74,12 @@ public:
 		args.vertexCount = 3;
 		m_CommandList->draw(args);
 		m_CommandList->close();
-		getVulkanDevice()->executeCommandList(m_CommandList);
+		getDevice()->executeCommandList(m_CommandList);
 
-		vkrhi::CuVkHandler::cudaWaitExternalSemaphore(m_CudaStream, 0, &m_VkUpdateCudaSem.cuda());
+		RenderContext::CudaScope cudaScope(context);
 		auto cudaRenderTarget = context->getColorTexture()->getCudaRenderTarget();
-		drawScreen(m_CudaStream, cudaRenderTarget, m_ElapsedTime, fbInfo.width,
+		drawScreen(context->getCudaStream(), cudaRenderTarget, m_ElapsedTime, fbInfo.width,
 				   fbInfo.height);
-		CUDA_SYNC_CHECK();
 
 	}
 };
@@ -102,7 +87,7 @@ public:
 extern "C" int main(int argc, const char *argv[]) {
 	auto app = std::make_unique<RenderApp>();
 	app->setWindowTitle(g_WindowTitle);
-	app->addRenderPassToFront(std::make_shared<HelloVkCuda>());
+	app->addRenderPassToFront(std::make_shared<HelloGraphicsCuda>());
 	app->run();
 	exit(EXIT_SUCCESS);
 }

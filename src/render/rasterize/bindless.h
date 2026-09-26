@@ -2,10 +2,10 @@
 #include "common.h"
 #include "renderpass.h"
 
-#include "vulkan/shader.h"
-#include "vulkan/binding.h"
-#include "vulkan/descriptor.h"
-#include "vulkan/helperpass.h"
+#include "graphics/shader.h"
+#include "graphics/binding.h"
+#include "graphics/descriptor.h"
+#include "graphics/helperpass.h"
 
 NAMESPACE_BEGIN(krr)
 
@@ -36,6 +36,7 @@ public:
 	};
 	
 	using RenderPass::RenderPass;
+	bool isCudaPass() const override { return false; }
 	using SharedPtr = std::shared_ptr<BindlessRender>;
 	KRR_REGISTER_PASS_DEC(BindlessRender);
 
@@ -47,17 +48,17 @@ public:
 	string getName() const override { return "BindlessRender"; }
 
 private:
-	vkrhi::CommandListHandle mCommandList;
-	vkrhi::BindingLayoutHandle mBindingLayout;
-	vkrhi::BindingLayoutHandle mBindlessLayout;
-	vkrhi::BindingSetHandle mBindingSet;
-	vkrhi::ShaderHandle mVertexShader;
-	vkrhi::ShaderHandle mPixelShader;
-	vkrhi::GraphicsPipelineHandle mGraphicsPipeline;
+	nvrhi::CommandListHandle mCommandList;
+	nvrhi::BindingLayoutHandle mBindingLayout;
+	nvrhi::BindingLayoutHandle mBindlessLayout;
+	nvrhi::BindingSetHandle mBindingSet;
+	nvrhi::ShaderHandle mVertexShader;
+	nvrhi::ShaderHandle mPixelShader;
+	nvrhi::GraphicsPipelineHandle mGraphicsPipeline;
 
-	vkrhi::BufferHandle mViewConstants;
-	vkrhi::BufferHandle mLightConstants;
-	vkrhi::FramebufferHandle mFramebuffer;
+	nvrhi::BufferHandle mViewConstants;
+	nvrhi::BufferHandle mLightConstants;
+	nvrhi::FramebufferHandle mFramebuffer;
 
 	std::shared_ptr<ShaderLoader> mShaderLoader;
 	std::shared_ptr<DescriptorTableManager> mDescriptorTableManager;

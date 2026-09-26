@@ -3,10 +3,8 @@
 #include "common.h"
 #include "device/buffer.h"
 #include "device/memory.h"
-#include "nvrhi/vulkan.h"
-#include "nvrhi/vulkan/vulkan-backend.h"
 #include "device/gpustd.h"
-#include "renderpass.h"
+#include <optix.h>
 
 NAMESPACE_BEGIN(krr)
 
@@ -20,10 +18,8 @@ public:
 	void resetState() { globalConfig = json::object(); exit = false; }
 
 	void setGlobalConfig(const json &config);
-	void setDefaultVkDevice(nvrhi::vulkan::IDevice *device);
 	void updateGlobalConfig(const json &config);
 	json getGlobalConfig() const;
-	nvrhi::vulkan::IDevice *getDefaultVkDevice() const;
 	void requestExit() { exit = true; }
 	bool shouldQuit() const { return exit; };
 
@@ -36,7 +32,6 @@ public:
 	CUstream cudaStream{ 0 };
 	cudaDeviceProp deviceProps;
 	OptixDeviceContext optixContext{};
-	nvrhi::vulkan::IDevice *defaultVkDevice{};
 	std::unique_ptr<Allocator> alloc;
 	// signal bits
 	bool exit{};

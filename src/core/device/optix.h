@@ -9,7 +9,8 @@
 
 #include "raytracing.h"
 #include "context.h"
-#include "scene.h"
+#include "device/scene.h"
+#include <scene.h>
 
 NAMESPACE_BEGIN(krr)
 

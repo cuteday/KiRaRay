@@ -1,4 +1,5 @@
 #include <filesystem>
+#include "graphics/ui.h"
 #include "file.h"
 #include "accumulate.h"
 

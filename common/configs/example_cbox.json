@@ -1,4 +1,5 @@
 {
+	"graphics_api": "vulkan",
 	"resolution": [
 		750,
 		750
