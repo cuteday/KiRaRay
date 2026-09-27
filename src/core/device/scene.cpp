@@ -3,6 +3,7 @@
 #include "render/profiler/profiler.h"
 #include "../scene.h"
 #include "util/volume.h"
+#include <unordered_set>
 
 NAMESPACE_BEGIN(krr)
 
@@ -16,6 +17,7 @@ void SceneObject::release() noexcept {
 	if (is<rt::MaterialData>()) {
 		auto *material = static_cast<rt::MaterialData *>(data->data());
 		for (auto &texture : material->mTextures) texture.release();
+		material->releaseProgram();
 	} else if (is<rt::InstanceData>()) {
 		auto *instance = static_cast<rt::InstanceData *>(data->data());
 		releaseBuffer(instance->primitives);
@@ -109,31 +111,21 @@ void RTScene::uploadSceneMaterialData() {
 	for (auto idx = 0; idx < materials.size(); idx++) {
 		uploadManagedObject(materials[idx], &mMaterials[idx]);
 	}
+	updateMaterialTypes();
+}
+
+void RTScene::updateMaterialTypes() {
+	mHasAuthoredMaterials = false;
+	for (const auto &material : mScene.lock()->getMaterials()) {
+		if (material->getDescription() || material->mBsdfType == MaterialType::OpenPBR ||
+			material->mBsdfType == MaterialType::PreviewSurface) {
+			mHasAuthoredMaterials = true;
+			break;
+		}
+	}
 }
 
 void RTScene::uploadSceneLightData() {
-	auto createTrianglePrimitives = [](Mesh::SharedPtr mesh, rt::InstanceData* instance) 
-		-> std::vector<Triangle> {
-		uint nTriangles = mesh->indices.size();
-		std::vector<Triangle> triangles;
-		for (uint i = 0; i < nTriangles; i++) 
-			triangles.push_back(Triangle(i, instance));
-		return triangles;
-	};
-
-	/* Process mesh lights (diffuse area lights).
-	   Mesh lights do not actually exists in the scene graph, since rasterization does 
-	   not inherently support them. We simply bypass them with storage in mesh data. */
-	for (const auto &instance : mScene.lock()->getMeshInstances()) {
-		const auto &mesh			   = instance->getMesh();
-		const auto &material		   = mesh->getMaterial();
-		if ((material && material->hasEmission()) || mesh->Le.any()) {
-			rt::InstanceData &instanceData = mInstances[instance->getInstanceId()];
-			for (size_t triId = 0; triId < mesh->indices.size(); triId++) 
-				mLightStorage.addPointer(&instanceData.lights[triId]);
-		}
-	}
-
 	/* Process other lights (environment lights and those analytical ones). */
 	for (auto light : mScene.lock()->getLights()) {
 		auto transform = light->getNode()->getGlobalTransform();
@@ -155,16 +147,20 @@ void RTScene::uploadSceneLightData() {
 		}
 	}
 	
-	mLightStorage.addPointers(mScene.lock()->getLights());
-
-	/* Upload main constant light buffer and light sampler. */
+	updateLightSampler();
 	Log(Debug, "A total of %zd light(s) processed!", mLightStorage.getPointers().size());
-	if (!mLightStorage.getPointers().size())
-		Log(Error, "There's no light source in the scene! "
-			"Image will be dark, and may even cause crash...");
+}
+
+void RTScene::updateLightSampler() {
+	mLightStorage.getPointers().clear();
+	for (const auto &instance : mScene.lock()->getMeshInstances()) {
+		auto &data = mInstances[instance->getInstanceId()];
+		for (size_t triangle = 0; triangle < data.lights.size(); ++triangle)
+			mLightStorage.addPointer(&data.lights[triangle]);
+	}
+	mLightStorage.addPointers(mScene.lock()->getLights());
 	auto lightSampler = UniformLightSampler(mLightStorage.getPointers());
 	mLightSamplerBuffer.alloc_and_copy_from_host(&lightSampler, 1);
-	// [Workaround] Since the area light hit depends on light buffer pointed from instance...
 	CUDA_SYNC_CHECK();
 }
 
@@ -212,13 +208,28 @@ void RTScene::updateAccelStructure() {
 // This routine should only be called by OptixBackend...
 void RTScene::updateSceneData() {
 	PROFILE("Update scene data");
+	std::unordered_set<Material *> changedMaterials;
 	/* update managed objects, including most types of leaf nodes... */
 	for (auto [leaf, object] : mManagedObjects) {
 		assert(!leaf.expired());
 		if (leaf.lock()->isUpdated()) {
+			if (auto material = std::dynamic_pointer_cast<Material>(leaf.lock()))
+				changedMaterials.insert(material.get());
 			updateManagedObject(leaf.lock());
 			leaf.lock()->setUpdated(false);
 		}
+	}
+	if (!changedMaterials.empty()) {
+		updateMaterialTypes();
+		CUDA_CHECK(cudaStreamSynchronize(KRR_DEFAULT_STREAM));
+		for (const auto &instance : mScene.lock()->getMeshInstances()) {
+			if (!changedMaterials.count(instance->getMesh()->getMaterial().get())) continue;
+			auto object = mManagedObjects.at(instance);
+			object.release();
+			object.getObjectData(instance, true);
+			CUDA_CHECK(cudaMemcpy(object.ptr(), object.data->data(), object.data->size(), cudaMemcpyHostToDevice));
+		}
+		updateLightSampler();
 	}
 }
 

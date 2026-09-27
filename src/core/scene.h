@@ -60,11 +60,8 @@ public:
 
 	friend void to_json(json& j, const Scene& scene) { 
 		j = scene.getConfig();
-		j.update(json{ 
-			{ "camera", *scene.mCamera }, 
-			{ "cameraController", *std::dynamic_pointer_cast
-				<OrbitCameraController>(scene.mCameraController) },
-		});
+		j["camera"] = *scene.mCamera;
+		if (scene.mCameraController) j["cameraController"] = *scene.mCameraController;
 	}
 
 	json mConfig;
@@ -77,6 +74,7 @@ public:
 	std::shared_ptr<RTScene> mSceneRT;
 	std::shared_ptr<GraphicsScene> mGraphicsScene;
 	void initializeSceneRT();
+	void releaseDeviceResources();
 	void initializeGraphicsScene(nvrhi::IDevice* device,
 		std::shared_ptr<DescriptorTableManager> descriptorTable = nullptr);
 	std::shared_ptr<RTScene> getSceneRT() const { return mSceneRT; }

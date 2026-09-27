@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-09-27T08:41:23.142793+00:00",
+  "config": {
+    "resolution": [
+      128,
+      128
+    ],
+    "passes": [
+      {
+        "name": "WavefrontPathTracer",
+        "enable": true,
+        "params": {
+          "nee": true,
+          "rr": 0.8,
+          "max_depth": 10
+        }
+      },
+      {
+        "name": "AccumulatePass",
+        "enable": true,
+        "params": {
+          "spp": 0,
+          "mode": "accumulate"
+        }
+      }
+    ],
+    "scene": {
+      "model": [
+        {
+          "model": "tests/fixtures/usd/cornell.usda"
+        }
+      ]
+    }
+  },
+  "config_sha256": "ce90950749db3f603c0783a1136af6bdaebbdba3d28f364f0b5e8eceea83d9c2",
+  "reference_frames": 16384,
+  "reference_seed": 20260925,
+  "regression_frames": 128,
+  "regression_seed": 17,
+  "normalized_rmse_threshold": 0.1823520040733452,
+  "calibration_margin": 1.5,
+  "calibration": [
+    {
+      "frames": 128,
+      "measurements": [
+        {
+          "seed": 17,
+          "mse": 0.008192426218983867,
+          "normalized_rmse": 0.1209490642596097
+        },
+        {
+          "seed": 29,
+          "mse": 0.008276487748481621,
+          "normalized_rmse": 0.12156800271556346
+        },
+        {
+          "seed": 43,
+          "mse": 0.008158842375301033,
+          "normalized_rmse": 0.1207009017639305
+        },
+        {
+          "seed": 71,
+          "mse": 0.008111006985768892,
+          "normalized_rmse": 0.12034654619395578
+        },
+        {
+          "seed": 113,
+          "mse": 0.00819998626177109,
+          "normalized_rmse": 0.12100485781967504
+        }
+      ],
+      "threshold": 0.1823520040733452
+    }
+  ],
+  "fault_checks": {
+    "black": {
+      "mse": 0.5600251271971644,
+      "normalized_rmse": 1.0
+    },
+    "half_exposure": {
+      "mse": 0.1400062817992911,
+      "normalized_rmse": 0.5
+    }
+  },
+  "elapsed_seconds": 45.3828769,
+  "renderer": {
+    "build_type": "RelWithDebInfo",
+    "cuda_version": 13020,
+    "debug_build": false,
+    "device": "NVIDIA GeForce RTX 5080",
+    "driver_version": 13040,
+    "graphics_apis": [
+      "vulkan",
+      "d3d12"
+    ],
+    "msvc_version": 194435227,
+    "openvdb_io": false,
+    "optix_profiling": true,
+    "optix_version": 80000,
+    "project_root": "D:/Projects/KiRaRay",
+    "spectral": true,
+    "tracked_bytes": 37803100,
+    "usd": true
+  },
+  "revision": "84090368cd40cca9f5ae0a38758786dbd2da1262",
+  "working_tree": "M CMakeLists.txt\n M README.md\n M common/build/source.cmake\n M common/scripts/krr.py\n M src/CMakeLists.txt\n M src/core/camera.cpp\n M src/core/camera.h\n M src/core/common.h\n M src/core/config.in.h\n M src/core/device/context.cpp\n M src/core/device/optix.cpp\n M src/core/device/optix.h\n M src/core/device/scene.cpp\n M src/core/device/scene.h\n M src/core/light.h\n M src/core/mesh.cpp\n M src/core/mesh.h\n M src/core/python/common.cpp\n M src/core/python/py.cpp\n M src/core/raytracing.h\n M src/core/renderpass.h\n M src/core/scene.cpp\n M src/core/scene.h\n M src/core/scenegraph.cpp\n M src/core/scenenode.cpp\n M src/core/scenenode.h\n M src/core/shape.h\n M src/core/texture.cpp\n M src/core/texture.h\n M src/ext/CMakeLists.txt\n M src/main/renderer.cpp\n M src/main/renderer.h\n M src/misc/render/ppg/integrator.cpp\n M src/render/bsdf.h\n M src/render/lightsampler.h\n M src/render/megakernel/device.cu\n M src/render/passes/accumulate/accumulate.h\n M src/render/passes/gbuffer/device.cu\n M src/render/passes/gbuffer/device.h\n M src/render/passes/gbuffer/gbuffer.cpp\n M src/render/passes/gbuffer/gbuffer.h\n M src/render/shading.h\n M src/render/shared.h\n M src/render/wavefront/device.cu\n M src/render/wavefront/integrator.cpp\n M src/render/wavefront/integrator.h\n M src/render/wavefront/medium.cpp\n M src/scene/importer.h\n M src/scene/krrscene.cpp\n M src/util/volume.cpp\n M src/util/volume.h\n M tests/CMakeLists.txt\n M tests/README.md\n?? docs/\n?? integrations/\n?? src/core/material/\n?? src/ext/mikktspace/\n?? src/render/materials/openpbr.h\n?? src/render/materials/openpbr/\n?? src/scene/interop.cpp\n?? src/scene/interop.h\n?? src/util/openvdb.cpp\n?? tests/blender/\n?? tests/cases/cornell_usd/\n?? tests/fixtures/\n?? tests/render/test_materials.cu\n?? tests/render/test_session.cpp\n?? tests/unit/test_blender_preflight.py\n?? tests/unit/test_camera.cpp\n?? tests/unit/test_material_program.cpp\n?? tests/unit/test_openpbr.cpp\n?? tests/unit/test_scene_interop.cpp\n?? tests/unit/test_usd.cpp\n?? tests/unit/test_volume_import.cpp",
+  "python": "3.9.12 (main, Apr  4 2022, 05:22:27) [MSC v.1916 64 bit (AMD64)]",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "module_dir": null,
+  "build_dir": "D:\\Projects\\KiRaRay/build/blender-interop/standalone"
+}

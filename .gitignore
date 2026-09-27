@@ -44,6 +44,7 @@ tempCodeRunnerFile.py
 .clangd
 .vs
 CMakeSettings.json
+CMakeUserPresets.json
 
 # Build
 /build

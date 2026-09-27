@@ -4,6 +4,7 @@
 #include "shape.h"
 #include "texture.h"
 #include "render/spectrum.h"
+#include "render/materials/openpbr/model.h"
 #include "device/taggedptr.h"
 
 NAMESPACE_BEGIN(krr)
@@ -162,9 +163,13 @@ public:
 					 const RGBColorSpace *colorSpace = KRR_DEFAULT_COLORSPACE) :
 		shape(shape), texture(texture), Le(Le), twoSided(twoSided), scale(scale), colorSpace(colorSpace) {}
 
+	DiffuseAreaLight(const Shape &shape, const rt::MaterialData *material) :
+		shape(shape), material(material), twoSided(true), colorSpace(nullptr) {}
+
 	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, bool initialize) const;
 
-	KRR_DEVICE LightSample DiffuseAreaLight::sampleLi(Vector2f u, const LightSampleContext &ctx,
+	template <bool Authored = true>
+	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx,
 													  const SampledWavelengths &lambda) const {
 		LightSample ls				= {};
 		ShapeSampleContext shapeCtx = {ctx.p, ctx.n};
@@ -175,13 +180,18 @@ public:
 
 		ls.intr = intr;
 		ls.pdf	= ss.pdf;
-		ls.L	= L(intr.p, intr.n, intr.uv, intr.wo, lambda);
+		ls.L	= L<Authored>(intr.p, intr.n, intr.uv, intr.wo, lambda, true);
 		return ls;
 	}
 
+	template <bool Authored = true>
 	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
-							  const SampledWavelengths &lambda) const {
+							  const SampledWavelengths &lambda, bool sampleOpacity = false) const {
 		if (!twoSided && dot(n, w) < 0.f) return Spectrum::Zero(); // hit backface
+		if constexpr (Authored) {
+			if (material && material->mProgram.enabled)
+				return evaluateEmission(p, n, w, lambda, sampleOpacity);
+		}
 
 		RGB L = texture.isValid() ? texture.evaluate(uv).head<3>() : Le;
 		return scale * Spectrum::fromRGB(L, SpectrumType::RGBIlluminant, lambda, *colorSpace);
@@ -197,8 +207,30 @@ public:
 	KRR_DEVICE bool isDeltaLight() const { return false; }
 
 private:
+	KRR_DEVICE KRR_NOINLINE Spectrum evaluateEmission(Vector3f p, Vector3f n, Vector3f w,
+		const SampledWavelengths &lambda, bool sampleOpacity) const {
+		MaterialContext context = shape.materialContext(p);
+		auto values = material->mProgram.evaluate(context, MaterialEvaluation::Emission);
+		if (values[MaterialParameter::ThinWalled][0] == 0 && dot(n, w) < 0) return Spectrum(0);
+		RGB color = materialVector(values[MaterialParameter::EmissionColor]);
+		float intensity = materialEmissionIntensity(values[MaterialParameter::EmissionLuminance][0],
+			material->mProgram.model);
+		if (sampleOpacity) {
+			auto opacity = material->mProgram.evaluate(context, MaterialEvaluation::Opacity);
+			intensity *= fminf(fmaxf(opacity[MaterialParameter::Opacity][0], 0), 1);
+		}
+		Spectrum emitted = intensity * Spectrum::fromRGB(color, SpectrumType::RGBIlluminant,
+			lambda, *material->getColorSpace());
+		if (values[MaterialParameter::CoatWeight][0] > 0 || values[MaterialParameter::FuzzWeight][0] > 0) {
+			openpbr::Model model(values, context, w, lambda, *material->getColorSpace(), material->mProgram.model);
+			emitted *= model.emissionScale();
+		}
+		return emitted;
+	}
+
 	Shape shape;
 	rt::TextureData texture{}; // emissive image texture
+	const rt::MaterialData *material{nullptr};
 	RGB Le{0};
 	bool twoSided{true};
 	float scale{1};
@@ -265,15 +297,27 @@ class Light :
 public:
 	using TaggedPointer::TaggedPointer;
 
+	template <bool Authored = true>
 	KRR_DEVICE LightSample sampleLi(Vector2f u, const LightSampleContext &ctx, 
 									const SampledWavelengths& lambda) const {
-		auto sampleLi = [&](auto ptr) -> LightSample { return ptr->sampleLi(u, ctx, lambda); };
+		auto sampleLi = [&](auto ptr) -> LightSample {
+			using T = std::remove_cv_t<std::remove_pointer_t<decltype(ptr)>>;
+			if constexpr (std::is_same_v<T, DiffuseAreaLight>)
+				return ptr->template sampleLi<Authored>(u, ctx, lambda);
+			else return ptr->sampleLi(u, ctx, lambda);
+		};
 		return dispatch(sampleLi);
 	}
 
+	template <bool Authored = true>
 	KRR_DEVICE Spectrum L(Vector3f p, Vector3f n, Vector2f uv, Vector3f w,
 					   const SampledWavelengths &lambda) const {
-		auto L = [&](auto ptr) -> Spectrum { return ptr->L(p, n, uv, w, lambda); };
+		auto L = [&](auto ptr) -> Spectrum {
+			using T = std::remove_cv_t<std::remove_pointer_t<decltype(ptr)>>;
+			if constexpr (std::is_same_v<T, DiffuseAreaLight>)
+				return ptr->template L<Authored>(p, n, uv, w, lambda);
+			else return ptr->L(p, n, uv, w, lambda);
+		};
 		return dispatch(L);
 	}
 

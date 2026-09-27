@@ -4,6 +4,13 @@
 
 namespace krr {
 
+struct RenderContext::Readback {
+	RenderContext *owner{};
+	nvrhi::StagingTextureHandle staging;
+	nvrhi::EventQueryHandle query;
+	bool pending{};
+};
+
 RenderContext::RenderContext(nvrhi::IDevice *device, std::unique_ptr<GraphicsInterop> interop) :
 	mDevice(device), mInterop(std::move(interop)), mCudaStream(KRR_DEFAULT_STREAM) {
 	if (!mInterop) throw std::invalid_argument("Graphics interop is required.");
@@ -24,6 +31,8 @@ RenderContext::~RenderContext() {
 		std::fprintf(stderr, "Could not wait for graphics work during cleanup.\n");
 	}
 	mCommandList = nullptr;
+	mReadback = nullptr;
+	releaseReadbacks();
 	mRenderTarget.reset();
 	mInterop.reset();
 }
@@ -80,6 +89,8 @@ std::vector<nvrhi::IBuffer *> RenderContext::getSharedBuffers() const {
 void RenderContext::resize(Vector2i size) {
 	endCuda();
 	mRenderTarget->resize(size);
+	mReadback = nullptr;
+	releaseReadbacks();
 }
 
 void RenderContext::clear() {
@@ -97,13 +108,88 @@ std::vector<float> RenderContext::readback() {
 	auto *texture = getColorTexture()->getTexture();
 	auto desc = texture->getDesc();
 	desc.sharedResourceFlags = nvrhi::SharedResourceFlags::None;
-	auto staging = mDevice->createStagingTexture(desc, nvrhi::CpuAccessMode::Read);
-	if (!staging) throw std::runtime_error("Could not create image readback storage.");
+	if (!mReadback || mReadback->getDesc().width != desc.width ||
+		mReadback->getDesc().height != desc.height || mReadback->getDesc().format != desc.format) {
+		mReadback = mDevice->createStagingTexture(desc, nvrhi::CpuAccessMode::Read);
+		if (!mReadback) throw std::runtime_error("Could not create image readback storage.");
+	}
 	mCommandList->open();
-	mCommandList->copyTexture(staging, {}, texture, {});
+	mCommandList->copyTexture(mReadback, {}, texture, {});
 	mCommandList->close();
 	mDevice->executeCommandList(mCommandList);
 	if (!mDevice->waitForIdle()) throw std::runtime_error("Graphics device lost during image readback.");
+	return copyReadback(mReadback);
+}
+
+RenderContext::ReadbackHandle RenderContext::enqueueReadback() {
+	if (!getColorTexture()) throw std::logic_error("Cannot read an empty render target.");
+	ReadbackHandle readback;
+	for (auto &slot : mAsyncReadbacks) {
+		if (!slot) {
+			slot = std::make_shared<Readback>();
+			slot->owner = this;
+		}
+		// Dropped requests can still have an in-flight graphics copy.
+		if (slot.use_count() != 1 || (slot->pending && !mDevice->pollEventQuery(slot->query))) continue;
+		readback = slot;
+		break;
+	}
+	if (!readback) return {};
+	endCuda();
+	auto *texture = getColorTexture()->getTexture();
+	auto desc = texture->getDesc();
+	desc.sharedResourceFlags = nvrhi::SharedResourceFlags::None;
+	if (!readback->staging || readback->staging->getDesc().width != desc.width ||
+		readback->staging->getDesc().height != desc.height || readback->staging->getDesc().format != desc.format) {
+		readback->staging = mDevice->createStagingTexture(desc, nvrhi::CpuAccessMode::Read);
+		if (!readback->staging) throw std::runtime_error("Could not create image readback storage.");
+	}
+	if (!readback->query) {
+		readback->query = mDevice->createEventQuery();
+		if (!readback->query) throw std::runtime_error("Could not create image readback query.");
+	}
+	mDevice->resetEventQuery(readback->query);
+	readback->pending = false;
+	mCommandList->open();
+	mCommandList->copyTexture(readback->staging, {}, texture, {});
+	mCommandList->close();
+	mDevice->executeCommandList(mCommandList);
+	mDevice->setEventQuery(readback->query, nvrhi::CommandQueue::Graphics);
+	readback->pending = true;
+	return readback;
+}
+
+bool RenderContext::isReadbackReady(const ReadbackHandle &readback) {
+	if (!readback || readback->owner != this || !readback->staging || !readback->query)
+		throw std::invalid_argument("Image readback request is no longer valid.");
+	return readback->pending && mDevice->pollEventQuery(readback->query);
+}
+
+std::vector<float> RenderContext::collectReadback(const ReadbackHandle &readback, bool wait) {
+	const bool ready = isReadbackReady(readback);
+	if (!readback->pending) throw std::logic_error("Image readback request has already been collected.");
+	if (!ready) {
+		if (!wait) return {};
+		mDevice->waitEventQuery(readback->query);
+	}
+	auto result = copyReadback(readback->staging);
+	readback->pending = false;
+	return result;
+}
+
+void RenderContext::releaseReadbacks() {
+	for (auto &slot : mAsyncReadbacks) {
+		if (!slot) continue;
+		slot->owner = nullptr;
+		slot->pending = false;
+		slot->staging = nullptr;
+		slot->query = nullptr;
+		slot.reset();
+	}
+}
+
+std::vector<float> RenderContext::copyReadback(nvrhi::IStagingTexture *staging) {
+	const auto &desc = staging->getDesc();
 	std::vector<float> result(size_t(desc.width) * desc.height * 3);
 	size_t pitch{};
 	const auto *data = static_cast<const unsigned char *>(mDevice->mapStagingTexture(

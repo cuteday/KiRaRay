@@ -40,9 +40,11 @@ public:
 	string getName() const override { return "WavefrontPathTracer"; }
 
 	void handleHit();
+	template <bool AuthoredMaterials> void handleHitImpl();
 	void handleMiss();
 	void generateCameraRays();
 	void generateScatterRays(int depth);
+	template <typename BSDFModel> void generateScatterRaysImpl(int depth);
 	void sampleMediumInteraction(int depth);
 	void sampleMediumScattering(int depth);
 	void traceClosest(int depth);
@@ -103,6 +105,7 @@ public:
 	}
 
 protected:
+	bool mAuthoredMaterials{};
 	// CUDA lambdas capture a non-owning copy of the pass.
 	WavefrontPathTracer *mResourceOwner{};
 };

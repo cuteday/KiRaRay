@@ -130,6 +130,9 @@ protected:
 	nanovdb::Vec3fGrid *densityGrid{nullptr};
 };
 
+NanoVDBGridBase::SharedPtr loadNanoVDB(std::filesystem::path path);
+#if KRR_ENABLE_OPENVDB_IO
 NanoVDBGridBase::SharedPtr loadOpenVDB(std::filesystem::path path, std::string key);
+#endif
 
 NAMESPACE_END(krr)

@@ -78,6 +78,7 @@ extern const dim3 blockDim, gridDim;
 # define KRR_DEVICE   __device__
 # define KRR_HOST     __host__
 # define KRR_FORCEINLINE __forceinline__
+# define KRR_NOINLINE __noinline__
 # if defined(KRR_DEVICE_CODE)
 # define KRR_DEVICE_CONST	__device__ const 
 # else
@@ -88,6 +89,11 @@ extern const dim3 blockDim, gridDim;
 # define KRR_DEVICE			/* ignore */
 # define KRR_HOST			/* ignore */
 # define KRR_FORCEINLINE	/* ignore */
+# if defined(_MSC_VER)
+# define KRR_NOINLINE __declspec(noinline)
+# else
+# define KRR_NOINLINE __attribute__((noinline))
+# endif
 # define KRR_DEVICE_CONST	const
 # define KRR_GLOBAL			/* ignore */
 #endif

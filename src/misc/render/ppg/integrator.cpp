@@ -186,8 +186,8 @@ void PPGPathTracer::handleIntersections() {
 		float bsdfPdf, dTreePdf;
 		DTreeWrapper* dTree = m_sdTree->dTreeWrapper(intr.p);
 
-		if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
-			SampledLight sampledLight = lightSampler.sample(sampler.get1D());
+		if (SampledLight sampledLight = enableNEE && (bsdfType & BSDF_SMOOTH)
+			? lightSampler.sample(sampler.get1D()) : SampledLight{}) {
 			Light light				  = sampledLight.light;
 			LightSample ls			  = light.sampleLi(sampler.get2D(), {intr.p, intr.n}, lambda);
 			Ray shadowRay			  = intr.spawnRayTo(ls.intr);

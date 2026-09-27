@@ -390,7 +390,7 @@ void OptixSceneSingleLevel::buildAccelStructure() {
 		OptixInstance &instanceData	   = instancesIAS[idx];
 		Affine3f transform			   = instance->getNode()->getGlobalTransform();
 		instanceData.sbtOffset		   = idx * OptixBackend::OPTIX_MAX_RAY_TYPES;
-		instanceData.visibilityMask	   = 255;
+		instanceData.visibilityMask	   = instance->getMesh()->cameraVisible ? 255 : 254;
 		instanceData.flags			   = OPTIX_INSTANCE_FLAG_NONE;
 		instanceData.traversableHandle = traversablesGAS[instance->getMesh()->getMeshId()];
 		std::memcpy(instanceData.transform, transform.data(), sizeof(float) * 12);
@@ -519,7 +519,7 @@ OptixSceneMultiLevel::buildIASForNode(SceneGraphNode *node, std::optional<Motion
 		OptixInstance &instanceData = buildInput->instances.back();
 		Affine3f transform			= Affine3f::Identity();
 		instanceData.sbtOffset		= sbtOffset;
-		instanceData.visibilityMask = 255;
+		instanceData.visibilityMask = meshInstance->getMesh()->cameraVisible ? 255 : 254;
 		instanceData.flags			= OPTIX_INSTANCE_FLAG_NONE;
 		instanceData.traversableHandle = traversablesGAS[meshInstance->getMesh()->getMeshId()];
 		std::memcpy(instanceData.transform, transform.data(), sizeof(float) * 12);
@@ -583,6 +583,7 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	auto root			= graph->getRoot();
 	auto rootBuildInput = std::make_shared<InstanceBuildInput>();
 	rootBuildInput->instances.resize(1);
+	rootBuildInput->nodes.push_back(root.get());
 	auto &instanceData			   = rootBuildInput->instances[0];
 	/* use motion transform instead of static instancing transform. */
 	auto rootMotion				   = getMotionKeyframes(root.get());
@@ -602,6 +603,7 @@ void OptixSceneMultiLevel::buildAccelStructure() {
 	iasBuildInput.instanceArray.instances	 = rootBuildInput->instanceBuffer.data();
 	traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 									   {iasBuildInput}, rootBuildInput->accelBuffer, false);
+	rootBuildInput->traversable = traversableIAS;
 }
 
 OptixSceneMultiLevel::InstanceBuildInput::~InstanceBuildInput() { 
@@ -676,6 +678,12 @@ void OptixSceneSingleLevel::updateAccelStructure() {
 									   {iasBuildInput}, accelBufferIAS, false, true);
 }
 
+void OptixSceneMultiLevel::update() {
+	const auto flags = scene.lock()->getSceneGraph()->getRoot()->getUpdateFlags();
+	if ((flags & SceneGraphNode::UpdateFlags::SubgraphTransform) != SceneGraphNode::UpdateFlags::None)
+		updateAccelStructure();
+}
+
 void OptixSceneMultiLevel::updateAccelStructure() {
 	PROFILE("Update Accel Structure");
 	if (!config.enableAnimation) return;
@@ -697,9 +705,10 @@ void OptixSceneMultiLevel::updateAccelStructure() {
 		iasBuildInput.type						 = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 		iasBuildInput.instanceArray.numInstances = instanceInput->instances.size();
 		iasBuildInput.instanceArray.instances	 = instanceInput->instanceBuffer.data();
-		traversableIAS = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
+		instanceInput->traversable = buildASFromInputs(gpContext->optixContext, KRR_DEFAULT_STREAM,
 										   {iasBuildInput}, instanceInput->accelBuffer, false, true);
 	}
+	traversableIAS = instanceBuildInputs.back()->traversable;
 }
 
 std::shared_ptr<OptixScene> OptixBackend::getOptixScene() const { 
