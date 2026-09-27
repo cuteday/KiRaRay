@@ -19,6 +19,7 @@ namespace io {
 		bool isCtrlDown  = false;   ///< Any of the control keys are pressed
 		bool isShiftDown = false;   ///< Any of the shift keys are pressed
 		bool isAltDown   = false;   ///< Any of the alt keys are pressed
+		bool isSuperDown = false;   ///< Any of the super keys are pressed
 	};
 
 	/** Abstracts mouse messages
@@ -61,6 +62,7 @@ namespace io {
 		*/
 		enum class Key : uint32_t
 		{
+			Unknown         = 0,
 			// ASCII values. Do not change them.
 			Space           = ' ',
 			Apostrophe      = '\'',
@@ -181,6 +183,7 @@ namespace io {
 	inline KeyboardEvent::Key glfwToKey(int glfwKey)
 	{
 		static_assert(GLFW_KEY_ESCAPE == 256, "GLFW_KEY_ESCAPE is expected to be 256");
+		if (glfwKey < 0) return KeyboardEvent::Key::Unknown;
 		if (glfwKey < GLFW_KEY_ESCAPE)
 		{
 			// Printable keys are expected to have the same value
@@ -304,8 +307,7 @@ namespace io {
 		case GLFW_KEY_MENU:
 			return KeyboardEvent::Key::Menu;
 		default:
-			KRR_SHOULDNT_GO_HERE;
-			return (KeyboardEvent::Key)0;
+			return KeyboardEvent::Key::Unknown;
 		}
 	}
 

@@ -112,8 +112,7 @@ public:
 					MouseEvent::Type::RightButtonDown : MouseEvent::Type::RightButtonUp;
 				break;
 			default:
-				// Other keys are not supported
-				break;
+				return;
 		}
 
 		DeviceManager *manager = (DeviceManager *) glfwGetWindowUserPointer(pGlfwWindow);
@@ -152,6 +151,7 @@ private:
 		mods.isAltDown	 = (mask & GLFW_MOD_ALT) != 0;
 		mods.isCtrlDown	 = (mask & GLFW_MOD_CONTROL) != 0;
 		mods.isShiftDown = (mask & GLFW_MOD_SHIFT) != 0;
+		mods.isSuperDown = (mask & GLFW_MOD_SUPER) != 0;
 		return mods;
 	}
 

@@ -16,9 +16,9 @@ class UIRenderer: public RenderPass {
 private:
 	ImGuiContext *mContext = nullptr;
 	ImGuiStyle mBaseStyle;
-	float mFontScale = 0.f;
-	float mFramebufferScale = 0.f;
+	float mDpiScale = 0.f;
 	float mPreviousTime = -1.f;
+	bool mPointSampler = false;
 
 	nvrhi::DeviceHandle device;
 	nvrhi::CommandListHandle m_commandList;
@@ -27,8 +27,8 @@ private:
 	nvrhi::ShaderHandle pixelShader;
 	nvrhi::InputLayoutHandle shaderAttribLayout;
 
-	nvrhi::TextureHandle fontTexture;
-	nvrhi::SamplerHandle fontSampler;
+	std::unordered_map<ImTextureData *, nvrhi::TextureHandle> mTextures;
+	std::array<nvrhi::SamplerHandle, 2> samplers;
 
 	nvrhi::BufferHandle vertexBuffer;
 	nvrhi::BufferHandle indexBuffer;
@@ -37,13 +37,11 @@ private:
 	nvrhi::GraphicsPipelineDesc basePSODesc;
 
 	nvrhi::GraphicsPipelineHandle pso;
-	std::unordered_map<nvrhi::ITexture *, nvrhi::BindingSetHandle>
+	std::unordered_map<nvrhi::ITexture *, std::array<nvrhi::BindingSetHandle, 2>>
 		bindingsCache;
 
 	std::vector<ImDrawVert> vtxBuffer;
 	std::vector<ImDrawIdx> idxBuffer;
-
-	std::array<bool, GLFW_KEY_LAST + 1> keyDown = {false};
 
 public:
 	using RenderPass::RenderPass;
@@ -58,7 +56,6 @@ public:
 	void initialize() override;
 	void tick(float elapsedTimeSeconds) override;
 	void beginFrame(RenderContext* context) override;
-	void endFrame(RenderContext* context) override;
 	void render(RenderContext *context) override;
 	void resizing() override;
 
@@ -70,8 +67,8 @@ protected:
 	bool reallocateBuffer(nvrhi::BufferHandle &buffer, size_t requiredSize,
 						  size_t reallocateSize, bool isIndexBuffer);
 
-	bool createFontTexture(nvrhi::ICommandList *commandList);
-	void updateFont(nvrhi::ICommandList *commandList, float fontScale, float framebufferScale);
+	void updateTexture(nvrhi::ICommandList *commandList, ImTextureData *texture);
+	void destroyTexture(ImTextureData *texture);
 
 	nvrhi::IGraphicsPipeline *getPSO(nvrhi::IFramebuffer *fb);
 	nvrhi::IBindingSet *getBindingSet(nvrhi::ITexture *texture);
