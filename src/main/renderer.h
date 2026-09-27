@@ -82,6 +82,7 @@ public:
 
 	virtual bool onMouseEvent(io::MouseEvent &mouseEvent) override;
 	virtual bool onKeyEvent(io::KeyboardEvent &keyEvent) override;
+	void onWindowFocus(int focused) override;
 
 	void run();
 	void renderUI();

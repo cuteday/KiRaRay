@@ -56,6 +56,26 @@ pass that temporarily writes shared resources from CUDA can use
 the context for the duration of their use. Keep registration and mapping
 lifetimes within the owning renderer session.
 
+## UI
+
+`UIRenderer` owns its Dear ImGui context, font atlas, and NVRHI draw resources.
+GLFW provides native DPI awareness and monitor content-scale notifications.
+Window coordinates, framebuffer pixels, and monitor content scale are separate:
+ImGui uses window coordinates, the draw backend applies the framebuffer/window
+ratio, and fonts are rasterized at the monitor's content scale. Mouse coordinates
+stay in window space.
+
+The bundled [Roboto font](../../../common/assets/fonts/README.md) is rebuilt when
+the content scale or framebuffer ratio changes. Layout sizes are recalculated
+from the original style so repeated monitor changes do not compound scaling.
+Font replacement waits for prior graphics work before releasing its resources;
+ordinary frames do not wait for this upload.
+
+The NVRHI renderer is shared by Vulkan and D3D12. Single-window docking is
+enabled; detached platform windows require additional backend support and are
+not enabled. The platform input adapter still uses ImGui's legacy keyboard
+mapping; replacing it with the official GLFW backend is a separate migration.
+
 ## Build and validation
 
 NVRHI fetches its pinned Vulkan-Headers and DirectX-Headers. The installed

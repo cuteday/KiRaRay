@@ -1,5 +1,8 @@
 #include <stddef.h>
-#include "graphics/ui.h"
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
+#include <file.h>
 
 #include <graphics/device.h>
 #include "render/profiler/profiler.h"
@@ -8,33 +11,38 @@
 
 NAMESPACE_BEGIN(krr)
 
+UIRenderer::~UIRenderer() {
+	if (mContext) ImGui::DestroyContext(mContext);
+}
+
 bool UIRenderer::onMouseEvent(const io::MouseEvent &mouseEvent) {
+	if (!mContext) return false;
+	ImGui::SetCurrentContext(mContext);
 	auto &io = ImGui::GetIO();
 	switch (mouseEvent.type) {
 		case io::MouseEvent::Type::Move:
-			io.MousePos.x = float(mouseEvent.screenPos[0]);
-			io.MousePos.y = float(mouseEvent.screenPos[1]);
+			io.AddMousePosEvent(float(mouseEvent.screenPos[0]), float(mouseEvent.screenPos[1]));
 			break;
 		case io::MouseEvent::Type::Wheel:
-			io.MouseWheel += float(mouseEvent.wheelDelta[1]);
+			io.AddMouseWheelEvent(float(mouseEvent.wheelDelta[0]), float(mouseEvent.wheelDelta[1]));
 			break;
 		case io::MouseEvent::Type::LeftButtonDown:
-			mouseDown[0] = io.MouseDown[0] = true;
+			io.AddMouseButtonEvent(0, true);
 			break;
 		case io::MouseEvent::Type::LeftButtonUp:
-			mouseDown[0] = false;
+			io.AddMouseButtonEvent(0, false);
 			break;
 		case io::MouseEvent::Type::MiddleButtonDown:
-			mouseDown[1] = io.MouseDown[1] = true;
+			io.AddMouseButtonEvent(2, true);
 			break;
 		case io::MouseEvent::Type::MiddleButtonUp:
-			mouseDown[1] = false;
+			io.AddMouseButtonEvent(2, false);
 			break;
 		case io::MouseEvent::Type::RightButtonDown:
-			mouseDown[2] = io.MouseDown[2] = true;
+			io.AddMouseButtonEvent(1, true);
 			break;
 		case io::MouseEvent::Type::RightButtonUp:
-			mouseDown[2] = false;
+			io.AddMouseButtonEvent(1, false);
 			break;
 	}
 	
@@ -42,6 +50,8 @@ bool UIRenderer::onMouseEvent(const io::MouseEvent &mouseEvent) {
 }
 
 bool UIRenderer::onKeyEvent(const io::KeyboardEvent &keyEvent) {
+	if (!mContext) return false;
+	ImGui::SetCurrentContext(mContext);
 	auto &io = ImGui::GetIO();
 
 	if (keyEvent.type == io::KeyboardEvent::Type::KeyPressed 
@@ -50,6 +60,7 @@ bool UIRenderer::onKeyEvent(const io::KeyboardEvent &keyEvent) {
 		if (keyEvent.type == io::KeyboardEvent::Type::KeyPressed)
 			keyIsDown = true;
 		int key = keyEvent.glfwKey;
+		if (key < 0 || key >= int(keyDown.size())) return io.WantCaptureKeyboard;
 		// update our internal state tracking for this key button
 		keyDown[key] = keyIsDown;
 		if (keyIsDown) io.KeysDown[key] = true;
@@ -60,6 +71,13 @@ bool UIRenderer::onKeyEvent(const io::KeyboardEvent &keyEvent) {
 		io.AddInputCharacter(keyEvent.codepoint);
 	}
 	return io.WantCaptureKeyboard;
+}
+
+void UIRenderer::onWindowFocus(int focused) {
+	if (!mContext) return;
+	ImGui::SetCurrentContext(mContext);
+	ImGui::GetIO().AddFocusEvent(focused != 0);
+	if (!focused) keyDown.fill(false);
 }
 
 bool UIRenderer::createFontTexture(nvrhi::ICommandList *commandList) {
@@ -77,11 +95,10 @@ bool UIRenderer::createFontTexture(nvrhi::ICommandList *commandList) {
 		desc.debugName = "ImGui font texture";
 
 		fontTexture = device->createTexture(desc);
+		if (fontTexture == nullptr) return false;
 
 		commandList->beginTrackingTextureState(
 			fontTexture, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
-
-		if (fontTexture == nullptr) return false;
 
 		commandList->writeTexture(fontTexture, 0, 0, pixels, width * 4);
 
@@ -92,10 +109,10 @@ bool UIRenderer::createFontTexture(nvrhi::ICommandList *commandList) {
 		io.Fonts->TexID = fontTexture;
 	}
 
-	{
+	if (!fontSampler) {
 		const auto desc =
 			nvrhi::SamplerDesc()
-				.setAllAddressModes(nvrhi::SamplerAddressMode::Wrap)
+				.setAllAddressModes(nvrhi::SamplerAddressMode::Clamp)
 				.setAllFilters(true);
 
 		fontSampler = device->createSampler(desc);
@@ -105,14 +122,51 @@ bool UIRenderer::createFontTexture(nvrhi::ICommandList *commandList) {
 	return true;
 }
 
+void UIRenderer::updateFont(nvrhi::ICommandList *commandList, float fontScale, float framebufferScale) {
+	auto &io = ImGui::GetIO();
+	bindingsCache.clear();
+	fontTexture = nullptr;
+	io.FontDefault = nullptr;
+	io.Fonts->Clear();
+	ImFontConfig config;
+	config.OversampleH = 2;
+	config.OversampleV = 1;
+	const fs::path fontPath = fs::path(KRR_PROJECT_DIR) / "common/assets/fonts/Roboto-Medium.ttf";
+	if (fs::is_regular_file(fontPath)) {
+		io.FontDefault = io.Fonts->AddFontFromFileTTF(fontPath.u8string().c_str(), 15.f * fontScale, &config);
+	} else {
+		Log(Warning, "UI font is missing; using the embedded fallback: %s", fontPath.string().c_str());
+		config.SizePixels = 13.f * fontScale;
+		config.OversampleH = 1;
+		config.PixelSnapH = true;
+		io.FontDefault = io.Fonts->AddFontDefault(&config);
+	}
+	io.FontGlobalScale = 1.f / framebufferScale;
+	ImGui::GetStyle() = mBaseStyle;
+	ImGui::GetStyle().ScaleAllSizes(fontScale / framebufferScale);
+	if (!createFontTexture(commandList)) Log(Fatal, "Failed to create font texture");
+	mFontScale = fontScale;
+	mFramebufferScale = framebufferScale;
+}
+
 void UIRenderer::initialize() {
+	if (mContext) throw std::logic_error("UIRenderer is already initialized.");
 	this->device = getDevice();
 	if (!this->device) Log(Fatal, "Set device for UIRenderer before initialization!");
+	IMGUI_CHECKVERSION();
+	mContext = ImGui::CreateContext();
+	ImGui::SetCurrentContext(mContext);
+	auto &io = ImGui::GetIO();
+	io.BackendRendererName = "kiraray_nvrhi";
+	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_DockingEnable;
+	ImGui::StyleColorsLight();
+	ImGui::GetStyle().WindowRounding = 5.f;
+	mBaseStyle = ImGui::GetStyle();
 	
 	auto shaderLoader = std::make_unique<ShaderLoader>(getDevice());
 
 	m_commandList = device->createCommandList();
-	m_commandList->open();
 
 	vertexShader = shaderLoader->createShader(
 		"common/shaders/imgui_vs.hlsl", "main", nullptr, nvrhi::ShaderType::Vertex);
@@ -141,18 +195,14 @@ void UIRenderer::initialize() {
 		sizeof(vertexAttribLayout) / sizeof(vertexAttribLayout[0]),
 		vertexShader);
 
-	if (!createFontTexture(m_commandList)) {
-		Log(Fatal, "Failed to create font texture");
-	}
-
 	{
 		nvrhi::BlendState blendState;
 		blendState.targets[0]
 			.setBlendEnable(true)
 			.setSrcBlend(nvrhi::BlendFactor::SrcAlpha)
 			.setDestBlend(nvrhi::BlendFactor::InvSrcAlpha)
-			.setSrcBlendAlpha(nvrhi::BlendFactor::InvSrcAlpha)
-			.setDestBlendAlpha(nvrhi::BlendFactor::Zero);
+			.setSrcBlendAlpha(nvrhi::BlendFactor::One)
+			.setDestBlendAlpha(nvrhi::BlendFactor::InvSrcAlpha);
 
 		auto rasterState = nvrhi::RasterState()
 							   .setFillSolid()
@@ -163,7 +213,7 @@ void UIRenderer::initialize() {
 		auto depthStencilState =
 			nvrhi::DepthStencilState()
 				.disableDepthTest()
-				.enableDepthWrite()
+				.disableDepthWrite()
 				.disableStencil()
 				.setDepthFunc(nvrhi::ComparisonFunc::Always);
 
@@ -175,7 +225,7 @@ void UIRenderer::initialize() {
 		nvrhi::BindingLayoutDesc layoutDesc;
 		layoutDesc.visibility = nvrhi::ShaderType::All;
 		layoutDesc.bindings	  = {
-			  nvrhi::BindingLayoutItem::PushConstants(0, sizeof(float) * 2),
+			  nvrhi::BindingLayoutItem::PushConstants(0, sizeof(float) * 4),
 			  nvrhi::BindingLayoutItem::Texture_SRV(0),
 			  nvrhi::BindingLayoutItem::Sampler(0)};
 		bindingLayout = device->createBindingLayout(layoutDesc);
@@ -188,21 +238,6 @@ void UIRenderer::initialize() {
 		basePSODesc.bindingLayouts = {bindingLayout};
 	}
 	
-	auto &io = ImGui::GetIO();
-	auto* font = io.Fonts->AddFontDefault();
-
-	m_commandList->close();
-	device->executeCommandList(m_commandList);
-	device->waitForIdle();
-
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard |
-					  ImGuiConfigFlags_DockingEnable |
-					  ImGuiConfigFlags_ViewportsEnable;
-
-	auto &style			 = ui::GetStyle();
-	style.WindowRounding = 5.f;
-	ImGui::StyleColorsLight();
-
 	/* Setup keyboard mapping for imgui */
 	io.KeyMap[ImGuiKey_Tab]		   = GLFW_KEY_TAB;
 	io.KeyMap[ImGuiKey_LeftArrow]  = GLFW_KEY_LEFT;
@@ -255,22 +290,38 @@ bool UIRenderer::reallocateBuffer(nvrhi::BufferHandle &buffer,
 }
 
 void UIRenderer::tick(float elapsedTimeSeconds) {
+	ImGui::SetCurrentContext(mContext);
 	ImGuiIO &io		   = ImGui::GetIO();
-	io.DeltaTime	   = elapsedTimeSeconds;
+	io.DeltaTime = mPreviousTime >= 0.f && elapsedTimeSeconds > mPreviousTime
+		? elapsedTimeSeconds - mPreviousTime : 1.f / 60.f;
+	mPreviousTime = elapsedTimeSeconds;
 	io.MouseDrawCursor = false;
 }
 
 void UIRenderer::beginFrame(RenderContext* context) {
-	int width, height;
+	ImGui::SetCurrentContext(mContext);
+	int width, height, framebufferWidth, framebufferHeight;
 	float scaleX, scaleY;
 
-	getDeviceManager()->getFrameSize(width, height);
+	glfwGetWindowSize(getDeviceManager()->getWindow(), &width, &height);
+	getDeviceManager()->getFrameSize(framebufferWidth, framebufferHeight);
 	getDeviceManager()->getDPIScaleInfo(scaleX, scaleY);
 
 	ImGuiIO &io					 = ImGui::GetIO();
 	io.DisplaySize				 = ImVec2(float(width), float(height));
-	io.DisplayFramebufferScale.x = scaleX;
-	io.DisplayFramebufferScale.y = scaleY;
+	io.DisplayFramebufferScale = ImVec2(width > 0 ? float(framebufferWidth) / width : 1.f,
+		height > 0 ? float(framebufferHeight) / height : 1.f);
+	float framebufferScale = io.DisplayFramebufferScale.y;
+	if (!std::isfinite(scaleY) || scaleY <= 0.f) scaleY = 1.f;
+	if (!std::isfinite(framebufferScale) || framebufferScale <= 0.f) framebufferScale = 1.f;
+	if (std::abs(scaleY - mFontScale) > .001f ||
+		std::abs(framebufferScale - mFramebufferScale) > .001f) {
+		if (fontTexture) device->waitForIdle();
+		m_commandList->open();
+		updateFont(m_commandList, scaleY, framebufferScale);
+		m_commandList->close();
+		device->executeCommandList(m_commandList);
+	}
 
 	io.KeyCtrl = io.KeysDown[GLFW_KEY_LEFT_CONTROL] || io.KeysDown[GLFW_KEY_RIGHT_CONTROL];
 	io.KeyShift = io.KeysDown[GLFW_KEY_LEFT_SHIFT] || io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
@@ -280,11 +331,9 @@ void UIRenderer::beginFrame(RenderContext* context) {
 }
 
 void UIRenderer::endFrame(RenderContext* context) {
+	ImGui::SetCurrentContext(mContext);
 	// reconcile input key states
 	auto &io = ImGui::GetIO();
-	for (size_t i = 0; i < mouseDown.size(); i++) 
-		if (io.MouseDown[i] == true && mouseDown[i] == false) 
-			io.MouseDown[i] = false;
 	for (size_t i = 0; i < keyDown.size(); i++) 
 		if (io.KeysDown[i] == true && keyDown[i] == false) 
 			io.KeysDown[i] = false;
@@ -305,7 +354,7 @@ nvrhi::IBindingSet *UIRenderer::getBindingSet(nvrhi::ITexture *texture) {
 
 	nvrhi::BindingSetDesc desc;
 
-	desc.bindings = {nvrhi::BindingSetItem::PushConstants(0, sizeof(float) * 2),
+	desc.bindings = {nvrhi::BindingSetItem::PushConstants(0, sizeof(float) * 4),
 					 nvrhi::BindingSetItem::Texture_SRV(0, texture),
 					 nvrhi::BindingSetItem::Sampler(0, fontSampler)};
 
@@ -333,8 +382,8 @@ bool UIRenderer::updateGeometry(nvrhi::ICommandList *commandList) {
 		return false;
 	}
 
-	vtxBuffer.resize(vertexBuffer->getDesc().byteSize / sizeof(ImDrawVert));
-	idxBuffer.resize(indexBuffer->getDesc().byteSize / sizeof(ImDrawIdx));
+	vtxBuffer.resize(drawData->TotalVtxCount);
+	idxBuffer.resize(drawData->TotalIdxCount);
 
 	// copy and convert all vertices into a single contiguous buffer
 	ImDrawVert *vtxDst = &vtxBuffer[0];
@@ -353,32 +402,37 @@ bool UIRenderer::updateGeometry(nvrhi::ICommandList *commandList) {
 	}
 
 	commandList->writeBuffer(vertexBuffer, &vtxBuffer[0],
-							 vertexBuffer->getDesc().byteSize);
+							 vtxBuffer.size() * sizeof(ImDrawVert));
 	commandList->writeBuffer(indexBuffer, &idxBuffer[0],
-							 indexBuffer->getDesc().byteSize);
+							 idxBuffer.size() * sizeof(ImDrawIdx));
 
 	return true;
 }
 
 void UIRenderer::render(RenderContext *context) {
 	PROFILE("UI Render");
+	ImGui::SetCurrentContext(mContext);
 	ImGui::Render();
 
 	ImDrawData *drawData = ImGui::GetDrawData();
-	const auto &io		 = ImGui::GetIO();
+	if (!drawData || drawData->DisplaySize.x <= 0.f || drawData->DisplaySize.y <= 0.f ||
+		drawData->TotalVtxCount == 0 || drawData->TotalIdxCount == 0) return;
+	int framebufferWidth = int(drawData->DisplaySize.x * drawData->FramebufferScale.x);
+	int framebufferHeight = int(drawData->DisplaySize.y * drawData->FramebufferScale.y);
+	if (framebufferWidth <= 0 || framebufferHeight <= 0) return;
 
 	m_commandList->open();
 	m_commandList->beginMarker("ImGUI");
 
 	if (!updateGeometry(m_commandList)) {
+		m_commandList->endMarker();
+		m_commandList->close();
 		Log(Error, "UIRender::Failed to update geometry for imgui render.");
 		return;
 	}
-		
-	// handle DPI scaling
-	drawData->ScaleClipRects(io.DisplayFramebufferScale);
 
-	float invDisplaySize[2] = {1.f / io.DisplaySize.x, 1.f / io.DisplaySize.y};
+	float constants[4] = {1.f / drawData->DisplaySize.x, 1.f / drawData->DisplaySize.y,
+		drawData->DisplayPos.x, drawData->DisplayPos.y};
 
 	// set up graphics state
 	nvrhi::GraphicsState drawState;
@@ -387,10 +441,12 @@ void UIRenderer::render(RenderContext *context) {
 	assert(drawState.framebuffer);
 
 	drawState.pipeline = getPSO(drawState.framebuffer);
+	const auto &framebufferInfo = drawState.framebuffer->getFramebufferInfo();
+	int clipWidth = std::min(framebufferWidth, int(framebufferInfo.width));
+	int clipHeight = std::min(framebufferHeight, int(framebufferInfo.height));
 
 	drawState.viewport.viewports.push_back(
-		nvrhi::Viewport(io.DisplaySize.x * io.DisplayFramebufferScale.x,
-						io.DisplaySize.y * io.DisplayFramebufferScale.y));
+		nvrhi::Viewport(float(framebufferWidth), float(framebufferHeight)));
 	drawState.viewport.scissorRects.resize(1); // updated below
 
 	nvrhi::VertexBufferBinding vbufBinding;
@@ -414,31 +470,40 @@ void UIRenderer::render(RenderContext *context) {
 			const ImDrawCmd *pCmd = &cmdList->CmdBuffer[i];
 
 			if (pCmd->UserCallback) {
-				pCmd->UserCallback(cmdList, pCmd);
+				if (pCmd->UserCallback == ImDrawCallback_ResetRenderState)
+					m_commandList->clearState();
+				else pCmd->UserCallback(cmdList, pCmd);
 			} else {
+				ImVec2 clipMin((pCmd->ClipRect.x - drawData->DisplayPos.x) * drawData->FramebufferScale.x,
+					(pCmd->ClipRect.y - drawData->DisplayPos.y) * drawData->FramebufferScale.y);
+				ImVec2 clipMax((pCmd->ClipRect.z - drawData->DisplayPos.x) * drawData->FramebufferScale.x,
+					(pCmd->ClipRect.w - drawData->DisplayPos.y) * drawData->FramebufferScale.y);
+				clipMin.x = std::max(clipMin.x, 0.f);
+				clipMin.y = std::max(clipMin.y, 0.f);
+				clipMax.x = std::min(clipMax.x, float(clipWidth));
+				clipMax.y = std::min(clipMax.y, float(clipHeight));
+				if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y || pCmd->ElemCount == 0) continue;
+				nvrhi::Rect scissor(int(clipMin.x), int(clipMax.x), int(clipMin.y), int(clipMax.y));
+				if (scissor.maxX <= scissor.minX || scissor.maxY <= scissor.minY) continue;
 				drawState.bindings = {
 					getBindingSet((nvrhi::ITexture *) pCmd->TextureId)};
 				assert(drawState.bindings[0]);
 
-				drawState.viewport.scissorRects[0] =
-					nvrhi::Rect(int(pCmd->ClipRect.x), int(pCmd->ClipRect.z),
-								int(pCmd->ClipRect.y), int(pCmd->ClipRect.w));
+				drawState.viewport.scissorRects[0] = scissor;
 
 				nvrhi::DrawArguments drawArguments;
 				drawArguments.vertexCount		  = pCmd->ElemCount;
-				drawArguments.startIndexLocation  = idxOffset;
-				drawArguments.startVertexLocation = vtxOffset;
+				drawArguments.startIndexLocation  = idxOffset + pCmd->IdxOffset;
+				drawArguments.startVertexLocation = vtxOffset + pCmd->VtxOffset;
 
 				m_commandList->setGraphicsState(drawState);
-				m_commandList->setPushConstants(invDisplaySize,
-												sizeof(invDisplaySize));
+				m_commandList->setPushConstants(constants, sizeof(constants));
 				m_commandList->drawIndexed(drawArguments);
 			}
-
-			idxOffset += pCmd->ElemCount;
 		}
 
 		vtxOffset += cmdList->VtxBuffer.Size;
+		idxOffset += cmdList->IdxBuffer.Size;
 	}
 
 	m_commandList->endMarker();

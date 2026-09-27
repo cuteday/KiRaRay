@@ -30,7 +30,6 @@ struct DeviceCreationParameters {
 	bool vsyncEnabled				= false;
 	bool enableComputeQueue			= true;
 	bool enableCopyQueue			= true;
-	bool enablePerMonitorDPI		= false;
 };
 
 
@@ -52,11 +51,11 @@ public:
 
 	void runMessageLoop();
 
-	// returns the size of the window in screen coordinates
+	// Framebuffer dimensions in pixels.
 	Vector2i getFrameSize() const;
 	void getFrameSize(int &width, int &height) const;
 
-	// returns the screen coordinate to pixel coordinate scale factor
+	// Monitor content scale, independent of the framebuffer/window size ratio.
 	void getDPIScaleInfo(float &x, float &y) const {
 		x = mDPIScaleFactorX;
 		y = mDPIScaleFactorY;
@@ -72,7 +71,7 @@ protected:
 	std::list<RenderPass::SharedPtr> mRenderPasses;
 	// timestamp in seconds for the previous frame
 	double mPreviousFrameTimestamp = .0;
-	// current DPI scale info (updated when window moves)
+	// Updated by GLFW when the window's content scale changes.
 	float mDPIScaleFactorX = 1.f;
 	float mDPIScaleFactorY = 1.f;
 	bool mRequestedVSync   = false;
@@ -120,9 +119,9 @@ public:
 	}
 
 	virtual Vector2f getMouseScale() {
-		Vector2i fbSize;
-		getFrameSize(fbSize[0], fbSize[1]);
-		return fbSize.cast<float>().cwiseInverse();
+		Vector2i size = getFrameSize();
+		if (mWindow) glfwGetWindowSize(mWindow, &size[0], &size[1]);
+		return size.cwiseMax(Vector2i::Ones()).cast<float>().cwiseInverse();
 	}
 	inline Vector2i getMousePos() const {
 		double x, y;
@@ -134,7 +133,8 @@ public:
 	virtual void onWindowIconify(int iconified) {}
 	virtual void onWindowFocus(int focused) {}
 	virtual void onWindowRefresh() {}
-	virtual void onWindowPosUpdate(int xpos, int ypos);
+	virtual void onWindowPosUpdate(int xpos, int ypos) {}
+	virtual void onWindowContentScale(float xscale, float yscale);
 	virtual bool onMouseEvent(io::MouseEvent &mouseEvent);
 	virtual bool onKeyEvent(io::KeyboardEvent &keyEvent);
 

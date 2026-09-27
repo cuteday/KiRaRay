@@ -9,7 +9,6 @@
 #include <nvrhi/vulkan.h>
 #include <cuda_runtime.h>
 #include <cstring>
-#include <limits>
 #include <set>
 
 #include "graphics/device_backend.h"

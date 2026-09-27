@@ -290,7 +290,7 @@ bool RenderApp::onMouseEvent(io::MouseEvent &mouseEvent) {
 		sCursorPos[0] = mouseEvent.pos[0] * mDeviceParams.backBufferWidth;
 		sCursorPos[1] = mouseEvent.pos[1] * mDeviceParams.backBufferHeight;
 	}
-	if (mpUIRenderer->onMouseEvent(mouseEvent)) return true;
+	if (mpUIRenderer && mpUIRenderer->onMouseEvent(mouseEvent)) return true;
 	if (DeviceManager::onMouseEvent(mouseEvent)) return true;
 	if (!sLockCamera && mScene && mScene->onMouseEvent(mouseEvent)) return true;
 	return false;
@@ -310,10 +310,15 @@ bool RenderApp::onKeyEvent(io::KeyboardEvent &keyEvent) {
 				return true;
 		}
 	}
-	if (mpUIRenderer->onKeyEvent(keyEvent)) return true;
+	if (mpUIRenderer && mpUIRenderer->onKeyEvent(keyEvent)) return true;
 	if (DeviceManager::onKeyEvent(keyEvent)) return true;
 	if (mScene && mScene->onKeyEvent(keyEvent)) return true;
 	return false;
+}
+
+void RenderApp::onWindowFocus(int focused) {
+	if (mpUIRenderer) mpUIRenderer->onWindowFocus(focused);
+	for (auto &pass : mRenderPasses) pass->onWindowFocus(focused);
 }
 
 void Renderer::setScene(Scene::SharedPtr scene) {
@@ -379,8 +384,9 @@ void RenderApp::renderUI() {
 	if (!sShowUI) return;
 	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.8); // this sets the global transparency of UI windows.
 	ui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5);	// this sets the transparency of the main menubar.
-	if (ui::BeginMainMenuBar()) {
-		ui::PopStyleVar(1);
+	const bool showMenuBar = ui::BeginMainMenuBar();
+	ui::PopStyleVar();
+	if (showMenuBar) {
 		if (ui::BeginMenu("Views")) {
 			ui::MenuItem("Global UI", NULL, &sShowUI);
 			ui::MenuItem("Dashboard", NULL, &showDashboard);

@@ -7,17 +7,11 @@
 #include "graphics/interop.h"
 #include "graphics/binding.h"
 #include "graphics/helperpass.h"
-#include "imgui.h"
 #include <nvrhi/validation.h>
 #include "logger.h"
 #include "device/context.h"
 
 #include "render/profiler/profiler.h"
-
-#ifdef _WINDOWS
-#include <ShellScalingApi.h>
-#pragma comment(lib, "shcore.lib")
-#endif
 
 
 NAMESPACE_BEGIN(krr)
@@ -56,6 +50,11 @@ public:
 		DeviceManager *manager =
 			reinterpret_cast<DeviceManager *>(glfwGetWindowUserPointer(window));
 		manager->onWindowPosUpdate(xpos, ypos);
+	}
+
+	static void windowContentScaleCallback(GLFWwindow *window, float xscale, float yscale) {
+		auto *manager = static_cast<DeviceManager *>(glfwGetWindowUserPointer(window));
+		manager->onWindowContentScale(xscale, yscale);
 	}
 
 	static void keyboardCallback(GLFWwindow *pGlfwWindow, int key, int scanCode, int action,
@@ -212,15 +211,6 @@ DeviceManager::~DeviceManager() {
 
 bool DeviceManager::createWindowDeviceAndSwapChain(const DeviceCreationParameters &params,
 												   const char *windowTitle) {
-#ifdef _WINDOWS
-	if (params.enablePerMonitorDPI) {
-		// this needs to happen before glfwInit in order to override GLFW behavior
-		SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
-	} else {
-		SetProcessDpiAwareness(PROCESS_DPI_UNAWARE);
-	}
-#endif
-
 	if (!glfwInit()) {
 		return false;
 	}
@@ -270,6 +260,7 @@ bool DeviceManager::createWindowDeviceAndSwapChain(const DeviceCreationParameter
 	}
 
 	glfwSetWindowPosCallback(mWindow, ApiCallbacks::windowPosCallback);
+	glfwSetWindowContentScaleCallback(mWindow, ApiCallbacks::windowContentScaleCallback);
 	glfwSetWindowCloseCallback(mWindow, ApiCallbacks::windowCloseCallback);
 	glfwSetWindowRefreshCallback(mWindow, ApiCallbacks::windowRefreshCallback);
 	glfwSetWindowFocusCallback(mWindow, ApiCallbacks::windowFocusCallback);
@@ -279,6 +270,9 @@ bool DeviceManager::createWindowDeviceAndSwapChain(const DeviceCreationParameter
 	glfwSetMouseButtonCallback(mWindow, ApiCallbacks::mouseButtonCallback);
 	glfwSetScrollCallback(mWindow, ApiCallbacks::mouseWheelCallback);
 	glfwSetCharModsCallback(mWindow, ApiCallbacks::charInputModsCallback);
+	float xscale, yscale;
+	glfwGetWindowContentScale(mWindow, &xscale, &yscale);
+	onWindowContentScale(xscale, yscale);
 
 	if (!createDeviceAndSwapChain()) return false;
 
@@ -290,9 +284,6 @@ bool DeviceManager::createWindowDeviceAndSwapChain(const DeviceCreationParameter
 
 	updateWindowSize();
 	mNvrhiDevice->waitForIdle();
-
-	auto ctx = ImGui::CreateContext();
-	ImGui::SetCurrentContext(ctx);
 
 	return true;
 }
@@ -470,20 +461,9 @@ void DeviceManager::updateWindowSize() {
 	mDeviceParams.vsyncEnabled = mRequestedVSync;
 }
 
-void DeviceManager::onWindowPosUpdate(int x, int y) {
-#ifdef _WINDOWS
-	if (mDeviceParams.enablePerMonitorDPI) {
-		HWND hwnd	 = glfwGetWin32Window(mWindow);
-		auto monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-
-		unsigned int dpiX;
-		unsigned int dpiY;
-		GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
-
-		mDPIScaleFactorX = dpiX / 96.f;
-		mDPIScaleFactorY = dpiY / 96.f;
-	}
-#endif
+void DeviceManager::onWindowContentScale(float xscale, float yscale) {
+	mDPIScaleFactorX = xscale > 0.f ? xscale : 1.f;
+	mDPIScaleFactorY = yscale > 0.f ? yscale : 1.f;
 }
 
 bool DeviceManager::onMouseEvent(io::MouseEvent &mouseEvent) {

@@ -14,6 +14,12 @@ NAMESPACE_BEGIN(krr)
 
 class UIRenderer: public RenderPass {
 private:
+	ImGuiContext *mContext = nullptr;
+	ImGuiStyle mBaseStyle;
+	float mFontScale = 0.f;
+	float mFramebufferScale = 0.f;
+	float mPreviousTime = -1.f;
+
 	nvrhi::DeviceHandle device;
 	nvrhi::CommandListHandle m_commandList;
 
@@ -37,14 +43,16 @@ private:
 	std::vector<ImDrawVert> vtxBuffer;
 	std::vector<ImDrawIdx> idxBuffer;
 
-	std::array<bool, 3> mouseDown				= {false};
 	std::array<bool, GLFW_KEY_LAST + 1> keyDown = {false};
 
 public:
 	using RenderPass::RenderPass;
+	UIRenderer() = default;
+	UIRenderer(const UIRenderer &) = delete;
+	UIRenderer &operator=(const UIRenderer &) = delete;
 	bool isCudaPass() const override { return false; }
 	using SharedPtr = std::shared_ptr<UIRenderer>;
-	~UIRenderer() { ImGui::DestroyContext(); }
+	~UIRenderer();
 	string getName() const override { return "UIRenderer"; }
 
 	void initialize() override;
@@ -56,12 +64,14 @@ public:
 
 	virtual bool onMouseEvent(const io::MouseEvent &mouseEvent) override;
 	virtual bool onKeyEvent(const io::KeyboardEvent &keyEvent) override;
+	void onWindowFocus(int focused) override;
 
 protected:
 	bool reallocateBuffer(nvrhi::BufferHandle &buffer, size_t requiredSize,
 						  size_t reallocateSize, bool isIndexBuffer);
 
 	bool createFontTexture(nvrhi::ICommandList *commandList);
+	void updateFont(nvrhi::ICommandList *commandList, float fontScale, float framebufferScale);
 
 	nvrhi::IGraphicsPipeline *getPSO(nvrhi::IFramebuffer *fb);
 	nvrhi::IBindingSet *getBindingSet(nvrhi::ITexture *texture);
