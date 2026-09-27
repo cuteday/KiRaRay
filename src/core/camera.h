@@ -25,9 +25,29 @@ struct CameraData {
 	float aspectRatio{1.777777f};		  // width divides height
 	float shutterOpen{0};				  // shutter open time
 	float shutterTime{0};				  // shutter time (default 0: disable motion blur)
+	bool externalProjection{}, orthographic{};
+	float nearClip{-1.f};
+	Matrix4f projection{Matrix4f::Identity()}, inverseProjection{Matrix4f::Identity()};
 
 	Transformation transform;
 	Medium medium{nullptr}; // the ray is inside the medium
+
+	void setAspectRatio(float aspect) {
+		if (externalProjection && aspect != aspectRatio) {
+			projection.row(0) *= aspectRatio / aspect;
+			inverseProjection = projection.inverse();
+		}
+		aspectRatio = aspect;
+	}
+
+	void setProjection(const Matrix4f &matrix, float clip, bool ortho) {
+		projection = matrix;
+		inverseProjection = matrix.inverse();
+		aspectRatio = std::abs(matrix(1, 1) / matrix(0, 0));
+		nearClip = clip;
+		orthographic = ortho;
+		externalProjection = true;
+	}
 
 	KRR_CALLABLE CameraSample generateSample(Sampler& sampler) const {
 		return {sampler.get2D(), sampler.get2D(), sampler.get1D()};
@@ -35,6 +55,20 @@ struct CameraData {
 
 	KRR_CALLABLE Ray getRay(Vector2i pixel, Vector2i frameSize, const CameraSample &sample) const {
 		Ray ray{};
+		if (externalProjection) {
+			Vector2f ndc = 2.f * (Vector2f(pixel) + sample.pFilm) / Vector2f(frameSize) - Vector2f::Ones();
+			Vector4f nearPoint = inverseProjection * Vector4f{ndc[0], ndc[1], nearClip, 1.f};
+			Vector4f midPoint = inverseProjection * Vector4f{ndc[0], ndc[1], (nearClip + 1.f) * .5f, 1.f};
+			Vector3f origin = nearPoint.head<3>() / nearPoint[3];
+			Vector3f point = midPoint.head<3>() / midPoint[3];
+			ray.origin = orthographic ? origin : Vector3f::Zero();
+			ray.dir = (orthographic ? point - origin : point).normalized();
+			ray.medium = medium;
+			ray.time = shutterOpen + shutterTime * sample.time;
+			ray = transform(ray);
+			ray.dir.normalize();
+			return ray;
+		}
 		/* 1. Statified sample on the film plane (within the fragment) */
 		Vector2f p	 = (Vector2f) pixel + Vector2f(0.5f) + sample.pFilm;
 		Vector2f ndc = Vector2f(2 * p) / Vector2f(frameSize) + Vector2f(-1.f); // ndc in [-1, 1]^2
@@ -112,13 +146,17 @@ public:
 	float getShutterTime() const { return mData.shutterTime; }
 	const rt::CameraData& getCameraData() const { return mData; }
 
-	void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; }
+	void setAspectRatio(float aspectRatio) { mData.setAspectRatio(aspectRatio); }
 	void setFilmSize(Vector2f size) { mData.filmSize = size; }
 	void setFocalDistance(float focalDistance) { mData.focalDistance = focalDistance; }
 	void setFocalLength(float focalLength) { mData.focalLength = focalLength; }
 	void setLensRadius(float lensRadius) { mData.lensRadius = lensRadius; }
 	void setShutterOpen(float shutterOpen) { mData.shutterOpen = shutterOpen; }
 	void setShutterTime(float shutterTime) { mData.shutterTime = shutterTime; }
+	void setProjection(const Matrix4f &projection, float nearClip, bool orthographic) {
+		mData.setProjection(projection, nearClip, orthographic);
+		setChanged();
+	}
 	void setChanged() { mHasChanges = true; }
 	void setScene(std::weak_ptr<Scene> scene) { mScene = scene; }
 

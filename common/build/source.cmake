@@ -22,6 +22,7 @@ SET ( KRR_CORE_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/core/file.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/renderpass.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/texture.cpp
+	${KRR_RENDER_SOURCE_DIR}/core/material/description.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/device/gpustd.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/device/context.cpp
 	${KRR_RENDER_SOURCE_DIR}/core/device/optix.cpp
@@ -51,13 +52,23 @@ SET (KRR_SOURCE
 	${KRR_RENDER_SOURCE_DIR}/render/spectrum.cpp
 	${KRR_RENDER_SOURCE_DIR}/scene/assimp.cpp
 	${KRR_RENDER_SOURCE_DIR}/scene/pbrt.cpp
-	${KRR_RENDER_SOURCE_DIR}/scene/openvdb.cpp
 	${KRR_RENDER_SOURCE_DIR}/scene/krrscene.cpp
+	${KRR_RENDER_SOURCE_DIR}/scene/interop.cpp
 	${KRR_RENDER_SOURCE_DIR}/main/renderer.cpp
 	${KRR_RENDER_SOURCE_DIR}/util/tables.cpp
 	${KRR_RENDER_SOURCE_DIR}/util/volume.cpp
 	${KRR_RENDER_SOURCE_DIR}/util/image.cpp
 )
+if(KRR_ENABLE_OPENVDB_IO)
+	list(APPEND KRR_SOURCE
+		${KRR_RENDER_SOURCE_DIR}/scene/openvdb.cpp
+		${KRR_RENDER_SOURCE_DIR}/util/openvdb.cpp)
+endif()
+if(KRR_ENABLE_USD)
+	list(APPEND KRR_SOURCE
+		${KRR_RENDER_ROOT}/integrations/usd/importer.cpp
+		${KRR_RENDER_ROOT}/integrations/usd/material.cpp)
+endif()
 
 SET (KRR_SOURCE
 	${KRR_SOURCE}

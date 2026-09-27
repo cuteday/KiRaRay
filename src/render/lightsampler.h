@@ -24,6 +24,7 @@ public:
 	// assumes u in [0, 1)
 	KRR_CALLABLE SampledLight sample(float u) const {
 		SampledLight sl = {};
+		if (!mLights.size()) return sl;
 		uint sampleId	= u * mLights.size();
 		DCHECK_LT(sampleId, mLights.size());
 		sl.light = mLights[sampleId];
@@ -31,7 +32,7 @@ public:
 		return sl;
 	}
 
-	KRR_CALLABLE float pdf(const rt::Light &light) const { return 1.f / mLights.size(); }
+	KRR_CALLABLE float pdf(const rt::Light &light) const { return mLights.size() ? 1.f / mLights.size() : 0.f; }
 
 	KRR_CALLABLE TypedBufferView<rt::Light> getLights() { return mLights; }
 

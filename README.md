@@ -46,6 +46,10 @@ git submodule update --init --recursive
 
 #### Building
 
+For the optional Blender/Hydra and standalone USD profiles, the
+[Windows build guide](common/build/README.md) provides presets and a PowerShell
+wrapper that initializes Visual Studio and reuses the managed SDK installations.
+
 This project uses cmake to build, make sure CUDA is installed and added to PATH. Several optional variables are available for building configuration.
 
 For a Release build with Ninja, run these commands from an **x64 Native Tools Command Prompt for Visual Studio** (or a Developer PowerShell configured for x64):
@@ -64,6 +68,9 @@ The default CUDA architecture is `native`, targeting the installed GPU. Set `-DC
 | `KRR_RENDER_SPECTRAL`   | ON          | Whether to build spectral render. If turned OFF, the RGB renderer is build. |
 | `KRR_PYTHON_PATH` | auto-detect | Manually specify this to enable Python binding for a specific version of Python. |
 | `KRR_ENABLE_D3D12` | ON on Windows | Build the D3D12 graphics backend alongside Vulkan. |
+| `KRR_ENABLE_OPENVDB_IO` | ON; OFF for USD profiles | Import volume scenes using the bundled OpenVDB libraries. Disable to omit legacy OpenVDB, Boost, TBB, and Half dependencies; NanoVDB rendering remains available. |
+| `KRR_ENABLE_USD` | OFF | Enable native USD snapshots with a separate Python-free OpenUSD SDK. |
+| `KRR_ENABLE_HYDRA` | OFF | Build the Blender 5.2.2 native Hydra delegate using its matching SDK profile. |
 
 #### Running
 
@@ -90,6 +97,11 @@ commands, artifacts, and reference updates, and [Python usage](common/scripts/RE
 **Benchmarks and profiling.** The [benchmark runner](benchmarks/README.md) measures warmed headless
 batches and captures Nsight Compute or Nsight Systems reports, with offline analysis and an optional
 Nsight Python adapter. Use an optimized build for performance comparisons.
+
+**Blender and USD.** Optional builds support USD scene import, typed material expressions,
+a native spectral OpenPBR subset, and a Blender Hydra renderer with F12 and progressive
+perspective preview. The [integration guide](integrations/README.md) describes the separate
+SDK profiles, supported subset, diagnostics, packaging, and validation.
 
 **Camera controlling.** Dragging `LeftMouse` for orbiting, dragging `Scroll` or `Shift+LeftMouse` for panning. `Scroll` for zooming in/out.
 

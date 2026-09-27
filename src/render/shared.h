@@ -65,6 +65,12 @@ struct BSDFData {
 					type = type | BSDFType::BSDF_DIFFUSE_REFLECTION;
 				if (specularTransmission > 0) type = type | BSDF_TRANSMISSION;
 				break;
+			case MaterialType::OpenPBR:
+			case MaterialType::PreviewSurface:
+				type = BSDF_GLOSSY_REFLECTION;
+				if (metallic < 1 && specularTransmission < 1) type = type | BSDF_DIFFUSE_REFLECTION;
+				if (specularTransmission > 0) type = type | BSDF_TRANSMISSION;
+				break;
 			default:
 				printf("[ShadingData::getBsdfType] Unsupported BSDF.\n");
 		}

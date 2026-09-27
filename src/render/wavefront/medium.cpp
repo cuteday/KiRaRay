@@ -111,8 +111,8 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			const SampledWavelengths &lambda = pixelState->lambda[w.pixelId];
 			LightSampleContext ctx{w.p, Vector3f::Zero()};
 			// [PART-A] Sample direct lighting with ShadowRayTr
-			if (enableNEE) {
-				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
+			if (SampledLight sampledLight = enableNEE
+				? lightSampler.sample(sampler.get1D()) : SampledLight{}) {
 				Light light				  = sampledLight.light;
 				LightSample ls			  = light.sampleLi(sampler.get2D(), ctx, lambda);
 				Ray shadowRay			  = Interaction(w.p, w.time, w.medium).spawnRayTo(ls.intr);

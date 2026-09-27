@@ -1,0 +1,31 @@
+KiRaRay native OpenPBR subset
+
+The lookup tables and shading formulas are adapted from Adobe's OpenPBR BSDF
+reference implementation, revision c91aad1d1ce1693e803f039d7c92c2965c4eb013:
+https://github.com/adobe/openpbr-bsdf
+Copyright 2026 Adobe. Licensed under the Apache License, Version 2.0 (LICENSE).
+
+The LTC fuzz formulas and table originate from "Practical Multiple-Scattering
+Sheen Using Linearly Transformed Cosines", Tizian Zeltner, Brent Burley, and
+Matt Jen-Yuan Chiang (2022), https://github.com/tizian/ltc-sheen, Apache-2.0.
+
+KiRaRay uses native sampled spectra for color coefficients and its own lobe
+sampling mixture. Subsurface, volumes, dispersion, thin film and coat anisotropy
+are excluded. Roughness has the reference implementation's 0.001 minimum:
+zero roughness remains a finite glossy lobe, with continuous PDF/MIS flags.
+Refraction IOR is kept at least 0.0001 away from unity, as in the reference,
+to avoid a degenerate transmission half-vector; legacy BSDF delta behavior
+is unchanged.
+OpenPBR emission_luminance is measured in nits. KiRaRay defines 1000 nits as
+one scene-linear radiance unit. Blender 5.2.2 exports Principled emission
+strength directly, so the Blender adapter and validated USD metadata explicitly
+scale that expression by 1000 before native material compilation. Ordinary
+unannotated USD retains its authored nits; no producer heuristic rescales it.
+USD Preview Surface and legacy emission retain their existing radiance units.
+For rough thin sheets, KiRaRay compensates the flipped GGX reflection and
+transmission with the ideal-metal energy complement table weighted by the
+window's R/T coefficients. This intentionally replaces the reference's
+refractive dielectric compensation on that path, preserving a nonabsorbing
+rough sheet's white-furnace energy and the same smooth-window limit.
+The default reference view-dependent coat/fuzz approximation is retained;
+this is not a complete OpenPBR conformance implementation or a Cycles match.

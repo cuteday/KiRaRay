@@ -85,6 +85,9 @@ void Context::initialize() {
 }
 
 void Context::finalize() noexcept {
+	CUcontext previous{};
+	const bool restore = cudaContext && cuCtxGetCurrent(&previous) == CUDA_SUCCESS &&
+		cuCtxSetCurrent(cudaContext) == CUDA_SUCCESS;
 	if (cudaStream) cudaStreamSynchronize(cudaStream);
 	if (optixContext) optixDeviceContextDestroy(optixContext);
 	optixContext = nullptr;
@@ -97,6 +100,7 @@ void Context::finalize() noexcept {
 	}
 	alloc.reset();
 	cudaContext = nullptr;
+	if (restore) cuCtxSetCurrent(previous);
 }
 
 void Context::terminate() { 

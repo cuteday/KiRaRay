@@ -1,0 +1,59 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "windows",
+      "hidden": true,
+      "generator": "Ninja",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "BUILD_TESTING": true,
+        "KRR_BUILD_STARLIGHT": false,
+        "KRR_RENDER_SPECTRAL": true
+      }
+    },
+    {
+      "name": "blender",
+      "displayName": "Blender Hydra extension",
+      "inherits": "windows",
+      "binaryDir": "${sourceDir}/build/blender-interop/host",
+      "cacheVariables": { "KRR_ENABLE_HYDRA": true }
+    },
+    {
+      "name": "usd",
+      "displayName": "Standalone USD and Python renderer",
+      "inherits": "windows",
+      "binaryDir": "${sourceDir}/build/blender-interop/standalone",
+      "cacheVariables": {
+        "KRR_ENABLE_USD": true,
+        "KRR_ENABLE_HYDRA": false,
+        "KRR_ENABLE_PYTHON": true
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "blender", "configurePreset": "blender" },
+    { "name": "blender-package", "configurePreset": "blender", "targets": ["krr_blender_package"] },
+    { "name": "usd", "configurePreset": "usd" }
+  ],
+  "testPresets": [
+    {
+      "name": "blender-cpu",
+      "configurePreset": "blender",
+      "configuration": "RelWithDebInfo",
+      "output": { "outputOnFailure": true },
+      "filter": { "include": { "label": "cpu" } },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "usd-cpu",
+      "configurePreset": "usd",
+      "configuration": "RelWithDebInfo",
+      "output": { "outputOnFailure": true },
+      "filter": { "include": { "label": "cpu" } },
+      "execution": { "noTestsAction": "error" }
+    }
+  ]
+}

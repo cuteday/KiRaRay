@@ -49,11 +49,15 @@ import pykrr_common
 if os.name == "nt":
     _directories = [_module_dir, _module_dir.parent / "bin",
                     _module_dir.parent.parent / "bin" / _module_dir.name,
-                    Path(pykrr_common.vulkan_root) / "Bin",
-                    ROOT_DIR / "src/ext/openvdb/openvdb/bin",
-                    ROOT_DIR / "src/ext/openvdb/tbb/lib"]
+                    Path(pykrr_common.vulkan_root) / "Bin"]
+    if getattr(pykrr_common, "openvdb_io", True):
+        _directories += [ROOT_DIR / "src/ext/openvdb/openvdb/bin",
+                         ROOT_DIR / "src/ext/openvdb/tbb/lib"]
     if pykrr_common.pytorch_root:
         _directories.append(Path(pykrr_common.pytorch_root) / "lib")
+    if getattr(pykrr_common, "usd_root", ""):
+        _directories += [Path(pykrr_common.usd_root) / "bin",
+                         Path(pykrr_common.usd_root) / "lib"]
     _directories = [str(path) for path in _directories if path.is_dir()]
     _dll_handles.extend(os.add_dll_directory(path) for path in _directories)
     # Older Conda builds also use the legacy DLL search path.

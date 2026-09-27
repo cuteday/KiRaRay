@@ -27,6 +27,8 @@ enum class MaterialType : uint32_t{
 	Dielectric,
 	Conductor,
 	Disney,
+	OpenPBR,
+	PreviewSurface,
 	Count
 };
 
@@ -35,7 +37,9 @@ KRR_ENUM_DEFINE(MaterialType, {
 	{MaterialType::Diffuse, "diffuse"},
 	{MaterialType::Conductor, "conductor"},
 	{MaterialType::Dielectric, "dielectric"},
-	{MaterialType::Disney, "disney"}
+	{MaterialType::Disney, "disney"},
+	{MaterialType::OpenPBR, "openpbr"},
+	{MaterialType::PreviewSurface, "preview_surface"}
 })
 
 class Ray {

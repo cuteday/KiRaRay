@@ -49,6 +49,7 @@ protected:
 
 private:
 	friend class SceneGraphNode;
+	friend class SceneGraph;
 	std::weak_ptr<SceneGraphNode> mNode;
 };
 
@@ -89,6 +90,7 @@ public:
 	void setScaling(const Vector3f &scaling);
 	void setRotation(const Quaternionf& rotation);
 	void setTranslation(const Vector3f &translation);
+	void setLocalTransform(const Affine3f &transform);
 	void setName(const std::string &name) { mName = name; }
 	void setLeaf(const SceneGraphLeaf::SharedPtr &leaf);
 	
@@ -128,6 +130,7 @@ private:
 	Vector3f mTranslation = Vector3f::Zero();
 	AABB3f mGlobalBoundingBox = AABB3f::Zero();
 	bool mHasLocalTransform{false};
+	bool mExplicitTransform{false};
 	
 	UpdateFlags mUpdateFlags = UpdateFlags::None;
 	ContentFlags mContentFlags = ContentFlags::None;

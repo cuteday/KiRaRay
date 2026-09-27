@@ -6,6 +6,7 @@
 #include <nvtx3/nvToolsExt.h>
 #include "renderer.h"
 #include "renderoptions.h"
+#include "render/passes/gbuffer/gbuffer.h"
 #include <atomic>
 #include <chrono>
 #include <cuda_profiler_api.h>
@@ -83,6 +84,25 @@ private:
 	bool &mActive;
 	bool mProfilerEnabled;
 };
+
+class CudaContextScope {
+public:
+	explicit CudaContextScope(bool initialize = true) {
+		if (!initialize && !gpContext) return;
+		if (cuInit(0) != CUDA_SUCCESS || cuCtxGetCurrent(&mPrevious) != CUDA_SUCCESS)
+			throw std::runtime_error("Could not query the current CUDA context");
+		try {
+			auto &context = Context::ensureInitialized();
+			if (cuCtxSetCurrent(context.cudaContext) != CUDA_SUCCESS)
+				throw std::runtime_error("Could not bind the renderer CUDA context");
+		} catch (...) { cuCtxSetCurrent(mPrevious); throw; }
+		mActive = true;
+	}
+	~CudaContextScope() { if (mActive) cuCtxSetCurrent(mPrevious); }
+private:
+	CUcontext mPrevious{};
+	bool mActive{};
+};
 }
 
 Renderer::Renderer() : mPreviousAssetRoot(File::cwd()), mPreviousOutputDir(File::outputDir()) {
@@ -121,6 +141,7 @@ void Renderer::clearScene() {
 	}
 	mRenderPasses.clear();
 	if (mRenderContext) mRenderContext->setScene(nullptr);
+	if (mScene) mScene->releaseDeviceResources();
 	mScene.reset();
 	if (error) std::rethrow_exception(error);
 }
@@ -169,7 +190,7 @@ void Renderer::renderPasses(bool annotate) {
 	for (auto &pass : mRenderPasses) pass->endFrame(getRenderContext());
 }
 
-HeadlessRenderer::HeadlessRenderer(const json &config, const fs::path &assetRoot, bool validation) {
+RenderSession::RenderSession(const json &config, const fs::path &assetRoot, bool validation) {
 	validateConfig(config);
 	fs::path root = assetRoot.empty() ? fs::path(KRR_PROJECT_DIR) : fs::absolute(assetRoot);
 	if (!fs::is_directory(root))
@@ -183,6 +204,259 @@ HeadlessRenderer::HeadlessRenderer(const json &config, const fs::path &assetRoot
 		mDeviceParams.backBufferHeight = config.at("resolution").at(1);
 	}
 }
+
+RenderSession::~RenderSession() { close(); }
+
+void RenderSession::requireOwner() const {
+	if (std::this_thread::get_id() != mOwnerThread)
+		throw std::runtime_error("Render sessions must be used on their owning thread");
+	if (mClosed) throw std::runtime_error("Renderer is closed");
+}
+
+void RenderSession::requireReady() const {
+	requireOwner();
+	if (!mInitialized) throw std::runtime_error("Render session is not initialized");
+}
+
+void RenderSession::synchronize() {
+	getRenderContext()->endCuda();
+	CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
+	if (!mNvrhiDevice->waitForIdle()) throw std::runtime_error("Graphics device lost");
+}
+
+void RenderSession::initialize(uint64_t seed, Scene::SharedPtr scene) {
+	requireOwner();
+	try {
+		CudaContextScope context;
+		const json config = mConfig;
+		const bool externalScene = bool(scene);
+		if (mInitialized) synchronize();
+		mDepth.reset();
+		mDepthPass.reset();
+		loadConfig(config, std::move(scene));
+		if (!mScene) throw std::runtime_error("Render session requires a scene");
+		if (externalScene) {
+			mScene->setCameraController(nullptr);
+			mScene->setAnimated(false);
+		}
+		if (!mNvrhiDevice && !createHeadlessDevice(mDeviceParams))
+			throw std::runtime_error("Failed to initialize the offscreen device");
+		setFrameIndex(0);
+		setSeed(seed);
+		initializePasses();
+		mUpdateSerial = std::max(mUpdateSerial, uint64_t(mScene->getSceneGraph()->getLastUpdateRecord().frameIndex));
+		getRenderContext()->clear();
+		mCompletedFrames = 0;
+		++mGeneration;
+		mCancelRequested = false;
+		mInitialized = true;
+		mFinished = false;
+	} catch (...) { close(); throw; }
+}
+
+void RenderSession::updateScene() {
+	if (mDepth && std::any_of(mScene->getMaterials().begin(), mScene->getMaterials().end(),
+		[](const auto &material) { return material->isUpdated(); }))
+		mDepth.reset();
+	const bool cameraChanged = mScene->update(++mUpdateSerial, 0.0);
+	if (cameraChanged || mScene->getSceneGraph()->getLastUpdateRecord().frameIndex == mUpdateSerial)
+		mDepth.reset();
+}
+
+void RenderSession::renderFrame(bool annotate) {
+	NvtxRange range(annotate, "krr.frame");
+	setFrameIndex(uint32_t(mCompletedFrames + 1));
+	for (auto &pass : mRenderPasses) pass->tick(0.f);
+	updateScene();
+	renderPasses(annotate);
+	mNvrhiDevice->runGarbageCollection();
+	++mCompletedFrames;
+}
+
+uint32_t RenderSession::step(int64_t frames) {
+	requireReady();
+	try {
+		RenderOptions::validateBenchmark(frames, int64_t(mCompletedFrames), getSeed());
+		if (mFinished) throw std::runtime_error("Reset the session before rendering after finish");
+		CudaContextScope context;
+		uint32_t completed = 0;
+		while (completed < frames && !mCancelRequested.load()) {
+			renderFrame();
+			++completed;
+		}
+		return completed;
+	} catch (...) { close(); throw; }
+}
+
+void RenderSession::wait() {
+	requireReady();
+	try {
+		CudaContextScope context;
+		synchronize();
+	} catch (...) { close(); throw; }
+}
+
+RenderSession::Snapshot RenderSession::snapshot(bool depth) {
+	requireReady();
+	try {
+		CudaContextScope context;
+		// Synchronous snapshots also permit host access to managed scene data.
+		synchronize();
+		Snapshot result{getRenderContext()->readback(), getFrameSize(), mCompletedFrames, mGeneration};
+		if (depth) result.depth = captureDepth();
+		return result;
+	} catch (...) { close(); throw; }
+}
+
+std::shared_ptr<const RenderSession::DepthSnapshot> RenderSession::captureDepth() {
+	updateScene();
+	if (!mDepth) {
+		if (!mDepthPass) {
+			mDepthPass = std::make_unique<GBufferPass>();
+			mDepthPass->setScene(mScene);
+		}
+		auto values = mDepthPass->capture(getFrameSize());
+		mDepth = std::make_shared<const DepthSnapshot>(DepthSnapshot{
+			std::move(values.linear), std::move(values.projected)});
+		++mDepthCaptureCount;
+	}
+	return mDepth;
+}
+
+std::optional<RenderSession::SnapshotRequest> RenderSession::requestSnapshot(bool depth) {
+	requireReady();
+	try {
+		CudaContextScope context;
+		Snapshot result{{}, getFrameSize(), mCompletedFrames, mGeneration};
+		if (depth) result.depth = captureDepth();
+		auto readback = getRenderContext()->enqueueReadback();
+		if (!readback) return std::nullopt;
+		return SnapshotRequest{std::move(result), std::move(readback)};
+	} catch (...) { close(); throw; }
+}
+
+bool RenderSession::isSnapshotReady(const SnapshotRequest &request) {
+	requireReady();
+	if (!request.readback || request.snapshot.generation != mGeneration) return false;
+	try {
+		return getRenderContext()->isReadbackReady(request.readback);
+	} catch (...) { close(); throw; }
+}
+
+RenderSession::Snapshot RenderSession::collectSnapshot(SnapshotRequest &request, bool wait) {
+	requireReady();
+	if (!request.readback || request.snapshot.generation != mGeneration)
+		throw std::invalid_argument("Snapshot request is stale or already collected");
+	if (!wait && !isSnapshotReady(request))
+		throw std::logic_error("Snapshot readback is not complete");
+	try {
+		CudaContextScope context;
+		request.snapshot.image = getRenderContext()->collectReadback(request.readback, wait);
+		request.readback.reset();
+		return std::move(request.snapshot);
+	} catch (...) { close(); throw; }
+}
+
+void RenderSession::reset(uint64_t seed) {
+	requireReady();
+	try {
+		CudaContextScope context;
+		synchronize();
+		setFrameIndex(0);
+		setSeed(seed);
+		for (auto &pass : mRenderPasses) pass->reset();
+		getRenderContext()->clear();
+		mCompletedFrames = 0;
+		++mGeneration;
+		mDepth.reset();
+		mCancelRequested = false;
+		mFinished = false;
+	} catch (...) { close(); throw; }
+}
+
+void RenderSession::updateCamera(const CameraState &state) {
+	requireReady();
+	try {
+		if (!state.cameraToWorld.allFinite() || !state.projection.allFinite() ||
+			!state.cameraToWorld.fullPivLu().isInvertible() || !state.projection.fullPivLu().isInvertible() ||
+			(state.nearClip != -1.f && state.nearClip != 0.f))
+			throw std::invalid_argument("Camera matrices must be finite and invertible; nearClip must be -1 or 0");
+		if (!state.cameraToWorld.row(3).isApprox(Vector4f{0.f, 0.f, 0.f, 1.f}.transpose()))
+			throw std::invalid_argument("cameraToWorld must be affine");
+		if (state.orthographic ? state.projection(3, 2) != 0.f || state.projection(3, 3) == 0.f :
+			state.projection(3, 2) == 0.f || state.projection(3, 3) != 0.f)
+			throw std::invalid_argument("Projection matrix does not match the camera projection type");
+		CudaContextScope context;
+		synchronize();
+		auto camera = mScene->getCamera();
+		if (!camera || !camera->getNode()) throw std::runtime_error("Scene camera must be attached to the scene graph");
+		mScene->setCameraController(nullptr);
+		auto *parent = camera->getNode()->getParent();
+		const Affine3f transform(state.cameraToWorld);
+		camera->getNode()->setLocalTransform(parent ? parent->getGlobalTransform().inverse() * transform : transform);
+		camera->setProjection(state.projection, state.nearClip, state.orthographic);
+		reset(getSeed());
+	} catch (...) { close(); throw; }
+}
+
+void RenderSession::resize(const Vector2i &size) {
+	requireReady();
+	try {
+		json config = mConfig;
+		config["resolution"] = size;
+		validateConfig(config);
+		if (size == getFrameSize()) return;
+		CudaContextScope context;
+		synchronize();
+		backBufferResizing();
+		mDeviceParams.backBufferWidth = size[0];
+		mDeviceParams.backBufferHeight = size[1];
+		backBufferResized();
+		mConfig = std::move(config);
+		reset(getSeed());
+	} catch (...) { close(); throw; }
+}
+
+void RenderSession::replaceScene(Scene::SharedPtr scene) {
+	requireReady();
+	if (!scene) throw std::invalid_argument("A replacement scene is required");
+	initialize(getSeed(), std::move(scene));
+}
+
+void RenderSession::finish() {
+	requireReady();
+	if (mFinished) return;
+	try {
+		CudaContextScope context;
+		synchronize();
+		for (auto &pass : mRenderPasses) pass->finalize();
+		mFinished = true;
+	} catch (...) { close(); throw; }
+}
+
+void RenderSession::releaseScene() {
+	mDepth.reset();
+	mDepthPass.reset();
+	clearScene();
+	mInitialized = false;
+}
+
+void RenderSession::close() noexcept {
+	if (mClosed) return;
+	try {
+		CudaContextScope context(false);
+		mDepth.reset();
+		mDepthPass.reset();
+		Renderer::close();
+	} catch (const std::exception &e) {
+		Log(Error, "Render session cleanup: %s", e.what());
+		Renderer::close();
+	}
+	mInitialized = false;
+}
+
+HeadlessRenderer::HeadlessRenderer(const json &config, const fs::path &assetRoot, bool validation) :
+	RenderSession(config, assetRoot, validation) {}
 
 std::vector<float> HeadlessRenderer::render(int64_t frames, uint64_t seed) {
 	return renderBatch(frames, 0, seed, false, false).image;
@@ -207,32 +481,18 @@ HeadlessRenderer::BenchmarkResult HeadlessRenderer::renderBatch(int64_t frames, 
 		};
 		RenderOptions::validateBenchmark(frames, warmup, seed);
 		BatchScope batch(mBatchActive, measure);
+		CudaContextScope context;
 		BenchmarkResult result;
 		auto synchronize = [&] {
 			CUDA_CHECK(cudaStreamSynchronize(gpContext->cudaStream));
 			mNvrhiDevice->waitForIdle();
 		};
-		auto renderFrame = [&](int64_t frame) {
-			NvtxRange range(measure, "krr.frame");
-			setFrameIndex(uint32_t(frame + 1));
-			for (auto &pass : mRenderPasses) pass->tick(0.f);
-			mScene->update(getFrameIndex(), 0.0);
-			renderPasses(measure);
-			mNvrhiDevice->runGarbageCollection();
-		};
-		const json config = mConfig;
-		loadConfig(config);
-		if (!mNvrhiDevice && !createHeadlessDevice(mDeviceParams))
-			throw std::runtime_error("Failed to initialize the offscreen device");
-		setFrameIndex(0);
-		setSeed(seed);
-		initializePasses();
-		getRenderContext()->clear();
+		initialize(seed);
 		if (measure) synchronize();
 		const auto setupEnd = Clock::now();
 		{
 			NvtxRange range(measure, "krr.warmup");
-			for (int64_t frame = 0; frame < warmup; ++frame) renderFrame(frame);
+			for (int64_t frame = 0; frame < warmup; ++frame) renderFrame(measure);
 			if (measure && warmup) synchronize();
 		}
 		const auto warmupEnd = Clock::now();
@@ -242,7 +502,7 @@ HeadlessRenderer::BenchmarkResult HeadlessRenderer::renderBatch(int64_t frames, 
 		{
 			NvtxRange range(measure, "krr.measure");
 			const auto renderStart = Clock::now();
-			for (int64_t frame = warmup; frame < warmup + frames; ++frame) renderFrame(frame);
+			for (int64_t frame = 0; frame < frames; ++frame) renderFrame(measure);
 			if (measure) synchronize();
 			result.timings["render_ms"] = milliseconds(renderStart, Clock::now());
 		}
@@ -251,8 +511,8 @@ HeadlessRenderer::BenchmarkResult HeadlessRenderer::renderBatch(int64_t frames, 
 		const auto readbackStart = Clock::now();
 		result.image = getRenderContext()->readback();
 		const auto readbackEnd = Clock::now();
-		for (auto &pass : mRenderPasses) pass->finalize();
-		clearScene();
+		finish();
+		releaseScene();
 		const auto finalizeEnd = Clock::now();
 		result.timings["setup_ms"] = milliseconds(totalStart, setupEnd);
 		result.timings["warmup_ms"] = milliseconds(setupEnd, warmupEnd);
@@ -522,7 +782,7 @@ void RenderApp::saveConfig(string path) {
 	logSuccess("Saved config file to " + filepath.string());
 }
 
-void Renderer::loadConfig(const json &config) {
+void Renderer::loadConfig(const json &config, Scene::SharedPtr providedScene) {
 	if (mClosed) throw std::runtime_error("Renderer is closed");
 	validateConfig(config);
 	const auto graphicsApi = config.value("graphics_api", string("vulkan")) == "d3d12"
@@ -564,14 +824,14 @@ void Renderer::loadConfig(const json &config) {
 		}
 	} else
 		logWarning("No specified render pass in configuration!");
-	Scene::SharedPtr scene { mScene };
-	if (config.contains("model")) {
+	Scene::SharedPtr scene{providedScene};
+	if (!providedScene && config.contains("model")) {
 		if (!scene) scene = std::make_shared<Scene>();
 		string model = config["model"].get<string>();
 		if (!SceneImporter::loadModel(model, scene))
 			throw std::runtime_error("Failed to load model: " + model);
 	}
-	if (config.contains("environment")) {
+	if (!providedScene && config.contains("environment")) {
 		if (!scene) Log(Fatal, "Import a model before doing scene configurations!");
 		string env	 = config["environment"].get<string>();
 		auto texture = Texture::createFromFile(env);
@@ -579,7 +839,7 @@ void Renderer::loadConfig(const json &config) {
 		auto light	 = std::make_shared<InfiniteLight>(texture);
 		scene->getSceneGraph()->attachLeaf(root, light);
 	}
-	if (config.contains("scene")) {
+	if (!providedScene && config.contains("scene")) {
 		if(!scene) scene = std::make_shared<Scene>();
 		SceneImporter importer;
 		if (!importer.import(config["scene"], scene))

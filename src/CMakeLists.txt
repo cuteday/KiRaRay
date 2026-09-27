@@ -1,6 +1,9 @@
 ADD_SUBDIRECTORY(${KRR_RENDER_SOURCE_DIR}/ext)
 ADD_SUBDIRECTORY(${KRR_RENDER_SOURCE_DIR}/core/math)
 
+add_library(krr_exr STATIC util/exr.cpp)
+target_link_libraries(krr_exr PRIVATE OpenEXR::OpenEXRCore)
+
 ###############################################################################
 # include files
 ###############################################################################
@@ -19,8 +22,6 @@ ADD_DEPENDENCIES (KRR_PTX krr_soa_generated)
 ###############################################################################
 # linking and executables
 ###############################################################################
-# Link openvdb in a standalone library to avoid cuda-openvdb type intersect and dll-wholearchive contracdict
-
 SET(KRR_SECONDARY_LIBS_ALL
 	${KRR_SECONDARY_LIBS_ALL}
 	CUDA::cuda_driver
@@ -50,7 +51,12 @@ SET_PROPERTY(TARGET krr_lib PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 TARGET_COMPILE_DEFINITIONS (krr_lib PUBLIC ${KRR_DEFINITIONS})
 TARGET_INCLUDE_DIRECTORIES (krr_lib SYSTEM PUBLIC ${KRR_INCLUDE_ALL} ${OptiX_INCLUDE_DIR})
 TARGET_LINK_LIBRARIES(krr_lib PUBLIC ${KRR_SECONDARY_LIBS_ALL})
+target_link_libraries(krr_lib PRIVATE krr_exr)
 TARGET_LINK_OPTIONS(krr_lib PUBLIC "LINKER:/NODEFAULTLIB:LIBCMT")
+if(KRR_ENABLE_USD)
+	include(${KRR_RENDER_ROOT}/integrations/usd/dependencies.cmake)
+	target_link_libraries(krr_lib PUBLIC krr_usd_sdk)
+endif()
 
 macro(copy_post_build target dll)
  add_custom_command(TARGET ${target} POST_BUILD  
@@ -74,12 +80,22 @@ ENDIF()
 ADD_EXECUTABLE ( kiraray ${CMAKE_CURRENT_SOURCE_DIR}/main/kiraray.cpp)
 # -WHOLEARCHIVE assures that static variables are instantiated before main(), by linking all object files
 TARGET_LINK_LIBRARIES (kiraray PUBLIC ${KRR_LIBRARIES} -WHOLEARCHIVE:$<TARGET_FILE:krr_lib>)
+if(KRR_ENABLE_HYDRA)
+	add_subdirectory(${KRR_RENDER_ROOT}/integrations/hydra ${CMAKE_BINARY_DIR}/integrations/hydra)
+elseif(KRR_ENABLE_USD)
+	file(GLOB _usd_runtime "${KRR_USD_ROOT}/bin/*.dll" "${KRR_USD_ROOT}/lib/*.dll")
+	foreach(dll IN LISTS _usd_runtime)
+		copy_post_build(kiraray "${dll}")
+	endforeach()
+endif()
 
-copy_post_build(kiraray
-      "${KRR_RENDER_SOURCE_DIR}/ext/openvdb/openvdb/bin/$<IF:$<CONFIG:Debug>,openvdb_d,openvdb>.dll")
-copy_post_build(kiraray
-      "${KRR_RENDER_SOURCE_DIR}/ext/openvdb/tbb/lib/$<IF:$<CONFIG:Debug>,debug/tbb_debug.dll,tbb.dll>")
-copy_post_build(kiraray "$<TARGET_FILE:IlmBase::Half>")
+if(KRR_ENABLE_OPENVDB_IO)
+	copy_post_build(kiraray
+		"${KRR_RENDER_SOURCE_DIR}/ext/openvdb/openvdb/bin/$<IF:$<CONFIG:Debug>,openvdb_d,openvdb>.dll")
+	copy_post_build(kiraray
+		"${KRR_RENDER_SOURCE_DIR}/ext/openvdb/tbb/lib/$<IF:$<CONFIG:Debug>,debug/tbb_debug.dll,tbb.dll>")
+	copy_post_build(kiraray "$<TARGET_FILE:IlmBase::Half>")
+endif()
 
 SET (KRR_INCLUDE_DIRS ${KRR_INCLUDE_ALL} PARENT_SCOPE)
 SET (KRR_LIBRARIES ${KRR_LIBRARIES} PARENT_SCOPE)

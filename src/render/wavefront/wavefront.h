@@ -29,6 +29,7 @@ struct LaunchParameters <WavefrontPathTracer> {
 	const RGBColorSpace *colorSpace;
 	rt::SceneData sceneData;
 	OptixTraversableHandle traversable;
+	bool authoredMaterials;
 };
 
 template <typename F>

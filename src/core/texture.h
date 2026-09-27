@@ -11,6 +11,7 @@
 #include "file.h"
 #include "scenenode.h"
 #include "raytracing.h"
+#include "material/description.h"
 #include "render/materials/bxdf.h"
 
 NAMESPACE_BEGIN(krr)
@@ -147,6 +148,9 @@ public:
 	void setConstantTexture(TextureType type, const RGBA color);
 	bool determineSrgb(string filename, TextureType type);
 	void setColorSpace(const ColorSpaceType colorSpace) { mColorSpace = colorSpace; }
+	void setDescription(std::shared_ptr<MaterialDescription> description);
+	std::shared_ptr<MaterialDescription> getDescription() const { return mDescription; }
+	void updateFrom(const Material &material);
 
 	bool hasEmission();
 	bool hasTexture(TextureType type);
@@ -167,6 +171,8 @@ public:
 	ColorSpaceType mColorSpace{ ColorSpaceType::sRGB };
 	string mName;
 	int mMaterialId{-1};
+	std::shared_ptr<MaterialDescription> mDescription;
+	bool mHasProgramEmission{false};
 };
 
 KRR_ENUM_DEFINE(Material::TextureType, {
@@ -190,7 +196,7 @@ public:
 	cudaArray_t mCudaArray{};
 	bool mValid{};
 
-	void initializeFromHost(Texture::SharedPtr texture);
+	void initializeFromHost(Texture::SharedPtr texture, const MaterialTexture *sampling = nullptr);
 	void release() noexcept;
 
 	KRR_CALLABLE bool isValid() const { return mValid; }
@@ -198,13 +204,66 @@ public:
 		return mCudaTexture;
 	}
 	KRR_CALLABLE RGBA getConstant() const { return mValue; }
-	KRR_DEVICE RGBA evaluate(Vector2f uv) const {
-#ifdef __NVCC__
+	KRR_CALLABLE RGBA evaluate(Vector2f uv) const {
+#ifdef __CUDA_ARCH__
 		if (mCudaTexture) return tex2D<float4>(mCudaTexture, uv[0], uv[1]);
 #endif
 		return mValue;
 	}
 };
+
+enum class MaterialEvaluation : uint8_t { Surface, Opacity, Emission };
+
+struct MaterialProgramData {
+	bool enabled{false};
+	MaterialModel model{MaterialModel::OpenPBR};
+	MaterialProgramKind kind{MaterialProgramKind::Constant};
+	MaterialValues defaults;
+	uint32_t authoredMask{0};
+	MaterialProgramView surface, opacity, emission;
+	const MaterialValue *uniforms{nullptr};
+	const TextureData *textures{nullptr};
+	const MaterialSimpleBinding *simple{nullptr};
+	uint32_t simpleCount{0};
+
+	KRR_CALLABLE MaterialValues evaluate(const MaterialContext &context,
+		MaterialEvaluation evaluation = MaterialEvaluation::Surface) const {
+		MaterialValues result = defaults;
+		if (!(authoredMask & (1u << int(MaterialParameter::Normal)))) result[MaterialParameter::Normal] = context.normal;
+		if (!(authoredMask & (1u << int(MaterialParameter::CoatNormal)))) result[MaterialParameter::CoatNormal] = context.normal;
+		if (!(authoredMask & (1u << int(MaterialParameter::Tangent)))) result[MaterialParameter::Tangent] = context.tangent;
+		if (kind == MaterialProgramKind::Constant) return result;
+		if (kind == MaterialProgramKind::Simple) {
+			for (uint32_t index = 0; index < simpleCount; ++index) {
+				const MaterialSimpleBinding &binding = simple[index];
+				if (evaluation == MaterialEvaluation::Opacity && binding.parameter != MaterialParameter::Opacity) continue;
+				if (evaluation == MaterialEvaluation::Emission && !binding.emission) continue;
+				RGBA value = textures[binding.texture].evaluate({context.uv[0], context.uv[1]});
+				result[binding.parameter] = binding.channel >= 0 ? MaterialValue(value[binding.channel]) :
+					MaterialValue(value[0], value[1], value[2], value[3]);
+			}
+			return result;
+		}
+		struct Sampler {
+			const TextureData *textures;
+			KRR_CALLABLE MaterialValue operator()(int index, MaterialValue uv) const {
+#ifdef __CUDA_ARCH__
+				RGBA value = textures[index].evaluate({uv[0], uv[1]});
+				return {value[0], value[1], value[2], value[3]};
+#else
+				RGBA value = textures[index].getConstant();
+				return {value[0], value[1], value[2], value[3]};
+#endif
+			}
+		};
+		MaterialProgramView program = evaluation == MaterialEvaluation::Opacity ? opacity :
+			(evaluation == MaterialEvaluation::Emission ? emission : surface);
+		evaluateMaterialProgram(program, uniforms, context, Sampler{textures}, result);
+		return result;
+	}
+};
+
+class MaterialProgramStorage;
 
 class MaterialData {
 public:
@@ -213,6 +272,9 @@ public:
 	MaterialType mBsdfType{MaterialType::Disney};
 	Material::ShadingModel mShadingModel{Material::ShadingModel::MetallicRoughness};
 	const RGBColorSpace *mColorSpace{nullptr};
+	MaterialProgramData mProgram;
+	MaterialProgramStorage *mProgramStorage{nullptr};
+	void releaseProgram() noexcept;
 
 	void getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data,
 					   bool initialize) const;

@@ -1,0 +1,8 @@
+{
+	"resolution": [128, 128],
+	"passes": [
+		{"name": "WavefrontPathTracer", "enable": true, "params": {"nee": true, "rr": 0.8, "max_depth": 10}},
+		{"name": "AccumulatePass", "enable": true, "params": {"spp": 0, "mode": "accumulate"}}
+	],
+	"scene": {"model": [{"model": "tests/fixtures/usd/cornell.usda"}]}
+}

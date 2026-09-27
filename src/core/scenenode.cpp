@@ -18,6 +18,7 @@ void SceneGraphLeaf::setName(const std::string &name) const {
 
 void SceneGraphNode::setTransform(const Vector3f *translation, const Quaternionf *rotation,
 								  const Vector3f *scaling) {
+	mExplicitTransform = false;
 	if (scaling) mScaling = *scaling;
 	if (rotation) mRotation = *rotation;
 	if (translation) mTranslation = *translation;
@@ -40,7 +41,18 @@ void SceneGraphNode::setTranslation(const Vector3f &translation) {
 }
 
 void SceneGraphNode::updateLocalTransform() {
+	if (mExplicitTransform) return;
 	mLocalTransform = Affine3f().translate(mTranslation).rotate(mRotation).scale(mScaling);
+}
+
+void SceneGraphNode::setLocalTransform(const Affine3f &transform) {
+	if (!transform.matrix().allFinite())
+		throw std::invalid_argument("Scene transform must be finite");
+	mLocalTransform = transform;
+	mExplicitTransform = true;
+	mHasLocalTransform = true;
+	mUpdateFlags |= UpdateFlags::LocalTransform;
+	propagateUpdateFlags(UpdateFlags::SubgraphTransform);
 }
 
 void SceneGraphNode::propagateUpdateFlags(UpdateFlags flags) { 
