@@ -212,7 +212,7 @@ public:
 	}
 };
 
-enum class MaterialEvaluation : uint8_t { Surface, Opacity, Emission };
+enum class MaterialEvaluation : uint8_t { Surface, Opacity, Emission, Classification };
 
 struct MaterialProgramData {
 	bool enabled{false};
@@ -220,7 +220,7 @@ struct MaterialProgramData {
 	MaterialProgramKind kind{MaterialProgramKind::Constant};
 	MaterialValues defaults;
 	uint32_t authoredMask{0};
-	MaterialProgramView surface, opacity, emission;
+	MaterialProgramView surface, opacity, emission, classification;
 	const MaterialValue *uniforms{nullptr};
 	const TextureData *textures{nullptr};
 	const MaterialSimpleBinding *simple{nullptr};
@@ -238,6 +238,9 @@ struct MaterialProgramData {
 				const MaterialSimpleBinding &binding = simple[index];
 				if (evaluation == MaterialEvaluation::Opacity && binding.parameter != MaterialParameter::Opacity) continue;
 				if (evaluation == MaterialEvaluation::Emission && !binding.emission) continue;
+				if (evaluation == MaterialEvaluation::Classification &&
+					binding.parameter != MaterialParameter::Metalness &&
+					binding.parameter != MaterialParameter::TransmissionWeight) continue;
 				RGBA value = textures[binding.texture].evaluate({context.uv[0], context.uv[1]});
 				result[binding.parameter] = binding.channel >= 0 ? MaterialValue(value[binding.channel]) :
 					MaterialValue(value[0], value[1], value[2], value[3]);
@@ -256,8 +259,10 @@ struct MaterialProgramData {
 #endif
 			}
 		};
-		MaterialProgramView program = evaluation == MaterialEvaluation::Opacity ? opacity :
-			(evaluation == MaterialEvaluation::Emission ? emission : surface);
+		MaterialProgramView program = surface;
+		if (evaluation == MaterialEvaluation::Opacity) program = opacity;
+		else if (evaluation == MaterialEvaluation::Emission) program = emission;
+		else if (evaluation == MaterialEvaluation::Classification) program = classification;
 		evaluateMaterialProgram(program, uniforms, context, Sampler{textures}, result);
 		return result;
 	}

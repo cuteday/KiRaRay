@@ -59,6 +59,9 @@ int main() {
 				Vector3f wi = 2 * dot(wo, m) * m - wo;
 				if (wi[2] <= 0) continue;
 				float expected = ggx.normalPdf(wo, m) / (4 * dot(wi, m));
+				require(ggx.reflectionPdf(wo, wi) ==
+					ggx.reflectionPdf(wo, wi, normalize(wo + wi)),
+					"Shared GGX reflection density");
 				require(fabsf(expected - ggx.reflectionPdf(wo, wi)) < 1e-3f * fmaxf(1, expected),
 						"GGX reflection Jacobian");
 			}

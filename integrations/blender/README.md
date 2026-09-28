@@ -59,8 +59,17 @@ reset accumulation; transform edits update instances; material edits update
 material resources; geometry changes rebuild scene geometry. Final rendering
 takes priority over a viewport. One rendered viewport is supported at a time.
 
-Set **Render Samples**, **Viewport Samples**, **Seed**, and **Graphics API** in
-Render Properties. Both Vulkan and D3D12 use an offscreen device without a
+Render Properties groups KiRaRay controls into **Sampling**, **Light Paths**, and
+**System**. Sampling contains final/viewport sample counts and the seed. Light
+Paths exposes **Maximum Path Depth** (default 10); zero includes only directly
+visible emission and the environment. Its **Advanced** subsection contains
+**Next Event Estimation** (on by default) and **Russian Roulette Survival**
+(default 0.8). Survival 1 disables Russian roulette. Lower survival probabilities
+reduce path work but can increase noise; disabling light sampling can greatly
+increase noise in scenes lit by small emitters. These settings apply to F12 and
+the viewport. Changing them restarts accumulation and retains scene geometry.
+
+System contains **Graphics API** and **Asset Root**. Both Vulkan and D3D12 use an offscreen device without a
 KiRaRay window. Scenes must use the blend file's **Linear Rec.709** working
 space. Blender handles display transforms such as AgX. Perspective cameras are
 the initial supported camera profile.
@@ -81,6 +90,13 @@ coverage rule. The delegate also supplies normalized projected depth to Hydra.
 Blender 5.2's CPU Hydra viewport presentation uploads only color, so correct
 occlusion of Blender overlays by that depth is not available through this path.
 
+Native Hydra clients can set `krr:maxDepth` (nonnegative integer), `krr:nee`
+(boolean), and `krr:rr` (finite survival probability in `(0, 1]`). Invalid values
+produce an actionable error and retain the last accepted setting; reapplying a
+valid setting clears the error and retries rendering. Completion status JSON includes their effective
+values under `wavefront`, using the native config keys `max_depth`, `nee`, and
+`rr`; the KiRaRay log prints the same values when accumulation resets.
+
 ## Validation
 
 Enable host integration tests explicitly:
@@ -98,6 +114,19 @@ depth, producer checks, emission units against Cycles, and diagnostic-preserving
 USD export. Rendering uses
 CTest's shared `krr_gpu` lock. Reports, EXRs, configs, and logs remain under the
 selected build's `tests/artifacts/<configuration>/blender_*` directories.
+
+Check the Render Properties panels in a windowed host without rendering:
+
+```powershell
+blender.exe --factory-startup --enable-event-simulate --window-geometry 0 0 1000 1100 `
+  --python integrations/blender/probe/panels.py -- `
+  --addon-dir build/blender-host/blender/kiraray `
+  --artifacts build/blender-host/tests/artifacts/RelWithDebInfo/blender_panels
+```
+
+This checks actual panel draw callbacks after registration and re-registration,
+expanding collapsed panels in the test window. It saves a screenshot and
+`result.json`, or `failure.txt` on failure, then closes its Blender window.
 
 Run the windowed viewport acceptance harness separately:
 

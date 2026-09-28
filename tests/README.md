@@ -143,8 +143,11 @@ case directory represents the latest run; copy it elsewhere if a result should b
 `krr_material_program` tests the CPU expression compiler; `krr_openpbr` checks EON energy and
 reciprocity, GGX sampling, F82 tint and LTC fuzz normalization without initializing CUDA.
 `krr_materials` runs local CUDA checks for real image sampling, sRGB/channels/UV orientation,
-simple and interpreted materials, opacity slices, repeated uploads, normal maps, and native
-BSDF energy/PDF agreement. Native OpenPBR uses finite glossy lobes even at zero roughness
+simple and interpreted materials, opacity and classification slices, repeated uploads,
+normal maps, and native BSDF energy/PDF agreement. Combined value/PDF evaluation is
+checked against the separate functions for sampled and independent directions,
+both transport modes, and independent base/coat normals. Native OpenPBR uses finite glossy lobes
+even at zero roughness
 (minimum roughness 0.001), with the reference's small IOR adjustment around unity; the legacy
 materials keep their existing delta behavior. See the [implementation notes](../src/render/materials/openpbr/NOTICE).
 OpenPBR emission uses 1000 nits per scene-linear radiance unit. Blender 5.2.2 exports

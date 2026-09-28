@@ -51,6 +51,12 @@ public:
 		return dispatch(pdf);
 	}
 
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi,
+							 TransportMode mode = TransportMode::Radiance) const {
+		auto eval = [&](auto ptr) -> BSDFEval { return ptr->eval(wo, wi, mode); };
+		return dispatch(eval);
+	}
+
 	KRR_CALLABLE BSDFType flags() const {
 		auto flags = [&](auto ptr) -> BSDFType { return ptr->flags(); };
 		return dispatch(flags);
@@ -85,6 +91,12 @@ public:
 		return dispatch(pdf, static_cast<int>(intr.sd.bsdfType));
 	}
 
+	KRR_CALLABLE static BSDFEval eval(const SurfaceInteraction &intr, Vector3f wo, Vector3f wi,
+									TransportMode mode = TransportMode::Radiance) {
+		auto eval = [&](auto ptr) -> BSDFEval { return ptr->evalInternal(intr, wo, wi, mode); };
+		return dispatch(eval, static_cast<int>(intr.sd.bsdfType));
+	}
+
 	KRR_CALLABLE static BSDFType flags(const SurfaceInteraction& intr) {
 		auto flags = [&](auto ptr)->BSDFType {return ptr->flagsInternal(intr); };
 		return dispatch(flags, static_cast<int>(intr.sd.bsdfType));
@@ -112,6 +124,12 @@ public:
 						   TransportMode mode = TransportMode::Radiance) const {
 		auto pdf = [&](auto ptr)->float {return ptr->pdf(wo, wi, mode); };
 		return dispatch(pdf);
+	}
+
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi,
+							 TransportMode mode = TransportMode::Radiance) const {
+		auto eval = [&](auto ptr) -> BSDFEval { return ptr->eval(wo, wi, mode); };
+		return dispatch(eval);
 	}
 
 	KRR_CALLABLE BSDFType flags() const {

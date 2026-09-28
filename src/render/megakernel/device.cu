@@ -88,8 +88,10 @@ KRR_DEVICE_FUNCTION void generateShadowRay(PathData &path, const BSDF &bsdf) {
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
 	if (lightPdf == 0) return; // We have sampled on the primitive itself...
-	float bsdfPdf	 = light.isDeltaLight() ? 0 : bsdf.pdf(woLocal, wiLocal);
-	Spectrum bsdfVal = bsdf.f(woLocal, wiLocal) * fabs(wiLocal[2]);
+	BSDFEval evaluation = light.isDeltaLight()
+		? BSDFEval{bsdf.f(woLocal, wiLocal), 0} : bsdf.eval(woLocal, wiLocal);
+	float bsdfPdf = evaluation.pdf;
+	Spectrum bsdfVal = evaluation.f * fabs(wiLocal[2]);
 	float misWeight	 = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
 	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any()) return;
 

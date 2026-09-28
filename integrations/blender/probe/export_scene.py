@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 import bpy
 
@@ -22,6 +23,18 @@ def main():
     import kiraray
     kiraray.register()
     box, white = cornell()
+    scene = bpy.context.scene
+    engine = SimpleNamespace(_scene=scene)
+    get_settings = kiraray.engine.KiRaRayEngine.get_render_settings
+    defaults = get_settings(engine, "FINAL")
+    assert (defaults["krr:maxDepth"], defaults["krr:nee"], defaults["krr:rr"]) == (10, True, scene.kiraray.rr)
+    assert abs(defaults["krr:rr"] - 0.8) < 1e-6
+    scene.kiraray.max_depth, scene.kiraray.nee, scene.kiraray.rr = 2, False, 1.0
+    for mode in ("FINAL", "VIEWPORT"):
+        settings = get_settings(engine, mode)
+        assert (settings["krr:maxDepth"], settings["krr:nee"], settings["krr:rr"]) == (2, False, 1.0)
+        assert settings["krr:samples"] == (scene.kiraray.samples if mode == "FINAL" else scene.kiraray.viewport_samples)
+    scene.kiraray.max_depth, scene.kiraray.nee, scene.kiraray.rr = 10, True, 0.8
     reports, _, messages = kiraray.engine._diagnostics(bpy.context.evaluated_depsgraph_get())
     assert reports and not messages, messages
     kiraray.engine._validate_color_space()

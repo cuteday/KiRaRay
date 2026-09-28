@@ -1,5 +1,6 @@
 #pragma once
 
+#include "settings.h"
 #include "main/renderer.h"
 #include "scene/interop.h"
 #include "integrations/usd/material.h"
@@ -30,6 +31,7 @@ struct RenderState {
 	std::condition_variable released;
 	SceneInput scene;
 	CameraState camera;
+	WavefrontSettings wavefront;
 	Vector2i size{0, 0};
 	std::string assetRoot, graphicsApi{"vulkan"}, statusPath;
 	std::shared_ptr<const RenderSession::Snapshot> image;

@@ -10,9 +10,11 @@ NAMESPACE_BEGIN(krr)
 namespace openpbr {
 
 KRR_CALLABLE Vector3f vector(MaterialValue value) { return {value[0], value[1], value[2]}; }
+
 KRR_CALLABLE Vector3f unit(Vector3f value, Vector3f fallback) {
 	return value.squaredNorm() > 1e-12f ? normalize(value) : fallback;
 }
+
 KRR_CALLABLE Frame frame(Vector3f n, Vector3f tangent, Vector3f bitangent, Vector3f wo) {
 	n = unit(n, Vector3f(0.f, 0.f, 1.f));
 	if (dot(n, wo) < 0) n = -n;
@@ -26,6 +28,7 @@ KRR_CALLABLE Frame frame(Vector3f n, Vector3f tangent, Vector3f bitangent, Vecto
 class Model {
 public:
 	KRR_CALLABLE Model() : baseGgx(1), coatGgx(1) {}
+
 	KRR_CALLABLE Model(const MaterialValues &values, const MaterialContext &context, Vector3f wo,
 					   const SampledWavelengths &lambda, const RGBColorSpace &colorSpace,
 					   MaterialModel model) :
@@ -33,29 +36,30 @@ public:
 		using P		= MaterialParameter;
 		auto scalar = [&](P p) { return values[p][0]; };
 		auto color	= [&](P p) {
-			 MaterialValue v = values[p];
-			 return Spectrum::fromRGB(RGB(v[0], v[1], v[2]).cwiseMax(0.f).cwiseMin(1.f),
-									  SpectrumType::RGBBounded, lambda, colorSpace);
+			MaterialValue v = values[p];
+			return Spectrum::fromRGB(RGB(v[0], v[1], v[2]).cwiseMax(0.f).cwiseMin(1.f),
+									 SpectrumType::RGBBounded, lambda, colorSpace);
 		};
+
 		thin			 = scalar(P::ThinWalled) != 0;
 		inside			 = dot(wo, vector(context.normal)) < 0 && !thin;
 		Vector3f tangent = vector(values[P::Tangent]), bitangent = vector(context.bitangent);
-		coat		  = saturate(scalar(P::CoatWeight));
-		fuzz		  = inside || preview ? 0 : saturate(scalar(P::FuzzWeight));
-		baseFrame	  = frame(vector(values[P::Normal]), tangent, bitangent, wo);
-		coatFrame	  = coat > 0 ? frame(vector(values[P::CoatNormal]), tangent, bitangent, wo)
-								: baseFrame;
+		coat	  = saturate(scalar(P::CoatWeight));
+		fuzz	  = inside || preview ? 0 : saturate(scalar(P::FuzzWeight));
+		baseFrame = frame(vector(values[P::Normal]), tangent, bitangent, wo);
+		coatFrame =
+			coat > 0 ? frame(vector(values[P::CoatNormal]), tangent, bitangent, wo) : baseFrame;
 		fuzzRoughness = saturate(scalar(P::FuzzRoughness));
-		fuzzFrame = baseFrame;
-		fuzzData = Vector3f(0.f);
-		fuzzColor = Spectrum(0);
+		fuzzFrame	  = baseFrame;
+		fuzzData	  = Vector3f(0.f);
+		fuzzColor	  = Spectrum(0);
 		if (fuzz > 0) {
 			fuzzFrame = frame(unit((1 - coat) * baseFrame.N + coat * coatFrame.N, baseFrame.N),
-				tangent, bitangent, wo);
-			fuzzData = fuzzCoefficients(fuzzRoughness, fmaxf(0, dot(wo, fuzzFrame.N)));
+							  tangent, bitangent, wo);
+			fuzzData  = fuzzCoefficients(fuzzRoughness, fmaxf(0, dot(wo, fuzzFrame.N)));
 			fuzzColor = color(P::FuzzColor);
 		}
-		baseColor = bounded(color(P::BaseColor) * fmaxf(0, scalar(P::BaseWeight)));
+		baseColor		   = bounded(color(P::BaseColor) * fmaxf(0, scalar(P::BaseWeight)));
 		specularColor	   = color(P::SpecularColor);
 		coatColor		   = coat > 0 ? color(P::CoatColor) : Spectrum(1);
 		float metalness	   = saturate(scalar(P::Metalness)),
@@ -80,27 +84,32 @@ public:
 		diffuseRoughness	= saturate(scalar(P::DiffuseRoughness));
 		float coatRoughness = saturate(scalar(P::CoatRoughness));
 		float roughness		= saturate(scalar(P::SpecularRoughness));
+
 		if (!preview && coat > 0) {
 			if (fuzz > 0) {
 				MaterialValue tint = values[P::FuzzColor];
-				float fuzzFactor = (tint[0] + tint[1] + tint[2]) / 3 * fuzzRoughness * .005f;
-				coatRoughness = lerp(coatRoughness,
-					sqrtf(sqrtf(fminf(1, square(square(coatRoughness)) +
-						fuzzFactor * square(square(fuzzRoughness))))), fuzz);
+				float fuzzFactor   = (tint[0] + tint[1] + tint[2]) / 3 * fuzzRoughness * .005f;
+				coatRoughness =
+					lerp(coatRoughness,
+						 sqrtf(sqrtf(fminf(1, square(square(coatRoughness)) +
+												  fuzzFactor * square(square(fuzzRoughness))))),
+						 fuzz);
 			}
 			float coatFactor = 1 - (coatEta >= 1 ? 1 / coatEta : coatEta);
-			roughness		 = lerp(roughness,
-									sqrtf(sqrtf(fminf(1, square(square(roughness)) +
-															 coatFactor * square(square(coatRoughness))))),
-									coat);
+			roughness = lerp(roughness,
+							 sqrtf(sqrtf(fminf(1, square(square(roughness)) +
+													  coatFactor * square(square(coatRoughness))))),
+							 coat);
 		}
-		alpha			  = square(roughness);
-		coatAlpha		  = square(coatRoughness);
-		baseGgx			  = GGX(alpha, preview ? 0 : scalar(P::SpecularAnisotropy));
+
+		alpha	  = square(roughness);
+		coatAlpha = square(coatRoughness);
+		baseGgx	  = GGX(alpha, preview ? 0 : scalar(P::SpecularAnisotropy));
 		if (coat > 0) coatGgx = GGX(coatAlpha);
 		Spectrum metalAvg = metal > 0 ? metalAverage(baseColor, specularColor) : Spectrum(0);
 		metalMs			  = metalAvg * metalAvg * metal;
 		float cosGeometry = fabsf(dot(wo, vector(context.normal)));
+
 		if (thin && trans > 0) {
 			float cosRefract2 = 1 - (1 - square(cosGeometry)) / square(etaRefract);
 			transmissionColor = cosRefract2 <= 0
@@ -111,6 +120,7 @@ public:
 			f				  = fresnel(etaRefract, cosGeometry);
 			thinTransmit	  = 1 - 2 * f / (1 + f);
 		}
+
 		Spectrum darkening(1);
 		if (!preview && coat > 0) {
 			float ks = averageFresnel(coatEta), kr = 1 - (1 - ks) / square(coatEta);
@@ -122,16 +132,16 @@ public:
 			darkening =
 				(1 - coat) * Spectrum(1) + coat * (1 - k) / (Spectrum(1) - eb * k).cwiseMax(1e-7f);
 		}
-		float coatMu = fmaxf(0, dot(wo, coatFrame.N));
-		float reflected = coat > 0
-			? coat * (preview ? fresnel(1.5f, coatMu) : 1 - opaqueEnergy(coatEta, coatAlpha, coatMu))
-			: 0;
+		float coatMu	= fmaxf(0, dot(wo, coatFrame.N));
+		float reflected = coat > 0 ? coat * (preview ? fresnel(1.5f, coatMu)
+													 : 1 - opaqueEnergy(coatEta, coatAlpha, coatMu))
+								   : 0;
 		coatIncoming	= passage(coatMu) * (1 - reflected) * darkening;
 		fuzzAttenuation = 1 - fuzz * fuzzData[2];
 		float baseMu	= fmaxf(0, dot(wo, baseFrame.N));
-		float loss =
-			alpha >= .0016f && !preview && (metal > 0 || (thin && trans > 0))
-				? lut2(idealMetal, sqrtf(alpha) * 31, baseMu * 31) : 0;
+		float loss		= alpha >= .0016f && !preview && (metal > 0 || (thin && trans > 0))
+							  ? lut2(idealMetal, sqrtf(alpha) * 31, baseMu * 31)
+							  : 0;
 		float dielectricLoss =
 			alpha >= .0016f && !preview && !thin && trans > 0
 				? lut3(idealDielectric, iorIndex(etaRefract), sqrtf(alpha) * 31, baseMu * 31)
@@ -157,9 +167,11 @@ public:
 		if (ct2 <= 0) return Spectrum(1 - coat);
 		return Spectrum(1 - coat) + coat * coatColor.pow(.5f / sqrtf(ct2));
 	}
+
 	KRR_CALLABLE Spectrum emissionScale() const {
 		return inside ? Spectrum(0) : Spectrum(coatIncoming * fuzzAttenuation);
 	}
+
 	KRR_CALLABLE Spectrum reflection(float mu) const {
 		if (preview) {
 			float f0   = square((etaOpaque - 1) / (etaOpaque + 1));
@@ -170,18 +182,38 @@ public:
 		if (metal > 0) result = metal * metalFresnel(baseColor, specularColor, mu);
 		if (opaque > 0) result += specularColor * (opaque * fresnel(etaOpaque, mu));
 		if (trans > 0)
-			result += thin ? specularColor * (trans * thinReflect)
-				: (inside ? Spectrum(trans) : specularColor * trans) * fresnel(etaReflect, mu);
+			result +=
+				thin ? specularColor * (trans * thinReflect)
+					 : (inside ? Spectrum(trans) : specularColor * trans) * fresnel(etaReflect, mu);
 		return result;
 	}
+
 	KRR_CALLABLE Spectrum baseCos(Vector3f wi, TransportMode mode) const {
+		float unused;
+		return baseCosImpl<false>(wi, mode, unused);
+	}
+
+	// The optional density uses the same directional intermediates without enlarging Model.
+	template <bool ComputePdf>
+	KRR_CALLABLE Spectrum baseCosImpl(Vector3f wi, TransportMode mode, float &density) const {
+		if constexpr (ComputePdf) density = 0;
 		Vector3f wo = baseFrame.toLocal(view);
 		wi			= baseFrame.toLocal(wi);
 		if (wo[2] <= 0 || wi[2] == 0) return Spectrum(0);
 		Spectrum result(0);
+		if constexpr (ComputePdf)
+			if (wi[2] < 0) density = weights[3] * -wi[2] * M_INV_PI;
 		if (wi[2] > 0) {
-			float mu = fmaxf(0, dot(wo, normalize(wo + wi)));
-			result	 = reflection(mu) * baseGgx.reflectionCos(wo, wi);
+			if constexpr (ComputePdf) {
+				Vector3f m = normalize(wo + wi);
+				float mu = fmaxf(0, dot(wo, m));
+				float reflectionDensity = baseGgx.reflectionPdf(wo, wi, m);
+				result = reflection(mu) * (reflectionDensity * baseGgx.G1(wi));
+				density = weights[0] * wi[2] * M_INV_PI + weights[1] * reflectionDensity;
+			} else {
+				float mu = fmaxf(0, dot(wo, normalize(wo + wi)));
+				result = reflection(mu) * baseGgx.reflectionCos(wo, wi);
+			}
 			if (opaque > 0) {
 				if (preview)
 					result += baseColor * (opaque * M_INV_PI * wi[2]);
@@ -192,9 +224,9 @@ public:
 							  fmaxf(1e-7f, opaqueAverage(etaOpaque, alpha));
 			}
 			if (!preview && alpha >= .0016f && (metal > 0 || (thin && trans > 0))) {
-				float a		 = sqrtf(alpha) * 31;
-				float factor = lut2(idealMetal, a, wo[2] * 31) * lut2(idealMetal, a, wi[2] * 31) /
-							   fmaxf(1e-7f, lut1(averageMetal, a));
+				float a		   = sqrtf(alpha) * 31;
+				float factor   = lut2(idealMetal, a, wo[2] * 31) * lut2(idealMetal, a, wi[2] * 31) /
+								 fmaxf(1e-7f, lut1(averageMetal, a));
 				Spectrum scale = metalMs;
 				if (thin) scale += specularColor * (trans * thinReflect);
 				result += scale * (fminf(factor, 1 / wi[2]) * M_INV_PI * wi[2]);
@@ -202,8 +234,14 @@ public:
 		} else if (trans > 0) {
 			if (thin) {
 				Vector3f flipped(wi[0], wi[1], -wi[2]);
-				result +=
-					transmissionColor * (trans * thinTransmit * baseGgx.reflectionCos(wo, flipped));
+				if constexpr (ComputePdf) {
+					float reflectionDensity = baseGgx.reflectionPdf(wo, flipped);
+					result += transmissionColor *
+						(trans * thinTransmit * (reflectionDensity * baseGgx.G1(flipped)));
+					if (weights[2] > 0) density += weights[2] * reflectionDensity;
+				} else
+					result += transmissionColor *
+						(trans * thinTransmit * baseGgx.reflectionCos(wo, flipped));
 				if (alpha >= .0016f) {
 					// A flipped GGX sheet needs reflection energy compensation, not refraction's
 					// LUT.
@@ -218,7 +256,10 @@ public:
 				float jacobian = transmissionJacobian(wo, wi, m);
 				if (jacobian > 0) {
 					float f		 = 1 - fresnel(etaReflect, fabsf(dot(wo, m)));
-					float factor = baseGgx.normalPdf(wo, m) * jacobian * baseGgx.G1(wi);
+					float normalDensity = baseGgx.normalPdf(wo, m);
+					float factor = normalDensity * jacobian * baseGgx.G1(wi);
+					if constexpr (ComputePdf)
+						if (weights[2] > 0) density += weights[2] * normalDensity * jacobian;
 					if (mode == TransportMode::Radiance) factor /= square(etaRefract);
 					result += transmissionColor * (trans * f * factor);
 				}
@@ -238,6 +279,7 @@ public:
 		}
 		return result;
 	}
+
 	KRR_CALLABLE float transmissionJacobian(Vector3f wo, Vector3f wi, Vector3f &m) const {
 		Vector3f h = wo + etaRefract * wi;
 		if (h.squaredNorm() <= 1e-20f) return 0;
@@ -249,6 +291,7 @@ public:
 		if (denominator == 0) return 0;
 		return fabsf(square(etaRefract) * b / square(denominator));
 	}
+
 	KRR_CALLABLE Spectrum evalCos(Vector3f wi, TransportMode mode) const {
 		Spectrum result = baseCos(wi, mode);
 		float mu		= dot(wi, coatFrame.N);
@@ -266,6 +309,33 @@ public:
 							 fuzzPdf(fuzzFrame.toLocal(wi), fuzzFrame.toLocal(view), fuzzData));
 		return result;
 	}
+
+	// f includes the cosine here; OpenPbrBsdf converts it to the public f() convention.
+	KRR_CALLABLE BSDFEval evalCosPdf(Vector3f wi, TransportMode mode) const {
+		float density;
+		Spectrum result = baseCosImpl<true>(wi, mode, density);
+		float mu = dot(wi, coatFrame.N);
+		// Inside materials have neither a coat nor a fuzz sampling weight.
+		if (inside) return {result * passage(-mu), density};
+		bool validPdf = dot(baseFrame.N, view) > 0;
+		result *= coatIncoming * passage(mu);
+		if (coat > 0 && mu > 0) {
+			Vector3f woCoat = coatFrame.toLocal(view), wiCoat = coatFrame.toLocal(wi);
+			Vector3f m = normalize(woCoat + wiCoat);
+			float f = fresnel(coatEta, fmaxf(0, dot(woCoat, m)));
+			float reflectionDensity = coatGgx.reflectionPdf(woCoat, wiCoat, m);
+			result += Spectrum(coat * f * (reflectionDensity * coatGgx.G1(wiCoat)));
+			if (validPdf && weights[4] > 0) density += weights[4] * reflectionDensity;
+		}
+		result *= fuzzAttenuation;
+		if (fuzz > 0) {
+			float fuzzDensity = fuzzPdf(fuzzFrame.toLocal(wi), fuzzFrame.toLocal(view), fuzzData);
+			result += fuzzColor * (fuzz * fuzzData[2] * fuzzDensity);
+			if (validPdf && weights[5] > 0) density += weights[5] * fuzzDensity;
+		}
+		return {result, density};
+	}
+
 	KRR_CALLABLE float pdf(Vector3f wi) const {
 		Vector3f woBase = baseFrame.toLocal(view), wiBase = baseFrame.toLocal(wi);
 		if (woBase[2] <= 0) return 0;
@@ -292,6 +362,7 @@ public:
 				weights[5] * fuzzPdf(fuzzFrame.toLocal(wi), fuzzFrame.toLocal(view), fuzzData);
 		return result;
 	}
+
 	KRR_CALLABLE Vector3f sample(float choice, Vector2f u) const {
 		int lobe = 5;
 		for (int index = 0; index < 6; ++index) {
@@ -328,6 +399,7 @@ public:
 			return Vector3f(0.f);
 		return f.toWorld(normalize(wi));
 	}
+	
 	KRR_CALLABLE bool transmissive() const { return trans > 0; }
 
 	Frame baseFrame, coatFrame, fuzzFrame;

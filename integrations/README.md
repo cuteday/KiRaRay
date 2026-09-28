@@ -19,8 +19,9 @@ has both optional integrations disabled.
 
 - `src/core/material/` defines typed expressions, validation, optimization, and
   the bounded GPU program. Constants, direct image bindings, and interpreted
-  programs have separate execution paths. Surface, opacity, and emission each
-  have a dependency slice. A later JIT can consume the same optimized semantics.
+  programs have separate execution paths. Surface, opacity, emission, and BSDF
+  classification each have a dependency slice. A later JIT can consume the same
+  optimized semantics.
 - `src/render/materials/openpbr/` implements a native spectral model subset.
   Preview Surface has its own identity and parameters. Existing materials retain
   their evaluator and identifiers. Read the [numerical and source notes](../src/render/materials/openpbr/NOTICE).
@@ -47,6 +48,13 @@ actions once. `close()` only releases resources.
 Python `krr.render()` and `HeadlessRenderer.render()` still start a fresh batch
 from their config snapshot on every call. Blender uses persistent sessions, one
 rendering at a time; F12 takes priority over the single supported preview.
+
+The Blender profile exposes the wavefront maximum depth, next event estimation,
+and Russian roulette survival probability, with the existing defaults of 10,
+enabled, and 0.8. Native Hydra settings are validated before application. Edits
+update the existing pass and reset accumulation without reimporting geometry;
+effective values appear in the completion status and renderer log. See the
+[Blender rendering controls](blender/README.md#rendering).
 
 ## Supported subset and diagnostics
 

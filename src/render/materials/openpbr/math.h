@@ -138,6 +138,10 @@ struct GGX {
 	KRR_CALLABLE float reflectionPdf(Vector3f wo, Vector3f wi) const {
 		if (wo[2] <= 0 || wi[2] <= 0) return 0;
 		Vector3f m = normalize(wo + wi);
+		return reflectionPdf(wo, wi, m);
+	}
+	KRR_CALLABLE float reflectionPdf(Vector3f wo, Vector3f wi, Vector3f m) const {
+		if (wo[2] <= 0 || wi[2] <= 0) return 0;
 		return D(m) * G1(wo) / (4 * wo[2]);
 	}
 	KRR_CALLABLE float reflectionCos(Vector3f wo, Vector3f wi) const {

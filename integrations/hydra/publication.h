@@ -10,7 +10,9 @@ class PublicationSchedule {
 public:
 	using Clock = std::chrono::steady_clock;
 	void reset() { *this = {}; }
-	double intervalMs() const { return std::clamp(mSnapshotMs * 10.0, 75.0, 500.0); }
+	double intervalMs() const {
+		return std::clamp(mSnapshotMs * snapshotCostMultiplier, minIntervalMs, maxIntervalMs);
+	}
 	bool due(uint64_t frames, uint64_t requested, Clock::time_point now) const {
 		return frames > mSubmittedFrames &&
 			(!mSubmittedFrames || frames >= requested ||
@@ -25,7 +27,7 @@ public:
 		mSubmittedAt = now;
 	}
 	bool needsWait(uint64_t frames) const {
-		return frames > mSynchronizedFrames && frames - mSynchronizedFrames >= 4;
+		return frames > mSynchronizedFrames && frames - mSynchronizedFrames >= maxPendingFrames;
 	}
 	void synchronized(uint64_t frames) { mSynchronizedFrames = std::max(frames, mSynchronizedFrames); }
 	void published(uint64_t frames, Clock::time_point now, double snapshotMs) {
@@ -39,6 +41,10 @@ public:
 	}
 
 private:
+	static constexpr double minIntervalMs = 75.0, maxIntervalMs = 500.0;
+	static constexpr double snapshotCostMultiplier = 10.0;
+	static constexpr uint64_t maxPendingFrames = 4;
+
 	bool elapsed(Clock::duration duration) const {
 		return duration >= std::chrono::duration<double, std::milli>(intervalMs());
 	}
