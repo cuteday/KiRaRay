@@ -174,8 +174,10 @@ template <typename BSDFModel> void WavefrontPathTracer::generateScatterRaysImpl(
 				Vector3f wiLocal = intr.toLocal(wiWorld);
 
 				float lightPdf	 = sampledLight.pdf * ls.pdf;
-				Spectrum bsdfVal = bsdf.f(woLocal, wiLocal);
-				float bsdfPdf	 = light.isDeltaLight() ? 0 : bsdf.pdf(woLocal, wiLocal);
+				BSDFEval evaluation = light.isDeltaLight()
+					? BSDFEval{bsdf.f(woLocal, wiLocal), 0} : bsdf.eval(woLocal, wiLocal);
+				Spectrum bsdfVal = evaluation.f;
+				float bsdfPdf = evaluation.pdf;
 				if (lightPdf > 0 && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;

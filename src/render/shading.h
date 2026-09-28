@@ -133,17 +133,10 @@ static KRR_DEVICE KRR_NOINLINE void prepareAuthoredMaterial(SurfaceInteraction &
 	intr.n = materialVector(context.normal);
 	intr.tangent = materialVector(context.tangent);
 	intr.bitangent = materialVector(context.bitangent);
-	auto values = material.mProgram.evaluate(context);
+	if (hitInfo.getMesh().texcoords.size()) intr.uv = {context.uv[0], context.uv[1]};
 	intr.sd.bsdfType = material.mBsdfType;
-	intr.sd.IoR = values[MaterialParameter::SpecularIor][0];
-	intr.sd.roughness = values[MaterialParameter::SpecularRoughness][0];
-	intr.sd.metallic = values[MaterialParameter::Metalness][0];
-	intr.sd.specularTransmission = values[MaterialParameter::TransmissionWeight][0];
-	intr.sd.anisotropic = values[MaterialParameter::SpecularAnisotropy][0];
-	intr.sd.diffuse = Spectrum::fromRGB(RGB(materialVector(values[MaterialParameter::BaseColor])),
-		SpectrumType::RGBBounded, lambda, *material.getColorSpace());
-	intr.sd.specular = Spectrum::fromRGB(RGB(materialVector(values[MaterialParameter::SpecularColor])),
-		SpectrumType::RGBBounded, lambda, *material.getColorSpace());
+	// Authored BSDFs prepare their parameters at the scattering vertex.
+	prepareAuthoredFlags(intr.sd, material.mProgram, context);
 	intr.lambda = lambda;
 }
 
@@ -168,6 +161,22 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	
 	intr.p = b[0] * p0 + b[1] * p1  + b[2] * p2;
 
+	if (instance.lights.size())
+		intr.light = &instance.lights[hitInfo.primitiveId];
+	else intr.light = nullptr;
+
+	intr.material = hitInfo.instance->mesh->material;
+
+	if (mesh.mediumInterface.isTransition())
+		intr.mediumInterface = &mesh.mediumInterface;
+
+	Transformation transform = getInstanceTransform();
+	intr.p = transform.transform() * intr.p;
+	if (authoredMaterials && intr.material && intr.material->mProgram.enabled) {
+		prepareAuthoredMaterial(intr, hitInfo, transform, lambda);
+		return;
+	}
+
 	if (mesh.normals.size())
 		intr.n = normalize(b[0] * mesh.normals[v[0]] + b[1] * mesh.normals[v[1]] +
 						   b[2] * mesh.normals[v[2]]);
@@ -186,19 +195,8 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 		intr.uv =
 			b[0] * mesh.texcoords[v[0]] + b[1] * mesh.texcoords[v[1]] + b[2] * mesh.texcoords[v[2]];
 
-	if (instance.lights.size())
-		intr.light = &instance.lights[hitInfo.primitiveId];
-	else intr.light = nullptr;
-
-	intr.material = hitInfo.instance->mesh->material;
-
-	if (mesh.mediumInterface.isTransition()) 
-		intr.mediumInterface = &mesh.mediumInterface;
-
 	// transform local interaction to world space
 	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
-	Transformation transform = getInstanceTransform();
-	intr.p		   = transform.transform() * intr.p;
 	intr.n		   = (transform.transposedInverse() * intr.n).normalized();
 	intr.tangent   = (transform.transposedInverse() * intr.tangent).normalized();
 	intr.bitangent = (transform.transposedInverse() * intr.bitangent).normalized();
@@ -209,11 +207,6 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	const rt::MaterialData &material			   = instance.getMaterial();
 	const Material::MaterialParams &materialParams = material.mMaterialParams;
 	const RGBColorSpace &colorSpace				   = *material.getColorSpace();
-	if (authoredMaterials && material.mProgram.enabled) {
-		prepareAuthoredMaterial(intr, hitInfo, transform, lambda);
-		return;
-	}
-
 	intr.sd.bsdfType			 = material.mBsdfType;
 	intr.sd.specularTransmission = materialParams.specularTransmission;
 	intr.sd.IoR					 = materialParams.IoR;

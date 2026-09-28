@@ -139,13 +139,15 @@ public:
 				roots[parameter] = node;
 		}
 		result.surface = emit(roots);
-		auto opacity = roots, emission = roots;
+		auto opacity = roots, emission = roots, classification = roots;
 		bool emissionLayers = roots[int(MaterialParameter::CoatWeight)] >= 0 ||
 							  roots[int(MaterialParameter::FuzzWeight)] >= 0 ||
 							  result.defaults[MaterialParameter::CoatWeight][0] > 0 ||
 							  result.defaults[MaterialParameter::FuzzWeight][0] > 0;
 		for (int parameter = 0; parameter < MaterialParameterCount; ++parameter) {
 			if (parameter != int(MaterialParameter::Opacity)) opacity[parameter] = -1;
+			if (parameter != int(MaterialParameter::Metalness) &&
+				parameter != int(MaterialParameter::TransmissionWeight)) classification[parameter] = -1;
 			if (parameter == int(MaterialParameter::Opacity) ||
 				(!emissionLayers && parameter != int(MaterialParameter::EmissionColor) &&
 				 parameter != int(MaterialParameter::EmissionLuminance) &&
@@ -154,6 +156,7 @@ public:
 		}
 		result.opacity	   = emit(opacity);
 		result.emission	   = emit(emission);
+		result.classification = emit(classification);
 		result.hasEmission = roots[int(MaterialParameter::EmissionLuminance)] >= 0 ||
 							 result.defaults[MaterialParameter::EmissionLuminance][0] > 0;
 		if (roots[int(MaterialParameter::EmissionColor)] < 0) {

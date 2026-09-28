@@ -1,5 +1,6 @@
 #include "bridge.h"
 #include "publication.h"
+#include "render/wavefront/integrator.h"
 #include <chrono>
 #include <deque>
 #include <fstream>
@@ -7,6 +8,29 @@
 
 namespace krr::hydra {
 namespace {
+
+using Clock = PublicationSchedule::Clock;
+
+double milliseconds(Clock::time_point from) {
+	return std::chrono::duration<double, std::milli>(Clock::now() - from).count();
+}
+
+class HydraSession final : public RenderSession {
+public:
+	using RenderSession::RenderSession;
+	void setWavefrontSettings(const WavefrontSettings &settings) {
+		wait();
+		for (auto &pass : mRenderPasses) {
+			if (auto *tracer = dynamic_cast<WavefrontPathTracer *>(pass.get())) {
+				tracer->maxDepth = settings.maxDepth;
+				tracer->enableNEE = settings.nee;
+				tracer->probRR = settings.rr;
+				return;
+			}
+		}
+		throw std::logic_error("Hydra session is missing its wavefront pass");
+	}
+};
 
 class RenderWorker {
 public:
@@ -28,6 +52,25 @@ public:
 	void wake() { mWake.notify_all(); }
 
 private:
+	struct RenderRequest {
+		SceneInput scene;
+		CameraState camera;
+		WavefrontSettings wavefront;
+		Vector2i size;
+		std::string assetRoot, graphicsApi;
+		uint64_t version{}, seed{};
+		uint32_t samples{};
+		bool depthRequested{};
+	};
+	struct PendingSnapshot {
+		RenderSession::SnapshotRequest request;
+		double enqueueMs{};
+	};
+	struct CompletedImage {
+		std::shared_ptr<RenderSession::Snapshot> image;
+		double readbackMs{}, adaptiveMs{};
+	};
+
 	std::shared_ptr<RenderState> next() {
 		std::shared_ptr<RenderState> result;
 		int priority		 = -1;
@@ -77,6 +120,14 @@ private:
 		mVersion = mGeometryVersion = mTransformVersion = mMaterialVersion = 0;
 		mPublication.reset();
 	}
+	Material::SharedPtr translateMaterial(const SceneInput &input, const std::string &id,
+		const interop::MaterialNetwork &network) {
+		auto copy = network;
+		copy.emissionLuminanceScale = input.emissionLuminanceScale;
+		if (auto found = input.diagnostics.find(id); found != input.diagnostics.end())
+			copy.diagnostics.insert(copy.diagnostics.end(), found->second.begin(), found->second.end());
+		return interop::translateMaterial(copy, &mDiagnostics);
+	}
 	Scene::SharedPtr buildScene(const SceneInput &input) {
 		++mSceneBuilds;
 		mLights = json::array();
@@ -98,14 +149,8 @@ private:
 		scene->setCameraController(nullptr);
 		mMaterials.clear();
 		mDiagnostics.clear();
-		for (const auto &[id, network] : input.materials) {
-			auto copy					= network;
-			copy.emissionLuminanceScale = input.emissionLuminanceScale;
-			if (auto found = input.diagnostics.find(id); found != input.diagnostics.end())
-				copy.diagnostics.insert(copy.diagnostics.end(), found->second.begin(),
-										found->second.end());
-			mMaterials[id] = interop::translateMaterial(copy, &mDiagnostics);
-		}
+		for (const auto &[id, network] : input.materials)
+			mMaterials[id] = translateMaterial(input, id, network);
 		mNodes.clear();
 		std::map<std::string, std::vector<Mesh::SharedPtr>> tangentGroups;
 		for (const auto &[id, record] : input.meshes) {
@@ -148,13 +193,7 @@ private:
 		for (const auto &[id, network] : input.materials) {
 			auto found = mMaterials.find(id);
 			if (found == mMaterials.end()) continue;
-			auto copy					= network;
-			copy.emissionLuminanceScale = input.emissionLuminanceScale;
-			if (auto diagnostics = input.diagnostics.find(id);
-				diagnostics != input.diagnostics.end())
-				copy.diagnostics.insert(copy.diagnostics.end(), diagnostics->second.begin(),
-										diagnostics->second.end());
-			found->second->updateFrom(*interop::translateMaterial(copy, &mDiagnostics));
+			found->second->updateFrom(*translateMaterial(input, id, network));
 		}
 	}
 	void updateTransforms(const SceneInput &input) {
@@ -168,209 +207,210 @@ private:
 				found->second[i]->setLocalTransform(Affine3f(record.transforms[i]));
 		}
 	}
-	void render(const std::shared_ptr<RenderState> &state) {
-		const auto started = std::chrono::steady_clock::now();
-		auto milliseconds  = [](auto from) {
-			 return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() -
-															  from)
-				 .count();
-		};
-		SceneInput scene;
-		CameraState camera;
-		Vector2i size;
-		std::string root, graphicsApi;
-		uint64_t version, seed;
-		uint32_t samples;
-		bool depthRequested;
-		{
-			std::lock_guard lock(state->mutex);
-			version		= state->version;
-			seed		= state->seed;
-			samples		= state->samples;
-			camera		= state->camera;
-			size		= state->size;
-			root		= state->assetRoot;
-			graphicsApi = state->graphicsApi;
-			depthRequested = state->depthRequested;
-			if (version != mVersion || state != mCurrent) scene = state->scene;
-		}
-		if (mSession && (graphicsApi != mGraphicsApi || root != mAssetRoot)) release();
+	RenderRequest captureRequest(const std::shared_ptr<RenderState> &state) const {
+		std::lock_guard lock(state->mutex);
+		RenderRequest request;
+		request.version = state->version;
+		request.seed = state->seed;
+		request.samples = state->samples;
+		request.camera = state->camera;
+		request.wavefront = state->wavefront;
+		request.size = state->size;
+		request.assetRoot = state->assetRoot;
+		request.graphicsApi = state->graphicsApi;
+		request.depthRequested = state->depthRequested;
+		if (request.version != mVersion || state != mCurrent) request.scene = state->scene;
+		return request;
+	}
+	void activate(const std::shared_ptr<RenderState> &state, const RenderRequest &request) {
+		if (mSession && (request.graphicsApi != mGraphicsApi || request.assetRoot != mAssetRoot))
+			release();
 		if (state != mCurrent) {
 			release();
 			mCurrent = state;
-			{
-				std::lock_guard lock(state->mutex);
-				state->active = true;
-			}
-		}
-		if (!mSession) {
-			auto &context = Context::ensureInitialized();
-			if (cuCtxSetCurrent(context.cudaContext) != CUDA_SUCCESS)
-				throw std::runtime_error("Could not bind the Hydra worker's CUDA context");
-			json config{{"resolution", {size[0], size[1]}},
-						{"graphics_api", graphicsApi},
-						{"scene", json::object()},
-						{"passes",
-						 {{{"name", "WavefrontPathTracer"},
-						   {"params", {{"nee", true}, {"rr", 0.8}, {"max_depth", 10}}}},
-						  {{"name", "AccumulatePass"},
-						   {"params",
-							{{"spp", 0},
-							 {"mode", "accumulate"},
-							 {"save_on_finish", false},
-							 {"exit_on_finish", false}}}}}}};
-			mSession	 = std::make_unique<RenderSession>(config, root, false);
-			mGraphicsApi = graphicsApi;
-			mAssetRoot	 = root;
-			mSession->initialize(seed, buildScene(scene));
-			mInitializationMs = milliseconds(started);
-			mGeometryVersion  = scene.geometryVersion;
-			mTransformVersion = scene.transformVersion;
-			mMaterialVersion  = scene.materialVersion;
-		}
-		if (version != mVersion) {
-			mPending.clear();
-			mUpdateStarted = started;
-			mPublication.reset();
-			mPublicationCount = mAsyncPublicationCount = mSnapshotRequests = mPendingPeak = 0;
-			mReadbackTotalMs = mRenderStepMs = mWaitMs = 0;
-			mDepthCaptureStart = mSession->getDepthCaptureCount();
-			if (scene.geometryVersion != mGeometryVersion) {
-				mSession->replaceScene(buildScene(scene));
-				mGeometryVersion = scene.geometryVersion;
-			} else {
-				if (scene.transformVersion != mTransformVersion) updateTransforms(scene);
-				if (scene.materialVersion != mMaterialVersion) updateMaterials(scene);
-			}
-			mTransformVersion = scene.transformVersion;
-			mMaterialVersion  = scene.materialVersion;
-			mSession->resize(size);
-			mSession->updateCamera(camera);
-			mSession->reset(seed);
-			mVersion = version;
-		}
-		struct CompletedImage {
-			std::shared_ptr<RenderSession::Snapshot> image;
-			double readbackMs{}, adaptiveMs{};
-		};
-		auto collect = [&](bool wait) {
-			CompletedImage result;
-			if (!wait) {
-				uint64_t readyFrames = 0;
-				for (auto &pending : mPending) {
-					if (!mSession->isSnapshotReady(pending.request)) break;
-					readyFrames = pending.request.snapshot.completedFrames;
-				}
-				if (!mPublication.publicationDue(readyFrames, samples, std::chrono::steady_clock::now()))
-					return result;
-			}
-			while (!mPending.empty()) {
-				auto &pending = mPending.front();
-				bool ready = mSession->isSnapshotReady(pending.request);
-				if (!ready && !wait) break;
-				const auto collectStarted = std::chrono::steady_clock::now();
-				result.image = std::make_shared<RenderSession::Snapshot>(
-					mSession->collectSnapshot(pending.request, wait));
-				double collectMs = milliseconds(collectStarted);
-				mReadbackTotalMs += collectMs;
-				result.readbackMs += pending.enqueueMs + collectMs;
-				result.adaptiveMs += pending.enqueueMs + (ready ? collectMs : 0.0);
-				mPublication.synchronized(result.image->completedFrames);
-				mPending.pop_front();
-			}
-			return result;
-		};
-		auto publish = [&](CompletedImage result) {
-			if (!result.image) return;
 			std::lock_guard lock(state->mutex);
-			if (state->version != version || !state->alive || state->paused) return;
-			const auto frames = result.image->completedFrames;
-			mReadbackMs = result.readbackMs;
-			mPublication.published(frames, std::chrono::steady_clock::now(), result.adaptiveMs);
-			++mPublicationCount;
-			if (frames > 1 && frames < samples) ++mAsyncPublicationCount;
-			if (frames == 1) mFirstImageMs = milliseconds(mUpdateStarted);
-			state->image = std::move(result.image);
-			state->imageVersion = version;
-			state->converged = frames >= samples;
-			if (state->converged && state->priority > 1) mSession->finish();
-			if (state->converged && !state->statusPath.empty())
-				std::ofstream(state->statusPath)
-					<< json{{"version", version},
-							{"frames", state->image->completedFrames},
-							{"width", size[0]},
-							{"height", size[1]},
-							{"mesh_count", mNodes.size()},
-							{"graphics_api", mGraphicsApi},
-							{"seed", seed},
-							{"geometry_version", mGeometryVersion},
-							{"material_version", mMaterialVersion},
-							{"transform_version", mTransformVersion},
-							{"diagnostics", mDiagnostics},
-							{"scene_builds", mSceneBuilds},
-							{"material_updates", mMaterialUpdates},
-							{"transform_updates", mTransformUpdates},
-							{"lights", mLights},
-							{"initialization_ms", mInitializationMs},
-							{"first_image_ms", mFirstImageMs},
-							{"readback_ms", mReadbackMs},
-							{"readback_total_ms", mReadbackTotalMs},
-							{"render_step_ms", mRenderStepMs},
-							{"wait_ms", mWaitMs},
-							{"update_ms", milliseconds(mUpdateStarted)},
-							{"publication_count", mPublicationCount},
-							{"async_publication_count", mAsyncPublicationCount},
-							{"readback_submission_count", mSnapshotRequests},
-							{"max_pending_readbacks", mPendingPeak},
-							{"publication_interval_ms", mPublication.intervalMs()},
-							{"depth_capture_count", mSession->getDepthCaptureCount() - mDepthCaptureStart},
-							{"depth_requested", depthRequested},
-							{"tracked_cuda_bytes", CUDATrackedMemory::singleton.BytesAllocated()}};
-		};
-		auto waitForFrames = [&] {
-			const auto waitStarted = std::chrono::steady_clock::now();
-			mSession->wait();
-			mWaitMs += milliseconds(waitStarted);
-			mPublication.synchronized(mSession->getCompletedFrames());
-		};
-		publish(collect(false));
+			state->active = true;
+		}
+	}
+	void initialize(const RenderRequest &request, Clock::time_point started) {
+		auto &context = Context::ensureInitialized();
+		if (cuCtxSetCurrent(context.cudaContext) != CUDA_SUCCESS)
+			throw std::runtime_error("Could not bind the Hydra worker's CUDA context");
+		json config{{"resolution", {request.size[0], request.size[1]}},
+					{"graphics_api", request.graphicsApi},
+					{"scene", json::object()},
+					{"passes",
+					 {{{"name", "WavefrontPathTracer"},
+					   {"params", request.wavefront.params()}},
+					  {{"name", "AccumulatePass"},
+					   {"params",
+						{{"spp", 0},
+						 {"mode", "accumulate"},
+						 {"save_on_finish", false},
+						 {"exit_on_finish", false}}}}}}};
+		mSession = std::make_unique<HydraSession>(config, request.assetRoot, false);
+		mGraphicsApi = request.graphicsApi;
+		mAssetRoot = request.assetRoot;
+		mSession->initialize(request.seed, buildScene(request.scene));
+		mInitializationMs = milliseconds(started);
+		mGeometryVersion = request.scene.geometryVersion;
+		mTransformVersion = request.scene.transformVersion;
+		mMaterialVersion = request.scene.materialVersion;
+	}
+	void update(const RenderRequest &request, Clock::time_point started) {
+		mPending.clear();
+		mUpdateStarted = started;
+		mPublication.reset();
+		mPublicationCount = mAsyncPublicationCount = mSnapshotRequests = mPendingPeak = 0;
+		mReadbackTotalMs = mRenderStepMs = mWaitMs = 0;
+		mDepthCaptureStart = mSession->getDepthCaptureCount();
+		const auto &scene = request.scene;
+		if (scene.geometryVersion != mGeometryVersion) {
+			mSession->replaceScene(buildScene(scene));
+			mGeometryVersion = scene.geometryVersion;
+		} else {
+			if (scene.transformVersion != mTransformVersion) updateTransforms(scene);
+			if (scene.materialVersion != mMaterialVersion) updateMaterials(scene);
+		}
+		mTransformVersion = scene.transformVersion;
+		mMaterialVersion = scene.materialVersion;
+		mSession->resize(request.size);
+		mSession->setWavefrontSettings(request.wavefront);
+		mSession->updateCamera(request.camera);
+		mSession->reset(request.seed);
+		Log(Info, "Hydra wavefront: max_depth=%d, nee=%s, rr=%g", request.wavefront.maxDepth,
+			request.wavefront.nee ? "true" : "false", request.wavefront.rr);
+		mVersion = request.version;
+	}
+	CompletedImage collect(uint32_t samples, bool wait) {
+		CompletedImage result;
+		if (!wait) {
+			uint64_t readyFrames = 0;
+			for (auto &pending : mPending) {
+				if (!mSession->isSnapshotReady(pending.request)) break;
+				readyFrames = pending.request.snapshot.completedFrames;
+			}
+			if (!mPublication.publicationDue(readyFrames, samples, Clock::now())) return result;
+		}
+		while (!mPending.empty()) {
+			auto &pending = mPending.front();
+			bool ready = mSession->isSnapshotReady(pending.request);
+			if (!ready && !wait) break;
+			const auto started = Clock::now();
+			result.image = std::make_shared<RenderSession::Snapshot>(
+				mSession->collectSnapshot(pending.request, wait));
+			double collectMs = milliseconds(started);
+			mReadbackTotalMs += collectMs;
+			result.readbackMs += pending.enqueueMs + collectMs;
+			result.adaptiveMs += pending.enqueueMs + (ready ? collectMs : 0.0);
+			mPublication.synchronized(result.image->completedFrames);
+			mPending.pop_front();
+		}
+		return result;
+	}
+	json status(const RenderRequest &request, uint64_t frames) const {
+		return {{"version", request.version},
+				{"frames", frames},
+				{"width", request.size[0]},
+				{"height", request.size[1]},
+				{"mesh_count", mNodes.size()},
+				{"graphics_api", mGraphicsApi},
+				{"seed", request.seed},
+				{"wavefront", request.wavefront.params()},
+				{"geometry_version", mGeometryVersion},
+				{"material_version", mMaterialVersion},
+				{"transform_version", mTransformVersion},
+				{"diagnostics", mDiagnostics},
+				{"scene_builds", mSceneBuilds},
+				{"material_updates", mMaterialUpdates},
+				{"transform_updates", mTransformUpdates},
+				{"lights", mLights},
+				{"initialization_ms", mInitializationMs},
+				{"first_image_ms", mFirstImageMs},
+				{"readback_ms", mReadbackMs},
+				{"readback_total_ms", mReadbackTotalMs},
+				{"render_step_ms", mRenderStepMs},
+				{"wait_ms", mWaitMs},
+				{"update_ms", milliseconds(mUpdateStarted)},
+				{"publication_count", mPublicationCount},
+				{"async_publication_count", mAsyncPublicationCount},
+				{"readback_submission_count", mSnapshotRequests},
+				{"max_pending_readbacks", mPendingPeak},
+				{"publication_interval_ms", mPublication.intervalMs()},
+				{"depth_capture_count", mSession->getDepthCaptureCount() - mDepthCaptureStart},
+				{"depth_requested", request.depthRequested},
+				{"tracked_cuda_bytes", CUDATrackedMemory::singleton.BytesAllocated()}};
+	}
+	void publish(const std::shared_ptr<RenderState> &state, const RenderRequest &request,
+		CompletedImage result) {
+		if (!result.image) return;
+		std::lock_guard lock(state->mutex);
+		if (state->version != request.version || !state->alive || state->paused) return;
+		const auto frames = result.image->completedFrames;
+		mReadbackMs = result.readbackMs;
+		mPublication.published(frames, Clock::now(), result.adaptiveMs);
+		++mPublicationCount;
+		if (frames > 1 && frames < request.samples) ++mAsyncPublicationCount;
+		if (frames == 1) mFirstImageMs = milliseconds(mUpdateStarted);
+		state->image = std::move(result.image);
+		state->imageVersion = request.version;
+		state->converged = frames >= request.samples;
+		if (state->converged && state->priority > 1) mSession->finish();
+		if (state->converged && !state->statusPath.empty())
+			std::ofstream(state->statusPath) << status(request, frames);
+	}
+	void waitForFrames() {
+		const auto started = Clock::now();
+		mSession->wait();
+		mWaitMs += milliseconds(started);
+		mPublication.synchronized(mSession->getCompletedFrames());
+	}
+	bool enqueueSnapshot(const RenderRequest &request) {
+		const auto started = Clock::now();
+		auto snapshot = mSession->requestSnapshot(request.depthRequested);
+		double enqueueMs = milliseconds(started);
+		mReadbackTotalMs += enqueueMs;
+		if (!snapshot) return false;
+		mPending.push_back({std::move(*snapshot), enqueueMs});
+		mPendingPeak = std::max(mPendingPeak, uint64_t(mPending.size()));
+		++mSnapshotRequests;
+		mPublication.submitted(mSession->getCompletedFrames(), Clock::now());
+		return true;
+	}
+	void render(const std::shared_ptr<RenderState> &state) {
+		const auto started = Clock::now();
+		const auto request = captureRequest(state);
+		activate(state, request);
+		if (!mSession) initialize(request, started);
+		if (request.version != mVersion) update(request, started);
+		publish(state, request, collect(request.samples, false));
 		{
 			std::lock_guard lock(state->mutex);
-			if (state->version != version || !state->alive || state->paused || state->converged) return;
+			if (state->version != request.version || !state->alive || state->paused || state->converged)
+				return;
 		}
-		if (mSession->getCompletedFrames() < samples) {
-			const auto renderStarted = std::chrono::steady_clock::now();
+		if (mSession->getCompletedFrames() < request.samples) {
+			const auto renderStarted = Clock::now();
 			mSession->step(1);
 			mRenderStepMs += milliseconds(renderStarted);
 		}
 		const auto frames = mSession->getCompletedFrames();
-		if (mPublication.due(frames, samples, std::chrono::steady_clock::now())) {
-			const bool force = frames == 1 || frames >= samples;
-			auto enqueue = [&] {
-				const auto enqueueStarted = std::chrono::steady_clock::now();
-				auto request = mSession->requestSnapshot(depthRequested);
-				double enqueueMs = milliseconds(enqueueStarted);
-				mReadbackTotalMs += enqueueMs;
-				if (!request) return false;
-				mPending.push_back({std::move(*request), enqueueMs});
-				mPendingPeak = std::max(mPendingPeak, uint64_t(mPending.size()));
-				++mSnapshotRequests;
-				mPublication.submitted(frames, std::chrono::steady_clock::now());
-				return true;
-			};
-			bool submitted = enqueue();
+		if (mPublication.due(frames, request.samples, Clock::now())) {
+			const bool force = frames == 1 || frames >= request.samples;
+			bool submitted = enqueueSnapshot(request);
 			if (!submitted && force) {
-				collect(true);
+				collect(request.samples, true);
 				waitForFrames();
-				submitted = enqueue();
-				if (!submitted) throw std::runtime_error("No readback slot available after completing pending images");
+				submitted = enqueueSnapshot(request);
+				if (!submitted)
+					throw std::runtime_error("No readback slot available after completing pending images");
 			}
-			if (submitted && force) publish(collect(true));
+			if (submitted && force) publish(state, request, collect(request.samples, true));
 		}
-		publish(collect(false));
+		publish(state, request, collect(request.samples, false));
 		if (mPublication.needsWait(frames)) {
 			waitForFrames();
-			publish(collect(false));
+			publish(state, request, collect(request.samples, false));
 		}
 	}
 	void run() {
@@ -415,7 +455,7 @@ private:
 	std::vector<std::weak_ptr<RenderState>> mStates;
 	bool mQuit{};
 	std::shared_ptr<RenderState> mCurrent;
-	std::unique_ptr<RenderSession> mSession;
+	std::unique_ptr<HydraSession> mSession;
 	std::map<std::string, std::vector<SceneGraphNode::SharedPtr>> mNodes;
 	std::map<std::string, Material::SharedPtr> mMaterials;
 	std::vector<std::string> mDiagnostics;
@@ -424,14 +464,10 @@ private:
 	uint64_t mSceneBuilds{}, mMaterialUpdates{}, mTransformUpdates{};
 	uint64_t mPublicationCount{}, mDepthCaptureStart{};
 	uint64_t mAsyncPublicationCount{}, mSnapshotRequests{}, mPendingPeak{};
-	struct PendingSnapshot {
-		RenderSession::SnapshotRequest request;
-		double enqueueMs{};
-	};
 	std::deque<PendingSnapshot> mPending;
 	PublicationSchedule mPublication;
 	json mLights;
-	std::chrono::steady_clock::time_point mUpdateStarted;
+	Clock::time_point mUpdateStarted;
 	double mInitializationMs{}, mFirstImageMs{}, mReadbackMs{};
 	double mReadbackTotalMs{}, mRenderStepMs{}, mWaitMs{};
 	std::thread mThread;

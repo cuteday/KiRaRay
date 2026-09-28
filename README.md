@@ -16,6 +16,7 @@
 - [x] Post processing passes (e.g. denoising).
 - [x] Single/multi-level scene graph with animation support.
 - [x] Interactive editing scene components with simple UI.
+- [x] Run as a Blender plugin with USD and Hydra integration. 
 
 ### Build and run
 

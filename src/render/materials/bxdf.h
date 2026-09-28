@@ -30,6 +30,14 @@
 		return bsdf.pdf(wo, wi, mode);                                                             \
 	}                                                                                              \
                                                                                                    \
+	KRR_CALLABLE static BSDFEval evalInternal(const SurfaceInteraction &intr, Vector3f wo,        \
+										   Vector3f wi,                                            \
+										   TransportMode mode = TransportMode::Radiance) {         \
+		bsdf_name bsdf;                                                                            \
+		bsdf.setup(intr);                                                                          \
+		return bsdf.eval(wo, wi, mode);                                                            \
+	}                                                                                              \
+                                                                                                   \
 	KRR_CALLABLE static BSDFType flagsInternal(const SurfaceInteraction &intr) {                   \
 		bsdf_name bsdf;                                                                            \
 		bsdf.setup(intr);                                                                          \
@@ -67,6 +75,12 @@ enum class TransportMode {
 };
 
 KRR_ENUM_OPERATORS(BSDFType)
+
+// Like f(), the evaluated BSDF excludes the cosine foreshortening factor.
+struct BSDFEval {
+	Spectrum f{};
+	float pdf{0};
+};
 
 struct BSDFSample {
 	Spectrum f{};

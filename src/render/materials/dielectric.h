@@ -22,6 +22,11 @@ public:
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(ThinDielectricBsdf);
 
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi,
+							 TransportMode mode = TransportMode::Radiance) const {
+		return {f(wo, wi, mode), pdf(wo, wi, mode)};
+	}
+
 	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
 		eta			 = intr.sd.IoR;
 	}
@@ -77,6 +82,11 @@ public:
 	DielectricBsdf() = default;
 	
 	_DEFINE_BSDF_INTERNAL_ROUTINES(DielectricBsdf);
+
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi,
+							 TransportMode mode = TransportMode::Radiance) const {
+		return {f(wo, wi, mode), pdf(wo, wi, mode)};
+	}
 
 	KRR_CALLABLE DielectricBsdf(Spectrum base, float eta, float alpha_x, float alpha_y) {
 		baseColor	 = base;

@@ -109,6 +109,53 @@ void testProducerGeometryOperations() {
 	near(values[MaterialParameter::Tangent][1], 1);
 }
 
+void testClassificationDependencies() {
+	MaterialDescription description;
+	MaterialNode uniform;
+	uniform.op = MaterialOp::Uniform;
+	uniform.value = MaterialValue(.25f);
+	int metal = description.add(uniform);
+	int one = description.constant(MaterialValue(1));
+	int transmission = operation(description, MaterialOp::Subtract,
+		MaterialValueType::Float, {one, metal});
+	int normal = operation(description, MaterialOp::Normal, MaterialValueType::Vector3, {});
+	description.set(MaterialParameter::Metalness, metal);
+	description.set(MaterialParameter::TransmissionWeight, transmission);
+	description.set(MaterialParameter::Normal, normal);
+	description.set(MaterialParameter::SpecularRoughness, transmission);
+	auto material = compileMaterial(description);
+	require(material.classification.size() < material.surface.size(),
+		"Classification includes unrelated instructions");
+	for (const auto &instruction : material.classification) {
+		require(instruction.op != MaterialOp::Normal, "Classification evaluates a surface normal");
+		if (instruction.op == MaterialOp::Store)
+			require(instruction.auxiliary == int(MaterialParameter::Metalness) ||
+				instruction.auxiliary == int(MaterialParameter::TransmissionWeight),
+				"Classification writes an unrelated parameter");
+	}
+	for (float weight : {0.f, .25f, 1.f}) {
+		material.uniforms[0] = MaterialValue(weight);
+		MaterialValues actual = material.defaults;
+		auto image = [](int, MaterialValue) {
+			throw std::runtime_error("Classification sampled an unrelated image");
+			return MaterialValue();
+		};
+		evaluateMaterialProgram({material.classification.data(), uint32_t(material.classification.size())},
+			material.uniforms.data(), MaterialContext{}, image, actual);
+		auto expected = evaluate(material);
+		near(actual[MaterialParameter::Metalness][0], expected[MaterialParameter::Metalness][0]);
+		near(actual[MaterialParameter::TransmissionWeight][0],
+			expected[MaterialParameter::TransmissionWeight][0]);
+		near(actual[MaterialParameter::SpecularRoughness][0],
+			material.defaults[MaterialParameter::SpecularRoughness][0]);
+	}
+	description.set(MaterialParameter::Metalness, one);
+	description.set(MaterialParameter::TransmissionWeight, description.constant(MaterialValue(0)));
+	material = compileMaterial(description);
+	require(!material.surface.empty() && material.classification.empty(),
+		"Constant classification retained surface evaluation");
+}
+
 void testEmissionDependencies() {
 	MaterialDescription description;
 	MaterialNode weight;
@@ -174,6 +221,7 @@ int main() {
 		testConstantsAndReachability();
 		testUniformsCseAndSlices();
 		testProducerGeometryOperations();
+		testClassificationDependencies();
 		testEmissionDependencies();
 		testLongProgramReusesRegisters();
 		testInvalidGraphs();

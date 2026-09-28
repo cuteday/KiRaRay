@@ -62,7 +62,7 @@ struct CompiledMaterial {
 	MaterialModel model{MaterialModel::OpenPBR};
 	MaterialProgramKind kind{MaterialProgramKind::Constant};
 	MaterialValues defaults;
-	std::vector<MaterialInstruction> surface, opacity, emission;
+	std::vector<MaterialInstruction> surface, opacity, emission, classification;
 	std::vector<MaterialSimpleBinding> simple;
 	std::vector<MaterialValue> uniforms;
 	std::vector<MaterialTexture> textures;

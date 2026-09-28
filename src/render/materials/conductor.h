@@ -9,6 +9,11 @@ public:
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(ConductorBsdf);
 
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi,
+							 TransportMode mode = TransportMode::Radiance) const {
+		return {f(wo, wi, mode), pdf(wo, wi, mode)};
+	}
+
 	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
 		Spectra eta_spec = intr.material->mMaterialParams.spectralEta, k_spec;
 		reflectance		 = intr.sd.diffuse.cwiseMin(0.9999); // avoid NaN caused by r==1... 

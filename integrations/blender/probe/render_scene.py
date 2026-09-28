@@ -136,6 +136,14 @@ def main():
     repeat = render(args.artifacts / "repeat.exr")
     assert baseline == repeat, (baseline, repeat)
     assert read_channels(args.artifacts / "cornell.exr") == read_channels(args.artifacts / "repeat.exr"), "Repeated F12 images differ"
+    assert status["wavefront"]["max_depth"] == 10 and status["wavefront"]["nee"] is True
+    assert abs(status["wavefront"]["rr"] - 0.8) < 1e-6
+    scene.kiraray.max_depth, scene.kiraray.nee, scene.kiraray.rr = 0, False, 1.0
+    direct = render(args.artifacts / "direct_only.exr", allow_black=True)
+    direct_status = dict(kiraray.engine._last_status[scene.name_full])
+    assert direct_status["wavefront"] == {"max_depth": 0, "nee": False, "rr": 1.0}
+    assert direct["mean"] < baseline["mean"], "Zero path depth still includes scattered illumination"
+    scene.kiraray.max_depth, scene.kiraray.nee, scene.kiraray.rr = 10, True, 0.8
     scene.kiraray.samples = 256
     publication = render(args.artifacts / "publication.exr")
     publication_status = dict(kiraray.engine._last_status[scene.name_full])
@@ -182,6 +190,7 @@ def main():
                                                           "unsupported": unsupported, "warnings": warnings,
                                                           "publication": publication, "publication_status": publication_status,
                                                           "color_only": color_only, "color_only_status": color_only_status,
+                                                          "direct_only": direct, "direct_status": direct_status,
                                                           "status": status}, indent=2))
     scene.render.engine = "BLENDER_EEVEE"
     kiraray.unregister()

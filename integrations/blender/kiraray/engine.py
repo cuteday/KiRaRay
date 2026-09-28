@@ -50,10 +50,27 @@ def _scene_warnings(depsgraph):
     return messages
 
 
+def _settings_changed(settings, context):
+    settings.id_data.update_tag()
+    for window in context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == "VIEW_3D":
+                area.tag_redraw()
+
+
 class KiRaRaySettings(bpy.types.PropertyGroup):
     samples: bpy.props.IntProperty(name="Render Samples", default=128, min=1, max=1048576)
     viewport_samples: bpy.props.IntProperty(name="Viewport Samples", default=32, min=1, max=1048576)
     seed: bpy.props.IntProperty(name="Seed", default=0, min=0)
+    max_depth: bpy.props.IntProperty(name="Maximum Path Depth", default=10, min=0, soft_max=64,
+        description="Maximum scattering depth; zero shows only directly visible emission and the environment",
+        update=_settings_changed)
+    nee: bpy.props.BoolProperty(name="Next Event Estimation", default=True,
+        description="Sample lights explicitly at each scattering event to reduce noise",
+        update=_settings_changed)
+    rr: bpy.props.FloatProperty(name="Russian Roulette Survival", default=0.8, min=0.001, max=1.0,
+        precision=3, description="Path survival probability at each scattering event; one disables Russian roulette",
+        update=_settings_changed)
     graphics_api: bpy.props.EnumProperty(name="Graphics API", items=(
         ("vulkan", "Vulkan", "Vulkan offscreen interop"),
         ("d3d12", "D3D12", "Direct3D 12 offscreen interop")), default="vulkan")
@@ -109,6 +126,9 @@ class KiRaRayEngine(bpy.types.HydraRenderEngine):
             "krr:paused": False,
             "krr:samples": settings.viewport_samples if engine_type == "VIEWPORT" else settings.samples,
             "krr:seed": settings.seed,
+            "krr:maxDepth": settings.max_depth,
+            "krr:nee": settings.nee,
+            "krr:rr": settings.rr,
             "krr:priority": 2 if engine_type == "FINAL" else 1,
             "krr:assetRoot": root,
             "krr:graphicsApi": settings.graphics_api,
@@ -205,9 +225,7 @@ class KiRaRayEngine(bpy.types.HydraRenderEngine):
             Path(path).unlink(missing_ok=True)
 
 
-class KiRaRayPanel(bpy.types.Panel):
-    bl_label = "KiRaRay"
-    bl_idname = "KIRARAY_PT_settings"
+class KiRaRayRenderPanel(bpy.types.Panel):
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
     bl_context = "render"
@@ -216,10 +234,12 @@ class KiRaRayPanel(bpy.types.Panel):
     def poll(cls, context):
         return context.scene.render.engine == "KIRARAY"
 
+
+class KiRaRayPanel(KiRaRayRenderPanel):
+    bl_label = "KiRaRay"
+    bl_idname = "KIRARAY_PT_settings"
+
     def draw(self, context):
-        settings = context.scene.kiraray
-        for name in ("samples", "viewport_samples", "seed", "graphics_api", "asset_root"):
-            self.layout.prop(settings, name)
         messages = _warnings.get(context.scene.name_full, [])
         if messages:
             box = self.layout.box()
@@ -227,6 +247,47 @@ class KiRaRayPanel(bpy.types.Panel):
             for message in messages[:8]:
                 box.label(text=message)
         self.layout.operator("kiraray.export_usd")
+
+
+class KiRaRaySamplingPanel(KiRaRayRenderPanel):
+    bl_label = "Sampling"
+    bl_idname = "KIRARAY_PT_sampling"
+    bl_parent_id = "KIRARAY_PT_settings"
+
+    def draw(self, context):
+        for name in ("samples", "viewport_samples", "seed"):
+            self.layout.prop(context.scene.kiraray, name)
+
+
+class KiRaRayLightPathsPanel(KiRaRayRenderPanel):
+    bl_label = "Light Paths"
+    bl_idname = "KIRARAY_PT_light_paths"
+    bl_parent_id = "KIRARAY_PT_settings"
+
+    def draw(self, context):
+        self.layout.prop(context.scene.kiraray, "max_depth")
+
+
+class KiRaRayAdvancedPanel(KiRaRayRenderPanel):
+    bl_label = "Advanced"
+    bl_idname = "KIRARAY_PT_light_paths_advanced"
+    bl_parent_id = "KIRARAY_PT_light_paths"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        for name in ("nee", "rr"):
+            self.layout.prop(context.scene.kiraray, name)
+
+
+class KiRaRaySystemPanel(KiRaRayRenderPanel):
+    bl_label = "System"
+    bl_idname = "KIRARAY_PT_system"
+    bl_parent_id = "KIRARAY_PT_settings"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        for name in ("graphics_api", "asset_root"):
+            self.layout.prop(context.scene.kiraray, name)
 
 
 class KiRaRayExportUSD(bpy.types.Operator, ExportHelper):
@@ -286,7 +347,8 @@ class KiRaRayExportUSD(bpy.types.Operator, ExportHelper):
         return {"FINISHED"}
 
 
-_classes = (KiRaRaySettings, KiRaRayEngine, KiRaRayPanel, KiRaRayExportUSD)
+_classes = (KiRaRaySettings, KiRaRayEngine, KiRaRayPanel, KiRaRaySamplingPanel,
+            KiRaRayLightPathsPanel, KiRaRayAdvancedPanel, KiRaRaySystemPanel, KiRaRayExportUSD)
 
 
 def register():

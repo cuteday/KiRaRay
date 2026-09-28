@@ -114,6 +114,20 @@ def main():
             previous_version = status["version"]
             check_publication(status, scene.kiraray.viewport_samples)
             if phase == 0:
+                if "settings_before" not in results:
+                    results["settings_before"] = dict(status)
+                    scene.kiraray.max_depth, scene.kiraray.nee, scene.kiraray.rr = 2, False, 0.5
+                    return 0.1
+                if "settings_custom" not in results:
+                    results["settings_custom"] = dict(status)
+                    assert status["wavefront"] == {"max_depth": 2, "nee": False, "rr": 0.5}
+                    assert status["scene_builds"] == results["settings_before"]["scene_builds"], "Path settings rebuilt geometry"
+                    assert status["initialization_ms"] == results["settings_before"]["initialization_ms"], "Path settings recreated the session"
+                    scene.kiraray.max_depth, scene.kiraray.nee, scene.kiraray.rr = 10, True, 0.8
+                    return 0.1
+                assert status["wavefront"]["max_depth"] == 10 and status["wavefront"]["nee"] is True
+                assert abs(status["wavefront"]["rr"] - 0.8) < 1e-6
+                assert status["scene_builds"] == results["settings_before"]["scene_builds"], "Restoring path settings rebuilt geometry"
                 results["initial"] = dict(status)
                 assert status["async_publication_count"] > 0, "Viewport did not publish an asynchronous intermediate image"
                 white.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.1, 0.2, 0.8, 1)

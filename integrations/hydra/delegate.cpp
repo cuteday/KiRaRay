@@ -481,7 +481,7 @@ public:
 
 protected:
 	void _Execute(const HdRenderPassStateSharedPtr &pass, const TfTokenVector &) override try {
-		std::lock_guard lock(mState->mutex);
+		std::unique_lock lock(mState->mutex);
 		auto projection = matrix(pass->GetProjectionMatrix());
 		auto camera		= matrix(pass->GetWorldToViewMatrix().GetInverse());
 		if (!mState->camera.projection.isApprox(projection, 1e-7f) ||
@@ -497,6 +497,7 @@ protected:
 		});
 		if (depthRequested && !mState->depthRequested) mState->changed();
 		mState->depthRequested = depthRequested;
+		std::vector<std::pair<KrrBuffer *, TfToken>> targets;
 		for (const auto &binding : bindings) {
 			auto *buffer = binding.renderBuffer;
 			if (!buffer)
@@ -508,14 +509,20 @@ protected:
 					mState->size = size;
 					mState->changed();
 				}
-				target->update(mState->imageVersion == mState->version ? mState->image : nullptr,
-					binding.aovName, mState->imageVersion, mState->converged);
+				targets.emplace_back(target, binding.aovName);
 			}
 		}
+		const auto image = mState->imageVersion == mState->version ? mState->image : nullptr;
+		const auto imageVersion = mState->imageVersion;
+		const bool converged = mState->converged;
 		mConverged	   = mState->converged;
 		mCopiedVersion = mState->imageVersion;
 		mState->ready  = true;
+		lock.unlock();
 		krr::hydra::wakeRenderer();
+		// Hydra owns these buffers during Execute; the worker only publishes immutable snapshots.
+		for (const auto &[target, aov] : targets)
+			target->update(image, aov, imageVersion, converged);
 	} catch (const std::exception &error) {
 		fail(mState, error);
 	}
@@ -588,11 +595,16 @@ public:
 		return {};
 	}
 	void SetRenderSetting(const TfToken &key, const VtValue &input) override try {
-		if (GetRenderSetting(key) == input) return;
-		HdRenderDelegate::SetRenderSetting(key, input);
 		std::lock_guard lock(mState->mutex);
+		if (GetRenderSetting(key) == input && mState->error.empty()) return;
 		const auto name = key.GetString();
 		const auto data = value(input);
+		if (mState->wavefront.set(name, data)) {
+			HdRenderDelegate::SetRenderSetting(key, input);
+			mState->changed();
+			return;
+		}
+		HdRenderDelegate::SetRenderSetting(key, input);
 		if (name == "krr:paused") {
 			mState->paused = data.is_boolean() ? data.get<bool>() : data.get<int>() != 0;
 			krr::hydra::wakeRenderer();

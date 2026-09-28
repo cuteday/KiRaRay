@@ -2,10 +2,22 @@
 #include "device/context.h"
 #include "material/description.h"
 #include "texture.h"
-#include "render/materials/openpbr.h"
+#include "render/bsdf.h"
 #include "sampler.h"
 
 using namespace krr;
+
+__device__ bool checkAuthoredFlags(rt::MaterialProgramData program, MaterialContext context) {
+	auto values = program.evaluate(context);
+	BSDFData expected, actual;
+	expected.bsdfType = actual.bsdfType = MaterialType::OpenPBR;
+	expected.metallic = values[MaterialParameter::Metalness][0];
+	expected.specularTransmission = values[MaterialParameter::TransmissionWeight][0];
+	prepareAuthoredFlags(actual, program, context);
+	return actual.metallic == expected.metallic &&
+		actual.specularTransmission == expected.specularTransmission &&
+		actual.getBsdfType() == expected.getBsdfType();
+}
 
 __global__ void evaluateGraph(rt::MaterialProgramData program, MaterialValues *results) {
 	int pixel = threadIdx.x;
@@ -14,6 +26,13 @@ __global__ void evaluateGraph(rt::MaterialProgramData program, MaterialValues *r
 	results[pixel]	   = program.evaluate(context);
 	results[pixel + 4] = program.evaluate(context, rt::MaterialEvaluation::Opacity);
 	results[pixel + 8] = program.evaluate(context, rt::MaterialEvaluation::Emission);
+	bool flagsMatch = checkAuthoredFlags(program, context) &&
+		checkAuthoredFlags(program, MaterialContext{});
+	program.kind = MaterialProgramKind::Constant;
+	program.defaults[MaterialParameter::Metalness] = MaterialValue(.3f);
+	program.defaults[MaterialParameter::TransmissionWeight] = MaterialValue(.6f);
+	results[pixel + 12][MaterialParameter::Opacity] =
+		MaterialValue(flagsMatch && checkAuthoredFlags(program, context));
 }
 
 __global__ void evaluateSimpleEmission(rt::MaterialProgramData program, MaterialValues *output) {
@@ -128,15 +147,18 @@ void checkPrograms() {
 	int image = add(MaterialOp::Image, MaterialValueType::Color4, {uv});
 	int color = add(MaterialOp::Convert, MaterialValueType::Color3, {image}, 4);
 	int alpha = add(MaterialOp::Extract, MaterialValueType::Float, {image}, 3);
+	int metal = add(MaterialOp::Extract, MaterialValueType::Float, {image}, 1);
 	description->set(MaterialParameter::BaseColor, color);
 	description->set(MaterialParameter::EmissionColor, color);
 	description->set(MaterialParameter::EmissionLuminance, description->constant(MaterialValue(2)));
 	description->set(MaterialParameter::Opacity, alpha);
+	description->set(MaterialParameter::Metalness, metal);
+	description->set(MaterialParameter::TransmissionWeight, alpha);
 	auto material		   = std::make_shared<Material>();
 	auto blob			   = std::make_shared<Blob>(sizeof(rt::MaterialData));
 	auto *device		   = new (blob->data()) rt::MaterialData();
 	MaterialValues *output = nullptr;
-	CUDA_CHECK(cudaMallocManaged(&output, 12 * sizeof(MaterialValues)));
+	CUDA_CHECK(cudaMallocManaged(&output, 16 * sizeof(MaterialValues)));
 	try {
 		for (int iteration = 0; iteration < 5; ++iteration) {
 			if (iteration == 1) {
@@ -144,6 +166,10 @@ void checkPrograms() {
 				uniform.op	  = MaterialOp::Uniform;
 				uniform.value = MaterialValue(1);
 				int weight	  = description->add(uniform);
+				description->set(MaterialParameter::Metalness,
+					add(MaterialOp::Multiply, MaterialValueType::Float, {metal, weight}));
+				description->set(MaterialParameter::TransmissionWeight,
+					add(MaterialOp::Multiply, MaterialValueType::Float, {alpha, weight}));
 				int dynamicColor =
 					add(MaterialOp::Multiply, MaterialValueType::Color3, {color, weight});
 				description->set(MaterialParameter::BaseColor, dynamicColor);
@@ -181,10 +207,14 @@ void checkPrograms() {
 				throw std::runtime_error("Incorrect material fast-path selection");
 			if (iteration == 2 && device->mProgram.opacity.count != 0)
 				throw std::runtime_error("Constant opacity retained texture evaluation");
+			if (iteration == 4 && device->mProgram.classification.count != 0)
+				throw std::runtime_error("Constant BSDF flags retained surface evaluation");
 			evaluateGraph<<<1, 4>>>(device->mProgram, output);
 			CUDA_CHECK(cudaGetLastError());
 			CUDA_CHECK(cudaDeviceSynchronize());
 			for (int pixel = 0; pixel < 4; ++pixel) {
+				if (output[pixel + 12][MaterialParameter::Opacity][0] != 1)
+					throw std::runtime_error("Authored BSDF flags disagree with the full evaluator");
 				for (int channel = 0; channel < 3; ++channel) {
 					float encoded  = pixels[pixel * 4 + channel] / 255.f;
 					float expected = encoded <= .04045f ? encoded / 12.92f
@@ -237,6 +267,62 @@ struct Result {
 	float maximum{0};
 };
 
+__device__ bool matchesEvaluation(BSDFEval actual, Spectrum value, float pdf) {
+	return actual.f.isFinite().all() && isfinite(actual.pdf) &&
+		(actual.f - value).abs().maxCoeff() <= 1e-5f * fmaxf(1, value.abs().maxCoeff()) &&
+		fabsf(actual.pdf - pdf) <= 1e-5f * fmaxf(1, pdf);
+}
+
+__device__ bool checkCombinedBsdf(const MaterialValues &values, Vector3f wo,
+	const SampledWavelengths &lambda, const RGBColorSpace *colorSpace, MaterialModel kind) {
+	rt::MaterialData material;
+	material.mProgram.enabled = true;
+	material.mProgram.model = kind;
+	material.mProgram.defaults = values;
+	material.mProgram.authoredMask = (1u << MaterialParameterCount) - 1;
+	material.mColorSpace = colorSpace;
+	SurfaceInteraction intr;
+	intr.material = &material;
+	intr.lambda = lambda;
+	intr.sd.bsdfType = kind == MaterialModel::OpenPBR
+		? MaterialType::OpenPBR : MaterialType::PreviewSurface;
+	for (int orientation = 0; orientation < 2; ++orientation) {
+		Frame frame(orientation == 0 ? Vector3f(0.f, 0.f, 1.f) :
+			normalize(Vector3f(.3f, -.2f, 1.f)));
+		intr.n = frame.N;
+		intr.tangent = frame.T;
+		intr.bitangent = frame.B;
+		OpenPbrBsdf bsdf;
+		bsdf.setup(intr);
+		BSDF variant(intr);
+		BxDF tagged(&bsdf);
+		for (int direction = 0; direction < 32; ++direction) {
+			float z = 2 * (direction + .5f) / 32 - 1;
+			float phi = 2 * M_PI * fmodf(direction * .61803398875f + .25f, 1.f);
+			Vector3f wi(sqrtf(1 - z * z) * cosf(phi), sqrtf(1 - z * z) * sinf(phi), z);
+			if (direction == 0) wi = Vector3f(1.f, 0.f, 0.f);
+			if (direction == 1) wi = Vector3f(-1.f, 0.f, 0.f);
+			Vector3f outgoing = direction == 2 ? Vector3f(1.f, 0.f, 0.f) : wo;
+			for (int modeIndex = 0; modeIndex < 2; ++modeIndex) {
+				auto mode = modeIndex == 0 ? TransportMode::Radiance : TransportMode::Importance;
+				Spectrum expected = bsdf.f(outgoing, wi, mode);
+				float density = bsdf.pdf(outgoing, wi, mode);
+				if (!matchesEvaluation(bsdf.eval(outgoing, wi, mode), expected, density)) return false;
+				const auto &model = bsdf.prepare(outgoing);
+				Vector3f world = intr.toWorld(wi);
+				if (!matchesEvaluation(model.evalCosPdf(world, mode),
+					model.evalCos(world, mode), model.pdf(world))) return false;
+				if (direction < 4 &&
+					(!matchesEvaluation(variant.eval(outgoing, wi, mode), expected, density) ||
+					 !matchesEvaluation(tagged.eval(outgoing, wi, mode), expected, density) ||
+					 !matchesEvaluation(BxDF::eval(intr, outgoing, wi, mode), expected, density)))
+					return false;
+			}
+		}
+	}
+	return true;
+}
+
 __device__ bool checkPreparedBsdf(const MaterialValues &values, Vector3f wo,
 	const SampledWavelengths &lambda, const RGBColorSpace *colorSpace, MaterialModel kind) {
 	rt::MaterialData material;
@@ -255,10 +341,11 @@ __device__ bool checkPreparedBsdf(const MaterialValues &values, Vector3f wo,
 		? MaterialType::OpenPBR : MaterialType::PreviewSurface;
 	OpenPbrBsdf cached;
 	cached.setup(intr);
-	PCGSampler reusedSampler, freshSampler;
+	PCGSampler reusedSampler, freshSampler, referenceSampler;
 	reusedSampler.setSeed(217, 13);
 	freshSampler.setSeed(217, 13);
-	Sampler reused(&reusedSampler), fresh(&freshSampler);
+	referenceSampler.setSeed(217, 13);
+	Sampler reused(&reusedSampler), fresh(&freshSampler), reference(&referenceSampler);
 	MaterialContext context;
 	for (int change = 0; change < 3; ++change) {
 		if (change == 1) wo = normalize(Vector3f(-.3f, .2f, .7f));
@@ -273,6 +360,27 @@ __device__ bool checkPreparedBsdf(const MaterialValues &values, Vector3f wo,
 			freshBsdf.setup(intr);
 			auto a = cached.sample(wo, reused, TransportMode::Importance);
 			auto b = freshBsdf.sample(wo, fresh, TransportMode::Importance);
+			// Reproduce the separate evaluation/PDF sampling path with the same random draws.
+			Vector3f direction = model.sample(reference.get1D(), reference.get2D());
+			BSDFSample separate;
+			if (direction.squaredNorm() != 0) {
+				Vector3f wi = intr.toLocal(direction);
+				float density = model.pdf(direction);
+				if (density > 0 && wi[2] != 0)
+					separate = {model.evalCos(direction, TransportMode::Importance) / fabsf(wi[2]),
+						wi, density, wi[2] * wo[2] > 0 ? BSDF_GLOSSY_REFLECTION : BSDF_GLOSSY_TRANSMISSION};
+			}
+			PCGSampler reusedCheck = reusedSampler, freshCheck = freshSampler,
+				referenceCheck = referenceSampler;
+			for (int draw = 0; draw < 3; ++draw) {
+				float next = reusedCheck.get1D();
+				if (next != freshCheck.get1D() || next != referenceCheck.get1D()) return false;
+			}
+			// Independently inlining Model::sample can change unit directions by a few ULPs.
+			if ((a.pdf > 0) != (separate.pdf > 0) ||
+				!matchesEvaluation({a.f, a.pdf}, separate.f, separate.pdf) ||
+				(a.pdf > 0 && (a.flags != separate.flags ||
+				 (a.wi - separate.wi).cwiseAbs().maxCoeff() > 1e-6f))) return false;
 			if (a.pdf != b.pdf || (a.pdf > 0 && (a.flags != b.flags ||
 				(a.f - b.f).abs().maxCoeff() != 0 || (a.wi - b.wi).cwiseAbs().maxCoeff() != 0)))
 				return false;
@@ -282,6 +390,8 @@ __device__ bool checkPreparedBsdf(const MaterialValues &values, Vector3f wo,
 			for (int modeIndex = 0; modeIndex < 2; ++modeIndex) {
 				auto mode = modeIndex == 0 ? TransportMode::Radiance : TransportMode::Importance;
 				Spectrum value = cached.f(wo, a.wi, mode) * fabsf(a.wi[2]);
+				if (!matchesEvaluation(cached.eval(wo, a.wi, mode),
+					cached.f(wo, a.wi, mode), cached.pdf(wo, a.wi, mode))) return false;
 				if ((value - model.evalCos(a.wi, mode)).abs().maxCoeff() >
 					1e-5f * fmaxf(1, value.abs().maxCoeff())) return false;
 			}
@@ -310,7 +420,9 @@ __global__ void measure(const MaterialValues *cases, Result *results, int count,
 		++result.invalid;
 	if (threadIdx.x == 0 &&
 		(!checkPreparedBsdf(cases[index], wo, lambda, colorSpace, MaterialModel::OpenPBR) ||
-		 !checkPreparedBsdf(cases[index], wo, lambda, colorSpace, MaterialModel::PreviewSurface)))
+		 !checkPreparedBsdf(cases[index], wo, lambda, colorSpace, MaterialModel::PreviewSurface) ||
+		 !checkCombinedBsdf(cases[index], wo, lambda, colorSpace, MaterialModel::OpenPBR) ||
+		 !checkCombinedBsdf(cases[index], wo, lambda, colorSpace, MaterialModel::PreviewSurface)))
 		++result.invalid;
 	if (index >= 9 && index <= 12 && threadIdx.x == 0) {
 		rt::MaterialData material;

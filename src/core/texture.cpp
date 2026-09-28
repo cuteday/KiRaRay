@@ -321,7 +321,8 @@ class MaterialProgramStorage {
 public:
 	~MaterialProgramStorage() {
 		for (auto &texture : hostTextures) texture.release();
-		clear(surface); clear(opacity); clear(emission); clear(uniforms); clear(textures); clear(simple);
+		clear(surface); clear(opacity); clear(emission); clear(classification);
+		clear(uniforms); clear(textures); clear(simple);
 	}
 
 	MaterialProgramData initialize(const CompiledMaterial &compiled) {
@@ -341,11 +342,13 @@ public:
 		surface.alloc_and_copy_from_host(compiled.surface);
 		opacity.alloc_and_copy_from_host(compiled.opacity);
 		emission.alloc_and_copy_from_host(compiled.emission);
+		classification.alloc_and_copy_from_host(compiled.classification);
 		uniforms.alloc_and_copy_from_host(compiled.uniforms);
 		simple.alloc_and_copy_from_host(compiled.simple);
 		program.surface = {surface.data(), uint32_t(surface.size())};
 		program.opacity = {opacity.data(), uint32_t(opacity.size())};
 		program.emission = {emission.data(), uint32_t(emission.size())};
+		program.classification = {classification.data(), uint32_t(classification.size())};
 		program.uniforms = uniforms.data();
 		program.textures = textures.data();
 		program.simple = simple.data();
@@ -358,7 +361,7 @@ private:
 		try { buffer.clear(); } catch (...) {}
 	}
 	std::vector<TextureData> hostTextures;
-	TypedBuffer<MaterialInstruction> surface, opacity, emission;
+	TypedBuffer<MaterialInstruction> surface, opacity, emission, classification;
 	TypedBuffer<MaterialValue> uniforms;
 	TypedBuffer<TextureData> textures;
 	TypedBuffer<MaterialSimpleBinding> simple;
