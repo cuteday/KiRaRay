@@ -19,15 +19,19 @@ class MaterialReport:
     name: str
     pointer: int
     diagnostics: tuple
+    opaque_mix_branch: str = ""
 
     @property
     def supported(self):
         return not self.diagnostics
 
     def to_dict(self):
-        return {"material": self.name, "pointer": hex(self.pointer),
-                "supported": self.supported,
-                "diagnostics": [item.to_dict() for item in self.diagnostics]}
+        result = {"material": self.name, "pointer": hex(self.pointer),
+                  "supported": self.supported,
+                  "diagnostics": [item.to_dict() for item in self.diagnostics]}
+        if self.opaque_mix_branch:
+            result["opaque_mix_branch"] = self.opaque_mix_branch
+        return result
 
 
 _MATH_OPERATIONS = {
@@ -48,6 +52,8 @@ _NODE_TYPES = {
     "ShaderNodeSeparateRGB": "SEPRGB", "ShaderNodeCombineRGB": "COMBRGB",
 }
 _UNKNOWN = object()
+_NODE_DEPTH_LIMIT = 128
+_NODE_VISIT_LIMIT = 4096
 
 
 def _node_type(node):
@@ -96,6 +102,11 @@ class _Validator:
         self.diagnostics = []
         self.visiting = set()
         self.visited = set()
+        self.surface_depth = 0
+        self.transparent_source = None
+        self.opaque_mix_branch = ""
+        self.node_visits = 0
+        self.traversal_stopped = False
 
     def path(self, node=None, socket=None, groups=()):
         path = "materials[" + repr(self.name) + "]"
@@ -112,7 +123,23 @@ class _Validator:
         if diagnostic not in self.diagnostics:
             self.diagnostics.append(diagnostic)
 
+    def traversal_step(self, node, groups, depth):
+        if self.traversal_stopped:
+            return False
+        self.node_visits += 1
+        if depth >= _NODE_DEPTH_LIMIT:
+            message = f"Material graph exceeds {_NODE_DEPTH_LIMIT} nested nodes; simplify its nesting."
+        elif self.node_visits > _NODE_VISIT_LIMIT:
+            message = f"Material graph exceeds {_NODE_VISIT_LIMIT} node visits; simplify or bake its expressions."
+        else:
+            return True
+        self.traversal_stopped = True
+        self.error("graph_too_complex", message, node, groups=groups)
+        return False
+
     def input(self, node, socket, groups=(), surface=False):
+        if self.traversal_stopped:
+            return
         if socket is None:
             self.error("missing_socket", "The material output has no Surface input.", node)
             return
@@ -132,7 +159,7 @@ class _Validator:
         elif socket.links:
             self.error("invalid_link", "The input has an invalid node link.", node, socket, groups)
         elif surface:
-            self.error("missing_surface", "Connect a supported Principled BSDF to Surface.",
+            self.error("missing_surface", "Connect a supported BSDF or Emission shader to Surface.",
                        node, socket, groups)
         else:
             value = getattr(socket, "default_value", None)
@@ -143,22 +170,25 @@ class _Validator:
                                node, socket, groups)
 
     def output(self, node, socket, groups=(), surface=False):
+        if not self.traversal_step(node, groups, len(self.visiting)):
+            return
         if getattr(socket, "is_unavailable", False):
             self.error("invalid_output", "The link uses an unavailable node output.", node, groups=groups)
             return
         key = (_identity(node), socket.identifier, tuple(_identity(item) for item in groups), surface)
+        visited_key = (key, self.surface_depth if surface else 0)
         if key in self.visiting or len(groups) > 32:
             self.error("cyclic_graph", "The material graph contains a cycle or recursive group.",
                        node, groups=groups)
             return
-        if key in self.visited:
+        if visited_key in self.visited:
             return
         self.visiting.add(key)
         try:
             self.visit(node, socket, groups, surface)
         finally:
             self.visiting.remove(key)
-            self.visited.add(key)
+            self.visited.add(visited_key)
 
     def passthrough(self, node, socket, groups):
         kind = _node_type(node)
@@ -194,7 +224,7 @@ class _Validator:
         return None
 
     def constant(self, socket, groups=(), seen=None):
-        if socket is None:
+        if self.traversal_stopped or socket is None:
             return _UNKNOWN
         if not socket.links:
             return getattr(socket, "default_value", _UNKNOWN)
@@ -205,6 +235,8 @@ class _Validator:
         node, output = link.from_node, link.from_socket
         key = (_identity(node), output.identifier, tuple(_identity(item) for item in groups))
         if key in seen or len(seen) > 64:
+            return _UNKNOWN
+        if not self.traversal_step(node, groups, len(self.visiting) + len(seen)):
             return _UNKNOWN
         seen = seen | {key}
         bypass = self.passthrough(node, output, groups)
@@ -269,6 +301,99 @@ class _Validator:
             else:
                 self.input(node, socket, groups)
 
+    def surface_source(self, socket, groups=(), seen=None):
+        if self.traversal_stopped or socket is None or len(socket.links) != 1:
+            return None
+        link = socket.links[0]
+        if not getattr(link, "is_valid", True):
+            return None
+        node, output = link.from_node, link.from_socket
+        key = (_identity(node), output.identifier, tuple(_identity(item) for item in groups))
+        seen = set() if seen is None else seen
+        if key in seen or len(seen) > 64:
+            return None
+        if not self.traversal_step(node, groups, len(seen)):
+            return None
+        bypass = self.passthrough(node, output, groups)
+        if bypass is False:
+            return None
+        if bypass is not None:
+            _, inner, inner_groups = bypass
+            return self.surface_source(inner, inner_groups, seen | {key})
+        return node, groups
+
+    def transparency(self, socket):
+        source = self.surface_source(socket)
+        if source is None or _node_type(source[0]) != "MIX_SHADER":
+            return
+        node, groups = source
+        inputs = _active_inputs(node)
+        if len(inputs) != 3:
+            return
+        branches = [self.surface_source(item, groups) for item in inputs[1:]]
+        transparent = [index for index, branch in enumerate(branches)
+                       if branch is not None and _node_type(branch[0]) == "BSDF_TRANSPARENT"]
+        if len(transparent) != 1:
+            return
+        index = transparent[0]
+        leaf, leaf_groups = branches[index]
+        color = self.constant(_socket(leaf.inputs, "Color"), leaf_groups)
+        if color is _UNKNOWN or not hasattr(color, "__len__") or len(color) < 3:
+            return
+        if not all(component == 1 for component in color[:3]):
+            return
+        self.transparent_source = (_identity(leaf), tuple(_identity(item) for item in leaf_groups))
+        self.opaque_mix_branch = "fg" if index == 0 else "bg"
+
+    def surface(self, node, groups):
+        kind = _node_type(node)
+        inputs = _active_inputs(node)
+        if kind == "BSDF_PRINCIPLED":
+            if self.surface_depth:
+                self.error("unsupported_surface", "Principled BSDF inside Mix/Add Shader exports "
+                           "unsupported layer closures; connect Principled directly to Surface or "
+                           "mix the supported Diffuse, Glossy and Glass shaders instead.", node, groups=groups)
+            else:
+                self.principled(node, groups)
+            return
+        if kind == "BSDF_TRANSPARENT":
+            key = (_identity(node), tuple(_identity(item) for item in groups))
+            if key != self.transparent_source or self.surface_depth != 1:
+                self.error("unsupported_surface", "Transparent BSDF requires a constant white color "
+                           "and one branch of the final Mix Shader; nested or colored transparency "
+                           "is unsupported.", node, groups=groups)
+            return
+        if kind in {"MIX_SHADER", "ADD_SHADER"}:
+            count = 3 if kind == "MIX_SHADER" else 2
+            if len(inputs) != count:
+                self.error("missing_socket", "The shader combination has missing inputs.", node, groups=groups)
+                return
+            branches = inputs[-2:]
+            if kind == "MIX_SHADER":
+                self.input(node, inputs[0], groups)
+                factor = self.constant(inputs[0], groups)
+                # The transparency correction still translates its opaque branch.
+                if not (self.surface_depth == 0 and self.opaque_mix_branch):
+                    if isinstance(factor, (int, float)) and factor in (0, 1):
+                        branches = [branches[int(factor)]]
+            self.surface_depth += 1
+            try:
+                for socket in branches:
+                    self.input(node, socket, groups, surface=True)
+            finally:
+                self.surface_depth -= 1
+            return
+        if kind not in {"BSDF_DIFFUSE", "BSDF_GLOSSY", "BSDF_GLASS", "EMISSION"}:
+            self.error("unsupported_surface", "Unsupported surface shader: " + kind + ".",
+                       node, groups=groups)
+            return
+        if kind in {"BSDF_GLOSSY", "BSDF_GLASS"}:
+            if getattr(node, "distribution", "GGX") not in {"GGX", "MULTI_GGX"}:
+                self.error("unsupported_feature", "Only GGX and Multiscatter GGX distributions "
+                           "are supported (both use KiRaRay's GGX model).", node, groups=groups)
+        for socket in inputs:
+            self.input(node, socket, groups)
+
     def visit(self, node, output, groups, surface):
         bypass = self.passthrough(node, output, groups)
         if bypass is False:
@@ -278,12 +403,8 @@ class _Validator:
             self.input(inner_node, inner, inner_groups, surface)
             return
         kind = _node_type(node)
-        if kind == "BSDF_PRINCIPLED" and surface:
-            self.principled(node, groups)
-            return
         if surface:
-            self.error("unsupported_surface", "Only a single Principled BSDF is supported.",
-                       node, groups=groups)
+            self.surface(node, groups)
             return
         inputs = _active_inputs(node)
         reason = None
@@ -302,8 +423,8 @@ class _Validator:
                 reason = "The image color space cannot be preserved by the supported exporter profile."
             elif node.projection != "FLAT":
                 reason = "Only flat image projection is supported."
-            elif node.interpolation not in {"Linear", "Closest"}:
-                reason = "Only Linear and Closest image filtering are supported."
+            elif node.interpolation not in {"Linear", "Closest", "Cubic"}:
+                reason = "Only Linear, Closest and Cubic image filtering are supported."
             elif node.extension not in {"REPEAT", "EXTEND", "CLIP", "MIRROR"}:
                 reason = "Unsupported image extension mode."
         elif kind == "TEX_COORD":
@@ -387,13 +508,16 @@ class _Validator:
         if output is None:
             self.error("missing_output", "The material has no unambiguous active Material Output.")
         else:
-            self.input(output, _socket(output.inputs, "Surface"), surface=True)
+            surface = _socket(output.inputs, "Surface")
+            self.transparency(surface)
+            self.input(output, surface, surface=True)
             for name in ("Volume", "Displacement"):
                 socket = _socket(output.inputs, name)
                 if socket is not None and socket.links and not _is_zero(self.constant(socket)):
                     self.error("unsupported_output", name + " is outside the supported subset.",
                                output, socket)
-        return MaterialReport(self.name, int(self.material.as_pointer()), tuple(self.diagnostics))
+        return MaterialReport(self.name, int(self.material.as_pointer()), tuple(self.diagnostics),
+                              self.opaque_mix_branch)
 
 
 def validate_material(material, *, active_uv_names=None):

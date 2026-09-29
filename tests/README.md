@@ -54,6 +54,16 @@ subsequent render, config dictionaries are snapshotted, exit requests cannot sho
 and configured saves occur only after successful completion. It runs in spectral and RGB builds.
 Only spectral builds register the 128×128 reference regression.
 
+`krr_composite` checks the shared material mixture on the GPU: full value/PDF
+agreement, numerical energy and probability integrals, analytic delta throughput,
+unnormalized Add weights, index matching, transmission from both sides, separate
+component normals, expression weights, and Cubic texture reconstruction. It also
+repeatedly replaces uploaded material programs to exercise their ownership.
+`krr_material_program` covers component validation and optimization without a GPU.
+SDK-enabled `krr_usd` tests include actual Blender-exported leaf and Mix/Add graphs;
+the translator and supported approximations are documented in
+[`integrations/materials`](../integrations/materials/README.md).
+
 Each enabled graphics API runs the same GPU cases. Vulkan retains the original
 test names; D3D12 tests have a `_d3d12` suffix and separate artifact directories.
 Use `-L vulkan` or `-L d3d12` to select an API. Readback exercises 64 cumulative

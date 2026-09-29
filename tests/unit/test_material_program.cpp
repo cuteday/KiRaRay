@@ -214,6 +214,145 @@ void testInvalidGraphs() {
 	description.outputs[int(MaterialParameter::Opacity)] = 90;
 	invalid([&] { compileMaterial(description); });
 }
+
+MaterialComponent component(MaterialModel model, int color, int weight = -1) {
+	MaterialComponent result;
+	result.model = model;
+	result.set(MaterialParameter::BaseColor, color);
+	result.set(MaterialParameter::Weight, weight);
+	return result;
+}
+
+void testCompositeSimplification() {
+	MaterialDescription description;
+	description.model = MaterialModel::Composite;
+	int color = description.constant(MaterialValue(.2f, .4f, .6f), MaterialValueType::Color3);
+	int zero = description.constant(MaterialValue(0));
+	int quarter = description.constant(MaterialValue(.25f));
+	int threeQuarters = description.constant(MaterialValue(.75f));
+	description.components.push_back(component(MaterialModel::Diffuse, color, quarter));
+	description.components.push_back(component(MaterialModel::Diffuse, color, threeQuarters));
+	description.components.push_back(component(MaterialModel::Diffuse, 9999, zero));
+	description.set(MaterialParameter::Opacity, description.constant(MaterialValue(.8f)));
+	description.set(MaterialParameter::EmissionLuminance, description.constant(MaterialValue(4)));
+	auto material = compileMaterial(description);
+	require(material.model == MaterialModel::Diffuse && material.components.empty(),
+		"Equivalent components were not collapsed after removing zero weight");
+	near(material.defaults[MaterialParameter::BaseColor][1], .4f);
+	near(material.defaults[MaterialParameter::Opacity][0], .8f);
+	near(material.defaults[MaterialParameter::Weight][0], 1);
+	near(material.defaults[MaterialParameter::EmissionLuminance][0], 4);
+	require(material.hasEmission, "Simplification lost surface emission");
+
+	description.components[0].set(MaterialParameter::Weight, -1);
+	description.components[1].set(MaterialParameter::Weight, -1);
+	material = compileMaterial(description);
+	require(material.model == MaterialModel::Composite && material.components.size() == 1,
+		"Add scaling was removed from the scattering component");
+	near(material.components[0].defaults[MaterialParameter::Weight][0], 2);
+
+	description.components.clear();
+	description.components.push_back(component(MaterialModel::Diffuse, 9999, zero));
+	material = compileMaterial(description);
+	require(material.components.empty() && material.hasEmission,
+		"An emission-only composite retained unreachable scattering");
+}
+
+void testCompositeWeightSlice() {
+	MaterialDescription description;
+	description.model = MaterialModel::Composite;
+	MaterialNode uniform;
+	uniform.op = MaterialOp::Uniform;
+	uniform.value = MaterialValue(.3f);
+	int weight = description.add(uniform);
+	int one = description.constant(MaterialValue(1));
+	int otherWeight = operation(description, MaterialOp::Subtract, MaterialValueType::Float, {one, weight});
+	int color = description.constant(MaterialValue(.5f), MaterialValueType::Color3);
+	int normal = operation(description, MaterialOp::Normal, MaterialValueType::Vector3, {});
+	description.components.push_back(component(MaterialModel::Diffuse, color, weight));
+	description.components.push_back(component(MaterialModel::Conductor, color, otherWeight));
+	for (auto &leaf : description.components) leaf.set(MaterialParameter::Normal, normal);
+	auto material = compileMaterial(description);
+	require(material.components.size() == 2, "Distinct scattering models were merged");
+	for (size_t index = 0; index < material.components.size(); ++index) {
+		const auto &leaf = material.components[index];
+		require(leaf.weight.size() < leaf.surface.size(), "Weight evaluates unrelated surface parameters");
+		MaterialValues values = leaf.defaults;
+		auto image = [](int, MaterialValue) {
+			throw std::runtime_error("Weight sampled an unrelated image");
+			return MaterialValue();
+		};
+		evaluateMaterialProgram({leaf.weight.data(), uint32_t(leaf.weight.size())},
+			leaf.uniforms.data(), MaterialContext{}, image, values);
+		near(values[MaterialParameter::Weight][0], index == 0 ? .3f : .7f);
+		for (const auto &instruction : leaf.weight)
+			require(instruction.op != MaterialOp::Normal, "Weight evaluates a shading normal");
+	}
+}
+
+void testCompositeValidation() {
+	MaterialDescription description;
+	description.model = MaterialModel::Composite;
+	for (int index = 0; index < MaterialComponentLimit + 1; ++index) {
+		int color = description.constant(MaterialValue(float(index) / MaterialComponentLimit), MaterialValueType::Color3);
+		description.components.push_back(component(MaterialModel::Diffuse, color));
+	}
+	invalid([&] { compileMaterial(description); });
+	description.components.resize(1);
+	description.components[0].set(MaterialParameter::Weight, description.constant(MaterialValue(-1)));
+	invalid([&] { compileMaterial(description); });
+	description.components[0].set(MaterialParameter::Weight, -1);
+	description.components[0].model = MaterialModel::Composite;
+	invalid([&] { compileMaterial(description); });
+	description.components[0].model = MaterialModel::Diffuse;
+	description.components[0].set(MaterialParameter::Opacity, description.constant(MaterialValue(.5f)));
+	invalid([&] { compileMaterial(description); });
+	description.components[0].set(MaterialParameter::Opacity, -1);
+	description.model = MaterialModel::Diffuse;
+	invalid([&] { compileMaterial(description); });
+}
+
+void testNativeClassificationDependencies() {
+	MaterialDescription description;
+	description.model = MaterialModel::Conductor;
+	for (MaterialParameter parameter : {MaterialParameter::Weight, MaterialParameter::SpecularIor,
+		 MaterialParameter::SpecularRoughness, MaterialParameter::SpecularAnisotropy}) {
+		MaterialNode uniform;
+		uniform.op = MaterialOp::Uniform;
+		uniform.value = MaterialValue(.3f + .01f * int(parameter));
+		description.set(parameter, description.add(uniform));
+	}
+	description.set(MaterialParameter::Normal,
+		operation(description, MaterialOp::Normal, MaterialValueType::Vector3, {}));
+	auto material = compileMaterial(description);
+	require(material.classification.size() < material.surface.size(),
+		"Native classification includes surface normal evaluation");
+	MaterialValues values = material.defaults;
+	evaluateMaterialProgram({material.classification.data(), uint32_t(material.classification.size())},
+		material.uniforms.data(), MaterialContext{}, [](int, MaterialValue) { return MaterialValue(); }, values);
+	for (MaterialParameter parameter : {MaterialParameter::Weight, MaterialParameter::SpecularIor,
+		 MaterialParameter::SpecularRoughness, MaterialParameter::SpecularAnisotropy})
+		near(values[parameter][0], evaluate(material)[parameter][0]);
+}
+
+void testCubicReconstruction() {
+	for (int step = 0; step <= 20; ++step) {
+		float x = float(step) / 20;
+		auto weights = materialCubicWeights(x);
+		float constant = 0, linear = 0;
+		for (int tap = 0; tap < 4; ++tap) {
+			constant += weights[tap];
+			linear += weights[tap] * float(tap - 1);
+		}
+		near(constant, 1);
+		near(linear, x);
+	}
+	auto first = materialCubicWeights(0), last = materialCubicWeights(1);
+	for (int tap = 0; tap < 4; ++tap) {
+		near(first[tap], tap == 1 ? 1.f : 0.f);
+		near(last[tap], tap == 2 ? 1.f : 0.f);
+	}
+}
 } // namespace
 
 int main() {
@@ -225,6 +364,11 @@ int main() {
 		testEmissionDependencies();
 		testLongProgramReusesRegisters();
 		testInvalidGraphs();
+		testCompositeSimplification();
+		testCompositeWeightSlice();
+		testCompositeValidation();
+		testNativeClassificationDependencies();
+		testCubicReconstruction();
 		return 0;
 	} catch (const std::exception &error) {
 		std::cerr << error.what() << '\n';

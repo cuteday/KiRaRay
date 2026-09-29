@@ -91,6 +91,33 @@ def math_node(operation="MULTIPLY", values=(0.0, 1.0, 0.0)):
                          for index, value in enumerate(values)], operation=operation, use_clamp=False)
 
 
+def leaf_shader(kind="BSDF_DIFFUSE", color=(0.8, 0.8, 0.8, 1)):
+    inputs = [Socket("Color", color)]
+    if kind in {"BSDF_DIFFUSE", "BSDF_GLOSSY", "BSDF_GLASS"}:
+        inputs.extend([Socket("Roughness", 0.3), Socket("Normal", (0, 0, 0))])
+    if kind == "BSDF_GLASS":
+        inputs.append(Socket("IOR", 1.5))
+    if kind == "EMISSION":
+        inputs.append(Socket("Strength", 2))
+    return Node(kind, inputs, ("BSDF",), distribution="GGX")
+
+
+def combine_shader(first, second, kind="MIX_SHADER"):
+    inputs = ([Socket("Fac", 0.3)] if kind == "MIX_SHADER" else [])
+    inputs.extend([Socket("Shader", None, "Shader"), Socket("Shader", None, "Shader_001")])
+    result = Node(kind, inputs, ("Shader",))
+    connect(first, result, len(inputs) - 2)
+    connect(second, result, len(inputs) - 1)
+    return result
+
+
+def surface_material(surface):
+    value, _, output = material()
+    socket(output.inputs, "Surface").links.clear()
+    connect(surface, output, "Surface")
+    return value
+
+
 def passthrough_group(name="Group"):
     input = Node("GROUP_INPUT", outputs=(Socket("Inner input", identifier="Input_1"),))
     output = Node("GROUP_OUTPUT", [Socket("Inner output", identifier="Output_1")], (),
@@ -281,8 +308,24 @@ class MaterialPreflightTest(unittest.TestCase):
         connect(group, bsdf, "Base Color")
         self.assertRejected(value, "invalid_group")
 
+    def test_deep_shader_graph_reports_a_limit_instead_of_recursion_error(self):
+        surface = leaf_shader()
+        for _ in range(32):
+            surface = combine_shader(surface, leaf_shader(), "ADD_SHADER")
+        self.assertSupported(surface_material(surface))
+        for _ in range(224):
+            surface = combine_shader(surface, leaf_shader(), "ADD_SHADER")
+        self.assertRejected(surface_material(surface), "graph_too_complex", "nested nodes")
+
+    def test_broad_shader_graph_has_a_bounded_validation_budget(self):
+        surfaces = [leaf_shader() for _ in range(4096)]
+        while len(surfaces) > 1:
+            surfaces = [combine_shader(surfaces[index], surfaces[index + 1], "ADD_SHADER")
+                        for index in range(0, len(surfaces), 2)]
+        self.assertRejected(surface_material(surfaces[0]), "graph_too_complex", "node visits")
+
     def test_image_settings_are_validated_before_conversion(self):
-        invalid = [dict(image=None), dict(projection="BOX"), dict(interpolation="Cubic"),
+        invalid = [dict(image=None), dict(projection="BOX"), dict(interpolation="Smart"),
                    dict(image=Struct(source="TILED", colorspace_settings=Struct(name="sRGB"))),
                    dict(image=Struct(source="MOVIE", colorspace_settings=Struct(name="sRGB"))),
                    dict(image=Struct(source="FILE", colorspace_settings=Struct(name="ACEScg")))]
@@ -291,6 +334,95 @@ class MaterialPreflightTest(unittest.TestCase):
                 value, bsdf, output = material()
                 connect(image_node(**settings), bsdf, "Base Color")
                 self.assertRejected(value, "unsupported_node")
+        value, bsdf, _ = material()
+        connect(image_node(interpolation="Cubic"), bsdf, "Base Color")
+        self.assertSupported(value)
+
+    def test_leaf_shaders_and_nested_mix_add(self):
+        for kind in ("BSDF_DIFFUSE", "BSDF_GLOSSY", "BSDF_GLASS", "EMISSION"):
+            with self.subTest(kind=kind):
+                leaf = leaf_shader(kind)
+                self.assertSupported(surface_material(leaf))
+                connect(image_node(interpolation="Cubic"), leaf, "Color")
+                self.assertSupported(surface_material(leaf))
+        glossy = leaf_shader("BSDF_GLOSSY")
+        glossy.distribution = "MULTI_GGX"
+        mixed = combine_shader(leaf_shader(), glossy)
+        added = combine_shader(mixed, leaf_shader("EMISSION"), "ADD_SHADER")
+        self.assertSupported(surface_material(added))
+        glossy.distribution = "BECKMANN"
+        self.assertRejected(surface_material(added), "unsupported_feature", "GGX")
+        glossy.distribution = "GGX"
+        connect(Node("VALTORGB"), glossy, "Color")
+        self.assertRejected(surface_material(added), "unsupported_node", "ColorRamp")
+
+    def test_principled_inside_mix_or_add_is_explicitly_rejected(self):
+        value, principled, _ = material()
+        for kind in ("MIX_SHADER", "ADD_SHADER"):
+            combined = combine_shader(leaf_shader(), principled, kind)
+            self.assertRejected(surface_material(combined), "unsupported_surface", "layer closures")
+
+    def test_shader_mix_skips_only_provably_inactive_branches(self):
+        unsupported = Node("VOLUME_PRINCIPLED", outputs=("Volume",))
+        for first, second, selected in ((leaf_shader(), unsupported, 0),
+                                         (unsupported, leaf_shader(), 1)):
+            mix = combine_shader(first, second)
+            value = surface_material(mix)
+            mix.inputs[0].default_value = selected
+            self.assertSupported(value)
+            mix.inputs[0].default_value = 0.25
+            self.assertRejected(value, "unsupported_surface", "VOLUME_PRINCIPLED")
+            factor = Node("VALUE", outputs=(Socket("Value", selected),))
+            connect(factor, mix, "Fac")
+            self.assertSupported(value)
+            factor.outputs[0].default_value = 1 - selected
+            self.assertRejected(value, "unsupported_surface", "VOLUME_PRINCIPLED")
+        _, principled, _ = material()
+        mix = combine_shader(leaf_shader(), principled)
+        mix.inputs[0].default_value = 0
+        self.assertSupported(surface_material(mix))
+        mix.inputs[0].default_value = 1
+        self.assertRejected(surface_material(mix), "unsupported_surface", "layer closures")
+
+    def test_transparent_mix_boundaries_preserve_opaque_branch_validation(self):
+        transparent = leaf_shader("BSDF_TRANSPARENT", (1, 1, 1, 1))
+        for reverse, branch in ((False, "fg"), (True, "bg")):
+            for factor in (0, 1):
+                with self.subTest(reverse=reverse, factor=factor):
+                    opaque = leaf_shader()
+                    mix = combine_shader(opaque, transparent) if reverse else combine_shader(transparent, opaque)
+                    mix.inputs[0].default_value = factor
+                    value = surface_material(mix)
+                    self.assertEqual(self.assertSupported(value).opaque_mix_branch, branch)
+                    connect(Node("VALTORGB"), opaque, "Color")
+                    self.assertRejected(value, "unsupported_node", "ColorRamp")
+
+    def test_white_transparent_root_mix_records_opaque_branch(self):
+        transparent = leaf_shader("BSDF_TRANSPARENT", (1, 1, 1, 1))
+        opaque = combine_shader(leaf_shader(), leaf_shader("EMISSION"), "ADD_SHADER")
+        for first, second, branch in ((transparent, opaque, "fg"), (opaque, transparent, "bg")):
+            mix = combine_shader(first, second)
+            connect(image_node(), mix, "Fac", "Alpha")
+            value = surface_material(mix)
+            report = self.assertSupported(value)
+            self.assertEqual(report.opaque_mix_branch, branch)
+            self.assertEqual(report.to_dict()["opaque_mix_branch"], branch)
+            self.assertEqual(transparent.inputs[0].default_value, (1, 1, 1, 1))
+        group = passthrough_group()
+        connect(transparent, group, 0)
+        report = self.assertSupported(surface_material(combine_shader(group, leaf_shader())))
+        self.assertEqual(report.opaque_mix_branch, "fg")
+
+    def test_unverified_transparency_does_not_silently_become_opaque(self):
+        white = leaf_shader("BSDF_TRANSPARENT", (1, 1, 1, 1))
+        tinted = leaf_shader("BSDF_TRANSPARENT", (0.7, 1, 1, 1))
+        cases = [white, combine_shader(tinted, leaf_shader()), combine_shader(white, white),
+                 combine_shader(white, leaf_shader(), "ADD_SHADER"),
+                 combine_shader(combine_shader(white, leaf_shader()), leaf_shader()),
+                 combine_shader(white, combine_shader(white, leaf_shader()))]
+        for surface in cases:
+            with self.subTest(surface=surface.type):
+                self.assertRejected(surface_material(surface), "unsupported_surface", "Transparent")
 
     def test_normal_and_tangent_settings_that_exporter_drops_are_rejected(self):
         for settings in (dict(space="OBJECT"), dict(space="WORLD"), dict(uv_map="Named UV"),
@@ -368,7 +500,7 @@ class MaterialPreflightTest(unittest.TestCase):
             self.assertRejected(value, "unsupported_output", name)
         value, bsdf, output = material()
         socket(output.inputs, "Surface").links.clear()
-        connect(Node("MIX_SHADER"), output, "Surface")
+        connect(Node("BSDF_HAIR"), output, "Surface")
         self.assertRejected(value, "unsupported_surface")
 
 

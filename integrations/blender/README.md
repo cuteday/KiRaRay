@@ -83,6 +83,41 @@ actionable warnings in the render log and KiRaRay panel. No source node graphs
 are modified. **Export Validated USD** records the same producer diagnostics on
 USD materials so offline imports cannot silently hide an unsupported graph.
 
+The supported surface graph includes a directly connected **Principled BSDF**,
+or **Diffuse**, **Glossy**, **Glass**, and **Emission** shaders combined through
+**Mix Shader** and **Add Shader**. The latter use a bounded mixture of native
+BSDFs rather than preparing OpenPBR for each simple material. The compiler
+retains all active scattering components and evaluates their combined value
+and sampling PDF. The limit is eight scattering components after graph pruning.
+Principled inside Mix/Add remains unsupported because Blender expands it into
+additional layer closures; keep Principled connected directly to Surface.
+
+These are deliberate approximations of Blender shading, not Cycles parity:
+
+| Blender shader | KiRaRay evaluation |
+|---|---|
+| Diffuse | Lambertian; nonzero diffuse roughness is ignored |
+| Glossy | Isotropic GGX conductor; anisotropic roughness axes are averaged and Fresnel can differ from Cycles Glossy |
+| Glass | GGX dielectric with reflection/refraction, including zero roughness |
+| Multiscatter GGX | Existing GGX model without Cycles' multiscatter compensation |
+| Emission | Independent emission, including weighted Mix/Add emission |
+
+Image textures support Linear, Closest, and Cubic filtering. Shader parameters
+use the same supported image, UV, normal-map, and numeric expression nodes as
+Principled. Unsupported distributions, procedural shading, layer closures, and
+other unverified nodes retain the diagnostic material rather than guessing.
+
+A final Mix Shader may combine **constant white Transparent BSDF** with one
+supported opaque subtree. KiRaRay represents this as stochastic surface
+coverage, consistently applied to camera, continuation, shadow, and emitter
+sampling paths. This does not randomly select one material in a general BSDF
+mixture. Blender 5.2.2 misexports this graph as zero surface opacity and a white
+diffuse branch; the extension supplies an explicit `opaqueMixBranch` correction
+through Hydra settings and validated USD metadata. Source nodes are never
+modified. Colored transparency, nested Transparent shaders, and mixing two
+Transparent shaders remain unsupported. Ordinary unannotated USD cannot recover
+the Blender shader information already lost by its exporter.
+
 The Combined pass contains linear RGB. The optional Depth pass contains positive
 camera-space Z from primary geometry, with infinity for misses. Authored opacity
 below 0.5 does not contribute to depth; legacy opacity follows its existing
@@ -144,6 +179,24 @@ Inspect `result.json`; `failure.txt` indicates a failed viewport assertion.
 The harness temporarily displays only Blender's running-job widget in its own
 status bar and clicks its stop button. Blender's simulated Escape events bypass
 the raw keyboard cancellation hook, so they cannot test render cancellation.
+
+Inspect and export an external acceptance scene without modifying its blend file:
+
+```powershell
+blender.exe --background --factory-startup --disable-autoexec --python-exit-code 1 `
+  --python integrations/blender/probe/material_scene.py -- `
+  --scene D:/Projects/scenes_blender-main/kitchen/kitchen.blend `
+  --artifacts build/blender-host/tests/artifacts/RelWithDebInfo/kitchen
+```
+
+This writes `preflight.json`, an annotated `scene.usdc`, a standalone headless
+`config.json`, and export results. Add `--preflight-only` to skip export. Add
+`--render --addon-dir build/blender-host/blender/kiraray --samples 16
+--resolution 320 180` to perform a GPU acceptance render through the scene's
+perspective camera. Rendering checks finite, nonblack output, primary depth,
+completion, and native material diagnostics; it retains EXR, PNG, and status
+artifacts. Use the other external scenes as additional probes rather than
+checking large blend assets into the test suite. The source file is never saved.
 
 The synthetic ABI probe is independent of CUDA and verifies plugin loading,
 color/depth channel orientation, render passes, and repeated host teardown before

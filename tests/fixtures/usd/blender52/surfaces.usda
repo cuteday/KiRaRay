@@ -1,0 +1,1772 @@
+#usda 1.0
+(
+    defaultPrim = "root"
+    doc = "Blender v5.2.2 LTS"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "root" (
+    prepend apiSchemas = ["ColorSpaceAPI"]
+    customData = {
+        dictionary Blender = {
+            bool generated = 1
+        }
+    }
+)
+{
+    uniform token colorSpace:name = "lin_rec709_scene"
+
+    def Xform "LeafDiffuse"
+    {
+        custom string userProperties:blender:object_name = "LeafDiffuse"
+
+        def Mesh "Plane" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafDiffuse>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane"
+        }
+    }
+
+    def Scope "_materials"
+    {
+        def Material "LeafDiffuse" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafDiffuse/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafDiffuse/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafDiffuse"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafDiffuse/NodeGraphs.outputs:bnode__Diffuse_BSDF_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Diffuse_BSDF_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Diffuse_BSDF_BSDF_out.connect = </root/_materials/LeafDiffuse/NodeGraphs/bnode__Diffuse_BSDF_BSDF.outputs:out>
+
+                def Shader "bnode__Diffuse_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (0.7, 0.4, 0.2)
+                    float inputs:roughness = 0
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafGlossy" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafGlossy/node_001.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafGlossy/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafGlossy"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node_001"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafGlossy/NodeGraphs.outputs:bnode__Glossy_BSDF_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Glossy_BSDF_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Glossy_BSDF_BSDF_out.connect = </root/_materials/LeafGlossy/NodeGraphs/bnode__Glossy_BSDF_BSDF.outputs:out>
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.7, 0.4, 0.2)
+                    color3f inputs:reflectivity = (0.7, 0.4, 0.2)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Glossy_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/LeafGlossy/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/LeafGlossy/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.2, 0.2)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafTransparentDiffuseEmission" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                    string opaqueMixBranch = "fg"
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafTransparentDiffuseEmission/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafTransparentDiffuseEmission/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafTransparentDiffuseEmission"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafTransparentDiffuseEmission/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                token inputs:edf.connect = </root/_materials/LeafTransparentDiffuseEmission/NodeGraphs.outputs:bnode__Mix_Shader_EDF_out>
+                float inputs:opacity = 0
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/LeafTransparentDiffuseEmission/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+                token outputs:bnode__Mix_Shader_EDF_out (
+                    renderType = "EDF"
+                )
+                token outputs:bnode__Mix_Shader_EDF_out.connect = </root/_materials/LeafTransparentDiffuseEmission/NodeGraphs/bnode__Mix_Shader_EDF.outputs:out>
+
+                def Shader "bnode__Transparent_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Add_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (0.7, 0.4, 0.2)
+                    float inputs:roughness = 0.2
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_mix_bsdf"
+                    token inputs:bg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:bg.connect = </root/_materials/LeafTransparentDiffuseEmission/NodeGraphs/bnode__Transparent_BSDF_BSDF.outputs:out>
+                    token inputs:fg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:fg.connect = </root/_materials/LeafTransparentDiffuseEmission/NodeGraphs/bnode__Add_Shader_BSDF.outputs:out>
+                    float inputs:mix = 0.3
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Add_Shader_EDF"
+                {
+                    uniform token info:id = "ND_uniform_edf"
+                    color3f inputs:color = (1.4, 0.8, 0.4)
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_EDF"
+                {
+                    uniform token info:id = "ND_multiply_edfF"
+                    token inputs:in1 (
+                        renderType = "EDF"
+                    )
+                    token inputs:in1.connect = </root/_materials/LeafTransparentDiffuseEmission/NodeGraphs/bnode__Add_Shader_EDF.outputs:out>
+                    float inputs:in2 = 0.3
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafAddEmission" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafAddEmission/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafAddEmission/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafAddEmission"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafAddEmission/NodeGraphs.outputs:bnode__Add_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                token inputs:edf.connect = </root/_materials/LeafAddEmission/NodeGraphs.outputs:bnode__Add_Shader_EDF_out>
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Add_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Add_Shader_BSDF_out.connect = </root/_materials/LeafAddEmission/NodeGraphs/bnode__Add_Shader_BSDF.outputs:out>
+                token outputs:bnode__Add_Shader_EDF_out (
+                    renderType = "EDF"
+                )
+                token outputs:bnode__Add_Shader_EDF_out.connect = </root/_materials/LeafAddEmission/NodeGraphs/bnode__Add_Shader_EDF.outputs:out>
+
+                def Shader "bnode__Add_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (0.7, 0.4, 0.2)
+                    float inputs:roughness = 0.2
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Add_Shader_EDF"
+                {
+                    uniform token info:id = "ND_uniform_edf"
+                    color3f inputs:color = (0.4, 1, 1.6)
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafEmission" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafEmission/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafEmission/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafEmission"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                token inputs:edf.connect = </root/_materials/LeafEmission/NodeGraphs.outputs:bnode__Emission_EDF_out>
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Emission_EDF_out (
+                    renderType = "EDF"
+                )
+                token outputs:bnode__Emission_EDF_out.connect = </root/_materials/LeafEmission/NodeGraphs/bnode__Emission_EDF.outputs:out>
+
+                def Shader "bnode__Emission_EDF"
+                {
+                    uniform token info:id = "ND_uniform_edf"
+                    color3f inputs:color = (1.4, 0.8, 0.4)
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafAdd" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafAdd/node_001.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafAdd/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafAdd"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node_001"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafAdd/NodeGraphs.outputs:bnode__Add_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Add_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Add_Shader_BSDF_out.connect = </root/_materials/LeafAdd/NodeGraphs/bnode__Add_Shader_BSDF.outputs:out>
+
+                def Shader "bnode__Diffuse_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (0.7, 0.4, 0.2)
+                    float inputs:roughness = 0.2
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.2, 0.5, 0.8)
+                    color3f inputs:reflectivity = (0.2, 0.5, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Glossy_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/LeafAdd/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/LeafAdd/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.2, 0.2)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Add_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_add_bsdf"
+                    token inputs:in1 (
+                        renderType = "BSDF"
+                    )
+                    token inputs:in1.connect = </root/_materials/LeafAdd/NodeGraphs/bnode__Diffuse_BSDF_BSDF.outputs:out>
+                    token inputs:in2 (
+                        renderType = "BSDF"
+                    )
+                    token inputs:in2.connect = </root/_materials/LeafAdd/NodeGraphs/bnode__Glossy_BSDF_BSDF.outputs:out>
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafRoughDiffuse" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafRoughDiffuse/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafRoughDiffuse/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafRoughDiffuse"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafRoughDiffuse/NodeGraphs.outputs:bnode__Diffuse_BSDF_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Diffuse_BSDF_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Diffuse_BSDF_BSDF_out.connect = </root/_materials/LeafRoughDiffuse/NodeGraphs/bnode__Diffuse_BSDF_BSDF.outputs:out>
+
+                def Shader "bnode__Diffuse_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (0.7, 0.4, 0.2)
+                    float inputs:roughness = 0.2
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafCubicPrincipled" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafCubicPrincipled/bnode__Principled_BSDF.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafCubicPrincipled/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafCubicPrincipled"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "bnode__Principled_BSDF"
+            {
+                uniform token info:id = "ND_open_pbr_surface_surfaceshader"
+                color3f inputs:base_color.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs.outputs:node_out>
+                float inputs:base_diffuse_roughness = 0
+                float inputs:base_metalness = 0
+                float inputs:base_weight = 1
+                color3f inputs:coat_color = (1, 1, 1)
+                float inputs:coat_darkening
+                float inputs:coat_ior = 1.5
+                float inputs:coat_roughness = 0.03
+                float inputs:coat_roughness_anisotropy
+                float inputs:coat_weight = 0
+                color3f inputs:emission_color = (1, 1, 1)
+                float inputs:emission_luminance = 0
+                color3f inputs:fuzz_color = (1, 1, 1)
+                float inputs:fuzz_roughness = 0.5
+                float inputs:fuzz_weight = 0
+                float3 inputs:geometry_coat_normal
+                float3 inputs:geometry_coat_tangent
+                float3 inputs:geometry_normal
+                float inputs:geometry_opacity = 1
+                float3 inputs:geometry_tangent.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs.outputs:node_004_out>
+                bool inputs:geometry_thin_walled = 0
+                color3f inputs:specular_color = (1, 1, 1)
+                float inputs:specular_ior = 1.5
+                float inputs:specular_roughness = 0.5
+                float inputs:specular_roughness_anisotropy = 0
+                float inputs:specular_weight = 1
+                color3f inputs:subsurface_color.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs.outputs:node_out>
+                float inputs:subsurface_radius = 0.005
+                color3f inputs:subsurface_radius_scale = (1, 0.2, 0.1)
+                float inputs:subsurface_scatter_anisotropy = 0
+                float inputs:subsurface_weight = 0
+                float inputs:thin_film_ior = 1.33
+                float inputs:thin_film_thickness = 0
+                float inputs:thin_film_weight = 0
+                color3f inputs:transmission_color.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs.outputs:node_out>
+                float inputs:transmission_depth
+                float inputs:transmission_dispersion_abbe_number
+                float inputs:transmission_dispersion_scale
+                color3f inputs:transmission_scatter
+                float inputs:transmission_scatter_anisotropy
+                float inputs:transmission_weight = 0
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                float3 outputs:node_004_out.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs/node_004.outputs:out>
+                color3f outputs:node_out.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs/node.outputs:out>
+
+                def Shader "node_texcoord"
+                {
+                    uniform token info:id = "ND_texcoord_vector2"
+                    float2 outputs:out
+                }
+
+                def Shader "bnode__Image_Texture_Color"
+                {
+                    uniform token info:id = "ND_image_color4"
+                    asset inputs:file = @./textures/color.png@ (
+                        colorSpace = "srgb_texture"
+                    )
+                    string inputs:filtertype = "cubic"
+                    float2 inputs:texcoord.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs/node_texcoord.outputs:out>
+                    string inputs:uaddressmode = "periodic"
+                    string inputs:vaddressmode = "periodic"
+                    color4f outputs:out
+                }
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_convert_color4_color3"
+                    color4f inputs:in.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs/bnode__Image_Texture_Color.outputs:out>
+                    color3f outputs:out
+                }
+
+                def Shader "node_001"
+                {
+                    uniform token info:id = "ND_normal_vector3"
+                    string inputs:space = "world"
+                    float3 outputs:out
+                }
+
+                def Shader "node_002"
+                {
+                    uniform token info:id = "ND_normalize_vector3"
+                    float3 inputs:in.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs/node_001.outputs:out>
+                    float3 outputs:out
+                }
+
+                def Shader "node_003"
+                {
+                    uniform token info:id = "ND_tangent_vector3"
+                    string inputs:space = "world"
+                    float3 outputs:out
+                }
+
+                def Shader "node_004"
+                {
+                    uniform token info:id = "ND_normalize_vector3"
+                    float3 inputs:in.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs/node_003.outputs:out>
+                    float3 outputs:out
+                }
+
+                def Shader "node_005"
+                {
+                    uniform token info:id = "ND_rotate3d_vector3"
+                    float inputs:amount = -90
+                    float3 inputs:axis.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs/node_002.outputs:out>
+                    float3 inputs:in.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs/node_004.outputs:out>
+                    float3 outputs:out
+                }
+
+                def Shader "node_006"
+                {
+                    uniform token info:id = "ND_normalize_vector3"
+                    float3 inputs:in.connect = </root/_materials/LeafCubicPrincipled/NodeGraphs/node_005.outputs:out>
+                    float3 outputs:out
+                }
+            }
+        }
+
+        def Material "LeafTransparentEmission" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                    string opaqueMixBranch = "fg"
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafTransparentEmission/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafTransparentEmission/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafTransparentEmission"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafTransparentEmission/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                token inputs:edf.connect = </root/_materials/LeafTransparentEmission/NodeGraphs.outputs:bnode__Mix_Shader_EDF_out>
+                float inputs:opacity = 0
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/LeafTransparentEmission/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+                token outputs:bnode__Mix_Shader_EDF_out (
+                    renderType = "EDF"
+                )
+                token outputs:bnode__Mix_Shader_EDF_out.connect = </root/_materials/LeafTransparentEmission/NodeGraphs/bnode__Mix_Shader_EDF.outputs:out>
+
+                def Shader "bnode__Transparent_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_multiply_bsdfF"
+                    token inputs:in1 (
+                        renderType = "BSDF"
+                    )
+                    token inputs:in1.connect = </root/_materials/LeafTransparentEmission/NodeGraphs/bnode__Transparent_BSDF_BSDF.outputs:out>
+                    float inputs:in2 = 0.7
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Emission_EDF"
+                {
+                    uniform token info:id = "ND_uniform_edf"
+                    color3f inputs:color = (1.4, 0.8, 0.4)
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_EDF"
+                {
+                    uniform token info:id = "ND_multiply_edfF"
+                    token inputs:in1 (
+                        renderType = "EDF"
+                    )
+                    token inputs:in1.connect = </root/_materials/LeafTransparentEmission/NodeGraphs/bnode__Emission_EDF.outputs:out>
+                    float inputs:in2 = 0.3
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafGlass" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafGlass/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafGlass/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafGlass"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafGlass/NodeGraphs.outputs:bnode__Glass_BSDF_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Glass_BSDF_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Glass_BSDF_BSDF_out.connect = </root/_materials/LeafGlass/NodeGraphs/bnode__Glass_BSDF_BSDF.outputs:out>
+
+                def Shader "bnode__Glass_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_dielectric_bsdf"
+                    float inputs:ior = 1.5
+                    float2 inputs:roughness = (0, 0)
+                    string inputs:scatter_mode = "RT"
+                    float inputs:thinfilm_ior = 1.33
+                    float inputs:thinfilm_thickness = 0
+                    color3f inputs:tint = (0.7, 0.4, 0.2)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafTransparentDiffuse" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                    string opaqueMixBranch = "fg"
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafTransparentDiffuse/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafTransparentDiffuse/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafTransparentDiffuse"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafTransparentDiffuse/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity = 0
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/LeafTransparentDiffuse/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+
+                def Shader "bnode__Transparent_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Diffuse_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (0.7, 0.4, 0.2)
+                    float inputs:roughness = 0.2
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_mix_bsdf"
+                    token inputs:bg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:bg.connect = </root/_materials/LeafTransparentDiffuse/NodeGraphs/bnode__Transparent_BSDF_BSDF.outputs:out>
+                    token inputs:fg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:fg.connect = </root/_materials/LeafTransparentDiffuse/NodeGraphs/bnode__Diffuse_BSDF_BSDF.outputs:out>
+                    float inputs:mix = 0.3
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafMixEmission" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafMixEmission/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafMixEmission/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafMixEmission"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafMixEmission/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                token inputs:edf.connect = </root/_materials/LeafMixEmission/NodeGraphs.outputs:bnode__Mix_Shader_EDF_out>
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/LeafMixEmission/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+                token outputs:bnode__Mix_Shader_EDF_out (
+                    renderType = "EDF"
+                )
+                token outputs:bnode__Mix_Shader_EDF_out.connect = </root/_materials/LeafMixEmission/NodeGraphs/bnode__Mix_Shader_EDF.outputs:out>
+
+                def Shader "bnode__Diffuse_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (0.7, 0.4, 0.2)
+                    float inputs:roughness = 0.2
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_multiply_bsdfF"
+                    token inputs:in1 (
+                        renderType = "BSDF"
+                    )
+                    token inputs:in1.connect = </root/_materials/LeafMixEmission/NodeGraphs/bnode__Diffuse_BSDF_BSDF.outputs:out>
+                    float inputs:in2 = 0.65
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Emission_EDF"
+                {
+                    uniform token info:id = "ND_uniform_edf"
+                    color3f inputs:color = (0.4, 1, 1.6)
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_EDF"
+                {
+                    uniform token info:id = "ND_multiply_edfF"
+                    token inputs:in1 (
+                        renderType = "EDF"
+                    )
+                    token inputs:in1.connect = </root/_materials/LeafMixEmission/NodeGraphs/bnode__Emission_EDF.outputs:out>
+                    float inputs:in2 = 0.35
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafMix" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafMix/node_001.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafMix/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafMix"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node_001"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafMix/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/LeafMix/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+
+                def Shader "bnode__Diffuse_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (0.7, 0.4, 0.2)
+                    float inputs:roughness = 0.2
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.2, 0.5, 0.8)
+                    color3f inputs:reflectivity = (0.2, 0.5, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Glossy_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/LeafMix/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/LeafMix/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.2, 0.2)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_mix_bsdf"
+                    token inputs:bg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:bg.connect = </root/_materials/LeafMix/NodeGraphs/bnode__Diffuse_BSDF_BSDF.outputs:out>
+                    token inputs:fg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:fg.connect = </root/_materials/LeafMix/NodeGraphs/bnode__Glossy_BSDF_BSDF.outputs:out>
+                    float inputs:mix = 0.35
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafIndexMatchedGlass" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafIndexMatchedGlass/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafIndexMatchedGlass/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafIndexMatchedGlass"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafIndexMatchedGlass/NodeGraphs.outputs:bnode__Glass_BSDF_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Glass_BSDF_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Glass_BSDF_BSDF_out.connect = </root/_materials/LeafIndexMatchedGlass/NodeGraphs/bnode__Glass_BSDF_BSDF.outputs:out>
+
+                def Shader "bnode__Glass_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_dielectric_bsdf"
+                    float inputs:ior = 1
+                    float2 inputs:roughness = (0, 0)
+                    string inputs:scatter_mode = "RT"
+                    float inputs:thinfilm_ior = 1.33
+                    float inputs:thinfilm_thickness = 0
+                    color3f inputs:tint = (0.7, 0.4, 0.2)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "LeafTransparentReverse" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    double emissionLuminanceScale = 1000
+                    string opaqueMixBranch = "bg"
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/LeafTransparentReverse/node.outputs:surface>
+            token outputs:surface.connect = </root/_materials/LeafTransparentReverse/previewShader.outputs:surface>
+            custom string userProperties:blender:data_name = "LeafTransparentReverse"
+
+            def Shader "previewShader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/LeafTransparentReverse/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity.connect = </root/_materials/LeafTransparentReverse/NodeGraphs.outputs:bnode__Mix_Shader_opacity_out>
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/LeafTransparentReverse/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+                float outputs:bnode__Mix_Shader_opacity_out.connect = </root/_materials/LeafTransparentReverse/NodeGraphs/bnode__Mix_Shader_opacity.outputs:out>
+
+                def Shader "bnode__Diffuse_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (0.7, 0.4, 0.2)
+                    float inputs:roughness = 0.2
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Transparent_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "node_texcoord"
+                {
+                    uniform token info:id = "ND_texcoord_vector2"
+                    float2 outputs:out
+                }
+
+                def Shader "bnode__Image_Texture_Color"
+                {
+                    uniform token info:id = "ND_image_color4"
+                    asset inputs:file = @./textures/color.png@ (
+                        colorSpace = "srgb_texture"
+                    )
+                    string inputs:filtertype = "linear"
+                    float2 inputs:texcoord.connect = </root/_materials/LeafTransparentReverse/NodeGraphs/node_texcoord.outputs:out>
+                    string inputs:uaddressmode = "periodic"
+                    string inputs:vaddressmode = "periodic"
+                    color4f outputs:out
+                }
+
+                def Shader "bnode__Image_Texture_Alpha"
+                {
+                    uniform token info:id = "ND_extract_color4"
+                    color4f inputs:in.connect = </root/_materials/LeafTransparentReverse/NodeGraphs/bnode__Image_Texture_Color.outputs:out>
+                    int inputs:index = 3
+                    float outputs:out
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_mix_bsdf"
+                    token inputs:bg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:bg.connect = </root/_materials/LeafTransparentReverse/NodeGraphs/bnode__Diffuse_BSDF_BSDF.outputs:out>
+                    token inputs:fg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:fg.connect = </root/_materials/LeafTransparentReverse/NodeGraphs/bnode__Transparent_BSDF_BSDF.outputs:out>
+                    float inputs:mix.connect = </root/_materials/LeafTransparentReverse/NodeGraphs/bnode__Image_Texture_Alpha.outputs:out>
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_opacity"
+                {
+                    uniform token info:id = "ND_multiply_float"
+                    float inputs:in1 = 0
+                    float inputs:in2.connect = </root/_materials/LeafTransparentReverse/NodeGraphs/bnode__Image_Texture_Alpha.outputs:out>
+                    float outputs:out
+                }
+            }
+        }
+    }
+
+    def Xform "LeafGlossy"
+    {
+        custom string userProperties:blender:object_name = "LeafGlossy"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (6, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_002" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafGlossy>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.002"
+        }
+    }
+
+    def Xform "LeafTransparentDiffuseEmission"
+    {
+        custom string userProperties:blender:object_name = "LeafTransparentDiffuseEmission"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (36, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_012" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafTransparentDiffuseEmission>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.012"
+        }
+    }
+
+    def Xform "LeafAddEmission"
+    {
+        custom string userProperties:blender:object_name = "LeafAddEmission"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (24, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_008" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafAddEmission>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.008"
+        }
+    }
+
+    def Xform "LeafEmission"
+    {
+        custom string userProperties:blender:object_name = "LeafEmission"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (15, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_005" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafEmission>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.005"
+        }
+    }
+
+    def Xform "LeafAdd"
+    {
+        custom string userProperties:blender:object_name = "LeafAdd"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (21, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_007" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafAdd>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.007"
+        }
+    }
+
+    def Xform "LeafRoughDiffuse"
+    {
+        custom string userProperties:blender:object_name = "LeafRoughDiffuse"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (3, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_001" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafRoughDiffuse>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.001"
+        }
+    }
+
+    def Xform "LeafCubicPrincipled"
+    {
+        custom string userProperties:blender:object_name = "LeafCubicPrincipled"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (42, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_014" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafCubicPrincipled>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.014"
+        }
+    }
+
+    def Xform "LeafTransparentEmission"
+    {
+        custom string userProperties:blender:object_name = "LeafTransparentEmission"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (39, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_013" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafTransparentEmission>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.013"
+        }
+    }
+
+    def Xform "LeafGlass"
+    {
+        custom string userProperties:blender:object_name = "LeafGlass"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (9, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_003" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafGlass>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.003"
+        }
+    }
+
+    def Xform "LeafTransparentDiffuse"
+    {
+        custom string userProperties:blender:object_name = "LeafTransparentDiffuse"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (30, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_010" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafTransparentDiffuse>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.010"
+        }
+    }
+
+    def Xform "LeafMixEmission"
+    {
+        custom string userProperties:blender:object_name = "LeafMixEmission"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (27, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_009" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafMixEmission>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.009"
+        }
+    }
+
+    def Xform "LeafMix"
+    {
+        custom string userProperties:blender:object_name = "LeafMix"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (18, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_006" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafMix>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.006"
+        }
+    }
+
+    def Xform "LeafIndexMatchedGlass"
+    {
+        custom string userProperties:blender:object_name = "LeafIndexMatchedGlass"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (12, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_004" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafIndexMatchedGlass>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.004"
+        }
+    }
+
+    def Xform "LeafTransparentReverse"
+    {
+        custom string userProperties:blender:object_name = "LeafTransparentReverse"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (33, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_011" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/LeafTransparentReverse>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.011"
+        }
+    }
+}
+

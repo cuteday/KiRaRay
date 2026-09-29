@@ -50,6 +50,6 @@ else()
 	target_link_libraries(krr_usd_sdk INTERFACE usd_m MaterialXCore MaterialXFormat)
 	set(_materialx_libraries "${KRR_USD_ROOT}/libraries")
 endif()
-target_include_directories(krr_usd_sdk INTERFACE "${KRR_RENDER_ROOT}/integrations/usd")
+target_include_directories(krr_usd_sdk INTERFACE "${KRR_RENDER_ROOT}/integrations")
 target_compile_definitions(krr_usd_sdk INTERFACE NOMINMAX
 	KRR_MATERIALX_STDLIB="${_materialx_libraries}")

@@ -14,7 +14,8 @@ enum class MaterialWrap : uint8_t {
 };
 enum class MaterialFilter : uint8_t {
 	Linear,
-	Closest
+	Closest,
+	Cubic
 };
 enum class MaterialProgramKind : uint8_t {
 	Constant,
@@ -39,10 +40,18 @@ struct MaterialNode {
 	std::string source;
 };
 
+struct MaterialComponent {
+	MaterialModel model{MaterialModel::Diffuse};
+	std::array<int, MaterialParameterCount> outputs;
+	MaterialComponent() { outputs.fill(-1); }
+	void set(MaterialParameter parameter, int node) { outputs[int(parameter)] = node; }
+};
+
 struct MaterialDescription {
 	MaterialModel model{MaterialModel::OpenPBR};
 	std::vector<MaterialNode> nodes;
 	std::vector<MaterialTexture> textures;
+	std::vector<MaterialComponent> components;
 	std::array<int, MaterialParameterCount> outputs;
 	MaterialDescription() { outputs.fill(-1); }
 	int add(MaterialNode node) {
@@ -62,10 +71,11 @@ struct CompiledMaterial {
 	MaterialModel model{MaterialModel::OpenPBR};
 	MaterialProgramKind kind{MaterialProgramKind::Constant};
 	MaterialValues defaults;
-	std::vector<MaterialInstruction> surface, opacity, emission, classification;
+	std::vector<MaterialInstruction> surface, opacity, emission, classification, weight;
 	std::vector<MaterialSimpleBinding> simple;
 	std::vector<MaterialValue> uniforms;
 	std::vector<MaterialTexture> textures;
+	std::vector<CompiledMaterial> components;
 	bool hasEmission{false};
 	uint32_t authoredMask{0};
 };

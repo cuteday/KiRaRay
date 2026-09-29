@@ -24,6 +24,7 @@ struct MaterialNetwork {
 	std::string terminal;
 	std::map<std::string, MaterialNodeInput> nodes;
 	std::vector<std::string> diagnostics;
+	std::string opaqueMixBranch;
 	double emissionLuminanceScale{1.0};
 };
 

@@ -1,6 +1,6 @@
 #include "scene/importer.h"
 #include "core/material/description.h"
-#include "material.h"
+#include "materials/material.h"
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usd/prim.h>
 #include <pxr/usd/usd/relationship.h>
@@ -15,9 +15,239 @@ void require(bool condition, const char *message) {
 	if (!condition) throw std::runtime_error(message);
 }
 Material::SharedPtr findMaterial(Scene::SharedPtr scene, const std::string &name) {
+	for (auto material : scene->getMaterials()) {
+		const auto &path = material->getName();
+		if (path == name || fs::path(path).filename().string() == name) return material;
+	}
 	for (auto material : scene->getMaterials())
 		if (material->getName().find(name) != std::string::npos) return material;
 	throw std::runtime_error("Missing material " + name);
+}
+CompiledMaterial translated(const interop::MaterialNetwork &network) {
+	auto material = interop::translateMaterial(network);
+	require(bool(material->getDescription()), "Supported material network became diagnostic");
+	return compileMaterial(*material->getDescription());
+}
+MaterialValues evaluated(const CompiledMaterial &program, float u = .25f) {
+	auto values = program.defaults;
+	MaterialContext context;
+	context.uv = {u, .5f, 0};
+	auto sample = [](int, MaterialValue) { return MaterialValue{}; };
+	evaluateMaterialProgram({program.surface.data(), uint32_t(program.surface.size())},
+		program.uniforms.data(), context, sample, values);
+	evaluateMaterialProgram({program.opacity.data(), uint32_t(program.opacity.size())},
+		program.uniforms.data(), context, sample, values);
+	evaluateMaterialProgram({program.emission.data(), uint32_t(program.emission.size())},
+		program.uniforms.data(), context, sample, values);
+	return values;
+}
+void testScatteringNetworks() {
+	using P = MaterialParameter;
+	interop::MaterialNetwork network;
+	network.name = "Scattering translation";
+	network.terminal = "surface";
+	auto &surface = network.nodes["surface"];
+	surface.identifier = "ND_surface";
+	surface.inputs["bsdf"].node = "mix";
+	auto &mix = network.nodes["mix"];
+	mix.identifier = "ND_mix_bsdf";
+	mix.inputs["bg"].node = "diffuse";
+	mix.inputs["fg"].node = "conductor";
+	mix.inputs["mix"].value = .25f;
+	auto &diffuse = network.nodes["diffuse"];
+	diffuse.identifier = "ND_oren_nayar_diffuse_bsdf";
+	diffuse.inputs["color"].value = json::array({.2f, .4f, .6f});
+	auto &conductor = network.nodes["conductor"];
+	conductor.identifier = "ND_conductor_bsdf";
+	conductor.inputs["ior"].value = json::array({1.f, 1.f, 1.f});
+	conductor.inputs["extinction"].value = json::array({2.f, 2.f, 2.f});
+	conductor.inputs["roughness"].value = json::array({.16f, .16f});
+	auto program = translated(network);
+	require(program.model == MaterialModel::Composite && program.components.size() == 2,
+		"Mix lost its native BSDF components");
+	auto first = evaluated(program.components[0]), second = evaluated(program.components[1]);
+	require(first[P::Weight][0] == .75f && second[P::Weight][0] == .25f,
+		"Mix physical weights were changed");
+	require(program.components[0].model == MaterialModel::Diffuse &&
+		program.components[1].model == MaterialModel::Conductor,
+		"Native scattering identities were lost");
+	require(second[P::BaseColor][0] == .5f &&
+		std::abs(second[P::SpecularRoughness][0] - .4f) < 1e-6f,
+		"Conductor F0 or MaterialX microfacet alpha mapping");
+
+	conductor.inputs["ior"].node = conductor.inputs["extinction"].node = "artistic";
+	conductor.inputs["ior"].output = "ior";
+	conductor.inputs["extinction"].output = "extinction";
+	network.nodes["artistic"].identifier = "ND_artistic_ior";
+	network.nodes["artistic"].inputs["reflectivity"].value = json::array({.3f, .5f, .7f});
+	program = translated(network);
+	require(evaluated(program.components[1])[P::BaseColor][0] == .3f,
+		"Artistic conductor reflectivity was lost");
+
+	mix.inputs["mix"].node = "factor";
+	network.nodes["factor"].identifier = "ND_extract_vector2";
+	network.nodes["factor"].inputs["index"].value = 0;
+	network.nodes["factor"].inputs["in"].node = "uv";
+	network.nodes["uv"].identifier = "ND_texcoord_vector2";
+	program = translated(network);
+	require(evaluated(program.components[0], .7f)[P::Weight][0] == 1.f - .7f &&
+		evaluated(program.components[1], .7f)[P::Weight][0] == .7f,
+		"Connected Mix factor was not retained");
+	mix.inputs["mix"].node.clear();
+	mix.inputs["mix"].value = 0.f;
+	conductor.identifier = "UnsupportedInactiveShader";
+	program = translated(network);
+	require(program.model == MaterialModel::Diffuse && program.components.empty(),
+		"Zero-weight branch was evaluated or single leaf did not collapse");
+	mix.inputs["mix"].node = "foldedFactor";
+	auto &folded = network.nodes["foldedFactor"];
+	folded.identifier = "ND_subtract_float";
+	folded.inputs["in1"].value = folded.inputs["in2"].value = 1.f;
+	require(translated(network).model == MaterialModel::Diffuse,
+		"Constant-folded Mix factor did not prune its unsupported branch");
+	std::swap(mix.inputs["bg"], mix.inputs["fg"]);
+	folded.inputs["in2"].value = 0.f;
+	require(translated(network).model == MaterialModel::Diffuse,
+		"Constant-folded Mix endpoint one did not prune its unsupported branch");
+	std::swap(mix.inputs["bg"], mix.inputs["fg"]);
+	mix.inputs["mix"].node.clear();
+	conductor.identifier = "ND_conductor_bsdf";
+	mix.inputs["mix"].value = .25f;
+
+	auto &add = network.nodes["add"];
+	add.identifier = "ND_add_bsdf";
+	add.inputs["in1"].node = add.inputs["in2"].node = "diffuse";
+	surface.inputs["bsdf"].node = "add";
+	program = translated(network);
+	require(program.components.size() == 1 &&
+		evaluated(program.components[0])[P::Weight][0] == 2.f,
+		"Add was normalized or repeated leaves were not merged");
+	add.inputs["in2"].node = "add";
+	require(!interop::translateMaterial(network)->getDescription(),
+		"A scattering cycle was not diagnosed");
+	add.inputs["in2"].node = "diffuse";
+
+	surface.inputs["bsdf"].node = "glass";
+	auto &glass = network.nodes["glass"];
+	glass.identifier = "ND_dielectric_bsdf";
+	glass.inputs["scatter_mode"].value = "RT";
+	glass.inputs["ior"].value = 1.f;
+	glass.inputs["roughness"].value = json::array({0.f, 0.f});
+	program = translated(network);
+	require(program.model == MaterialModel::Dielectric &&
+		evaluated(program)[P::SpecularIor][0] == 1.f &&
+		evaluated(program)[P::SpecularRoughness][0] == 0.f,
+		"Index-matched or delta glass parameters changed");
+
+	surface.inputs["bsdf"].node = "mix";
+	surface.inputs["edf"].node = "weightedEmission";
+	network.nodes["emission"].identifier = "ND_uniform_edf";
+	network.nodes["emission"].inputs["color"].value = json::array({2.f, 1.f, 0.f});
+	auto &weighted = network.nodes["weightedEmission"];
+	weighted.identifier = "ND_multiply_edfF";
+	weighted.inputs["in1"].node = "emission";
+	weighted.inputs["in2"].value = .25f;
+	network.emissionLuminanceScale = 1000.f;
+	program = translated(network);
+	require(evaluated(program)[P::EmissionColor][0] == .5f &&
+		evaluated(program)[P::EmissionLuminance][0] == 1.f,
+		"Weighted EDF radiance was changed by OpenPBR emission-unit metadata");
+	network.nodes["emission"].identifier = "UnsupportedInactiveEDF";
+	weighted.inputs["in2"].value = 0.f;
+	require(!translated(network).hasEmission,
+		"Zero EDF multiplier did not prune its unsupported input");
+	weighted.inputs["in2"].node = "foldedFactor";
+	folded.inputs["in2"].value = 1.f;
+	require(!translated(network).hasEmission,
+		"Constant-folded EDF multiplier did not prune its unsupported input");
+	weighted.inputs["in2"].node.clear();
+	weighted.inputs["in2"].value = .25f;
+	network.nodes["emission"].identifier = "ND_uniform_edf";
+
+	network.opaqueMixBranch = "fg";
+	surface.inputs["opacity"].value = 0.f;
+	program = translated(network);
+	auto values = evaluated(program);
+	require(program.model == MaterialModel::Conductor && values[P::Opacity][0] == .25f,
+		"White-transparent Mix did not select the opaque branch and coverage");
+	require(values[P::EmissionColor][0] == 2.f,
+		"Coverage was applied twice to transparent emission");
+	network.opaqueMixBranch = "invalid";
+	require(!interop::translateMaterial(network)->getDescription(),
+		"Invalid producer transparency metadata was accepted");
+}
+void testBlenderSurfaces(const fs::path &fixtures) {
+	using P = MaterialParameter;
+	auto scene = std::make_shared<Scene>();
+	importer::UsdImporter().import(fixtures / "blender52/surfaces.usda", scene);
+	for (const auto &material : scene->getMaterials())
+		require(bool(material->getDescription()),
+			("Blender surface became diagnostic: " + material->getName()).c_str());
+	auto compiled = [&](const char *name) {
+		return compileMaterial(*findMaterial(scene, name)->getDescription());
+	};
+	for (const char *name : {"LeafDiffuse", "LeafRoughDiffuse", "LeafEmission", "LeafAddEmission"})
+		require(compiled(name).model == MaterialModel::Diffuse,
+			"Blender diffuse or emissive surface did not use a simple native material");
+	require(compiled("LeafGlossy").model == MaterialModel::Conductor &&
+		compiled("LeafGlass").model == MaterialModel::Dielectric,
+		"Blender Glossy/Glass did not retain native scattering models");
+	require(compiled("LeafIndexMatchedGlass").defaults[P::SpecularIor][0] == 1.f,
+		"Actual Blender index-matched glass lost IOR one");
+	for (const char *name : {"LeafMix", "LeafAdd"})
+		require(compiled(name).components.size() == 2,
+			"Actual Blender Mix/Add lost a scattering component");
+	auto mix = compiled("LeafMix");
+	require(std::abs(evaluated(mix.components[0])[P::Weight][0] - .65f) < 1e-6f &&
+		std::abs(evaluated(mix.components[1])[P::Weight][0] - .35f) < 1e-6f,
+		"Actual Blender Mix weights changed");
+	auto mixEmission = compiled("LeafMixEmission");
+	require(mixEmission.components.size() == 1 &&
+		std::abs(evaluated(mixEmission.components[0])[P::Weight][0] - .65f) < 1e-6f &&
+		std::abs(evaluated(mixEmission)[P::EmissionColor][0] - .14f) < 1e-6f,
+		"Actual Blender scattering/emission mixture was not weighted consistently");
+	for (const char *name : {"LeafTransparentDiffuse", "LeafTransparentEmission",
+		"LeafTransparentDiffuseEmission"}) {
+		auto material = compiled(name);
+		require(material.model == MaterialModel::Diffuse &&
+			std::abs(evaluated(material)[P::Opacity][0] - .3f) < 1e-6f,
+			"Validated Blender transparent surface lost coverage or native scattering");
+	}
+	for (const char *name : {"LeafTransparentEmission", "LeafTransparentDiffuseEmission"})
+		require(std::abs(evaluated(compiled(name))[P::EmissionColor][0] - 1.4f) < 1e-6f,
+			"Blender transparent emission retained its opacity multiplier twice");
+	auto cubic = compiled("LeafCubicPrincipled");
+	require(cubic.model == MaterialModel::OpenPBR && cubic.textures.size() == 1 &&
+		cubic.textures[0].filter == MaterialFilter::Cubic,
+		"Blender Cubic interpolation was rejected or changed to linear");
+}
+void testClosureLimits() {
+	for (bool emission : {false, true}) {
+		for (bool diamond : {false, true}) {
+			interop::MaterialNetwork network;
+			network.name = "Bounded closure graph";
+			network.terminal = "surface";
+			network.nodes["surface"].identifier = "ND_surface";
+			network.nodes["leaf"].identifier =
+				emission ? "ND_uniform_edf" : "ND_oren_nayar_diffuse_bsdf";
+			std::string previous = "leaf";
+			for (int index = 0; index < (diamond ? 20 : MaterialNodeLimit + 1); ++index) {
+				std::string name = "add" + std::to_string(index);
+				auto &add = network.nodes[name];
+				add.identifier = emission ? "ND_add_edf" : "ND_add_bsdf";
+				add.inputs["in1"].node = previous;
+				if (diamond) add.inputs["in2"].node = previous;
+				previous = name;
+			}
+			network.nodes["surface"].inputs[emission ? "edf" : "bsdf"].node = previous;
+			std::vector<std::string> diagnostics;
+			require(!interop::translateMaterial(network, &diagnostics)->getDescription(),
+				"Unbounded scattering/emission graph was accepted");
+			require(diagnostics.size() == 1 &&
+				diagnostics[0].find(diamond ? "expansion limit" : "depth limit") != std::string::npos,
+				"Deep or exponentially expanded graph needs an actionable limit diagnostic");
+		}
+	}
 }
 } // namespace
 int main(int argc, char **argv) {
@@ -25,6 +255,9 @@ int main(int argc, char **argv) {
 		if (argc != 3)
 			throw std::runtime_error("Expected fixture directory and artifact directory");
 		fs::path fixtures = argv[1], artifacts = argv[2];
+		testScatteringNetworks();
+		testClosureLimits();
+		testBlenderSurfaces(fixtures);
 		fs::create_directories(artifacts);
 		auto originalDirectory = fs::current_path();
 		auto scene			   = std::make_shared<Scene>();

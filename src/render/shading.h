@@ -136,7 +136,10 @@ static KRR_DEVICE KRR_NOINLINE void prepareAuthoredMaterial(SurfaceInteraction &
 	if (hitInfo.getMesh().texcoords.size()) intr.uv = {context.uv[0], context.uv[1]};
 	intr.sd.bsdfType = material.mBsdfType;
 	// Authored BSDFs prepare their parameters at the scattering vertex.
-	prepareAuthoredFlags(intr.sd, material.mProgram, context);
+	if (intr.sd.bsdfType == MaterialType::Composite)
+		prepareCompositeFlags(intr.sd, material.mProgram, context);
+	else
+		prepareAuthoredFlags(intr.sd, material.mProgram, context);
 	intr.lambda = lambda;
 }
 

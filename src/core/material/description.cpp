@@ -17,7 +17,7 @@ MaterialValues defaultMaterialValues(MaterialModel model) {
 		MaterialValue(model == MaterialModel::PreviewSurface ? 0.18f : 0.8f);
 	for (MaterialParameter parameter :
 		 {MaterialParameter::BaseWeight, MaterialParameter::SpecularWeight,
-		  MaterialParameter::Opacity})
+		  MaterialParameter::Opacity, MaterialParameter::Weight})
 		values[parameter] = MaterialValue(1);
 	values[MaterialParameter::SpecularIor] = values[MaterialParameter::CoatIor] =
 		MaterialValue(1.5f);
@@ -139,15 +139,16 @@ public:
 				roots[parameter] = node;
 		}
 		result.surface = emit(roots);
-		auto opacity = roots, emission = roots, classification = roots;
+		auto opacity = roots, emission = roots, classification = roots, weight = roots;
 		bool emissionLayers = roots[int(MaterialParameter::CoatWeight)] >= 0 ||
 							  roots[int(MaterialParameter::FuzzWeight)] >= 0 ||
 							  result.defaults[MaterialParameter::CoatWeight][0] > 0 ||
 							  result.defaults[MaterialParameter::FuzzWeight][0] > 0;
 		for (int parameter = 0; parameter < MaterialParameterCount; ++parameter) {
 			if (parameter != int(MaterialParameter::Opacity)) opacity[parameter] = -1;
-			if (parameter != int(MaterialParameter::Metalness) &&
-				parameter != int(MaterialParameter::TransmissionWeight)) classification[parameter] = -1;
+			if (parameter != int(MaterialParameter::Weight)) weight[parameter] = -1;
+			if (!materialClassificationParameter(description.model, MaterialParameter(parameter)))
+				classification[parameter] = -1;
 			if (parameter == int(MaterialParameter::Opacity) ||
 				(!emissionLayers && parameter != int(MaterialParameter::EmissionColor) &&
 				 parameter != int(MaterialParameter::EmissionLuminance) &&
@@ -157,6 +158,7 @@ public:
 		result.opacity	   = emit(opacity);
 		result.emission	   = emit(emission);
 		result.classification = emit(classification);
+		result.weight = emit(weight);
 		result.hasEmission = roots[int(MaterialParameter::EmissionLuminance)] >= 0 ||
 							 result.defaults[MaterialParameter::EmissionLuminance][0] > 0;
 		if (roots[int(MaterialParameter::EmissionColor)] < 0) {
@@ -401,7 +403,86 @@ private:
 } // namespace
 
 CompiledMaterial compileMaterial(const MaterialDescription &description) {
-	return Compiler(description).compile();
+	if (int(description.model) > int(MaterialModel::Composite))
+		throw std::invalid_argument("Invalid authored material model");
+	if (description.model != MaterialModel::Composite) {
+		if (!description.components.empty())
+			throw std::invalid_argument("Only composite materials may contain scattering components");
+		return Compiler(description).compile();
+	}
+	for (int parameter = 0; parameter < MaterialParameterCount; ++parameter)
+		if (description.outputs[parameter] != -1 && parameter != int(MaterialParameter::Opacity) &&
+			parameter != int(MaterialParameter::EmissionColor) &&
+			parameter != int(MaterialParameter::EmissionLuminance))
+			throw std::invalid_argument("Composite surface parameters belong to its scattering components");
+
+	MaterialDescription shared = description;
+	shared.components.clear();
+	MaterialDescription leaf = shared;
+	leaf.model = MaterialModel::Diffuse;
+	std::vector<MaterialComponent> components;
+	for (const MaterialComponent &component : description.components) {
+		leaf.outputs.fill(-1);
+		leaf.set(MaterialParameter::Weight, component.outputs[int(MaterialParameter::Weight)]);
+		auto weight = Compiler(leaf).compile();
+		if (weight.weight.empty()) {
+			float value = weight.defaults[MaterialParameter::Weight][0];
+			if (value < 0) throw std::invalid_argument("Scattering component weights must be nonnegative");
+			if (value == 0) continue;
+		}
+		if (component.model == MaterialModel::Composite || component.model == MaterialModel::Error ||
+			int(component.model) > int(MaterialModel::Composite))
+			throw std::invalid_argument("Scattering components must use a supported leaf material model");
+		for (MaterialParameter parameter : {MaterialParameter::Opacity, MaterialParameter::EmissionColor,
+			 MaterialParameter::EmissionLuminance})
+			if (component.outputs[int(parameter)] != -1)
+				throw std::invalid_argument("Composite opacity and emission belong to the surface, not its components");
+		auto found = std::find_if(components.begin(), components.end(), [&](const MaterialComponent &other) {
+			if (other.model != component.model) return false;
+			for (int parameter = 0; parameter < MaterialParameterCount; ++parameter)
+				if (parameter != int(MaterialParameter::Weight) &&
+					other.outputs[parameter] != component.outputs[parameter]) return false;
+			return true;
+		});
+		if (found == components.end()) {
+			components.push_back(component);
+		} else {
+			int a = found->outputs[int(MaterialParameter::Weight)];
+			int b = component.outputs[int(MaterialParameter::Weight)];
+			if (a == -1) a = shared.constant(MaterialValue(1));
+			if (b == -1) b = shared.constant(MaterialValue(1));
+			MaterialNode sum;
+			sum.op = MaterialOp::Add;
+			sum.inputs[0] = a;
+			sum.inputs[1] = b;
+			found->set(MaterialParameter::Weight, shared.add(sum));
+		}
+	}
+	if (components.size() > MaterialComponentLimit)
+		throw std::invalid_argument("Material exceeds the scattering component limit of " +
+			std::to_string(MaterialComponentLimit));
+
+	auto result = Compiler(shared).compile();
+	leaf.nodes = shared.nodes;
+	for (const MaterialComponent &component : components) {
+		leaf.model = component.model;
+		leaf.outputs = component.outputs;
+		result.components.push_back(Compiler(leaf).compile());
+	}
+	if (result.components.size() == 1) {
+		const auto &component = result.components.front();
+		bool simpleModel = component.model == MaterialModel::Diffuse ||
+			component.model == MaterialModel::Conductor || component.model == MaterialModel::Dielectric;
+		if (simpleModel && component.weight.empty() && component.defaults[MaterialParameter::Weight][0] == 1) {
+			leaf.model = components.front().model;
+			leaf.outputs = components.front().outputs;
+			for (MaterialParameter parameter : {MaterialParameter::Opacity, MaterialParameter::EmissionColor,
+				 MaterialParameter::EmissionLuminance})
+				leaf.set(parameter, shared.outputs[int(parameter)]);
+			return Compiler(leaf).compile();
+		}
+	}
+	return result;
 }
 
 NAMESPACE_END(krr)
