@@ -7,6 +7,7 @@
 #include "device/taggedptr.h"
 #include "raytracing.h"
 #include "mesh.h"
+#include "material/context.h"
 
 NAMESPACE_BEGIN(krr)
 
@@ -122,6 +123,23 @@ public:
 		return pdf;
 	}
 
+	KRR_CALLABLE MaterialContext materialContext(Vector3f point) const {
+		const auto &mesh = *instance->mesh;
+		Vector3i vertices = mesh.indices[primId];
+		Vector3f p0 = mesh.positions[vertices[0]];
+		Vector3f e1 = mesh.positions[vertices[1]] - p0, e2 = mesh.positions[vertices[2]] - p0;
+		Vector3f local = instance->transform.inverse() * point - p0;
+		float a = dot(e1, e1), b = dot(e1, e2), c = dot(e2, e2);
+		float determinant = a * c - b * b;
+		Vector3f barycentric(1, 0, 0);
+		if (fabsf(determinant) > 1e-20f) {
+			barycentric[1] = (c * dot(local, e1) - b * dot(local, e2)) / determinant;
+			barycentric[2] = (a * dot(local, e2) - b * dot(local, e1)) / determinant;
+			barycentric[0] = 1 - barycentric[1] - barycentric[2];
+		}
+		return krr::materialContext(mesh, primId, barycentric, instance->transform);
+	}
+
 	rt::InstanceData* getInstance() const { return instance; }
 	rt::MeshData *getMesh() const { return instance->mesh; }
 
@@ -139,6 +157,10 @@ public:
 	KRR_CALLABLE float area()const {
 		auto area = [&](auto ptr) ->float {return ptr->area(); };
 		return dispatch(area);
+	}
+	KRR_CALLABLE MaterialContext materialContext(Vector3f point) const {
+		auto context = [&](auto ptr) -> MaterialContext { return ptr->materialContext(point); };
+		return dispatch(context);
 	}
 
 	KRR_CALLABLE ShapeSample sample(Vector2f u) const {

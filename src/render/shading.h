@@ -86,10 +86,23 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	return hitInfo;
 }
 
-KRR_DEVICE_FUNCTION bool alphaKilled(const HitInfo& hitInfo) {
+static KRR_DEVICE KRR_NOINLINE bool authoredAlphaKilled(const HitInfo &hitInfo) {
+	const auto &program = hitInfo.getMaterial().mProgram;
+	if (program.opacity.count == 0 && program.defaults[MaterialParameter::Opacity][0] >= 1)
+		return false;
+	auto context = materialContext(hitInfo.getMesh(), hitInfo.primitiveId,
+		hitInfo.barycentric, getInstanceTransform());
+	float alpha = program.evaluate(context, rt::MaterialEvaluation::Opacity)[MaterialParameter::Opacity][0];
+	if (alpha >= 1) return false;
+	if (alpha <= 0) return true;
+	return HashFloat(optixGetWorldRayOrigin(), optixGetWorldRayDirection()) > alpha;
+}
+
+KRR_DEVICE_FUNCTION bool alphaKilled(const HitInfo& hitInfo, bool authoredMaterials = true) {
 	/* Null-material is only used as medium interface, so do not ignore it here. */
 	if (hitInfo.instance->mesh->material == nullptr) return false;
 	const rt::MaterialData &material = hitInfo.getMaterial();
+	if (authoredMaterials && material.mProgram.enabled) return authoredAlphaKilled(hitInfo);
 	const rt::TextureData &opaticyTexture =
 		material.mTextures[(uint) Material::TextureType::Transmission];
 	if (!opaticyTexture.isValid()) return false;
@@ -112,8 +125,27 @@ KRR_DEVICE_FUNCTION bool alphaKilled(const HitInfo& hitInfo) {
 	return u > alpha;
 }
 
+static KRR_DEVICE KRR_NOINLINE void prepareAuthoredMaterial(SurfaceInteraction &intr,
+	const HitInfo &hitInfo, const Transformation &transform, const SampledWavelengths &lambda) {
+	const rt::MaterialData &material = hitInfo.getMaterial();
+	auto context = materialContext(hitInfo.getMesh(), hitInfo.primitiveId,
+		hitInfo.barycentric, transform);
+	intr.n = materialVector(context.normal);
+	intr.tangent = materialVector(context.tangent);
+	intr.bitangent = materialVector(context.bitangent);
+	if (hitInfo.getMesh().texcoords.size()) intr.uv = {context.uv[0], context.uv[1]};
+	intr.sd.bsdfType = material.mBsdfType;
+	// Authored BSDFs prepare their parameters at the scattering vertex.
+	if (intr.sd.bsdfType == MaterialType::Composite)
+		prepareCompositeFlags(intr.sd, material.mProgram, context);
+	else
+		prepareAuthoredFlags(intr.sd, material.mProgram, context);
+	intr.lambda = lambda;
+}
+
 KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, const HitInfo &hitInfo, 
-	const Ray& ray, SampledWavelengths& lambda /*secondary rays would be terminated if non-constant eta*/ ) {
+	const Ray& ray, SampledWavelengths& lambda /*secondary rays would be terminated if non-constant eta*/,
+	bool authoredMaterials = true) {
 	// [NOTE] about local shading frame (tangent space, TBN, etc.)
 	// The shading normal intr.n and face normal is always points towards the outside of
 	// the object, we can use this convention to determine whether an incident ray is coming from
@@ -131,6 +163,22 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 			 p2 = mesh.positions[v[2]];
 	
 	intr.p = b[0] * p0 + b[1] * p1  + b[2] * p2;
+
+	if (instance.lights.size())
+		intr.light = &instance.lights[hitInfo.primitiveId];
+	else intr.light = nullptr;
+
+	intr.material = hitInfo.instance->mesh->material;
+
+	if (mesh.mediumInterface.isTransition())
+		intr.mediumInterface = &mesh.mediumInterface;
+
+	Transformation transform = getInstanceTransform();
+	intr.p = transform.transform() * intr.p;
+	if (authoredMaterials && intr.material && intr.material->mProgram.enabled) {
+		prepareAuthoredMaterial(intr, hitInfo, transform, lambda);
+		return;
+	}
 
 	if (mesh.normals.size())
 		intr.n = normalize(b[0] * mesh.normals[v[0]] + b[1] * mesh.normals[v[1]] +
@@ -150,19 +198,8 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 		intr.uv =
 			b[0] * mesh.texcoords[v[0]] + b[1] * mesh.texcoords[v[1]] + b[2] * mesh.texcoords[v[2]];
 
-	if (instance.lights.size())
-		intr.light = &instance.lights[hitInfo.primitiveId];
-	else intr.light = nullptr;
-
-	intr.material = hitInfo.instance->mesh->material;
-
-	if (mesh.mediumInterface.isTransition()) 
-		intr.mediumInterface = &mesh.mediumInterface;
-
 	// transform local interaction to world space
 	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
-	Transformation transform = getInstanceTransform();
-	intr.p		   = transform.transform() * intr.p;
 	intr.n		   = (transform.transposedInverse() * intr.n).normalized();
 	intr.tangent   = (transform.transposedInverse() * intr.tangent).normalized();
 	intr.bitangent = (transform.transposedInverse() * intr.bitangent).normalized();
@@ -173,7 +210,6 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	const rt::MaterialData &material			   = instance.getMaterial();
 	const Material::MaterialParams &materialParams = material.mMaterialParams;
 	const RGBColorSpace &colorSpace				   = *material.getColorSpace();
-
 	intr.sd.bsdfType			 = material.mBsdfType;
 	intr.sd.specularTransmission = materialParams.specularTransmission;
 	intr.sd.IoR					 = materialParams.IoR;

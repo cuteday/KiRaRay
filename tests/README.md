@@ -23,7 +23,18 @@ For a fresh build, also supply the usual project build options and `Python_EXECU
 GPU tests fail if the required device is unavailable. The normal project build still requires
 the CUDA, OptiX, and Vulkan development dependencies even when only CPU tests will run.
 
-CPU executables do not initialize a GPU or link the renderer. Python metric tests import
+CPU executables do not initialize a GPU. Sampler and option tests do not link the renderer.
+`krr_publication` checks immediate first/final images, the frequency cap, adaptive backoff
+and recovery, pending-submission bookkeeping, delayed completions, resets, and bounded
+pending GPU work without requiring Blender, USD, or CUDA.
+`krr_exr` generates small EXR fixtures and checks ZIP/PIZ/DWAA/DWAB decoding,
+half/float channels, tiled edges, data-window offsets, row orientation, alpha,
+HDR values, and failed-load cleanup. It links only the CPU image decoder.
+On Windows with CUDA 12, native CPU tests delay-load `nvcuda.dll` and reject any attempted
+driver call, so they also run on CI hosts without an NVIDIA driver.
+With `KRR_ENABLE_OPENVDB_IO=OFF`, `krr_volume_import` links the renderer and verifies that
+both direct volume files and heterogeneous-medium configs report the disabled import feature.
+Python metric tests import
 NumPy and the independent `image_metrics.py` module. Benchmark unit tests cover argument
 validation, timing summaries, process failures, and synthetic profiler reports without a GPU
 or installed profiler. Run the Python tests directly with:
@@ -42,6 +53,16 @@ that invalid configs, missing models, and invalid frame counts fail cleanly and 
 subsequent render, config dictionaries are snapshotted, exit requests cannot shorten a batch,
 and configured saves occur only after successful completion. It runs in spectral and RGB builds.
 Only spectral builds register the 128×128 reference regression.
+
+`krr_composite` checks the shared material mixture on the GPU: full value/PDF
+agreement, numerical energy and probability integrals, analytic delta throughput,
+unnormalized Add weights, index matching, transmission from both sides, separate
+component normals, expression weights, and Cubic texture reconstruction. It also
+repeatedly replaces uploaded material programs to exercise their ownership.
+`krr_material_program` covers component validation and optimization without a GPU.
+SDK-enabled `krr_usd` tests include actual Blender-exported leaf and Mix/Add graphs;
+the translator and supported approximations are documented in
+[`integrations/materials`](../integrations/materials/README.md).
 
 Each enabled graphics API runs the same GPU cases. Vulkan retains the original
 test names; D3D12 tests have a `_d3d12` suffix and separate artifact directories.
@@ -128,6 +149,95 @@ saved on successful runs too, making calibration and local failures easier to in
 case directory represents the latest run; copy it elsewhere if a result should be retained.
 
 ## Extending the suite
+
+`krr_material_program` tests the CPU expression compiler; `krr_openpbr` checks EON energy and
+reciprocity, GGX sampling, F82 tint and LTC fuzz normalization without initializing CUDA.
+`krr_materials` runs local CUDA checks for real image sampling, sRGB/channels/UV orientation,
+simple and interpreted materials, opacity and classification slices, repeated uploads,
+normal maps, and native BSDF energy/PDF agreement. Combined value/PDF evaluation is
+checked against the separate functions for sampled and independent directions,
+both transport modes, and independent base/coat normals. Native OpenPBR uses finite glossy lobes
+even at zero roughness
+(minimum roughness 0.001), with the reference's small IOR adjustment around unity; the legacy
+materials keep their existing delta behavior. See the [implementation notes](../src/render/materials/openpbr/NOTICE).
+OpenPBR emission uses 1000 nits per scene-linear radiance unit. Blender 5.2.2 exports
+Principled strength directly; the adapter explicitly normalizes its constant and connected
+strength inputs. SDK tests cover ordinary nits, the producer scale, invalid metadata, and an
+actual Blender emission export with and without validated unit metadata. Preview Surface
+and legacy material emission keep their existing units.
+
+`krr_blender_preflight` runs without Blender or a GPU. Regenerate the checked-in producer
+fixtures deliberately with Blender 5.2.2, then review their USD/MaterialX graphs and SDK test
+results before replacing `tests/fixtures/usd/blender52/`:
+
+```powershell
+blender --background --factory-startup --python-exit-code 1 --python tests/blender/material_fixtures.py -- --output build/producer-fixtures
+```
+
+These fixtures cover supported math, UV/mapping, scalar/vector/color mixing, remapping,
+channel conversions, base/coat normals and anisotropy, plus rejected reachable features.
+Implicit color/vector-to-scalar links are rejected before export because Blender 5.2.2 can
+reduce them to the first component; use explicit Separate Color/XYZ nodes instead.
+
+The native `krr_session` GPU cases compare split frame steps with a fresh batch and cover
+camera/resize resets, owned color/depth snapshots, cancellation, explicit finalization,
+material emission changes, instance transforms in both hierarchy modes, scene replacement,
+and sequential worker-thread cleanup.
+`krr_camera` checks external projection rays on the CPU. The C++ `RenderSession` API keeps
+scene resources between `step(frames)` calls; `snapshot(true)` additionally returns linear
+and projected depth through an immutable shared snapshot. Repeated snapshots reuse depth
+until a scene, camera, or resolution update invalidates it. All operations run on its
+constructing thread except `requestCancel()`. `step()` submits GPU work; use `wait()`, a
+snapshot, or a reset before inspecting device-backed scene data.
+`requestSnapshot()` returns a pending image or no request when its two readback slots are
+occupied. Use `isSnapshotReady()` and `collectSnapshot()` to obtain an owned image after its
+graphics event completes; request metadata retains the original sample count and generation.
+External camera projections preserve vertical framing when the output aspect ratio changes;
+an explicit camera update replaces that conformed projection.
+`finish()` performs configured saves once; snapshots, edits, cancellation, and `close()` do not.
+
+Hydra publishes the first sample promptly and the final requested sample unconditionally.
+Intermediate publications use elapsed time with a 75 ms minimum interval (13.3 Hz maximum).
+The interval increases to ten times the smoothed submission/collection CPU cost, capped at
+500 ms, and recovers as readback becomes cheaper. First-image startup and blocking waits
+are excluded from this estimate. This is a pacing heuristic toward a roughly 10% publication
+budget, not an isolated GPU transfer measurement.
+
+Intermediate readbacks use two reusable NVRHI staging textures and event queries. The
+existing render worker submits copies and continues stepping, then collects the newest
+completed image when the publication interval allows. No additional CPU thread is used.
+First and final images may wait for completion; scene changes discard stale requests, and
+slot reuse waits for any outstanding graphics copy. Existing CUDA/graphics queue ordering
+is preserved, so CPU-nonblocking readback does not imply transfer/kernel overlap on the GPU.
+At most four samples remain pending before a GPU wait. Depth is captured only for bound
+depth AOVs and cached across image publications. Hydra render buffers also reuse unchanged
+color and depth data. This is an in-process CPU image transfer, not shared-memory IPC.
+`krr_blender_render_scene` compares depth-enabled and color-only F12 output, verifies final
+sample counts and depth-cache counters, and checks asynchronous intermediate publication on
+a small 256-sample render. The windowed viewport probe checks the same counters across scene edits,
+F12 handoff, reload, and cancellation. Its status JSON records publication and depth-capture
+counts, pending readback storage, the adaptive interval, and readback, submission, waiting,
+and total-update timings. Readback totals include explicit first/final collection waits;
+time spent queued while rendering continues is not counted as CPU readback work.
+
+With Hydra, SDK tests, and GPU tests enabled, `krr_blender_environment` loads the pinned
+Blender installation's actual DWAB-compressed `forest.exr`. It checks finite, nonblack
+scene-linear illumination and a black result after removing the world. Source metadata,
+float32 EXRs, and logs are retained under `blender_environment`. Run the corresponding
+Material Preview check in a separate windowed Blender process with:
+
+```powershell
+blender.exe --factory-startup --enable-event-simulate --window-geometry 0 0 480 480 `
+  --python integrations/blender/probe/environment.py -- --viewport `
+  --addon-dir build/blender-interop/host/blender/kiraray `
+  --artifacts build/blender-interop/host/tests/artifacts/RelWithDebInfo/blender_environment_viewport
+```
+
+This selects Blender's `forest.exr` studio light with the scene world disabled, waits for
+KiRaRay to converge, saves its status and a screenshot, then closes its own window.
+Inspect `result.json`; `failure.txt` records any failed viewport assertion.
+The background test removes the world for its dark control: Blender 5.2.2's Hydra bridge
+does not forward Background Strength when the world uses an environment image.
 
 Put CPU tests in `unit/`, GPU test runners in `render/`, and scene-specific inputs/references
 in `cases/<name>/`. Register them in `tests/CMakeLists.txt` with appropriate labels and timeouts.

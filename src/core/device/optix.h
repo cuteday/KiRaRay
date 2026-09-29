@@ -112,6 +112,7 @@ public:
 	using SharedPtr = std::shared_ptr<OptixSceneMultiLevel>;
 	OptixSceneMultiLevel(std::shared_ptr<Scene> scene, const OptixSceneParameters &config = {});
 	~OptixSceneMultiLevel() override;
+	void update() override;
 	
 
 	OptixTraversableHandle getRootTraversable() const override { return traversableIAS; }

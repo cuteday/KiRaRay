@@ -84,6 +84,7 @@ public:
 	std::string name;
 	AABB aabb{};
 	RGB Le{};		/* A mesh-specific area light, used when importing pbrt formats. */
+	bool cameraVisible{true};
 };
 
 NAMESPACE_END(krr)

@@ -11,23 +11,26 @@ public:
 	using SharedPtr = std::shared_ptr<GBufferPass>;
 	KRR_REGISTER_PASS_DEC(GBufferPass);
 	GBufferPass() = default;
-	
+	~GBufferPass() override;
+	struct Depth {
+		std::vector<float> linear;
+		std::vector<float> projected;
+	};
+
 	void initialize() override;
-	void setScene(Scene::SharedPtr scene);
-	void render(RenderContext *context);
-	void renderUI() override;
+	void setScene(Scene::SharedPtr scene) override;
+	void render(RenderContext *context) override;
+	Depth capture(const Vector2i &size);
+	void finalize() override;
 	std::string getName() const override { return "GBufferPass"; }
 
 private:
 	OptixBackend::SharedPtr mOptixBackend;
-	LaunchParameters <GBufferPass> mLaunchParams;
+	LaunchParameters<GBufferPass> mLaunchParams;
 
-	bool mEnableDepth{};
-	bool mEnableDiffuse{};
-	bool mEnableSpecular{};
-	bool mEnableNormal{};
-	bool mEnableEmissive{};
-	bool mEnableMotion{};
+	void launch(const Vector2i &size);
+	CUDABuffer mLinearDepth;
+	CUDABuffer mProjectedDepth;
 };
 
 NAMESPACE_END(krr)

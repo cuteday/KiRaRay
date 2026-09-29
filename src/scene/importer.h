@@ -14,6 +14,14 @@ NAMESPACE_BEGIN(krr)
 
 namespace importer {
 
+#if KRR_ENABLE_USD
+class UsdImporter {
+public:
+	bool import(const fs::path filepath, Scene::SharedPtr scene,
+		SceneGraphNode::SharedPtr node = nullptr, const json &params = json::object());
+};
+#endif
+
 class MaterialLoader {
 public:
 	using TextureType = Material::TextureType;
@@ -84,6 +92,7 @@ private:
 	Scene::SharedPtr mScene;
 };
 
+#if KRR_ENABLE_OPENVDB_IO
 class OpenVDBImporter {
 public:
 	OpenVDBImporter() = default;
@@ -97,6 +106,7 @@ private:
 	string mFilepath;
 	Scene::SharedPtr mScene;
 };
+#endif
 } // namespace importer
 
 class SceneImporter {

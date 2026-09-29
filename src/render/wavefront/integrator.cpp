@@ -90,6 +90,7 @@ void WavefrontPathTracer::traceClosest(int depth) {
 	params.nextRayQueue		   = nextRayQueue(depth);
 	params.mediumSampleQueue   = enableMedium ? mediumSampleQueue : nullptr;
 	params.pixelState		   = pixelState;
+	params.authoredMaterials = mAuthoredMaterials;
 	backend->launch(params, "Closest", maxQueueSize, 1, 1, KRR_DEFAULT_STREAM);
 }
 
@@ -101,14 +102,20 @@ void WavefrontPathTracer::traceShadow() {
 	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
 	params.shadowRayQueue	   = shadowRayQueue;
 	params.pixelState		   = pixelState;
+	params.authoredMaterials = mAuthoredMaterials;
 	backend->launch(params, enableMedium ? "ShadowTr" : "Shadow", maxQueueSize, 1, 1, KRR_DEFAULT_STREAM);
 }
 
 void WavefrontPathTracer::handleHit() {
 	PROFILE("Process intersected rays");
+	if (mAuthoredMaterials) handleHitImpl<true>();
+	else handleHitImpl<false>();
+}
+
+template <bool AuthoredMaterials> void WavefrontPathTracer::handleHitImpl() {
 	ForAllQueued(
 		hitLightRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const HitLightWorkItem &w) {
-			Spectrum Le = w.light.L(w.p, w.n, w.uv, w.wo, pixelState->lambda[w.pixelId]) * w.thp;
+			Spectrum Le = w.light.L<AuthoredMaterials>(w.p, w.n, w.uv, w.wo, pixelState->lambda[w.pixelId]) * w.thp;
 			if (enableNEE && w.depth && !(w.bsdfType & BSDF_DELTA)) {
 				Interaction intr(w.p, w.wo, w.n, w.uv);
 				float lightPdf = w.light.pdfLi(intr, w.ctx) * lightSampler.pdf(w.light);
@@ -138,6 +145,12 @@ void WavefrontPathTracer::handleMiss() {
 
 void WavefrontPathTracer::generateScatterRays(int depth) {
 	PROFILE("Generate scatter rays");
+	// Separate kernels keep authored BSDF calls out of legacy register budgets.
+	if (mAuthoredMaterials) generateScatterRaysImpl<BSDF>(depth);
+	else generateScatterRaysImpl<LegacyBSDF>(depth);
+}
+
+template <typename BSDFModel> void WavefrontPathTracer::generateScatterRaysImpl(int depth) {
 	ForAllQueued(
 		scatterRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(ScatterRayWorkItem& w) {
 			Sampler sampler = &pixelState->sampler[w.pixelId];
@@ -149,19 +162,22 @@ void WavefrontPathTracer::generateScatterRays(int depth) {
 			Vector3f woLocal				 = intr.toLocal(intr.wo);
 			BSDFType bsdfType				 = intr.getBsdfType();
 			const SampledWavelengths &lambda = pixelState->lambda[w.pixelId];
-			BSDF bsdf(intr);
+			BSDFModel bsdf(intr);
 			/* sample direct lighting */
-			if (enableNEE && (bsdfType & BSDF_SMOOTH)) {
-				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
+			if (SampledLight sampledLight = enableNEE && (bsdfType & BSDF_SMOOTH)
+				? lightSampler.sample(sampler.get1D()) : SampledLight{}) {
 				Light light				  = sampledLight.light;
-				LightSample ls	 = light.sampleLi(sampler.get2D(), {intr.p, intr.n}, lambda);
+				LightSample ls = light.sampleLi<std::is_same_v<BSDFModel, BSDF>>(
+					sampler.get2D(), {intr.p, intr.n}, lambda);
 				Ray shadowRay	 = intr.spawnRayTo(ls.intr);
 				Vector3f wiWorld = normalize(shadowRay.dir);
 				Vector3f wiLocal = intr.toLocal(wiWorld);
 
 				float lightPdf	 = sampledLight.pdf * ls.pdf;
-				Spectrum bsdfVal = bsdf.f(woLocal, wiLocal);
-				float bsdfPdf	 = light.isDeltaLight() ? 0 : bsdf.pdf(woLocal, wiLocal);
+				BSDFEval evaluation = light.isDeltaLight()
+					? BSDFEval{bsdf.f(woLocal, wiLocal), 0} : bsdf.eval(woLocal, wiLocal);
+				Spectrum bsdfVal = evaluation.f;
+				float bsdfPdf = evaluation.pdf;
 				if (lightPdf > 0 && bsdfVal.any()) {
 					ShadowRayWorkItem sw = {};
 					sw.ray				 = shadowRay;
@@ -226,6 +242,9 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 						.addRayType("ShadowTr", true, true, false)
 						.setMaxTraversableDepth(scene->getMaxGraphDepth());
 	backend->setScene(scene);
+	mAuthoredMaterials = scene->getSceneRT()->hasAuthoredMaterials();
+	params.addBoundValue(offsetof(LaunchParameters<WavefrontPathTracer>, authoredMaterials),
+		sizeof(mAuthoredMaterials), &mAuthoredMaterials, "Authored materials");
 	backend->initialize(params);
 	lightSampler = backend->getSceneData().lightSampler;
 	enableMedium = enableMedium && scene->getMedia().size();
@@ -235,6 +254,10 @@ void WavefrontPathTracer::setScene(Scene::SharedPtr scene) {
 void WavefrontPathTracer::beginFrame(RenderContext* context) {
 	if (!mScene || !maxQueueSize) return;
 	PROFILE("Begin frame");
+	if (mAuthoredMaterials != mScene->getSceneRT()->hasAuthoredMaterials()) {
+		mAuthoredMaterials = mScene->getSceneRT()->hasAuthoredMaterials();
+		backend->initialize(backend->getParameters());
+	}
 	cudaMemcpyAsync(camera, &mScene->getCamera()->getCameraData(), sizeof(rt::CameraData),
 					cudaMemcpyHostToDevice, KRR_DEFAULT_STREAM);
 	size_t frameIndex = getFrameIndex();

@@ -42,6 +42,7 @@ struct BSDFData {
 	float anisotropic{0}; //
 
 	MaterialType bsdfType;
+	BSDFType authoredFlags{BSDF_UNSET};
 
 	KRR_CALLABLE BSDFType getBsdfType() const {
 		BSDFType type = BSDFType::BSDF_UNSET;
@@ -64,6 +65,15 @@ struct BSDFData {
 				if (diffuse.any() && specularTransmission < 1 && metallic < 1)
 					type = type | BSDFType::BSDF_DIFFUSE_REFLECTION;
 				if (specularTransmission > 0) type = type | BSDF_TRANSMISSION;
+				break;
+			case MaterialType::OpenPBR:
+			case MaterialType::PreviewSurface:
+				type = BSDF_GLOSSY_REFLECTION;
+				if (metallic < 1 && specularTransmission < 1) type = type | BSDF_DIFFUSE_REFLECTION;
+				if (specularTransmission > 0) type = type | BSDF_TRANSMISSION;
+				break;
+			case MaterialType::Composite:
+				type = authoredFlags;
 				break;
 			default:
 				printf("[ShadingData::getBsdfType] Unsupported BSDF.\n");

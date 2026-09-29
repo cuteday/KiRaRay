@@ -1,8 +1,6 @@
-#include "util/math_utils.h"
 #include "path.h"
 #include "render/shared.h"
 #include "render/shading.h"
-#include "util/hash.h"
 
 #include <optix_device.h>
 
@@ -14,9 +12,9 @@ extern "C" __constant__ LaunchParameters<MegakernelPathTracer> launchParams;
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray, float tMax,
-								  int rayType, OptixRayFlags flags, Args &&...payload) {
+								  int rayType, OptixRayFlags flags, OptixVisibilityMask mask, Args &&...payload) {
 	optixTrace(traversable, ray.origin, ray.dir, 0.f, tMax, ray.time, /* ray time val min max */
-			   OptixVisibilityMask(255),							  /* all visible */
+			   mask,
 			   flags, rayType, RAY_TYPE_COUNT,	/* ray type and number of types */
 			   rayType,							/* miss SBT index */
 			   std::forward<Args>(payload)...); /* (unpacked pointers to) payloads */
@@ -24,11 +22,10 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray, f
 
 /* @returns: whether this ray is missed */
 KRR_DEVICE_FUNCTION bool traceRay(OptixTraversableHandle traversable, Ray ray, float tMax,
-								  int rayType, OptixRayFlags flags, void *payload) {
-	// uint u0, u1;
+								  int rayType, OptixRayFlags flags, OptixVisibilityMask mask, void *payload) {
 	uint miss{0};
 	auto [u0, u1] = packPointer(payload);
-	traceRay(traversable, ray, tMax, rayType, flags, u0, u1, miss);
+	traceRay(traversable, ray, tMax, rayType, flags, mask, u0, u1, miss);
 	return !miss;
 }
 
@@ -37,7 +34,7 @@ KRR_DEVICE_FUNCTION bool traceShadowRay(OptixTraversableHandle traversable, Ray 
 	OptixRayFlags flags =
 		(OptixRayFlags) (OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT);
 	uint32_t miss{0};
-	traceRay(traversable, ray, tMax, (int) SHADOW_RAY_TYPE, flags, miss);
+	traceRay(traversable, ray, tMax, (int) SHADOW_RAY_TYPE, flags, 255, miss);
 	return miss;
 }
 
@@ -77,11 +74,12 @@ KRR_DEVICE_FUNCTION void handleMiss(PathData &path) {
 	}
 }
 
-KRR_DEVICE_FUNCTION void generateShadowRay(PathData &path) {
+KRR_DEVICE_FUNCTION void generateShadowRay(PathData &path, const BSDF &bsdf) {
 	const SurfaceInteraction &intr = path.intr;
 	Vector3f woLocal			   = intr.toLocal(intr.wo);
 
 	SampledLight sampledLight = path.lightSampler.sample(path.sampler.get1D());
+	if (!sampledLight) return;
 	Light light				  = sampledLight.light;
 	LightSample ls			  = light.sampleLi(path.sampler.get2D(), {intr.p, intr.n}, path.lambda);
 
@@ -90,9 +88,10 @@ KRR_DEVICE_FUNCTION void generateShadowRay(PathData &path) {
 
 	float lightPdf = sampledLight.pdf * ls.pdf;
 	if (lightPdf == 0) return; // We have sampled on the primitive itself...
-	BSDF bsdf(intr);
-	float bsdfPdf	 = light.isDeltaLight() ? 0 : bsdf.pdf(woLocal, wiLocal);
-	Spectrum bsdfVal = bsdf.f(woLocal, wiLocal) * fabs(wiLocal[2]);
+	BSDFEval evaluation = light.isDeltaLight()
+		? BSDFEval{bsdf.f(woLocal, wiLocal), 0} : bsdf.eval(woLocal, wiLocal);
+	float bsdfPdf = evaluation.pdf;
+	Spectrum bsdfVal = evaluation.f * fabs(wiLocal[2]);
 	float misWeight	 = evalMIS(launchParams.lightSamples, lightPdf, 1, bsdfPdf);
 	if (isnan(misWeight) || isinf(misWeight) || !bsdfVal.any()) return;
 
@@ -102,17 +101,17 @@ KRR_DEVICE_FUNCTION void generateShadowRay(PathData &path) {
 			path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
 }
 
-KRR_DEVICE_FUNCTION void evalDirect(PathData &path) {
+KRR_DEVICE_FUNCTION void evalDirect(PathData &path, const BSDF &bsdf) {
 	BSDFType bsdfType = path.intr.getBsdfType();
 	if (bsdfType & BSDF_SMOOTH) { /* Disable NEE on specular surfaces. */
-		for (int i = 0; i < launchParams.lightSamples; i++) generateShadowRay(path);
+		for (int i = 0; i < launchParams.lightSamples; i++) generateShadowRay(path, bsdf);
 	}
 }
 
-KRR_DEVICE_FUNCTION bool generateScatterRay(PathData &path) {
+KRR_DEVICE_FUNCTION bool generateScatterRay(PathData &path, const BSDF &bsdf) {
 	const SurfaceInteraction &intr = path.intr;
 	Vector3f woLocal			   = intr.toLocal(intr.wo);
-	BSDFSample sample			   = BxDF::sample(intr, woLocal, path.sampler);
+	BSDFSample sample			   = bsdf.sample(woLocal, path.sampler);
 	if (sample.pdf == 0 || !any(sample.f)) return false;
 
 	Vector3f wiWorld = intr.toWorld(sample.wi);
@@ -169,7 +168,7 @@ KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() {
 
 		for (int &depth = path.depth; true; depth++) {
 			bool hit = traceRay(launchParams.traversable, path.ray, M_FLOAT_INF,
-								   RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, (void *) &path);
+				RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, depth == 0 ? 1 : 255, (void *) &path);
 #if (OPTIX_VERSION >= 80000) // SER enable	
 			// TODO: use better coherence hints
 			optixReorder(hit, 1);
@@ -185,8 +184,9 @@ KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() {
 				(launchParams.probRR < 1.f && path.sampler.get1D() > launchParams.probRR))
 				break;
 			path.throughput /= launchParams.probRR;
-			if (launchParams.NEE) evalDirect(path);
-			if (!generateScatterRay(path)) break;
+			BSDF bsdf(path.intr);
+			if (launchParams.NEE) evalDirect(path, bsdf);
+			if (!generateScatterRay(path, bsdf)) break;
 		}
 		color += path.L.toRGB(path.lambda, *launchParams.colorSpace);
 	}

@@ -37,6 +37,7 @@ public:
 	virtual void renderUI() {}
 	
 	virtual void initialize() {}
+	virtual void reset() {}
 	virtual void finalize() {}
 
 	virtual void onWindowClose() {}

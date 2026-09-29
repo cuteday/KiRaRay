@@ -8,13 +8,14 @@ NAMESPACE_BEGIN(krr)
 
 class GBufferPass;
 
-template <> 
-struct LaunchParameters<GBufferPass> {
+template <> struct LaunchParameters<GBufferPass> {
 	Vector2i frameSize;
-	size_t frameIndex;
-
-	rt::SceneData sceneData;
 	rt::CameraData cameraData;
+	Matrix4f view;
+	Matrix4f viewProjection;
+	float nearClip{-1.f};
+	float *linearDepth{};
+	float *projectedDepth{};
 	OptixTraversableHandle traversable;
 };
 

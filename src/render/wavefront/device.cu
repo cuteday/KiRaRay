@@ -11,10 +11,10 @@ extern "C" __constant__ LaunchParameters <WavefrontPathTracer> launchParams;
 
 template <typename... Args>
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
-	float tMax, int rayType, OptixRayFlags flags, Args &&... payload) {
+	float tMax, int rayType, OptixRayFlags flags, OptixVisibilityMask mask, Args &&... payload) {
 	optixTrace(traversable, ray.origin, ray.dir,
 		0.f, tMax, ray.time,				/* ray time val min max */
-		OptixVisibilityMask(255),			/* all visible */
+		mask,
 		flags,
 		rayType, 3,							/* ray type and number of types */
 		rayType,							/* miss SBT index */
@@ -22,10 +22,10 @@ KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
 }
 
 KRR_DEVICE_FUNCTION void traceRay(OptixTraversableHandle traversable, Ray ray,
-	float tMax, int rayType, OptixRayFlags flags, void* payload) {
+	float tMax, int rayType, OptixRayFlags flags, OptixVisibilityMask mask, void* payload) {
 	uint u0, u1;
 	packPointer(payload, u0, u1);
-	traceRay(traversable, ray, tMax, rayType, flags, u0, u1);
+	traceRay(traversable, ray, tMax, rayType, flags, mask, u0, u1);
 }
 
 KRR_DEVICE_FUNCTION int getRayId() { return optixGetLaunchIndex().x; }
@@ -46,7 +46,7 @@ KRR_RT_KERNEL KRR_RT_CH(Closest)() {
 	RayWorkItem r			  = getRayWorkItem();
 	int pixelId				  = launchParams.currentRayQueue->pixelId[getRayId()];
 	SampledWavelengths &lambda = launchParams.pixelState->lambda[pixelId];
-	prepareSurfaceInteraction(intr, hitInfo, r.ray, lambda);
+	prepareSurfaceInteraction(intr, hitInfo, r.ray, lambda, launchParams.authoredMaterials);
 	if (launchParams.mediumSampleQueue && r.ray.medium) {
 		launchParams.mediumSampleQueue->push(r, intr, optixGetRayTmax());
 		return;
@@ -63,7 +63,7 @@ KRR_RT_KERNEL KRR_RT_CH(Closest)() {
 }
 
 KRR_RT_KERNEL KRR_RT_AH(Closest)() { 
-	if (alphaKilled(getHitInfo())) optixIgnoreIntersection();
+	if (alphaKilled(getHitInfo(), launchParams.authoredMaterials)) optixIgnoreIntersection();
 }
 
 KRR_RT_KERNEL KRR_RT_MS(Closest)() {
@@ -77,13 +77,14 @@ KRR_RT_KERNEL KRR_RT_RG(Closest)() {
 	if (getRayId() >= launchParams.currentRayQueue->size()) return;
 	RayWorkItem r = getRayWorkItem();
 	SurfaceInteraction intr = {};
-	traceRay(launchParams.traversable, r.ray, M_FLOAT_INF, 0, OPTIX_RAY_FLAG_NONE, (void *) &intr);
+	traceRay(launchParams.traversable, r.ray, M_FLOAT_INF, 0, OPTIX_RAY_FLAG_NONE,
+		r.depth == 0 ? 1 : 255, (void *) &intr);
 }
 
 KRR_RT_KERNEL KRR_RT_AH(Shadow)() { 
 	/* We are here since we did not enable medium rendering, so safely ignore null-material. */
 	const HitInfo &hitInfo = getHitInfo();
-	if (hitInfo.instance->mesh->material == nullptr || alphaKilled(hitInfo))
+	if (hitInfo.instance->mesh->material == nullptr || alphaKilled(hitInfo, launchParams.authoredMaterials))
 		optixIgnoreIntersection();
 }
 
@@ -95,7 +96,7 @@ KRR_RT_KERNEL KRR_RT_RG(Shadow)() {
 	uint32_t visible{0};
 	traceRay(launchParams.traversable, r.ray, r.tMax, 1,
 			 OptixRayFlags( OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT),
-		visible);
+		255, visible);
 	if (visible) launchParams.pixelState->addRadiance(r.pixelId, r.Ld / (r.pl + r.pu).mean());
 }
 
@@ -105,11 +106,11 @@ KRR_RT_KERNEL KRR_RT_CH(ShadowTr)() {
 	int pixelId				  = launchParams.shadowRayQueue->pixelId[getRayId()]; 
 	SampledWavelengths &lambda = launchParams.pixelState->lambda[pixelId];
 	SurfaceInteraction &intr  = *getPRD<SurfaceInteraction>();
-	prepareSurfaceInteraction(intr, hitInfo, r.ray, lambda);
+	prepareSurfaceInteraction(intr, hitInfo, r.ray, lambda, launchParams.authoredMaterials);
 }
 
 KRR_RT_KERNEL KRR_RT_AH(ShadowTr)() {
-	if (alphaKilled(getHitInfo())) optixIgnoreIntersection();
+	if (alphaKilled(getHitInfo(), launchParams.authoredMaterials)) optixIgnoreIntersection();
 }
 
 KRR_RT_KERNEL KRR_RT_MS(ShadowTr)() { optixSetPayload_2(1); }
@@ -122,7 +123,7 @@ KRR_RT_KERNEL KRR_RT_RG(ShadowTr)() {
 	packPointer(&intr, u0, u1);
 	traceTransmittance(r, intr, launchParams.pixelState, [&](Ray ray, float tMax) -> bool {
 		uint32_t visible = 0;
-		traceRay(launchParams.traversable, ray, tMax, 2, OPTIX_RAY_FLAG_NONE, u0, u1, visible);
+		traceRay(launchParams.traversable, ray, tMax, 2, OPTIX_RAY_FLAG_NONE, 255, u0, u1, visible);
 		return visible;
 	});
 }

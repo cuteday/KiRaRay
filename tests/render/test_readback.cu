@@ -139,6 +139,71 @@ void checkReadback(RenderContext *context, Vector2i size) {
 	}
 }
 
+void checkAsyncReadback(RenderContext *context) {
+	Vector2i size(7, 5);
+	context->resize(size);
+	auto write = [&](float value) {
+		auto target = context->getColorTexture()->getCudaRenderTarget();
+		context->beginCuda();
+		GPUParallelFor(size[0] * size[1], [=] KRR_DEVICE(int i) mutable {
+			int x = i % target.width, y = i / target.width;
+			target.write(RGBA(value + x, 2 * value - y, -3 * value + i, 1.f), i);
+		}, context->getCudaStream());
+		context->endCuda();
+	};
+	auto check = [&](const std::vector<float> &pixels, float value) {
+		require(pixels.size() == size_t(size[0]) * size[1] * 3,
+			"Asynchronous readback returned incorrect dimensions");
+		for (int y = 0; y < size[1]; ++y)
+			for (int x = 0; x < size[0]; ++x) {
+				const int sourceY = size[1] - 1 - y;
+				const size_t offset = (y * size[0] + x) * 3;
+				require(pixels[offset] == value + x && pixels[offset + 1] == 2 * value - sourceY &&
+					pixels[offset + 2] == -3 * value + sourceY * size[0] + x,
+					"Asynchronous readback changed channels, orientation, or the captured frame");
+			}
+	};
+	write(1.f);
+	auto first = context->enqueueReadback();
+	require(bool(first), "First asynchronous readback could not be queued");
+	write(10.f);
+	auto second = context->enqueueReadback();
+	require(bool(second), "Second asynchronous readback could not be queued");
+	require(!context->enqueueReadback(), "Asynchronous readback exceeded its two-slot bound");
+	check(context->collectReadback(first, true), 1.f);
+	bool rejected = false;
+	try { context->collectReadback(first); }
+	catch (const std::logic_error &) { rejected = true; }
+	require(rejected, "Consumed asynchronous readback remained valid");
+	first.reset();
+	write(100.f);
+	auto third = context->enqueueReadback();
+	require(bool(third), "Collected asynchronous readback slot could not be reused");
+	auto pixels = context->collectReadback(second);
+	if (pixels.empty()) pixels = context->collectReadback(second, true);
+	check(pixels, 10.f);
+	third.reset();
+	require(context->getDevice()->waitForIdle(), "Graphics device lost while completing readback");
+	write(1000.f);
+	auto reused = context->enqueueReadback();
+	require(bool(reused), "Dropped asynchronous readback slot could not be reused");
+	check(context->collectReadback(reused, true), 1000.f);
+	check(pixels, 10.f);
+	second.reset();
+	auto stale = context->enqueueReadback();
+	require(bool(stale), "Could not queue asynchronous readback before resize");
+	size = Vector2i(3, 2);
+	context->resize(size);
+	rejected = false;
+	try { context->isReadbackReady(stale); }
+	catch (const std::invalid_argument &) { rejected = true; }
+	require(rejected, "Resize retained an asynchronous readback from the old target");
+	write(2.f);
+	auto resized = context->enqueueReadback();
+	require(bool(resized), "Resized asynchronous readback could not be queued");
+	check(context->collectReadback(resized, true), 2.f);
+}
+
 void checkBuffer(RenderContext *context) {
 	auto *device = context->getDevice();
 	nvrhi::BufferDesc desc;
@@ -205,6 +270,7 @@ int main(int argc, char **argv) {
 
 		for (const Vector2i size : {Vector2i(3, 2), Vector2i(7, 5), Vector2i(3, 2)})
 			checkReadback(device.getRenderContext(), size);
+		checkAsyncReadback(device.getRenderContext());
 		device.getRenderContext()->getRenderTarget()->setDepthEnabled(true);
 		checkReadback(device.getRenderContext(), Vector2i(3, 2));
 		checkBuffer(device.getRenderContext());

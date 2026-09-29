@@ -30,6 +30,14 @@
 		return bsdf.pdf(wo, wi, mode);                                                             \
 	}                                                                                              \
                                                                                                    \
+	KRR_CALLABLE static BSDFEval evalInternal(const SurfaceInteraction &intr, Vector3f wo,        \
+										   Vector3f wi,                                            \
+										   TransportMode mode = TransportMode::Radiance) {         \
+		bsdf_name bsdf;                                                                            \
+		bsdf.setup(intr);                                                                          \
+		return bsdf.eval(wo, wi, mode);                                                            \
+	}                                                                                              \
+                                                                                                   \
 	KRR_CALLABLE static BSDFType flagsInternal(const SurfaceInteraction &intr) {                   \
 		bsdf_name bsdf;                                                                            \
 		bsdf.setup(intr);                                                                          \
@@ -68,6 +76,12 @@ enum class TransportMode {
 
 KRR_ENUM_OPERATORS(BSDFType)
 
+// Like f(), the evaluated BSDF excludes the cosine foreshortening factor.
+struct BSDFEval {
+	Spectrum f{};
+	float pdf{0};
+};
+
 struct BSDFSample {
 	Spectrum f{};
 	Vector3f wi;
@@ -78,7 +92,7 @@ struct BSDFSample {
 	KRR_CALLABLE BSDFSample(Spectrum f, Vector3f wi, float pdf, BSDFType flags)
 		: f(f), wi(wi), pdf(pdf), flags(flags) {}
 
-	KRR_CALLABLE bool isDelta() const { return flags & BSDF_SPECULAR; }
+	KRR_CALLABLE bool isDelta() const { return flags & BSDF_DELTA; }
 	KRR_CALLABLE bool isDiffuse() const { return flags & BSDF_DIFFUSE; }
 	KRR_CALLABLE bool isGlossy() const { return flags & BSDF_GLOSSY; }
 	KRR_CALLABLE bool isReflective() const { return flags & BSDF_REFLECTION; }

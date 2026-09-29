@@ -22,6 +22,7 @@ public:
 	AccumulatePass() = default;
 	~AccumulatePass() override;
 	void finalize() override;
+	void reset() override;
 
 	void renderUI() override;
 	void resize(const Vector2i &size) override;
@@ -31,7 +32,6 @@ public:
 	void saveImage(fs::path path);
 
 private:
-	void reset();
 	size_t getPixelSize() const;
 
 	friend void to_json(json &j, const AccumulatePass &p) {

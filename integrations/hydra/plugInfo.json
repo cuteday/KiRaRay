@@ -1,0 +1,14 @@
+{
+    "Plugins": [{
+        "Info": {"Types": {"HdKiRaRayRendererPlugin": {
+            "bases": ["HdRendererPlugin"],
+            "displayName": "KiRaRay",
+            "priority": 0
+        }}},
+        "LibraryPath": "hdKiRaRay.dll",
+        "Name": "hdKiRaRay",
+        "ResourcePath": ".",
+        "Root": ".",
+        "Type": "library"
+    }]
+}

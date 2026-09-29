@@ -6,8 +6,19 @@ NAMESPACE_BEGIN(krr)
 class ConductorBsdf {
 public:
 	ConductorBsdf() = default;
+	KRR_CALLABLE ConductorBsdf(Spectrum color, float alphaX, float alphaY) {
+		reflectance = color.cwiseMax(0.f).cwiseMin(.9999f);
+		eta = Spectrum(1);
+		k = 2 * reflectance.sqrt() / (Spectrum::Ones() - reflectance).sqrt();
+		distribution = GGXMicrofacetDistribution(alphaX, alphaY);
+	}
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(ConductorBsdf);
+
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi,
+							 TransportMode mode = TransportMode::Radiance) const {
+		return {f(wo, wi, mode), pdf(wo, wi, mode)};
+	}
 
 	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
 		Spectra eta_spec = intr.material->mMaterialParams.spectralEta, k_spec;

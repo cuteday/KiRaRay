@@ -14,6 +14,8 @@
 #include "graphics/ui.h"
 #include "logger.h"
 #include "util/image.h"
+#include "util/exr.h"
+#include "device/buffer.h"
 
 NAMESPACE_BEGIN(krr)
 
@@ -30,6 +32,7 @@ bool Image::loadImage(const fs::path &filepath, bool flip, bool srgb) {
 	string filename = File::resolve(filepath).string();
 	string format	= filepath.extension().string();
 	uchar *data		= nullptr;
+	bool pfmData = false;
 	
 	if (filename.find("$") != string::npos) {
 		/* special built-in textures */
@@ -38,17 +41,12 @@ bool Image::loadImage(const fs::path &filepath, bool flip, bool srgb) {
 	}
 
 	stbi_set_flip_vertically_on_load(flip);
+	struct ResetFlip { ~ResetFlip() { stbi_set_flip_vertically_on_load(false); } } resetFlip;
 	if (IsEXR(filename.c_str()) == TINYEXR_SUCCESS) {
-		char *errMsg = nullptr;
-		// to do: if loadEXR always return RGBA data?
-		// int res = LoadEXR((float**)&data, &size[0], &size[1], filename.c_str(), (const
-		// char**)&errMsg);
-		int res = tinyexr::load_exr((float **) &data, &size[0], &size[1], filename.c_str(), flip);
-
-		if (res != TINYEXR_SUCCESS) {
-			logError("Failed to load EXR image at " + filename);
-			if (errMsg)
-				logError(errMsg);
+		try {
+			exr::load(filename.c_str(), (float **) &data, &size[0], &size[1], flip);
+		} catch (const std::exception &error) {
+			logError("Failed to load EXR image at " + filename + ": " + error.what());
 			return false;
 		}
 		mFormat = Format::RGBAfloat;
@@ -62,6 +60,7 @@ bool Image::loadImage(const fs::path &filepath, bool flip, bool srgb) {
 		mFormat = Format::RGBAfloat;
 	} else if (format == ".pfm") {
 		data = (uchar *) pfm::ReadImagePFM(filename, &size[0], &size[1]);
+		pfmData = true;
 		if (data == nullptr) {
 			logError("Failed to load PFM image at " + filename);
 			return false;
@@ -75,12 +74,15 @@ bool Image::loadImage(const fs::path &filepath, bool flip, bool srgb) {
 		}
 		mFormat = Format::RGBAuchar;
 	}
-	stbi_set_flip_vertically_on_load(false);
 	int elementSize = getElementSize();
 	mSrgb			= srgb;
+	std::unique_ptr<uchar, void (*)(uchar *)> source(data, pfmData ?
+		+[](uchar *p) { delete[] reinterpret_cast<RGBA *>(p); } : +[](uchar *p) { free(p); });
+	auto owned = std::make_unique<uchar[]>(size_t(size[0]) * size[1] * 4 * elementSize);
+	memcpy(owned.get(), data, size_t(size[0]) * size[1] * 4 * elementSize);
 	if (mData)
 		delete[] mData;
-	mData = data;
+	mData = owned.release();
 	mSize = size;
 	logDebug("Loaded image " + to_string(size[0]) + "*" + to_string(size[1]));
 	return true;
@@ -141,6 +143,41 @@ Texture::Texture(const string &filepath, bool flip, bool srgb) : mFilename(filep
 
 Material::Material(const string &name) : mName(name) {}
 
+namespace {
+MaterialType authoredMaterialType(MaterialModel model) {
+	if (model == MaterialModel::PreviewSurface) return MaterialType::PreviewSurface;
+	if (model == MaterialModel::OpenPBR || model == MaterialModel::Error) return MaterialType::OpenPBR;
+	return MaterialType::Composite;
+}
+}
+
+void Material::setDescription(std::shared_ptr<MaterialDescription> description) {
+	if (description) {
+		auto compiled = compileMaterial(*description);
+		mHasProgramEmission = compiled.hasEmission;
+		mBsdfType = authoredMaterialType(compiled.model);
+	} else {
+		mHasProgramEmission = false;
+		if (mDescription) mBsdfType = MaterialType::Disney;
+	}
+	mDescription = std::move(description);
+	if (getNode()) setUpdated();
+	else mUpdated = true;
+}
+
+void Material::updateFrom(const Material &material) {
+	mMaterialParams = material.mMaterialParams;
+	for (int index = 0; index < int(TextureType::Count); ++index) mTextures[index] = material.mTextures[index];
+	mBsdfType = material.mBsdfType;
+	mShadingModel = material.mShadingModel;
+	mColorSpace = material.mColorSpace;
+	mName = material.mName;
+	mDescription = material.mDescription;
+	mHasProgramEmission = material.mHasProgramEmission;
+	if (getNode()) setUpdated();
+	else mUpdated = true;
+}
+
 void Material::setTexture(TextureType type, Texture::SharedPtr texture) { 
 	mTextures[(uint) type] = texture; 
 }
@@ -151,7 +188,7 @@ void Material::setConstantTexture(TextureType type, const RGBA color) {
 }
 
 bool Material::hasEmission() {
-	return hasTexture(TextureType::Emissive);
+	return mDescription ? mHasProgramEmission : hasTexture(TextureType::Emissive);
 }
 
 bool Material::hasTexture(TextureType type) {
@@ -175,13 +212,17 @@ bool Material::determineSrgb(string filename, TextureType type) {
 }
 
 void Material::renderUI() {
+	if (mDescription) {
+		ui::Text(materialModelName(mDescription->model));
+		return;
+	}
 	static const char *shadingModels[] = {"MetallicRoughness", "SpecularGlossiness"};
 	static const char *textureTypes[]  = {"Diffuse", "Specular", "Emissive", "Normal",
 										  "Transmission"};
-	static const char *bsdfTypes[]	   = {"Null", "Diffuse", "Dielectric", "Conductor", "Disney"};
+	static const char *bsdfTypes[]	   = {"Null", "Diffuse", "Dielectric", "Conductor", "Disney", "OpenPBR", "Preview Surface"};
 	bool updated					   = false;
 	updated |= ui::ListBox("Shading model", (int *) &mShadingModel, shadingModels, 2);
-	updated |= ui::ListBox("BSDF", (int *) &mBsdfType, bsdfTypes, (int) MaterialType::Count);
+	updated |= ui::ListBox("BSDF", (int *) &mBsdfType, bsdfTypes, (int) MaterialType::Disney + 1);
 	updated |= ui::DragFloat4("Diffuse", (float *) &mMaterialParams.diffuse, 1e-3, 0, 1);
 	updated |= ui::DragFloat4("Specular", (float *) &mMaterialParams.specular, 1e-3, 0, 1);
 	updated |= ui::DragFloat("Transmission", &mMaterialParams.specularTransmission, 1e-3, 0, 1);
@@ -200,13 +241,15 @@ void TextureData::release() noexcept {
 	mCudaTexture = 0;
 	mCudaArray = nullptr;
 	mValid = false;
+	mSize = {0, 0};
 }
 
-void TextureData::initializeFromHost(Texture::SharedPtr texture) {
+void TextureData::initializeFromHost(Texture::SharedPtr texture, const MaterialTexture *sampling) {
 	mValid = texture.get() != nullptr;
 	if (!texture) return;
 
 	mValue = texture->getConstant();
+	mFilter = sampling ? sampling->filter : MaterialFilter::Linear;
 
 	if (!texture->getImage() || !texture->getImage()->isValid()) return;
 	auto image = texture->getImage();
@@ -214,6 +257,7 @@ void TextureData::initializeFromHost(Texture::SharedPtr texture) {
 	// we transfer our texture data to a cuda array, then make the array a cuda
 	// texture object.
 	Vector2i size	   = image->getSize();
+	mSize = size;
 	uint numComponents = image->getChannels();
 	if (numComponents != 4)
 		logError("Incorrect texture image channels (not 4)");
@@ -232,8 +276,20 @@ void TextureData::initializeFromHost(Texture::SharedPtr texture) {
 
 	// create internal cuda array for texture object
 	CUDA_CHECK(cudaMallocArray(&mCudaArray, &channelDesc, size[0], size[1]));
+	std::vector<RGBA> linearPixels;
+	const void *pixels = image->data();
+	bool decodeFloatSrgb = sampling && textureFormat == Image::Format::RGBAfloat && image->isSrgb();
+	if (decodeFloatSrgb) {
+		const auto *source = reinterpret_cast<const RGBA *>(image->data());
+		linearPixels.assign(source, source + size_t(size[0]) * size[1]);
+		for (RGBA &pixel : linearPixels) for (int channel = 0; channel < 3; ++channel) {
+			float value = pixel[channel];
+			pixel[channel] = value <= .04045f ? value / 12.92f : powf((value + .055f) / 1.055f, 2.4f);
+		}
+		pixels = linearPixels.data();
+	}
 	// transfer data to cuda array
-	CUDA_CHECK(cudaMemcpy2DToArray(mCudaArray, 0, 0, (void*)image->data(), pitch,
+	CUDA_CHECK(cudaMemcpy2DToArray(mCudaArray, 0, 0, pixels, pitch,
 								   pitch, size[1], cudaMemcpyHostToDevice));
 
 	cudaResourceDesc resDesc = {};
@@ -253,21 +309,144 @@ void TextureData::initializeFromHost(Texture::SharedPtr texture) {
 	texDesc.minMipmapLevelClamp		  = 0;
 	texDesc.mipmapFilterMode		  = cudaFilterModePoint;
 	*(Vector4f *) texDesc.borderColor = Vector4f(1.0f);
-	texDesc.sRGB					  = (int) image->isSrgb();
+	texDesc.sRGB					  = image->isSrgb() && !decodeFloatSrgb;
+	if (sampling) {
+		auto address = [](MaterialWrap wrap) {
+			switch (wrap) {
+				case MaterialWrap::Clamp: return cudaAddressModeClamp;
+				case MaterialWrap::Mirror: return cudaAddressModeMirror;
+				case MaterialWrap::Border: return cudaAddressModeBorder;
+				default: return cudaAddressModeWrap;
+			}
+		};
+		texDesc.addressMode[0] = address(sampling->wrapU);
+		texDesc.addressMode[1] = address(sampling->wrapV);
+		texDesc.filterMode = sampling->filter == MaterialFilter::Linear ? cudaFilterModeLinear : cudaFilterModePoint;
+		for (int index = 0; index < 4; ++index) texDesc.borderColor[index] = sampling->fallback[index];
+	}
 
 	CUDA_CHECK(cudaCreateTextureObject(&mCudaTexture, &resDesc, &texDesc, nullptr));
+}
+
+class MaterialTextureStorage {
+public:
+	~MaterialTextureStorage() {
+		for (auto &texture : textures) texture.release();
+	}
+
+	TextureData add(const MaterialTexture &binding) {
+		for (size_t index = 0; index < bindings.size(); ++index) {
+			const auto &other = bindings[index];
+			bool same = binding.texture == other.texture && binding.wrapU == other.wrapU &&
+				binding.wrapV == other.wrapV && binding.filter == other.filter;
+			for (int channel = 0; channel < 4; ++channel)
+				same &= binding.fallback[channel] == other.fallback[channel];
+			if (same) return textures[index];
+		}
+		if (!binding.texture->hasImage()) throw std::invalid_argument("Material image failed to load");
+		bindings.push_back(binding);
+		textures.emplace_back();
+		textures.back().initializeFromHost(binding.texture, &binding);
+		return textures.back();
+	}
+
+private:
+	std::vector<MaterialTexture> bindings;
+	std::vector<TextureData> textures;
+};
+
+class MaterialProgramStorage {
+public:
+	~MaterialProgramStorage() {
+		clear(components);
+		componentStorage.clear();
+		clear(surface); clear(opacity); clear(emission); clear(classification); clear(weight);
+		clear(uniforms); clear(textures); clear(simple);
+	}
+
+	MaterialProgramData initialize(const CompiledMaterial &compiled,
+		std::shared_ptr<MaterialTextureStorage> sharedTextures = {}) {
+		textureStorage = sharedTextures ? std::move(sharedTextures) : std::make_shared<MaterialTextureStorage>();
+		MaterialProgramData program;
+		program.enabled = true;
+		program.model = compiled.model;
+		program.kind = compiled.kind;
+		program.defaults = compiled.defaults;
+		program.authoredMask = compiled.authoredMask;
+		std::vector<TextureData> hostTextures;
+		for (const auto &texture : compiled.textures) hostTextures.push_back(textureStorage->add(texture));
+		textures.alloc_and_copy_from_host(hostTextures);
+		surface.alloc_and_copy_from_host(compiled.surface);
+		opacity.alloc_and_copy_from_host(compiled.opacity);
+		emission.alloc_and_copy_from_host(compiled.emission);
+		classification.alloc_and_copy_from_host(compiled.classification);
+		weight.alloc_and_copy_from_host(compiled.weight);
+		uniforms.alloc_and_copy_from_host(compiled.uniforms);
+		simple.alloc_and_copy_from_host(compiled.simple);
+		program.surface = {surface.data(), uint32_t(surface.size())};
+		program.opacity = {opacity.data(), uint32_t(opacity.size())};
+		program.emission = {emission.data(), uint32_t(emission.size())};
+		program.classification = {classification.data(), uint32_t(classification.size())};
+		program.weight = {weight.data(), uint32_t(weight.size())};
+		program.uniforms = uniforms.data();
+		program.textures = textures.data();
+		program.simple = simple.data();
+		program.simpleCount = uint32_t(simple.size());
+		std::vector<MaterialProgramData> hostComponents;
+		for (const auto &component : compiled.components) {
+			auto storage = std::make_unique<MaterialProgramStorage>();
+			hostComponents.push_back(storage->initialize(component, textureStorage));
+			componentStorage.push_back(std::move(storage));
+		}
+		components.alloc_and_copy_from_host(hostComponents);
+		program.components = components.data();
+		program.componentCount = uint32_t(components.size());
+		return program;
+	}
+
+private:
+	template <typename T> static void clear(TypedBuffer<T> &buffer) noexcept {
+		try { buffer.clear(); } catch (...) {}
+	}
+	std::shared_ptr<MaterialTextureStorage> textureStorage;
+	std::vector<std::unique_ptr<MaterialProgramStorage>> componentStorage;
+	TypedBuffer<MaterialProgramData> components;
+	TypedBuffer<MaterialInstruction> surface, opacity, emission, classification, weight;
+	TypedBuffer<MaterialValue> uniforms;
+	TypedBuffer<TextureData> textures;
+	TypedBuffer<MaterialSimpleBinding> simple;
+};
+
+void MaterialData::releaseProgram() noexcept {
+	delete mProgramStorage;
+	mProgramStorage = nullptr;
+	mProgram = {};
 }
 
 void MaterialData::getObjectData(SceneGraphLeaf::SharedPtr object, Blob::SharedPtr data, 
 	bool initialize) const {
 	auto material = std::dynamic_pointer_cast<Material>(object);
 	auto gdata = reinterpret_cast<MaterialData *>(data->data());
-	if (initialize) {
-		for (size_t tex_idx = 0; tex_idx < (size_t) Material::TextureType::Count; tex_idx++) 
-			gdata->mTextures[tex_idx].initializeFromHost(material->mTextures[tex_idx]);
-		
+	if (!material->mDescription && material->mBsdfType >= MaterialType::OpenPBR)
+		throw std::invalid_argument("Material '" + material->getName() + "' requires an authored material description");
+	if (!initialize) CUDA_CHECK(cudaDeviceSynchronize());
+	for (size_t tex_idx = 0; tex_idx < (size_t) Material::TextureType::Count; tex_idx++) {
+		if (!initialize) gdata->mTextures[tex_idx].release();
+		gdata->mTextures[tex_idx].initializeFromHost(material->mTextures[tex_idx]);
 	}
-	gdata->mBsdfType	   = material->mBsdfType;
+	if (material->mDescription) {
+		auto compiled = compileMaterial(*material->mDescription);
+		auto storage = std::make_unique<MaterialProgramStorage>();
+		auto program = storage->initialize(compiled);
+		if (!initialize) CUDA_CHECK(cudaDeviceSynchronize());
+		gdata->releaseProgram();
+		gdata->mProgram = program;
+		gdata->mProgramStorage = storage.release();
+	} else if (gdata->mProgramStorage) {
+		if (!initialize) CUDA_CHECK(cudaDeviceSynchronize());
+		gdata->releaseProgram();
+	}
+	gdata->mBsdfType = material->mDescription ? authoredMaterialType(gdata->mProgram.model) : material->mBsdfType;
 	gdata->mMaterialParams = material->mMaterialParams;
 	gdata->mShadingModel   = material->mShadingModel;
 	gdata->mColorSpace	   = material->getColorSpace();
