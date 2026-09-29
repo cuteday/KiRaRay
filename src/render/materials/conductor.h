@@ -6,6 +6,12 @@ NAMESPACE_BEGIN(krr)
 class ConductorBsdf {
 public:
 	ConductorBsdf() = default;
+	KRR_CALLABLE ConductorBsdf(Spectrum color, float alphaX, float alphaY) {
+		reflectance = color.cwiseMax(0.f).cwiseMin(.9999f);
+		eta = Spectrum(1);
+		k = 2 * reflectance.sqrt() / (Spectrum::Ones() - reflectance).sqrt();
+		distribution = GGXMicrofacetDistribution(alphaX, alphaY);
+	}
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(ConductorBsdf);
 

@@ -103,7 +103,10 @@ class KiRaRayEngine(bpy.types.HydraRenderEngine):
     def _prepare(self, depsgraph):
         _validate_color_space()
         self._scene = depsgraph.scene
-        _, self._invalid, messages = _diagnostics(depsgraph)
+        reports, self._invalid, messages = _diagnostics(depsgraph)
+        self._opaque_mix_branches = {
+            f"/scene/M_{pointer:016X}": report.opaque_mix_branch
+            for pointer, report in reports.items() if report.supported and report.opaque_mix_branch}
         messages.extend(_scene_warnings(depsgraph))
         previous = _warnings.get(self._scene.name_full, [])
         if messages != previous:
@@ -135,6 +138,7 @@ class KiRaRayEngine(bpy.types.HydraRenderEngine):
             "krr:blenderScene": True,
             "krr:emissionLuminanceScale": 1000.0,
             "krr:diagnostics": json.dumps(getattr(self, "_invalid", {})),
+            "krr:opaqueMixBranches": json.dumps(getattr(self, "_opaque_mix_branches", {})),
             "krr:statusPath": getattr(self, "_status_path", ""),
             "aovToken:Combined": "color",
             "aovToken:Depth": "linearDepth",
@@ -337,6 +341,8 @@ class KiRaRayExportUSD(bpy.types.Operator, ExportHelper):
                 details.append("Exported material could not be matched to a validated Blender material")
             if details:
                 prim.SetCustomDataByKey("kiraray:diagnostics", Vt.StringArray(details))
+            elif candidates[0].opaque_mix_branch:
+                prim.SetCustomDataByKey("kiraray:opaqueMixBranch", candidates[0].opaque_mix_branch)
         data = dict(stage.GetRootLayer().customLayerData)
         data["kiraray:producer"] = "Blender " + bpy.app.version_string
         stage.GetRootLayer().customLayerData = data

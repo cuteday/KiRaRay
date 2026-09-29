@@ -10,6 +10,7 @@
 #include "materials/conductor.h"
 #include "materials/dielectric.h"
 #include "materials/openpbr.h"
+#include "materials/composite.h"
 
 NAMESPACE_BEGIN(krr)
 
@@ -141,8 +142,8 @@ public:
 using LegacyBSDF = BasicBSDF<NullBsdf, DiffuseBrdf, DielectricBsdf, ConductorBsdf, DisneyBsdf>;
 using LegacyBxDF = BasicBxDF<NullBsdf, DiffuseBrdf, DielectricBsdf, ConductorBsdf, DisneyBsdf>;
 using BSDF = BasicBSDF<NullBsdf, DiffuseBrdf, DielectricBsdf, ConductorBsdf, DisneyBsdf,
-	OpenPbrBsdf, PreviewSurfaceBsdf>;
+	OpenPbrBsdf, PreviewSurfaceBsdf, CompositeBsdf>;
 using BxDF = BasicBxDF<NullBsdf, DiffuseBrdf, DielectricBsdf, ConductorBsdf, DisneyBsdf,
-	OpenPbrBsdf, PreviewSurfaceBsdf>;
+	OpenPbrBsdf, PreviewSurfaceBsdf, CompositeBsdf>;
 
 NAMESPACE_END(krr)

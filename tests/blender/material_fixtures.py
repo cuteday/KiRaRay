@@ -164,6 +164,80 @@ def expression_materials(image):
     return result
 
 
+def surface_materials(image):
+    result = []
+
+    def create(name):
+        material, principled = new_material("Leaf" + name)
+        material.node_tree.nodes.remove(principled)
+        result.append(material)
+        return material, material.node_tree
+
+    def shader(tree, kind, color=(0.7, 0.4, 0.2, 1)):
+        node = tree.nodes.new("ShaderNode" + kind)
+        node.inputs["Color"].default_value = color
+        if "Roughness" in node.inputs:
+            node.inputs["Roughness"].default_value = 0.2
+        if hasattr(node, "distribution"):
+            node.distribution = "GGX"
+        if "Strength" in node.inputs:
+            node.inputs["Strength"].default_value = 2
+        return node
+
+    def output(tree, node):
+        tree.links.new(node.outputs[0], tree.nodes["Material Output"].inputs["Surface"])
+
+    for name, kind in (("Diffuse", "BsdfDiffuse"), ("RoughDiffuse", "BsdfDiffuse"),
+                       ("Glossy", "BsdfAnisotropic"), ("Glass", "BsdfGlass"),
+                       ("IndexMatchedGlass", "BsdfGlass"), ("Emission", "Emission")):
+        _, tree = create(name)
+        node = shader(tree, kind)
+        if name in {"Diffuse", "Glass", "IndexMatchedGlass"}:
+            node.inputs["Roughness"].default_value = 0
+        if name == "IndexMatchedGlass":
+            node.inputs["IOR"].default_value = 1
+        output(tree, node)
+    for name, kind, second in (("Mix", "MixShader", "BsdfAnisotropic"),
+                               ("Add", "AddShader", "BsdfAnisotropic"),
+                               ("AddEmission", "AddShader", "Emission"),
+                               ("MixEmission", "MixShader", "Emission")):
+        _, tree = create(name)
+        first = shader(tree, "BsdfDiffuse")
+        second = shader(tree, second, (0.2, 0.5, 0.8, 1))
+        combine = tree.nodes.new("ShaderNode" + kind)
+        tree.links.new(first.outputs[0], combine.inputs[-2])
+        tree.links.new(second.outputs[0], combine.inputs[-1])
+        if kind == "MixShader":
+            combine.inputs[0].default_value = 0.35
+        output(tree, combine)
+    for name, opaque_kind, reverse in (("TransparentDiffuse", "BsdfDiffuse", False),
+                                       ("TransparentReverse", "BsdfDiffuse", True),
+                                       ("TransparentDiffuseEmission", "BsdfDiffuse", False),
+                                       ("TransparentEmission", "Emission", False)):
+        _, tree = create(name)
+        transparent = shader(tree, "BsdfTransparent", (1, 1, 1, 1))
+        opaque = shader(tree, opaque_kind)
+        if name == "TransparentDiffuseEmission":
+            emission = shader(tree, "Emission")
+            added = tree.nodes.new("ShaderNodeAddShader")
+            tree.links.new(opaque.outputs[0], added.inputs[0])
+            tree.links.new(emission.outputs[0], added.inputs[1])
+            opaque = added
+        mix = tree.nodes.new("ShaderNodeMixShader")
+        mix.inputs[0].default_value = 0.3
+        tree.links.new(transparent.outputs[0], mix.inputs[2 if reverse else 1])
+        tree.links.new(opaque.outputs[0], mix.inputs[1 if reverse else 2])
+        if name == "TransparentReverse":
+            tree.links.new(texture(tree, image).outputs["Alpha"], mix.inputs[0])
+        output(tree, mix)
+    material, bsdf = new_material("LeafCubicPrincipled")
+    image_node = texture(material.node_tree, image)
+    image_node.interpolation = "Cubic"
+    material.node_tree.links.new(image_node.outputs["Color"], bsdf.inputs["Base Color"])
+    result.append(material)
+    return result
+
+
 def unsupported_materials():
     result = []
     for name, node_type, output_name, destination, settings in (
@@ -196,6 +270,8 @@ def unsupported_materials():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--surface-only", action="store_true",
+                        help="Export the native leaf BSDF and shader combination fixtures")
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
     if bpy.app.version != (5, 2, 2):
         raise RuntimeError("These producer fixtures require Blender 5.2.2")
@@ -205,8 +281,9 @@ def main():
     bpy.ops.object.delete(use_global=False)
     color = make_image(directory, "color", (0.2, 0.4, 0.8, 1), "sRGB")
     normal = make_image(directory, "normal", (0.5, 0.5, 1, 1), "Non-Color")
-    supported = [supported_material(color, normal), grouped_material(), *expression_materials(color)]
-    unsupported = unsupported_materials()
+    supported = surface_materials(color) if args.surface_only else [
+        supported_material(color, normal), grouped_material(), *expression_materials(color)]
+    unsupported = [] if args.surface_only else unsupported_materials()
     materials = supported + unsupported
     for index, material in enumerate(materials):
         bpy.ops.mesh.primitive_plane_add(location=(index * 3, 0, 0))
@@ -225,13 +302,26 @@ def main():
             raise AssertionError("Direct and depsgraph preflight disagree")
     report_json = {"blender": bpy.app.version_string, "materials": [report.to_dict() for report in reports.values()]}
     (directory / "preflight.json").write_text(json.dumps(report_json, indent=2) + "\n", encoding="utf-8")
-    result = bpy.ops.wm.usd_export(filepath=str(directory / "materials.usda"), check_existing=False,
+    filename = "surfaces.usda" if args.surface_only else "materials.usda"
+    result = bpy.ops.wm.usd_export(filepath=str(directory / filename), check_existing=False,
                                    generate_materialx_network=True, generate_preview_surface=False,
                                    export_animation=False, export_materials=True,
                                    export_lights=False, export_cameras=False, relative_paths=True)
     if result != {"FINISHED"}:
         raise RuntimeError("USD fixture export failed: " + repr(result))
-    usd = (directory / "materials.usda").read_text(encoding="utf-8")
+    if args.surface_only:
+        bpy.utils.expose_bundled_modules()
+        from pxr import Usd, UsdShade
+        stage = Usd.Stage.Open(str(directory / filename))
+        by_name = {report.name: report for report in reports.values()}
+        for prim in stage.Traverse():
+            if prim.IsA(UsdShade.Material):
+                report = by_name[prim.GetName()]
+                prim.SetCustomDataByKey("kiraray:emissionLuminanceScale", 1000.0)
+                if report.opaque_mix_branch:
+                    prim.SetCustomDataByKey("kiraray:opaqueMixBranch", report.opaque_mix_branch)
+        stage.GetRootLayer().Save()
+    usd = (directory / filename).read_text(encoding="utf-8")
     if "ND_open_pbr_surface_surfaceshader" not in usd:
         raise AssertionError("Blender did not emit the expected OpenPBR MaterialX network")
     print("Blender producer fixtures passed: {} supported, {} rejected; {}".format(

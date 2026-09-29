@@ -29,6 +29,7 @@ enum class MaterialType : uint32_t{
 	Disney,
 	OpenPBR,
 	PreviewSurface,
+	Composite,
 	Count
 };
 
@@ -39,7 +40,8 @@ KRR_ENUM_DEFINE(MaterialType, {
 	{MaterialType::Dielectric, "dielectric"},
 	{MaterialType::Disney, "disney"},
 	{MaterialType::OpenPBR, "openpbr"},
-	{MaterialType::PreviewSurface, "preview_surface"}
+	{MaterialType::PreviewSurface, "preview_surface"},
+	{MaterialType::Composite, "composite"}
 })
 
 class Ray {

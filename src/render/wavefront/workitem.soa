@@ -58,6 +58,7 @@ struct BSDFData {
 	float metallic;
 	float anisotropic;
 	MaterialType bsdfType;
+	BSDFType authoredFlags;
 };
 
 struct SurfaceInteraction {

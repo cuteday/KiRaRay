@@ -8,8 +8,24 @@ NAMESPACE_BEGIN(krr)
 enum class MaterialModel : uint8_t {
 	OpenPBR,
 	PreviewSurface,
-	Error
+	Error,
+	Diffuse,
+	Conductor,
+	Dielectric,
+	Composite
 };
+
+inline const char *materialModelName(MaterialModel model) {
+	switch (model) {
+		case MaterialModel::OpenPBR: return "OpenPBR";
+		case MaterialModel::PreviewSurface: return "USD Preview Surface";
+		case MaterialModel::Diffuse: return "Diffuse";
+		case MaterialModel::Conductor: return "Conductor";
+		case MaterialModel::Dielectric: return "Dielectric";
+		case MaterialModel::Composite: return "Composite";
+		default: return "Diagnostic";
+	}
+}
 
 KRR_CALLABLE float materialEmissionIntensity(float luminance, MaterialModel model) {
 	// One renderer radiance unit corresponds to 1000 nits.
@@ -87,12 +103,24 @@ enum class MaterialParameter : uint8_t {
 	ThinWalled,
 	EmissionColor,
 	EmissionLuminance,
+	Weight,
 	Count
 };
 
 constexpr int MaterialParameterCount = int(MaterialParameter::Count);
 constexpr int MaterialRegisterLimit	 = 32;
 constexpr int MaterialNodeLimit		 = 256;
+constexpr int MaterialComponentLimit = 8;
+static_assert(MaterialParameterCount <= 32, "Material parameter mask is too small");
+
+KRR_CALLABLE bool materialClassificationParameter(MaterialModel model, MaterialParameter parameter) {
+	if (parameter == MaterialParameter::Metalness || parameter == MaterialParameter::TransmissionWeight ||
+		parameter == MaterialParameter::Weight) return true;
+	bool nativeLeaf = model == MaterialModel::Diffuse || model == MaterialModel::Conductor ||
+		model == MaterialModel::Dielectric;
+	return nativeLeaf && (parameter == MaterialParameter::SpecularRoughness ||
+		parameter == MaterialParameter::SpecularIor || parameter == MaterialParameter::SpecularAnisotropy);
+}
 
 struct MaterialValue {
 	float data[4]{};
@@ -102,6 +130,12 @@ struct MaterialValue {
 	KRR_CALLABLE float &operator[](int index) { return data[index]; }
 	KRR_CALLABLE float operator[](int index) const { return data[index]; }
 };
+
+KRR_CALLABLE MaterialValue materialCubicWeights(float x) {
+	float x2 = x * x, x3 = x2 * x;
+	return {-.5f * x + x2 - .5f * x3, 1 - 2.5f * x2 + 1.5f * x3,
+		.5f * x + 2 * x2 - 1.5f * x3, -.5f * x2 + .5f * x3};
+}
 
 struct MaterialContext {
 	MaterialValue uv;

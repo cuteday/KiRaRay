@@ -67,7 +67,7 @@ endif()
 if(KRR_ENABLE_USD)
 	list(APPEND KRR_SOURCE
 		${KRR_RENDER_ROOT}/integrations/usd/importer.cpp
-		${KRR_RENDER_ROOT}/integrations/usd/material.cpp)
+		${KRR_RENDER_ROOT}/integrations/materials/material.cpp)
 endif()
 
 SET (KRR_SOURCE

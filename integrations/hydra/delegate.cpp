@@ -631,6 +631,10 @@ public:
 				throw std::runtime_error("Emission luminance scale must be positive and finite");
 			mState->scene.emissionLuminanceScale = scale;
 			++mState->scene.materialVersion;
+		} else if (name == "krr:opaqueMixBranches") {
+			mState->scene.opaqueMixBranches =
+				json::parse(data.get<std::string>()).get<decltype(mState->scene.opaqueMixBranches)>();
+			++mState->scene.materialVersion;
 		} else if (name == "krr:diagnostics") {
 			mState->scene.diagnostics =
 				json::parse(data.get<std::string>()).get<decltype(mState->scene.diagnostics)>();

@@ -3,7 +3,7 @@
 #include "settings.h"
 #include "main/renderer.h"
 #include "scene/interop.h"
-#include "integrations/usd/material.h"
+#include "integrations/materials/material.h"
 #include <condition_variable>
 #include <mutex>
 
@@ -21,6 +21,7 @@ struct SceneInput {
 	std::map<std::string, interop::MaterialNetwork> materials;
 	std::map<std::string, interop::LightInput> lights;
 	std::map<std::string, std::vector<std::string>> diagnostics;
+	std::map<std::string, std::string> opaqueMixBranches;
 	double emissionLuminanceScale{1.0};
 	bool blenderScene{};
 	uint64_t geometryVersion{}, transformVersion{}, materialVersion{};

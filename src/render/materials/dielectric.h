@@ -90,7 +90,7 @@ public:
 
 	KRR_CALLABLE DielectricBsdf(Spectrum base, float eta, float alpha_x, float alpha_y) {
 		baseColor	 = base;
-		eta			 = eta;
+		this->eta	 = eta;
 		distribution = GGXMicrofacetDistribution(alpha_x, alpha_y);
 	}
 
@@ -236,7 +236,7 @@ public:
 			return {};
 
 		// Determine Fresnel reflectance of rough dielectric boundary
-		float F	  = FrDielectric(CosTheta(wo), eta);
+		float F	  = FrDielectric(copysignf(dot(wo, wm), wo[2]), eta);
 		Spectrum R = baseColor * F, T = baseColor * (1 - F);
 
 		// Compute probabilities _pr_ and _pt_ for sampling reflection and transmission

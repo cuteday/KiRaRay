@@ -1,6 +1,6 @@
 #include "scene/importer.h"
 #include "scene/interop.h"
-#include "material.h"
+#include "../materials/material.h"
 
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usd/primRange.h>
@@ -248,6 +248,10 @@ private:
 				source.GetPrim().GetCustomDataByKey(TfToken("kiraray:emissionLuminanceScale"));
 			if (!emissionScale.IsEmpty())
 				network.emissionLuminanceScale = value(emissionScale).get<double>();
+			auto opaqueMixBranch =
+				source.GetPrim().GetCustomDataByKey(TfToken("kiraray:opaqueMixBranch"));
+			if (!opaqueMixBranch.IsEmpty())
+				network.opaqueMixBranch = value(opaqueMixBranch).get<std::string>();
 			VtValue diagnostic =
 				source.GetPrim().GetCustomDataByKey(TfToken("kiraray:diagnostics"));
 			if (diagnostic.IsHolding<VtArray<std::string>>())
