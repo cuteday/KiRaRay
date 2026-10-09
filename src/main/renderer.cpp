@@ -165,6 +165,9 @@ void Renderer::renderPasses(bool annotate) {
 		else getRenderContext()->endCuda();
 		pass->render(getRenderContext());
 	}
+}
+
+void Renderer::endRenderPasses() {
 	getRenderContext()->endCuda();
 	for (auto &pass : mRenderPasses) pass->endFrame(getRenderContext());
 }
@@ -218,6 +221,7 @@ HeadlessRenderer::BenchmarkResult HeadlessRenderer::renderBatch(int64_t frames, 
 			for (auto &pass : mRenderPasses) pass->tick(0.f);
 			mScene->update(getFrameIndex(), 0.0);
 			renderPasses(measure);
+			endRenderPasses();
 			mNvrhiDevice->runGarbageCollection();
 		};
 		const json config = mConfig;
@@ -346,10 +350,14 @@ void RenderApp::tick(double elapsedTime) {
 void RenderApp::render() {
 	if (sSaveFrames && getFrameIndex() % sSaveFrameInterval == 0)
 		sRequestScreenshot = true;
-	if (!DeviceManager::beginFrame()) return;
 	
-	mpUIRenderer->beginFrame(getRenderContext());
 	renderPasses();
+	const bool acquired = DeviceManager::beginFrame();
+	endRenderPasses();
+	if (!acquired) {
+		if (Profiler::instance().isEnabled()) Profiler::instance().endFrame();
+		return;
+	}
 
 	if (sRequestScreenshot) {
 		captureFrame(sSaveHDR);
@@ -357,6 +365,7 @@ void RenderApp::render() {
 	}
 
 	// UI render. This is better done after taking screenshot.
+	mpUIRenderer->beginFrame(getRenderContext());
 	renderUI();
 	mpUIRenderer->render(getRenderContext());
 	mpUIRenderer->endFrame(getRenderContext());

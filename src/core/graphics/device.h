@@ -168,6 +168,7 @@ public:
 private:
 	std::unique_ptr<GraphicsBackend> mBackend;
 	bool mFrameAcquired = false;
+	bool mSwapChainOutOfDate = false;
 	std::string mRendererString;
 	std::string mWindowTitle;
 };

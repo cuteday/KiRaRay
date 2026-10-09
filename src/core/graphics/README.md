@@ -34,6 +34,19 @@ images; NVRHI's submission tracking alone does not cover DXGI presentation.
 Vulkan uses FIFO with VSync enabled and prefers Immediate when disabled,
 falling back to Mailbox or FIFO if Immediate is unavailable.
 
+Interactive rendering submits the offscreen passes before acquiring a swapchain
+image, then returns CUDA ownership to graphics and runs the passes' `endFrame`
+callbacks. An out-of-date swapchain skips the blit and is rebuilt at the start
+of the next frame, after the current frame's callbacks have finished.
+
+Vulkan presents the previous image after the next frame's CUDA work is submitted,
+before queuing the graphics wait for that work. This lets CUDA run during a
+blocking presentation call. Presentation uses the existing graphics queue;
+acquisition and presentation stay on one host thread. Per-image presentation
+semaphores and frame-slot event queries protect reuse, while the interop handoff
+protects the shared render target. Pending presentation is flushed before resize
+or destruction. No per-frame device idle wait is added.
+
 ## CUDA sharing
 
 NVRHI creates exportable allocations using `SharedResourceFlags::Shared`.

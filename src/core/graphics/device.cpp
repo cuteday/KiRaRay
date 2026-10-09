@@ -350,7 +350,6 @@ void DeviceManager::tick(double elapsedTime) {
 }
 
 void DeviceManager::render() {
-	if (!beginFrame()) return;
 	for (auto it : mRenderPasses) it->beginFrame(mRenderContext.get());
 	for (auto it : mRenderPasses) {
 		if (!it->enabled()) continue;
@@ -358,9 +357,11 @@ void DeviceManager::render() {
 		else mRenderContext->endCuda();
 		it->render(mRenderContext.get());
 	}
+	const bool acquired = beginFrame();
 	mRenderContext->endCuda();
 	for (auto it : mRenderPasses) it->endFrame(mRenderContext.get());
 
+	if (!acquired) return;
 	mCommandList->open();
 	mHelperPass->BlitTexture(
 		mCommandList, mSwapChainFramebuffers[getCurrentBackBufferIndex()],
@@ -444,7 +445,7 @@ void DeviceManager::updateWindowSize() {
 
 	if (int(mDeviceParams.backBufferWidth) != width ||
 		int(mDeviceParams.backBufferHeight) != height ||
-		(mDeviceParams.vsyncEnabled != mRequestedVSync)) {
+		(mDeviceParams.vsyncEnabled != mRequestedVSync) || mSwapChainOutOfDate) {
 		// window is not minimized, and the size has changed
 
 		mNvrhiDevice->waitForIdle();
@@ -554,25 +555,19 @@ bool DeviceManager::createDeviceAndSwapChain() {
 
 void DeviceManager::destroyDeviceAndSwapChain() {
 	mFrameAcquired = false;
+	mSwapChainOutOfDate = false;
 	mNvrhiDevice = nullptr;
 	mBackend.reset();
 	mRendererString.clear();
 }
 
-void DeviceManager::resizeSwapChain() { mBackend->resizeSwapChain(mDeviceParams); }
+void DeviceManager::resizeSwapChain() {
+	mBackend->resizeSwapChain(mDeviceParams);
+	mSwapChainOutOfDate = false;
+}
 bool DeviceManager::beginFrame() {
 	mFrameAcquired = mBackend->beginFrame();
-	if (mFrameAcquired) return true;
-	int width = 0, height = 0;
-	glfwGetFramebufferSize(mWindow, &width, &height);
-	if (!width || !height) return false;
-	mNvrhiDevice->waitForIdle();
-	backBufferResizing();
-	mDeviceParams.backBufferWidth = width;
-	mDeviceParams.backBufferHeight = height;
-	resizeSwapChain();
-	backBufferResized();
-	mFrameAcquired = mBackend->beginFrame();
+	if (!mFrameAcquired) mSwapChainOutOfDate = true;
 	return mFrameAcquired;
 }
 void DeviceManager::present() {

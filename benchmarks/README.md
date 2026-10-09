@@ -9,6 +9,17 @@ Benchmark configs live in `cases/` and reuse project assets. The initial Cornell
 Future cases can select other integrators and passes through their own configs. Benchmarks
 do not import test runners or alter image regression references.
 
+`cases/cornell_megakernel.json` runs the same scene with the megakernel integrator. For example:
+
+```powershell
+python benchmarks/run.py run --build-dir build/release --config benchmarks/cases/cornell_megakernel.json --frames 512 --warmup 64 --repeats 5
+python benchmarks/run.py profile --build-dir build/release --config benchmarks/cases/cornell_megakernel.json --tool ncu --metrics gpu__time_duration.sum,smsp__thread_inst_executed_per_inst_executed.ratio,smsp__thread_inst_executed_pred_on_per_inst_executed.ratio
+```
+
+Active threads per warp measures instruction-weighted lane utilization, not occupancy.
+OptiX launch counters combine shader and runtime work; source counters can help locate
+divergence within the visible shaders. Judge performance changes using unprofiled timings.
+
 Set `"graphics_api": "d3d12"` in a benchmark config to select D3D12; the default
 is Vulkan. Results record `graphics_api` separately from the profiling `backend`.
 

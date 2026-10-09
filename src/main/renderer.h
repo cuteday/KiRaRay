@@ -33,6 +33,7 @@ protected:
 	static void validateConfig(const json &config);
 	void initializePasses();
 	void renderPasses(bool annotate = false);
+	void endRenderPasses();
 	void clearScene();
 	void backBufferResized() override;
 

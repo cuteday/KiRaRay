@@ -30,6 +30,7 @@ void checkVulkan(VkResult result, const char *operation) {
 class VulkanBackend : public GraphicsBackend {
 public:
 	~VulkanBackend() override {
+		presentPendingImage();
 		if (mDevice) vkDeviceWaitIdle(mDevice);
 		destroySwapChain();
 		mNvrhiDevice = nullptr;
@@ -63,6 +64,7 @@ private:
 	void createInstance(bool debug);
 	void createDevice(nvrhi::IMessageCallback *callback);
 	void destroySwapChain();
+	VkResult presentPendingImage();
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT,
 		const VkDebugUtilsMessengerCallbackDataEXT *data, void *) {
@@ -88,6 +90,8 @@ private:
 	std::vector<bool> mFrameSubmitted;
 	size_t mFrameIndex = 0;
 	uint32_t mImageIndex = 0;
+	uint32_t mPendingImageIndex = 0;
+	bool mPresentPending = false;
 	nvrhi::vulkan::DeviceHandle mNvrhiDevice;
 	std::string mRendererString;
 	std::vector<const char *> mInstanceExtensions;
@@ -314,6 +318,9 @@ void VulkanBackend::destroySwapChain() {
 
 void VulkanBackend::resizeSwapChain(const DeviceCreationParameters &params) {
 	if (!mSurface) return;
+	const VkResult result = presentPendingImage();
+	if (result != VK_SUBOPTIMAL_KHR && result != VK_ERROR_OUT_OF_DATE_KHR)
+		checkVulkan(result, "Present Vulkan swapchain image before resize");
 	checkVulkan(vkDeviceWaitIdle(mDevice), "Wait for Vulkan resize");
 	mNvrhiDevice->runGarbageCollection();
 	destroySwapChain();
@@ -388,8 +395,11 @@ void VulkanBackend::resizeSwapChain(const DeviceCreationParameters &params) {
 
 bool VulkanBackend::beginFrame() {
 	if (!mSwapChain) return true;
+	VkResult result = presentPendingImage();
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) return false;
+	if (result != VK_SUBOPTIMAL_KHR) checkVulkan(result, "Present Vulkan swapchain image");
 	if (mFrameSubmitted[mFrameIndex]) mNvrhiDevice->waitEventQuery(mFrameQueries[mFrameIndex]);
-	VkResult result = vkAcquireNextImageKHR(mDevice, mSwapChain, UINT64_MAX,
+	result = vkAcquireNextImageKHR(mDevice, mSwapChain, UINT64_MAX,
 		mAcquireSemaphores[mFrameIndex], VK_NULL_HANDLE, &mImageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) return false;
 	if (result != VK_SUBOPTIMAL_KHR) checkVulkan(result, "Acquire Vulkan swapchain image");
@@ -399,21 +409,27 @@ bool VulkanBackend::beginFrame() {
 
 void VulkanBackend::present() {
 	if (!mSwapChain) return;
+	if (mPresentPending) throw std::logic_error("A Vulkan presentation is already pending.");
 	mNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, mPresentSemaphores[mImageIndex], 0);
 	mNvrhiDevice->executeCommandLists(nullptr, 0);
 	mNvrhiDevice->resetEventQuery(mFrameQueries[mFrameIndex]);
 	mNvrhiDevice->setEventQuery(mFrameQueries[mFrameIndex], nvrhi::CommandQueue::Graphics);
 	mFrameSubmitted[mFrameIndex] = true;
+	mPendingImageIndex = mImageIndex;
+	mPresentPending = true;
+	mFrameIndex = (mFrameIndex + 1) % mAcquireSemaphores.size();
+}
+
+VkResult VulkanBackend::presentPendingImage() {
+	if (!mPresentPending) return VK_SUCCESS;
 	VkPresentInfoKHR info{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
 	info.waitSemaphoreCount = 1;
-	info.pWaitSemaphores = &mPresentSemaphores[mImageIndex];
+	info.pWaitSemaphores = &mPresentSemaphores[mPendingImageIndex];
 	info.swapchainCount = 1;
 	info.pSwapchains = &mSwapChain;
-	info.pImageIndices = &mImageIndex;
-	const VkResult result = vkQueuePresentKHR(mGraphicsQueue, &info);
-	if (result != VK_SUBOPTIMAL_KHR && result != VK_ERROR_OUT_OF_DATE_KHR)
-		checkVulkan(result, "Present Vulkan swapchain image");
-	mFrameIndex = (mFrameIndex + 1) % mAcquireSemaphores.size();
+	info.pImageIndices = &mPendingImageIndex;
+	mPresentPending = false;
+	return vkQueuePresentKHR(mGraphicsQueue, &info);
 }
 
 } // namespace
