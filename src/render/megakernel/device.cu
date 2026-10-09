@@ -170,10 +170,6 @@ KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() {
 		for (int &depth = path.depth; true; depth++) {
 			bool hit = traceRay(launchParams.traversable, path.ray, M_FLOAT_INF,
 								   RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, (void *) &path);
-#if (OPTIX_VERSION >= 80000) // SER enable	
-			// TODO: use better coherence hints
-			optixReorder(hit, 1);
-#endif
 			if (!hit) {
 				handleMiss(path);
 				break;
@@ -185,6 +181,10 @@ KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() {
 				(launchParams.probRR < 1.f && path.sampler.get1D() > launchParams.probRR))
 				break;
 			path.throughput /= launchParams.probRR;
+#if (OPTIX_VERSION >= 80000)
+			// Regroup surviving paths before shading.
+			optixReorder(static_cast<unsigned int>(path.intr.sd.bsdfType), 3);
+#endif
 			if (launchParams.NEE) evalDirect(path);
 			if (!generateScatterRay(path)) break;
 		}
