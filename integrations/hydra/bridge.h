@@ -22,6 +22,7 @@ struct SceneInput {
 	std::map<std::string, interop::LightInput> lights;
 	std::map<std::string, std::vector<std::string>> diagnostics;
 	std::map<std::string, std::string> opaqueMixBranches;
+	std::map<std::string, std::vector<interop::MaterialDistribution>> distributions;
 	double emissionLuminanceScale{1.0};
 	bool blenderScene{};
 	uint64_t geometryVersion{}, transformVersion{}, materialVersion{};

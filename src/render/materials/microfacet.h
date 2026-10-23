@@ -19,6 +19,7 @@ public:
 	GGXMicrofacetDistribution() = default;
 
 	KRR_CALLABLE bool isDelta() const { return max(alphax, alphay) <= 1e-3f; }
+	KRR_CALLABLE Vector2f alpha() const { return {alphax, alphay}; }
 
 	static KRR_CALLABLE float RoughnessToAlpha(float roughness) {
 		roughness = max(roughness, (float)1e-3f);
@@ -69,6 +70,99 @@ private:
 	float alphax, alphay;
 };
 
+
+class BeckmannMicrofacetDistribution {
+public:
+	KRR_CALLABLE BeckmannMicrofacetDistribution(float alphax, float alphay)
+		: alphax(max(1e-3f, alphax)), alphay(max(1e-3f, alphay)) {}
+
+	KRR_CALLABLE bool isDelta() const { return max(alphax, alphay) <= 1e-3f; }
+
+	KRR_CALLABLE float D(const Vector3f &wh) const {
+		float cos2 = wh[2] * wh[2];
+		if (cos2 == 0) return 0;
+		float exponent = (pow2(wh[0] / alphax) + pow2(wh[1] / alphay)) / cos2;
+		if (exponent > 80) return 0;
+		return expf(-exponent) / (M_PI * alphax * alphay * cos2 * cos2);
+	}
+
+	KRR_CALLABLE float G1(const Vector3f &w) const {
+		return AbsCosTheta(w) / projectedArea(w);
+	}
+
+	KRR_CALLABLE float G(const Vector3f &wo, const Vector3f &wi) const {
+		float co = AbsCosTheta(wo), ci = AbsCosTheta(wi);
+		if (co == 0 || ci == 0) return 0;
+		return co * ci / (ci * projectedArea(wo) + co * projectedArea(wi) - co * ci);
+	}
+
+	KRR_CALLABLE float Pdf(const Vector3f &wo, const Vector3f &wh) const {
+		float visible = dot(wo, wh) * copysignf(1, wo[2]) * copysignf(1, wh[2]);
+		return visible > 0 ? D(wh) * visible / projectedArea(wo) : 0;
+	}
+
+	KRR_CALLABLE Vector3f Sample(const Vector3f &wo, const Vector2f &u) const {
+		bool flip = wo[2] < 0;
+		Vector3f w = normalize(Vector3f(alphax * wo[0], alphay * wo[1], wo[2]));
+		if (flip) w = -w;
+		Vector2f slope = sampleSlopes(w[2], u);
+		float sinTheta = sqrtf(w[0] * w[0] + w[1] * w[1]);
+		float cp = sinTheta > 0 ? w[0] / sinTheta : 1;
+		float sp = sinTheta > 0 ? w[1] / sinTheta : 0;
+		Vector3f wh = normalize(Vector3f(-alphax * (cp * slope[0] - sp * slope[1]),
+			-alphay * (sp * slope[0] + cp * slope[1]), 1));
+		return flip ? -wh : wh;
+	}
+
+private:
+	KRR_CALLABLE float projectedArea(const Vector3f &w) const {
+		float c = AbsCosTheta(w), s = sqrtf(pow2(alphax * w[0]) + pow2(alphay * w[1]));
+		if (s == 0) return c;
+		float a = c / s;
+		return .5f * (c * (1 + erff(a)) + s * invSqrtPi * expf(-a * a));
+	}
+
+	KRR_CALLABLE static float inverseErf(float x) {
+		x = clamp(x, -1 + 1e-7f, 1 - 1e-7f);
+#if defined(__CUDA_ARCH__)
+		return erfinvf(x);
+#else
+		float l = log1pf(-x * x), a = 2 / (M_PI * .147f) + l / 2;
+		float y = copysignf(sqrtf(max(0.f, sqrtf(a * a - l / .147f) - a)), x);
+		for (int i = 0; i < 3; ++i)
+			y -= (erff(y) - x) / (2 * invSqrtPi * expf(-y * y));
+		return y;
+#endif
+	}
+
+	KRR_CALLABLE static Vector2f sampleSlopes(float c, Vector2f u) {
+		u = u.cwiseMax(1e-6f).cwiseMin(1 - 1e-6f);
+		if (c > .9999f) {
+			float radius = sqrtf(-log1pf(-u[0])), phi = M_2PI * u[1];
+			return {radius * cosf(phi), radius * sinf(phi)};
+		}
+		if (c == 0) return {-sqrtf(-logf(u[0])), inverseErf(2 * u[1] - 1)};
+		// Invert the visible Gaussian slope CDF in the erf domain (Heitz/Jakob).
+		float s = sqrtf(max(0.f, 1 - c * c)), cot = c / s;
+		float lower = -1, upper = erff(cot);
+		float normalization = c * (1 + upper) + s * invSqrtPi * expf(-cot * cot);
+		float b = upper - (1 + upper) * erff(sqrtf(-logf(u[0])));
+		for (int i = 0; i < 10; ++i) {
+			if (!(b > lower && b < upper)) b = (lower + upper) * .5f;
+			float slope = inverseErf(b);
+			float error = c * (1 + b) + s * invSqrtPi * expf(-slope * slope) - u[0] * normalization;
+			if (abs(error) < 1e-6f * normalization) break;
+			if (error > 0) upper = b;
+			else lower = b;
+			b -= error / (c - s * slope);
+		}
+		if (!(b >= lower && b <= upper)) b = (lower + upper) * .5f;
+		return {inverseErf(b), inverseErf(2 * u[1] - 1)};
+	}
+
+	static constexpr float invSqrtPi = .5641895835477563f;
+	float alphax, alphay;
+};
 
 class DisneyMicrofacetDistribution : public GGXMicrofacetDistribution {
 public:

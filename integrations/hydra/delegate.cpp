@@ -635,6 +635,10 @@ public:
 			mState->scene.opaqueMixBranches =
 				json::parse(data.get<std::string>()).get<decltype(mState->scene.opaqueMixBranches)>();
 			++mState->scene.materialVersion;
+		} else if (name == "krr:distributions") {
+			mState->scene.distributions =
+				json::parse(data.get<std::string>()).get<decltype(mState->scene.distributions)>();
+			++mState->scene.materialVersion;
 		} else if (name == "krr:diagnostics") {
 			mState->scene.diagnostics =
 				json::parse(data.get<std::string>()).get<decltype(mState->scene.diagnostics)>();

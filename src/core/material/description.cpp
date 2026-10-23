@@ -119,10 +119,17 @@ public:
 		state(description.nodes.size(), 0),
 		resolved(description.nodes.size(), -1) {
 		result.model	= description.model;
+		result.distribution = description.distribution;
 		result.defaults = defaultMaterialValues(description.model);
 	}
 
 	CompiledMaterial compile() {
+		if (description.distribution != MicrofacetType::GGX &&
+			description.distribution != MicrofacetType::Beckmann)
+			throw std::invalid_argument("Unknown microfacet distribution");
+		if (description.distribution != MicrofacetType::GGX &&
+			description.model != MaterialModel::Conductor && description.model != MaterialModel::Dielectric)
+			throw std::invalid_argument("Beckmann requires a conductor or dielectric material");
 		std::array<int, MaterialParameterCount> roots;
 		roots.fill(-1);
 		for (int parameter = 0; parameter < MaterialParameterCount; ++parameter) {
@@ -438,7 +445,7 @@ CompiledMaterial compileMaterial(const MaterialDescription &description) {
 			if (component.outputs[int(parameter)] != -1)
 				throw std::invalid_argument("Composite opacity and emission belong to the surface, not its components");
 		auto found = std::find_if(components.begin(), components.end(), [&](const MaterialComponent &other) {
-			if (other.model != component.model) return false;
+			if (other.model != component.model || other.distribution != component.distribution) return false;
 			for (int parameter = 0; parameter < MaterialParameterCount; ++parameter)
 				if (parameter != int(MaterialParameter::Weight) &&
 					other.outputs[parameter] != component.outputs[parameter]) return false;
@@ -466,6 +473,7 @@ CompiledMaterial compileMaterial(const MaterialDescription &description) {
 	leaf.nodes = shared.nodes;
 	for (const MaterialComponent &component : components) {
 		leaf.model = component.model;
+		leaf.distribution = component.distribution;
 		leaf.outputs = component.outputs;
 		result.components.push_back(Compiler(leaf).compile());
 	}
@@ -475,6 +483,7 @@ CompiledMaterial compileMaterial(const MaterialDescription &description) {
 			component.model == MaterialModel::Conductor || component.model == MaterialModel::Dielectric;
 		if (simpleModel && component.weight.empty() && component.defaults[MaterialParameter::Weight][0] == 1) {
 			leaf.model = components.front().model;
+			leaf.distribution = components.front().distribution;
 			leaf.outputs = components.front().outputs;
 			for (MaterialParameter parameter : {MaterialParameter::Opacity, MaterialParameter::EmissionColor,
 				 MaterialParameter::EmissionLuminance})

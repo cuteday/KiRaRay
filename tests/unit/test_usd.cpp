@@ -3,6 +3,7 @@
 #include "materials/material.h"
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usd/prim.h>
+#include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usd/relationship.h>
 #include <pxr/base/vt/array.h>
 #include <fstream>
@@ -249,16 +250,100 @@ void testClosureLimits() {
 		}
 	}
 }
+
+void testDistributions(const fs::path &fixtures, const fs::path &artifacts) {
+	interop::MaterialNetwork network;
+	network.terminal = "surface";
+	network.nodes["surface"].identifier = "ND_surface";
+	network.nodes["surface"].inputs["bsdf"].node = "mix";
+	network.nodes["mix"].identifier = "ND_mix_bsdf";
+	network.nodes["mix"].inputs["bg"].node = "first";
+	network.nodes["mix"].inputs["fg"].node = "second";
+	network.nodes["mix"].inputs["mix"].value = .25f;
+	network.nodes["first"].identifier = network.nodes["second"].identifier = "ND_conductor_bsdf";
+	auto program = translated(network);
+	require(program.distribution == MicrofacetType::GGX, "Unannotated material must default to GGX");
+	network.distributions = {{"bsdf/bg", "ND_conductor_bsdf", "beckmann"},
+		{"bsdf/fg", "ND_conductor_bsdf", "ggx"}};
+	program = translated(network);
+	require(program.components.size() == 2 &&
+		program.components[0].distribution == MicrofacetType::Beckmann &&
+		program.components[1].distribution == MicrofacetType::GGX,
+		"Per-leaf distribution was lost or unlike distributions were merged");
+	const auto valid = network.distributions;
+	for (const auto &invalid : std::vector<interop::MaterialDistribution>{
+		{"bsdf/missing", "ND_conductor_bsdf", "beckmann"},
+		{"bsdf/bg/", "ND_conductor_bsdf", "beckmann"},
+		{"", "ND_conductor_bsdf", "beckmann"},
+		{"bsdf/bg", "ND_dielectric_bsdf", "beckmann"},
+		{"bsdf/bg", "ND_conductor_bsdf", "unknown"}}) {
+		network.distributions = {invalid};
+		require(!interop::translateMaterial(network)->getDescription(),
+			"Mismatched producer distribution metadata was silently accepted");
+	}
+	network.distributions = {valid[0], valid[0]};
+	require(!interop::translateMaterial(network)->getDescription(), "Duplicate producer path was accepted");
+	network.distributions = valid;
+	network.nodes["mix"].inputs["fg"].node = "first";
+	require(!interop::translateMaterial(network)->getDescription(), "Shared shader accepted conflicting distributions");
+	network.nodes["surface"].inputs["bsdf"].node = "first";
+	network.distributions.clear();
+	network.nodes["first"].inputs["distribution"].value = "beckmann";
+	require(translated(network).distribution == MicrofacetType::Beckmann,
+		"Explicit native Beckmann extension was not retained");
+	network.nodes["first"].inputs["distribution"].value = "unknown";
+	require(!interop::translateMaterial(network)->getDescription(), "Unknown explicit distribution was accepted");
+
+	auto scene = std::make_shared<Scene>();
+	importer::UsdImporter().import(fixtures / "blender52/distributions.usda", scene);
+	for (auto material : scene->getMaterials())
+		require(bool(material->getDescription()), "Actual Blender distribution fixture became diagnostic");
+	auto compiled = [&](const char *name) {
+		return compileMaterial(*findMaterial(scene, name)->getDescription());
+	};
+	for (const char *name : {"DistributionGlossy", "DistributionGlass", "DistributionAddEmission",
+		"DistributionTransparent", "DistributionDeadBranch"})
+		require(compiled(name).distribution == MicrofacetType::Beckmann,
+			"Actual Blender Beckmann leaf lost its distribution");
+	for (const char *name : {"DistributionMixed", "DistributionGrouped", "DistributionInsideGroup"}) {
+		auto mixed = compiled(name);
+		size_t expected = std::string(name) == "DistributionInsideGroup" ? 4 : 2;
+		require(mixed.components.size() == expected,
+			("Actual Blender group lost scattering leaves: " + std::string(name)).c_str());
+		for (size_t index = 0; index < expected; ++index)
+			require(mixed.components[index].distribution ==
+				(index % 2 == 0 ? MicrofacetType::Beckmann : MicrofacetType::GGX),
+				"Actual Blender mixed/grouped distributions were not kept separate");
+	}
+	for (const char *name : {"DistributionSharedGroup", "DistributionMixEmission"}) {
+		auto weighted = compiled(name);
+		require(weighted.components.size() == 1 && weighted.components[0].distribution == MicrofacetType::Beckmann,
+			"Shared group or weighted emission changed the scattering distribution");
+	}
+	auto stage = UsdStage::Open((fixtures / "blender52/distributions.usda").string());
+	for (auto prim : stage->Traverse()) prim.ClearCustomDataByKey(TfToken("kiraray:distributions"));
+	auto path = artifacts / "unannotated-distributions.usda";
+	require(stage->GetRootLayer()->Export(path.string()), "Could not export unannotated distribution fixture");
+	auto unannotated = std::make_shared<Scene>();
+	importer::UsdImporter().import(path, unannotated);
+	for (auto material : unannotated->getMaterials()) {
+		auto data = compileMaterial(*material->getDescription());
+		require(data.distribution == MicrofacetType::GGX, "Unannotated Blender file guessed a lost distribution");
+		for (const auto &component : data.components)
+			require(component.distribution == MicrofacetType::GGX, "Unannotated Blender component changed its default");
+	}
+}
 } // namespace
 int main(int argc, char **argv) {
 	try {
 		if (argc != 3)
 			throw std::runtime_error("Expected fixture directory and artifact directory");
 		fs::path fixtures = argv[1], artifacts = argv[2];
+		fs::create_directories(artifacts);
 		testScatteringNetworks();
 		testClosureLimits();
 		testBlenderSurfaces(fixtures);
-		fs::create_directories(artifacts);
+		testDistributions(fixtures, artifacts);
 		auto originalDirectory = fs::current_path();
 		auto scene			   = std::make_shared<Scene>();
 		importer::UsdImporter().import(fixtures / "blender52/materials.usda", scene);

@@ -126,6 +126,8 @@ private:
 		copy.emissionLuminanceScale = input.emissionLuminanceScale;
 		if (auto found = input.opaqueMixBranches.find(id); found != input.opaqueMixBranches.end())
 			copy.opaqueMixBranch = found->second;
+		if (auto found = input.distributions.find(id); found != input.distributions.end())
+			copy.distributions = found->second;
 		if (auto found = input.diagnostics.find(id); found != input.diagnostics.end())
 			copy.diagnostics.insert(copy.diagnostics.end(), found->second.begin(), found->second.end());
 		return interop::translateMaterial(copy, &mDiagnostics);

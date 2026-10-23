@@ -233,6 +233,7 @@ struct MaterialProgramData {
 	bool enabled{false};
 	MaterialModel model{MaterialModel::OpenPBR};
 	MaterialProgramKind kind{MaterialProgramKind::Constant};
+	MicrofacetType distribution{MicrofacetType::GGX};
 	MaterialValues defaults;
 	uint32_t authoredMask{0};
 	MaterialProgramView surface, opacity, emission, classification, weight;

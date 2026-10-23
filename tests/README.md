@@ -244,6 +244,22 @@ in `cases/<name>/`. Register them in `tests/CMakeLists.txt` with appropriate lab
 Keep rendering thresholds and assertions here. Reusable image calculations belong in
 `common/scripts/image_metrics.py` and must remain independent of native renderer imports.
 
+`krr_microfacet` checks GGX and Beckmann NDF/PDF normalization, visible-normal sample
+moments, conductor/glass sample-evaluation agreement, energy, grazing directions, and
+delta/TIR limits. Its boundary checks also exercise the CPU inverse-erf implementation.
+`krr_composite` covers both distributions through material upload and full mixture
+evaluation, including a material containing GGX and Beckmann simultaneously.
+The CPU material tests preserve distribution identity through pruning and merging;
+USD tests include actual Blender exports with per-leaf distribution annotations.
+After building the Blender package, validate runtime distribution edits in F12 with:
+
+```powershell
+blender.exe --background --factory-startup --disable-autoexec --python-exit-code 1 `
+  --python integrations/blender/probe/distributions.py -- `
+  --addon-dir build/blender-interop/host/blender/kiraray `
+  --artifacts build/blender-interop/host/tests/artifacts/RelWithDebInfo/distributions
+```
+
 Benchmark scripts and their own configs live in the top-level `benchmarks/` directory, with
 results beneath `<build>/benchmarks/<configuration>/<run>/`. See the [benchmark guide](../benchmarks/README.md)
 for timing runs, optional profiler captures, and offline analysis. Benchmarks import `krr`

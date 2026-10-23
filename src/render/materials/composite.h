@@ -162,8 +162,8 @@ private:
 				result = bsdf.eval(wo, wi, mode);
 				break;
 			}
-			case MaterialModel::Conductor: result = conductor(values).eval(wo, wi, mode); break;
-			case MaterialModel::Dielectric: result = dielectric(values).eval(wo, wi, mode); break;
+			case MaterialModel::Conductor: result = conductor(values).eval(wo, wi, mode, program.distribution); break;
+			case MaterialModel::Dielectric: result = dielectric(values).eval(wo, wi, mode, program.distribution); break;
 			default: break;
 		}
 		result.f *= fabsf(wi[2]);
@@ -192,8 +192,8 @@ private:
 				result = bsdf.sample(wo, sampler, mode);
 				break;
 			}
-			case MaterialModel::Conductor: result = conductor(values).sample(wo, sampler, mode); break;
-			case MaterialModel::Dielectric: result = dielectric(values).sample(wo, sampler, mode); break;
+			case MaterialModel::Conductor: result = conductor(values).sample(wo, sampler, mode, program.distribution); break;
+			case MaterialModel::Dielectric: result = dielectric(values).sample(wo, sampler, mode, program.distribution); break;
 			default: return {};
 		}
 		if (result.pdf <= 0) return {};

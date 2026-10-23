@@ -1,0 +1,1225 @@
+#usda 1.0
+(
+    customLayerData = {
+        string "kiraray:producer" = "Blender 5.2.2 LTS"
+    }
+    defaultPrim = "root"
+    doc = "Blender v5.2.2 LTS"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "root" (
+    prepend apiSchemas = ["ColorSpaceAPI"]
+    customData = {
+        dictionary Blender = {
+            bool generated = 1
+        }
+    }
+)
+{
+    uniform token colorSpace:name = "lin_rec709_scene"
+
+    def Xform "DistributionDeadBranch"
+    {
+        custom string userProperties:blender:object_name = "DistributionDeadBranch"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (27, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_009" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/DistributionDeadBranch>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.009"
+        }
+    }
+
+    def Scope "_materials"
+    {
+        def Material "DistributionDeadBranch" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    string distributions = '[{"path": "bsdf/bg", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}, {"path": "bsdf/fg", "identifier": "ND_conductor_bsdf", "distribution": "ggx"}]'
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/DistributionDeadBranch/node_002.outputs:surface>
+            custom string userProperties:blender:data_name = "DistributionDeadBranch"
+
+            def Shader "node_002"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/DistributionDeadBranch/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/DistributionDeadBranch/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Same___node_name_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionDeadBranch/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionDeadBranch/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "node_001"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Same___node_name_BSDF_001"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionDeadBranch/NodeGraphs/node_001.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionDeadBranch/NodeGraphs/node_001.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_mix_bsdf"
+                    token inputs:bg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:bg.connect = </root/_materials/DistributionDeadBranch/NodeGraphs/bnode__Same___node_name_BSDF.outputs:out>
+                    token inputs:fg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:fg.connect = </root/_materials/DistributionDeadBranch/NodeGraphs/bnode__Same___node_name_BSDF_001.outputs:out>
+                    float inputs:mix = 0
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "DistributionGlass" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    string distributions = '[{"path": "bsdf", "identifier": "ND_dielectric_bsdf", "distribution": "beckmann"}]'
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/DistributionGlass/node.outputs:surface>
+            custom string userProperties:blender:data_name = "DistributionGlass"
+
+            def Shader "node"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/DistributionGlass/NodeGraphs.outputs:bnode__Same___node_name_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Same___node_name_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Same___node_name_BSDF_out.connect = </root/_materials/DistributionGlass/NodeGraphs/bnode__Same___node_name_BSDF.outputs:out>
+
+                def Shader "bnode__Same___node_name_BSDF"
+                {
+                    uniform token info:id = "ND_dielectric_bsdf"
+                    float inputs:ior = 1.5
+                    float2 inputs:roughness = (0.3, 0.3)
+                    string inputs:scatter_mode = "RT"
+                    float inputs:thinfilm_ior = 1.33
+                    float inputs:thinfilm_thickness = 0
+                    color3f inputs:tint = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "DistributionGlossy" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    string distributions = '[{"path": "bsdf", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}]'
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/DistributionGlossy/node_001.outputs:surface>
+            custom string userProperties:blender:data_name = "DistributionGlossy"
+
+            def Shader "node_001"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/DistributionGlossy/NodeGraphs.outputs:bnode__Same___node_name_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Same___node_name_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Same___node_name_BSDF_out.connect = </root/_materials/DistributionGlossy/NodeGraphs/bnode__Same___node_name_BSDF.outputs:out>
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Same___node_name_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionGlossy/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionGlossy/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "DistributionMixEmission" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    string distributions = '[{"path": "bsdf/in1", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}]'
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/DistributionMixEmission/node_001.outputs:surface>
+            custom string userProperties:blender:data_name = "DistributionMixEmission"
+
+            def Shader "node_001"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/DistributionMixEmission/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                token inputs:edf.connect = </root/_materials/DistributionMixEmission/NodeGraphs.outputs:bnode__Mix_Shader_EDF_out>
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/DistributionMixEmission/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+                token outputs:bnode__Mix_Shader_EDF_out (
+                    renderType = "EDF"
+                )
+                token outputs:bnode__Mix_Shader_EDF_out.connect = </root/_materials/DistributionMixEmission/NodeGraphs/bnode__Mix_Shader_EDF.outputs:out>
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Same___node_name_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionMixEmission/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionMixEmission/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_multiply_bsdfF"
+                    token inputs:in1 (
+                        renderType = "BSDF"
+                    )
+                    token inputs:in1.connect = </root/_materials/DistributionMixEmission/NodeGraphs/bnode__Same___node_name_BSDF.outputs:out>
+                    float inputs:in2 = 0.65
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Emission_EDF"
+                {
+                    uniform token info:id = "ND_uniform_edf"
+                    color3f inputs:color = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_EDF"
+                {
+                    uniform token info:id = "ND_multiply_edfF"
+                    token inputs:in1 (
+                        renderType = "EDF"
+                    )
+                    token inputs:in1.connect = </root/_materials/DistributionMixEmission/NodeGraphs/bnode__Emission_EDF.outputs:out>
+                    float inputs:in2 = 0.35
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+            }
+        }
+
+        def Material "DistributionMixed" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    string distributions = '[{"path": "bsdf/bg", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}, {"path": "bsdf/fg", "identifier": "ND_conductor_bsdf", "distribution": "ggx"}]'
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/DistributionMixed/node_002.outputs:surface>
+            custom string userProperties:blender:data_name = "DistributionMixed"
+
+            def Shader "node_002"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/DistributionMixed/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/DistributionMixed/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Same___node_name_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionMixed/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionMixed/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "node_001"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Same___node_name_BSDF_001"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionMixed/NodeGraphs/node_001.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionMixed/NodeGraphs/node_001.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_mix_bsdf"
+                    token inputs:bg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:bg.connect = </root/_materials/DistributionMixed/NodeGraphs/bnode__Same___node_name_BSDF.outputs:out>
+                    token inputs:fg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:fg.connect = </root/_materials/DistributionMixed/NodeGraphs/bnode__Same___node_name_BSDF_001.outputs:out>
+                    float inputs:mix = 0.35
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "DistributionTransparent" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    string distributions = '[{"path": "bsdf/bg", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}]'
+                    double emissionLuminanceScale = 1000
+                    string opaqueMixBranch = "bg"
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/DistributionTransparent/node_001.outputs:surface>
+            custom string userProperties:blender:data_name = "DistributionTransparent"
+
+            def Shader "node_001"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/DistributionTransparent/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity = 0
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/DistributionTransparent/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Same___node_name_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionTransparent/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionTransparent/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Transparent_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_oren_nayar_diffuse_bsdf"
+                    color3f inputs:color = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_mix_bsdf"
+                    token inputs:bg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:bg.connect = </root/_materials/DistributionTransparent/NodeGraphs/bnode__Same___node_name_BSDF.outputs:out>
+                    token inputs:fg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:fg.connect = </root/_materials/DistributionTransparent/NodeGraphs/bnode__Transparent_BSDF_BSDF.outputs:out>
+                    float inputs:mix = 0.35
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "DistributionInsideGroup" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    string distributions = '[{"path": "bsdf/in1/bg", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}, {"path": "bsdf/in1/fg", "identifier": "ND_dielectric_bsdf", "distribution": "ggx"}, {"path": "bsdf/in2/bg", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}, {"path": "bsdf/in2/fg", "identifier": "ND_dielectric_bsdf", "distribution": "ggx"}]'
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/DistributionInsideGroup/node_002.outputs:surface>
+            custom string userProperties:blender:data_name = "DistributionInsideGroup"
+
+            def Shader "node_002"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/DistributionInsideGroup/NodeGraphs.outputs:bnode__Add_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Add_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Add_Shader_BSDF_out.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/bnode__Add_Shader_BSDF.outputs:out>
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Glossy_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Glass_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_dielectric_bsdf"
+                    float inputs:ior = 1.5
+                    float2 inputs:roughness = (0.3, 0.3)
+                    string inputs:scatter_mode = "RT"
+                    float inputs:thinfilm_ior = 1.33
+                    float inputs:thinfilm_thickness = 0
+                    color3f inputs:tint = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_mix_bsdf"
+                    token inputs:bg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:bg.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/bnode__Glossy_BSDF_BSDF.outputs:out>
+                    token inputs:fg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:fg.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/bnode__Glass_BSDF_BSDF.outputs:out>
+                    float inputs:mix = 0.35
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "node_001"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Glossy_BSDF_BSDF_001"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/node_001.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/node_001.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Glass_BSDF_BSDF_001"
+                {
+                    uniform token info:id = "ND_dielectric_bsdf"
+                    float inputs:ior = 1.5
+                    float2 inputs:roughness = (0.3, 0.3)
+                    string inputs:scatter_mode = "RT"
+                    float inputs:thinfilm_ior = 1.33
+                    float inputs:thinfilm_thickness = 0
+                    color3f inputs:tint = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF_001"
+                {
+                    uniform token info:id = "ND_mix_bsdf"
+                    token inputs:bg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:bg.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/bnode__Glossy_BSDF_BSDF_001.outputs:out>
+                    token inputs:fg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:fg.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/bnode__Glass_BSDF_BSDF_001.outputs:out>
+                    float inputs:mix = 0.35
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Add_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_add_bsdf"
+                    token inputs:in1 (
+                        renderType = "BSDF"
+                    )
+                    token inputs:in1.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+                    token inputs:in2 (
+                        renderType = "BSDF"
+                    )
+                    token inputs:in2.connect = </root/_materials/DistributionInsideGroup/NodeGraphs/bnode__Mix_Shader_BSDF_001.outputs:out>
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "DistributionSharedGroup" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    string distributions = '[{"path": "bsdf/in1", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}, {"path": "bsdf/in2", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}]'
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/DistributionSharedGroup/node_001.outputs:surface>
+            custom string userProperties:blender:data_name = "DistributionSharedGroup"
+
+            def Shader "node_001"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/DistributionSharedGroup/NodeGraphs.outputs:bnode__Add_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Add_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Add_Shader_BSDF_out.connect = </root/_materials/DistributionSharedGroup/NodeGraphs/bnode__Add_Shader_BSDF.outputs:out>
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Same___node_name_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionSharedGroup/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionSharedGroup/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Add_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_add_bsdf"
+                    token inputs:in1 (
+                        renderType = "BSDF"
+                    )
+                    token inputs:in1.connect = </root/_materials/DistributionSharedGroup/NodeGraphs/bnode__Same___node_name_BSDF.outputs:out>
+                    token inputs:in2 (
+                        renderType = "BSDF"
+                    )
+                    token inputs:in2.connect = </root/_materials/DistributionSharedGroup/NodeGraphs/bnode__Same___node_name_BSDF.outputs:out>
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+
+        def Material "DistributionAddEmission" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    string distributions = '[{"path": "bsdf", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}]'
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/DistributionAddEmission/node_001.outputs:surface>
+            custom string userProperties:blender:data_name = "DistributionAddEmission"
+
+            def Shader "node_001"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/DistributionAddEmission/NodeGraphs.outputs:bnode__Add_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                token inputs:edf.connect = </root/_materials/DistributionAddEmission/NodeGraphs.outputs:bnode__Add_Shader_EDF_out>
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Add_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Add_Shader_BSDF_out.connect = </root/_materials/DistributionAddEmission/NodeGraphs/bnode__Add_Shader_BSDF.outputs:out>
+                token outputs:bnode__Add_Shader_EDF_out (
+                    renderType = "EDF"
+                )
+                token outputs:bnode__Add_Shader_EDF_out.connect = </root/_materials/DistributionAddEmission/NodeGraphs/bnode__Add_Shader_EDF.outputs:out>
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Add_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionAddEmission/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionAddEmission/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Add_Shader_EDF"
+                {
+                    uniform token info:id = "ND_uniform_edf"
+                    color3f inputs:color = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "EDF"
+                    )
+                }
+            }
+        }
+
+        def Material "DistributionGrouped" (
+            prepend apiSchemas = ["MaterialXConfigAPI", "ColorSpaceAPI"]
+            customData = {
+                dictionary kiraray = {
+                    string distributions = '[{"path": "bsdf/bg", "identifier": "ND_conductor_bsdf", "distribution": "beckmann"}, {"path": "bsdf/fg", "identifier": "ND_dielectric_bsdf", "distribution": "ggx"}]'
+                    double emissionLuminanceScale = 1000
+                }
+            }
+        )
+        {
+            uniform token colorSpace:name = "lin_rec709_scene"
+            string config:mtlx:version = "1.39"
+            token outputs:mtlx:surface.connect = </root/_materials/DistributionGrouped/node_001.outputs:surface>
+            custom string userProperties:blender:data_name = "DistributionGrouped"
+
+            def Shader "node_001"
+            {
+                uniform token info:id = "ND_surface"
+                token inputs:bsdf (
+                    renderType = "BSDF"
+                )
+                token inputs:bsdf.connect = </root/_materials/DistributionGrouped/NodeGraphs.outputs:bnode__Mix_Shader_BSDF_out>
+                token inputs:edf (
+                    renderType = "EDF"
+                )
+                float inputs:opacity
+                bool inputs:thin_walled
+                token outputs:surface
+            }
+
+            def NodeGraph "NodeGraphs"
+            {
+                token outputs:bnode__Mix_Shader_BSDF_out (
+                    renderType = "BSDF"
+                )
+                token outputs:bnode__Mix_Shader_BSDF_out.connect = </root/_materials/DistributionGrouped/NodeGraphs/bnode__Mix_Shader_BSDF.outputs:out>
+
+                def Shader "node"
+                {
+                    uniform token info:id = "ND_artistic_ior"
+                    color3f inputs:edge_color = (0.8, 0.8, 0.8)
+                    color3f inputs:reflectivity = (0.8, 0.8, 0.8)
+                    color3f outputs:extinction
+                    color3f outputs:ior
+                }
+
+                def Shader "bnode__Same___node_name_BSDF"
+                {
+                    uniform token info:id = "ND_conductor_bsdf"
+                    color3f inputs:extinction.connect = </root/_materials/DistributionGrouped/NodeGraphs/node.outputs:extinction>
+                    color3f inputs:ior.connect = </root/_materials/DistributionGrouped/NodeGraphs/node.outputs:ior>
+                    float2 inputs:roughness = (0.3, 0.3)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Glass_BSDF_BSDF"
+                {
+                    uniform token info:id = "ND_dielectric_bsdf"
+                    float inputs:ior = 1.5
+                    float2 inputs:roughness = (0.3, 0.3)
+                    string inputs:scatter_mode = "RT"
+                    float inputs:thinfilm_ior = 1.33
+                    float inputs:thinfilm_thickness = 0
+                    color3f inputs:tint = (1, 1, 1)
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+
+                def Shader "bnode__Mix_Shader_BSDF"
+                {
+                    uniform token info:id = "ND_mix_bsdf"
+                    token inputs:bg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:bg.connect = </root/_materials/DistributionGrouped/NodeGraphs/bnode__Same___node_name_BSDF.outputs:out>
+                    token inputs:fg (
+                        renderType = "BSDF"
+                    )
+                    token inputs:fg.connect = </root/_materials/DistributionGrouped/NodeGraphs/bnode__Glass_BSDF_BSDF.outputs:out>
+                    float inputs:mix = 0.35
+                    token outputs:out (
+                        renderType = "BSDF"
+                    )
+                }
+            }
+        }
+    }
+
+    def Xform "DistributionGlass"
+    {
+        custom string userProperties:blender:object_name = "DistributionGlass"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (3, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_001" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/DistributionGlass>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.001"
+        }
+    }
+
+    def Xform "DistributionGlossy"
+    {
+        custom string userProperties:blender:object_name = "DistributionGlossy"
+
+        def Mesh "Plane" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/DistributionGlossy>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane"
+        }
+    }
+
+    def Xform "DistributionMixEmission"
+    {
+        custom string userProperties:blender:object_name = "DistributionMixEmission"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (12, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_004" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/DistributionMixEmission>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.004"
+        }
+    }
+
+    def Xform "DistributionMixed"
+    {
+        custom string userProperties:blender:object_name = "DistributionMixed"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (6, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_002" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/DistributionMixed>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.002"
+        }
+    }
+
+    def Xform "DistributionTransparent"
+    {
+        custom string userProperties:blender:object_name = "DistributionTransparent"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (24, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_008" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/DistributionTransparent>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.008"
+        }
+    }
+
+    def Xform "DistributionInsideGroup"
+    {
+        custom string userProperties:blender:object_name = "DistributionInsideGroup"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (21, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_007" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/DistributionInsideGroup>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.007"
+        }
+    }
+
+    def Xform "DistributionSharedGroup"
+    {
+        custom string userProperties:blender:object_name = "DistributionSharedGroup"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (18, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_006" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/DistributionSharedGroup>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.006"
+        }
+    }
+
+    def Xform "DistributionAddEmission"
+    {
+        custom string userProperties:blender:object_name = "DistributionAddEmission"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (9, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_003" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/DistributionAddEmission>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.003"
+        }
+    }
+
+    def Xform "DistributionGrouped"
+    {
+        custom string userProperties:blender:object_name = "DistributionGrouped"
+        float3 xformOp:rotateXYZ = (0, -0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (15, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def Mesh "Plane_005" (
+            active = true
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform bool doubleSided = 1
+            float3[] extent = [(-1, -1, 0), (1, 1, 0)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 3, 2]
+            rel material:binding = </root/_materials/DistributionGrouped>
+            normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0)]
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1), (1, 1)] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:st:indices = [0, 1, 3, 2]
+            uniform token subdivisionScheme = "none"
+            custom string userProperties:blender:data_name = "Plane.005"
+        }
+    }
+
+    def DomeLight "env_light" (
+        prepend apiSchemas = ["ColorSpaceAPI"]
+    )
+    {
+        uniform token colorSpace:name = "lin_rec709_scene"
+        float inputs:intensity = 1
+        asset inputs:texture:file = @./textures/color_0C0C0C.exr@
+    }
+}
+

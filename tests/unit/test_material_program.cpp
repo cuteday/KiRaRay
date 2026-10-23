@@ -290,6 +290,46 @@ void testCompositeWeightSlice() {
 	}
 }
 
+void testMicrofacetIdentity() {
+	MaterialDescription description;
+	description.model = MaterialModel::Conductor;
+	require(compileMaterial(description).distribution == MicrofacetType::GGX,
+		"Default distribution changed");
+	description.distribution = MicrofacetType::Beckmann;
+	require(compileMaterial(description).distribution == MicrofacetType::Beckmann,
+		"Compilation lost the distribution");
+	description.model = MaterialModel::OpenPBR;
+	invalid([&] { compileMaterial(description); });
+	description.model = MaterialModel::Dielectric;
+	description.distribution = MicrofacetType(255);
+	invalid([&] { compileMaterial(description); });
+
+	description.model = MaterialModel::Composite;
+	description.distribution = MicrofacetType::GGX;
+	int color = description.constant(MaterialValue(.5f), MaterialValueType::Color3);
+	int half = description.constant(MaterialValue(.5f));
+	auto ggx = component(MaterialModel::Conductor, color, half), beckmann = ggx;
+	beckmann.distribution = MicrofacetType::Beckmann;
+	description.components = {ggx, beckmann};
+	auto compiled = compileMaterial(description);
+	require(compiled.components.size() == 2 &&
+		compiled.components[0].distribution == MicrofacetType::GGX &&
+		compiled.components[1].distribution == MicrofacetType::Beckmann,
+		"Distinct distributions were merged");
+	description.components = {beckmann, beckmann};
+	compiled = compileMaterial(description);
+	require(compiled.model == MaterialModel::Conductor && compiled.components.empty() &&
+		compiled.distribution == MicrofacetType::Beckmann,
+		"Unit-weight collapse lost the distribution");
+	description.components[0].distribution = MicrofacetType(255);
+	invalid([&] { compileMaterial(description); });
+	description.components[0].set(MaterialParameter::Weight, description.constant(MaterialValue(0)));
+	compiled = compileMaterial(description);
+	require(compiled.components.size() == 1 &&
+		compiled.components[0].distribution == MicrofacetType::Beckmann,
+		"Dead component pruning lost the live distribution");
+}
+
 void testCompositeValidation() {
 	MaterialDescription description;
 	description.model = MaterialModel::Composite;
@@ -366,6 +406,7 @@ int main() {
 		testInvalidGraphs();
 		testCompositeSimplification();
 		testCompositeWeightSlice();
+		testMicrofacetIdentity();
 		testCompositeValidation();
 		testNativeClassificationDependencies();
 		testCubicReconstruction();

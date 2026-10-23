@@ -127,6 +127,7 @@ public:
 		if (terminal == network.nodes.end())
 			throw std::runtime_error("Material has no supported surface output");
 		const auto &surface = terminal->second;
+		distributionOverrides(surface);
 		if (surface.identifier == "ND_open_pbr_surface_surfaceshader")
 			openPbr(surface);
 		else if (surface.identifier == "UsdPreviewSurface")
@@ -145,7 +146,46 @@ private:
 	std::map<std::pair<std::string, std::string>, int> cache;
 	std::set<std::pair<std::string, std::string>> active;
 	std::map<std::string, MaterialComponent> leaves;
+	std::map<std::string, MicrofacetType> distributions;
 	int closureDepth{0}, closureVisits{0};
+
+	void distributionOverrides(const MaterialNodeInput &surface) {
+		std::set<std::string> paths;
+		for (const auto &override : network.distributions) {
+			if (surface.identifier != "ND_surface" ||
+				!paths.insert(override.path).second)
+				throw std::runtime_error("Invalid or duplicate Blender distribution path: " + override.path);
+			MicrofacetType distribution;
+			if (override.distribution == "ggx") distribution = MicrofacetType::GGX;
+			else if (override.distribution == "beckmann") distribution = MicrofacetType::Beckmann;
+			else throw std::runtime_error("Unsupported Blender microfacet distribution: " + override.distribution);
+			const MaterialNodeInput *node = &surface;
+			std::string source, remaining = override.path;
+			while (!remaining.empty()) {
+				auto slash = remaining.find('/');
+				auto edge = remaining.substr(0, slash);
+				bool valid = (node == &surface && edge == "bsdf") ||
+					(node->identifier == "ND_mix_bsdf" && (edge == "bg" || edge == "fg")) ||
+					(node->identifier == "ND_add_bsdf" && (edge == "in1" || edge == "in2")) ||
+					(node->identifier == "ND_multiply_bsdfF" && edge == "in1");
+				source = valid ? input(*node, edge).node : "";
+				auto found = network.nodes.find(source);
+				if (found == network.nodes.end())
+					throw std::runtime_error("Blender distribution path no longer matches the exported graph: " + override.path);
+				node = &found->second;
+				if (slash == std::string::npos) break;
+				remaining.erase(0, slash + 1);
+				if (remaining.empty())
+					throw std::runtime_error("Invalid Blender distribution path: " + override.path);
+			}
+			if ((override.identifier != "ND_conductor_bsdf" && override.identifier != "ND_dielectric_bsdf") ||
+				node->identifier != override.identifier)
+				throw std::runtime_error("Blender distribution target has a different scattering model: " + override.path);
+			auto [found, inserted] = distributions.emplace(source, distribution);
+			if (!inserted && found->second != distribution)
+				throw std::runtime_error("Conflicting Blender distributions for shared shader: " + source);
+		}
+	}
 
 	std::pair<std::string, std::string> enterClosure(const std::string &path, const char *kind) {
 		if (++closureDepth > MaterialNodeLimit)
@@ -436,7 +476,7 @@ private:
 			 operation(MaterialOp::Add, T::Color3,
 				{operation(MaterialOp::Multiply, T::Color3, {plus, plus}), k2})});
 	}
-	MaterialComponent leaf(const MaterialNodeInput &source) {
+	MaterialComponent leaf(const MaterialNodeInput &source, const std::string &path) {
 		using P = MaterialParameter;
 		using T = MaterialValueType;
 		MaterialComponent result;
@@ -454,8 +494,12 @@ private:
 		} else if (source.identifier == "ND_conductor_bsdf" ||
 				   source.identifier == "ND_dielectric_bsdf") {
 			rejectActive(source, "thinfilm_thickness");
-			if (constantInput(source, "distribution", "ggx") != "ggx")
-				throw std::runtime_error("Only GGX microfacet materials are supported");
+			auto distribution = constantInput(source, "distribution", "ggx").get<std::string>();
+			if (distribution == "ggx") result.distribution = MicrofacetType::GGX;
+			else if (distribution == "beckmann") result.distribution = MicrofacetType::Beckmann;
+			else throw std::runtime_error("Unsupported microfacet distribution: " + distribution);
+			if (auto found = distributions.find(path); found != distributions.end())
+				result.distribution = found->second;
 			if (source.identifier == "ND_conductor_bsdf") {
 				result.model = MaterialModel::Conductor;
 				result.set(P::BaseColor, conductorColor(source));
@@ -499,7 +543,7 @@ private:
 			weight = multiply(weight, foldConstant(argument(source, "weight", MaterialValueType::Float, 1.f)));
 			if (!constant(weight, 0)) {
 				auto found = leaves.find(value.node);
-				if (found == leaves.end()) found = leaves.emplace(value.node, leaf(source)).first;
+				if (found == leaves.end()) found = leaves.emplace(value.node, leaf(source, value.node)).first;
 				auto component = found->second;
 				component.set(MaterialParameter::Weight, weight);
 				description->components.push_back(component);

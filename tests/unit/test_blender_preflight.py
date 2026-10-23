@@ -351,10 +351,50 @@ class MaterialPreflightTest(unittest.TestCase):
         added = combine_shader(mixed, leaf_shader("EMISSION"), "ADD_SHADER")
         self.assertSupported(surface_material(added))
         glossy.distribution = "BECKMANN"
+        report = self.assertSupported(surface_material(added))
+        self.assertEqual(report.distributions, ({"path": "bsdf/fg", "identifier": "ND_conductor_bsdf",
+                                                "distribution": "beckmann"},))
+        glossy.distribution = "ASHIKHMIN_SHIRLEY"
         self.assertRejected(surface_material(added), "unsupported_feature", "GGX")
         glossy.distribution = "GGX"
         connect(Node("VALTORGB"), glossy, "Color")
         self.assertRejected(surface_material(added), "unsupported_node", "ColorRamp")
+
+    def test_distribution_paths_follow_exported_scattering_not_node_names(self):
+        glossy = leaf_shader("BSDF_GLOSSY")
+        glossy.distribution = "BECKMANN"
+        glass = leaf_shader("BSDF_GLASS")
+        glass.name = glossy.name = "A name with / spaces"
+        mixed = combine_shader(glossy, glass)
+        report = self.assertSupported(surface_material(mixed))
+        self.assertEqual([(item["path"], item["distribution"]) for item in report.distributions],
+                         [("bsdf/bg", "beckmann"), ("bsdf/fg", "ggx")])
+        for kind, path in (("MIX_SHADER", "bsdf/in1"), ("ADD_SHADER", "bsdf")):
+            for first, second in ((glossy, leaf_shader("EMISSION")), (leaf_shader("EMISSION"), glossy)):
+                report = self.assertSupported(surface_material(combine_shader(first, second, kind)))
+                self.assertEqual(report.distributions[0]["path"], path)
+        mixed.inputs[0].default_value = 0
+        self.assertEqual(self.assertSupported(surface_material(mixed)).distributions[0]["path"], "bsdf/bg")
+        mixed.inputs[0].default_value = 1
+        self.assertFalse(self.assertSupported(surface_material(mixed)).distributions)
+
+    def test_distribution_paths_through_reused_groups(self):
+        glossy = leaf_shader("BSDF_GLOSSY")
+        glossy.distribution = "BECKMANN"
+        group = passthrough_group()
+        connect(glossy, group, 0)
+        combined = combine_shader(group, group, "ADD_SHADER")
+        report = self.assertSupported(surface_material(combined))
+        self.assertEqual([item["path"] for item in report.distributions], ["bsdf/in1", "bsdf/in2"])
+        self.assertEqual(json.loads(json.dumps(report.to_dict()))["distributions"], list(report.distributions))
+
+    def test_unknown_inactive_topology_diagnoses_only_beckmann_mapping(self):
+        glossy = leaf_shader("BSDF_GLOSSY")
+        mixed = combine_shader(glossy, Node("VOLUME_PRINCIPLED", outputs=("Volume",)))
+        mixed.inputs[0].default_value = 0
+        self.assertSupported(surface_material(mixed))
+        glossy.distribution = "BECKMANN"
+        self.assertRejected(surface_material(mixed), "distribution_mapping", "simplify")
 
     def test_principled_inside_mix_or_add_is_explicitly_rejected(self):
         value, principled, _ = material()

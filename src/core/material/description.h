@@ -42,6 +42,7 @@ struct MaterialNode {
 
 struct MaterialComponent {
 	MaterialModel model{MaterialModel::Diffuse};
+	MicrofacetType distribution{MicrofacetType::GGX};
 	std::array<int, MaterialParameterCount> outputs;
 	MaterialComponent() { outputs.fill(-1); }
 	void set(MaterialParameter parameter, int node) { outputs[int(parameter)] = node; }
@@ -49,6 +50,7 @@ struct MaterialComponent {
 
 struct MaterialDescription {
 	MaterialModel model{MaterialModel::OpenPBR};
+	MicrofacetType distribution{MicrofacetType::GGX};
 	std::vector<MaterialNode> nodes;
 	std::vector<MaterialTexture> textures;
 	std::vector<MaterialComponent> components;
@@ -69,6 +71,7 @@ struct MaterialDescription {
 
 struct CompiledMaterial {
 	MaterialModel model{MaterialModel::OpenPBR};
+	MicrofacetType distribution{MicrofacetType::GGX};
 	MaterialProgramKind kind{MaterialProgramKind::Constant};
 	MaterialValues defaults;
 	std::vector<MaterialInstruction> surface, opacity, emission, classification, weight;

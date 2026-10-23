@@ -371,6 +371,7 @@ public:
 		program.enabled = true;
 		program.model = compiled.model;
 		program.kind = compiled.kind;
+		program.distribution = compiled.distribution;
 		program.defaults = compiled.defaults;
 		program.authoredMask = compiled.authoredMask;
 		std::vector<TextureData> hostTextures;

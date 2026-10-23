@@ -11,8 +11,8 @@ nodes:
 | MaterialX input | KiRaRay representation |
 | --- | --- |
 | Oren–Nayar / Burley diffuse | Native Lambertian diffuse |
-| Conductor | Native GGX conductor, matching RGB normal-incidence reflectance |
-| Dielectric with `scatter_mode=RT` | Native GGX dielectric |
+| Conductor | Native GGX or Beckmann conductor, matching RGB normal-incidence reflectance |
+| Dielectric with `scatter_mode=RT` | Native GGX or Beckmann dielectric |
 | BSDF Mix / Add / scalar multiply | Flat weighted native components |
 | Uniform EDF; EDF Mix / Add / scalar or color multiply | A separate radiance expression |
 
@@ -47,7 +47,9 @@ composition does not select one material for the entire scattering vertex.
   native conductor reconstructs an approximate spectral conductor, so the edge
   color and angular Fresnel curve can differ.
 - MaterialX microfacet roughness is alpha. Its two axes are averaged and converted
-  to the native perceptual roughness. This initial adapter uses isotropic GGX.
+  to the native perceptual roughness. This adapter uses isotropic distributions.
+  Blender's exported leaf roughness currently follows this same mapping; Cycles
+  instead squares its authored roughness. That existing approximation is unchanged.
 - Dielectric tint, IOR, zero roughness, and index matching are retained. Separate
   reflection-only or transmission-only dielectric nodes are not yet supported.
 - Thin films, MaterialX thin-walled surfaces, vertical closure layering, arbitrary
@@ -58,6 +60,37 @@ composition does not select one material for the entire scattering vertex.
 
 These are approximations to the exported MaterialX representation, not a promise
 of matching Cycles. Blender's exporter can itself change shader behavior.
+
+## Microfacet distributions
+
+GGX remains the default. An explicit constant `distribution="beckmann"` is also
+accepted as a KiRaRay extension to the MaterialX conductor/dielectric subset;
+unknown or connected distribution selectors are diagnostic. OpenPBR and Preview
+Surface keep their existing distribution semantics.
+
+Native authored materials select `MicrofacetType` on `MaterialDescription` or each
+`MaterialComponent`. Conductor and dielectric classes share templated operation
+helpers, with an explicit runtime distribution overload; their existing overloads
+remain statically GGX. Both distributions are built into the same binary. Legacy
+JSON material behavior is unchanged, and no distribution state is added to ray queues.
+Beckmann uses anisotropic Gaussian slopes, exact Smith projected-area masking, and
+bounded visible-normal CDF inversion; see the
+[microfacet sampling reference](https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models).
+
+Blender 5.2.2 omits the Glossy/Glass distribution during MaterialX conversion.
+For materials with active Beckmann leaves, preflight records each microfacet
+leaf's scattering-input path, expected shader identifier, and distribution.
+Hydra passes these through `krr:distributions`; validated USD writes the JSON
+array to material custom data `kiraray:distributions`. Paths follow the exported
+BSDF graph, including Mix/Add's removal of emission-only branches. Group names
+and exporter-generated node names are not used to infer identity.
+
+Translation validates every path and shader identifier before applying it.
+Missing paths, duplicate paths, or conflicting settings for shared nodes produce
+diagnostics. Unsupported inactive topology beside an active Beckmann shader may
+also require simplifying the graph so its exported identity can be verified.
+Ordinary unannotated Blender exports cannot recover the lost distribution and
+retain the authored MaterialX default GGX. The Blender source graph is unchanged.
 
 ## White transparency correction
 
@@ -89,6 +122,10 @@ native leaves, Mix/Add, emission, white transparency, and Cubic textures.
 `tests/blender/material_fixtures.py --surface-only` recreates that fixture.
 `tests/unit/test_usd.cpp` checks those networks and the lowerer's weight, unit,
 cycle, and inactive-branch behavior.
+`tests/blender/distribution_fixtures.py` recreates `blender52/distributions.usda`
+through the validated exporter and checks mixed distributions, grouped/reused
+leaves, emission branches, transparency, and dead branches against actual USD
+shader identities. It writes only beneath its explicit `--output` directory.
 
 After building the standalone SDK test target:
 
@@ -98,5 +135,9 @@ ctest --test-dir build/blender-interop/standalone -R krr_usd --output-on-failure
 
 GPU mixture tests and the Kitchen scene separately validate rendering. Normal
 tests never rewrite Blender files or references.
+`integrations/blender/probe/distributions.py` renders Glossy, Glass, and a mixed
+material through F12, switches GGX to Beckmann and back without restarting
+Blender, and checks distinct distributions plus exact seeded GGX restoration.
+It requires a staged `--addon-dir` and an explicit `--artifacts` directory.
 See [VALIDATION.md](VALIDATION.md) for local acceptance results, performance,
 and the related dielectric correctness fixes.

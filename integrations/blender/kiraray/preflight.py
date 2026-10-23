@@ -20,6 +20,7 @@ class MaterialReport:
     pointer: int
     diagnostics: tuple
     opaque_mix_branch: str = ""
+    distributions: tuple = ()
 
     @property
     def supported(self):
@@ -31,6 +32,8 @@ class MaterialReport:
                   "diagnostics": [item.to_dict() for item in self.diagnostics]}
         if self.opaque_mix_branch:
             result["opaque_mix_branch"] = self.opaque_mix_branch
+        if self.distributions:
+            result["distributions"] = list(self.distributions)
         return result
 
 
@@ -107,6 +110,7 @@ class _Validator:
         self.opaque_mix_branch = ""
         self.node_visits = 0
         self.traversal_stopped = False
+        self.has_beckmann = False
 
     def path(self, node=None, socket=None, groups=()):
         path = "materials[" + repr(self.name) + "]"
@@ -388,11 +392,48 @@ class _Validator:
                        node, groups=groups)
             return
         if kind in {"BSDF_GLOSSY", "BSDF_GLASS"}:
-            if getattr(node, "distribution", "GGX") not in {"GGX", "MULTI_GGX"}:
-                self.error("unsupported_feature", "Only GGX and Multiscatter GGX distributions "
-                           "are supported (both use KiRaRay's GGX model).", node, groups=groups)
+            distribution = getattr(node, "distribution", "GGX")
+            self.has_beckmann |= distribution == "BECKMANN"
+            if distribution not in {"GGX", "MULTI_GGX", "BECKMANN"}:
+                self.error("unsupported_feature", "Supported distributions are GGX, Beckmann and "
+                           "Multiscatter GGX (approximated with GGX).", node, groups=groups)
         for socket in inputs:
             self.input(node, socket, groups)
+
+    def distributions(self, socket, groups=(), depth=0):
+        source = self.surface_source(socket, groups)
+        if source is None:
+            raise ValueError("Cannot resolve the scattering graph for Beckmann export.")
+        node, groups = source
+        if not self.traversal_step(node, groups, depth):
+            raise ValueError("The Beckmann scattering graph exceeds the traversal limit.")
+        kind = _node_type(node)
+        if kind == "EMISSION":
+            return False, []
+        if kind in {"BSDF_GLOSSY", "BSDF_GLASS"}:
+            distribution = getattr(node, "distribution", "GGX")
+            overrides = []
+            if distribution in {"GGX", "MULTI_GGX", "BECKMANN"}:
+                overrides.append({"path": "", "identifier": "ND_conductor_bsdf" if kind ==
+                                  "BSDF_GLOSSY" else "ND_dielectric_bsdf",
+                                  "distribution": "beckmann" if distribution == "BECKMANN" else "ggx"})
+            return True, overrides
+        if kind in {"BSDF_DIFFUSE", "BSDF_TRANSPARENT", "BSDF_PRINCIPLED"}:
+            return True, []
+        if kind not in {"MIX_SHADER", "ADD_SHADER"}:
+            raise ValueError("Cannot verify Beckmann export beside " + kind + "; simplify the shader graph.")
+        branches = [self.distributions(item, groups, depth + 1) for item in _active_inputs(node)[-2:]]
+        both = all(present for present, _ in branches)
+        result = []
+        for index, (present, overrides) in enumerate(branches):
+            if not present:
+                continue
+            # Blender removes EDF-only branches from the exported BSDF graph.
+            edge = (("bg", "fg")[index] if both else "in1") if kind == "MIX_SHADER" else (
+                ("in1", "in2")[index] if both else "")
+            for override in overrides:
+                result.append({**override, "path": "/".join(filter(None, (edge, override["path"])))})
+        return any(present for present, _ in branches), result
 
     def visit(self, node, output, groups, surface):
         bypass = self.passthrough(node, output, groups)
@@ -516,8 +557,16 @@ class _Validator:
                 if socket is not None and socket.links and not _is_zero(self.constant(socket)):
                     self.error("unsupported_output", name + " is outside the supported subset.",
                                output, socket)
+        distributions = []
+        if self.has_beckmann and not self.diagnostics:
+            try:
+                _, distributions = self.distributions(surface)
+                distributions = [{**item, "path": "/".join(filter(None, ("bsdf", item["path"])))}
+                                 for item in distributions]
+            except ValueError as error:
+                self.error("distribution_mapping", str(error))
         return MaterialReport(self.name, int(self.material.as_pointer()), tuple(self.diagnostics),
-                              self.opaque_mix_branch)
+                              self.opaque_mix_branch, tuple(distributions))
 
 
 def validate_material(material, *, active_uv_names=None):

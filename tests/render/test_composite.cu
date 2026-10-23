@@ -53,6 +53,7 @@ __global__ void measure(rt::MaterialData material, Result *output, int test) {
 	constexpr int samples = sampleCount;
 	for (int index = threadIdx.x; index < samples; index += blockDim.x) {
 		auto sample = bsdf.sample(wo, sampler, mode);
+		if (!isfinite(sample.pdf) || sample.pdf < 0 || !sample.f.isFinite().all()) ++result.invalid;
 		if (sample.pdf > 0) {
 			++result.accepted;
 			if (!sample.f.isFinite().all() || !isfinite(sample.pdf) ||
@@ -72,6 +73,8 @@ __global__ void measure(rt::MaterialData material, Result *output, int test) {
 		float radius = sqrtf(fmaxf(0, 1 - z * z));
 		Vector3f wi(radius * cosf(phi), radius * sinf(phi), z);
 		auto value = bsdf.eval(wo, wi, mode);
+		if (!isfinite(value.pdf) || value.pdf < 0 || !value.f.isFinite().all() || value.f.minCoeff() < 0)
+			++result.invalid;
 		result.integrated += value.f.mean() * fabsf(z) * (4 * M_PI) / samples;
 		result.density += value.pdf * (4 * M_PI) / samples;
 		if (test <= 1 || test == 8) {
@@ -95,7 +98,7 @@ __global__ void measure(rt::MaterialData material, Result *output, int test) {
 	atomicAdd(&output->invalid, result.invalid);
 }
 
-std::shared_ptr<MaterialDescription> description(int test) {
+std::shared_ptr<MaterialDescription> description(int test, MicrofacetType distribution = MicrofacetType::GGX) {
 	using P = MaterialParameter;
 	auto result = std::make_shared<MaterialDescription>();
 	result->model = MaterialModel::Composite;
@@ -107,6 +110,8 @@ std::shared_ptr<MaterialDescription> description(int test) {
 			if (test == 4 || test == 7 || test == 9 || test >= 11) component.model = MaterialModel::Dielectric;
 			if (test == 6) component.model = MaterialModel::OpenPBR;
 		}
+		if (component.model == MaterialModel::Conductor || component.model == MaterialModel::Dielectric)
+			component.distribution = distribution;
 		float weight = test == 1 || test == 10 ? 1 : index == 0 ? .25f : .75f;
 		component.set(P::Weight, result->constant(MaterialValue(weight)));
 		component.set(P::BaseColor, result->constant(MaterialValue(index ? .8f : .2f), MaterialValueType::Color3));
@@ -201,14 +206,19 @@ int main() {
 		Context::ensureInitialized();
 		checkCubic();
 		CUDA_CHECK(cudaMallocManaged(&result, sizeof(Result)));
-		for (int test = 0; test < 13; ++test) {
-			material->setDescription(description(test));
-			device->getObjectData(material, blob, test == 0);
+		for (int run = 0; run < 27; ++run) {
+			int test = run == 26 ? 2 : run % 13;
+			auto distribution = run < 13 ? MicrofacetType::GGX : MicrofacetType::Beckmann;
+			auto surface = description(test, distribution);
+			if (run == 26) surface->components[0].model = MaterialModel::Conductor;
+			material->setDescription(surface);
+			device->getObjectData(material, blob, run == 0);
 			*result = {};
 			measure<<<1, 128>>>(*device, result, test);
 			CUDA_CHECK(cudaGetLastError());
 			CUDA_CHECK(cudaDeviceSynchronize());
-			std::cerr << test << ": energy " << result->sampled << " integral " << result->integrated
+			std::cerr << (run == 26 ? "Mixed " : run < 13 ? "GGX " : "Beckmann ") << test
+				<< ": energy " << result->sampled << " integral " << result->integrated
 				<< " density " << result->density << " accepted " << result->accepted << " delta " << result->delta
 				<< " invalid " << result->invalid << '\n';
 			if (result->invalid || !result->accepted || !std::isfinite(result->sampled))

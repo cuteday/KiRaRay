@@ -252,6 +252,11 @@ private:
 				source.GetPrim().GetCustomDataByKey(TfToken("kiraray:opaqueMixBranch"));
 			if (!opaqueMixBranch.IsEmpty())
 				network.opaqueMixBranch = value(opaqueMixBranch).get<std::string>();
+			auto distributions =
+				source.GetPrim().GetCustomDataByKey(TfToken("kiraray:distributions"));
+			if (!distributions.IsEmpty())
+				network.distributions = json::parse(value(distributions).get<std::string>())
+					.get<decltype(network.distributions)>();
 			VtValue diagnostic =
 				source.GetPrim().GetCustomDataByKey(TfToken("kiraray:diagnostics"));
 			if (diagnostic.IsHolding<VtArray<std::string>>())

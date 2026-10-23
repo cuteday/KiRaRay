@@ -97,8 +97,8 @@ These are deliberate approximations of Blender shading, not Cycles parity:
 | Blender shader | KiRaRay evaluation |
 |---|---|
 | Diffuse | Lambertian; nonzero diffuse roughness is ignored |
-| Glossy | Isotropic GGX conductor; anisotropic roughness axes are averaged and Fresnel can differ from Cycles Glossy |
-| Glass | GGX dielectric with reflection/refraction, including zero roughness |
+| Glossy | Isotropic GGX or Beckmann conductor; anisotropic roughness axes are averaged and Fresnel can differ from Cycles Glossy |
+| Glass | GGX or Beckmann dielectric with reflection/refraction, including zero roughness |
 | Multiscatter GGX | Existing GGX model without Cycles' multiscatter compensation |
 | Emission | Independent emission, including weighted Mix/Add emission |
 
@@ -106,6 +106,13 @@ Image textures support Linear, Closest, and Cubic filtering. Shader parameters
 use the same supported image, UV, normal-map, and numeric expression nodes as
 Principled. Unsupported distributions, procedural shading, layer closures, and
 other unverified nodes retain the diagnostic material rather than guessing.
+
+GGX and Beckmann can coexist in the same material without recompiling. Blender
+5.2.2 drops that choice during MaterialX export, so the extension supplies verified
+per-leaf metadata to Hydra and validated USD exports. Existing unannotated USD
+files retain GGX and must be re-exported to recover Beckmann choices. Leaf
+roughness retains the existing MaterialX-alpha interpretation, which differs
+from Cycles' squared roughness mapping; this change does not alter GGX images.
 
 A final Mix Shader may combine **constant white Transparent BSDF** with one
 supported opaque subtree. KiRaRay represents this as stochastic surface

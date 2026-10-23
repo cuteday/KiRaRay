@@ -5,6 +5,8 @@
 
 NAMESPACE_BEGIN(krr)
 
+enum class MicrofacetType : uint8_t { GGX, Beckmann };
+
 enum class MaterialModel : uint8_t {
 	OpenPBR,
 	PreviewSurface,

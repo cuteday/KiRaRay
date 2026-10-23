@@ -19,12 +19,20 @@ struct MaterialNodeInput {
 	std::map<std::string, MaterialInput> inputs;
 };
 
+struct MaterialDistribution {
+	std::string path;
+	std::string identifier;
+	std::string distribution;
+};
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(MaterialDistribution, path, identifier, distribution)
+
 struct MaterialNetwork {
 	std::string name;
 	std::string terminal;
 	std::map<std::string, MaterialNodeInput> nodes;
 	std::vector<std::string> diagnostics;
 	std::string opaqueMixBranch;
+	std::vector<MaterialDistribution> distributions;
 	double emissionLuminanceScale{1.0};
 };
 
