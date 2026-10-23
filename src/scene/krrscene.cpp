@@ -14,8 +14,18 @@ bool SceneImporter::loadModel(const fs::path filename, Scene::SharedPtr pScene,
 		success = AssimpImporter().import(filepath, pScene, node, params);
 	} else if (format == ".pbrt") {
 		success = PbrtImporter().import(filepath, pScene, node, params);
+	} else if (format == ".usd" || format == ".usda" || format == ".usdc") {
+#if KRR_ENABLE_USD
+		success = UsdImporter().import(filepath, pScene, node, params);
+#else
+		throw std::runtime_error("USD scene import requires a build with KRR_ENABLE_USD=ON");
+#endif
 	} else if (format == ".vdb" || format == ".nvdb") {
+#if KRR_ENABLE_OPENVDB_IO
 		success = OpenVDBImporter().import(filepath, pScene, node, params);
+#else
+		throw std::runtime_error("Volume scene import requires a build with KRR_ENABLE_OPENVDB_IO=ON");
+#endif
 	} else if (format == ".json") {
 		success = SceneImporter().import(filepath, pScene, node, params);
 	} else {
@@ -134,7 +144,11 @@ bool SceneImporter::loadMedium(Scene::SharedPtr pScene, SceneGraphNode::SharedPt
 		return true;
 	} else if (type == "heterogeneous") {
 		if (params.contains("file")) {
+#if KRR_ENABLE_OPENVDB_IO
 			return OpenVDBImporter().import(params.at("file"), pScene, node, params);
+#else
+			throw std::runtime_error("Volume scene import requires a build with KRR_ENABLE_OPENVDB_IO=ON");
+#endif
 		} else {
 			Log(Error, "Heterogeneous medium must have a file path!");
 			return false;

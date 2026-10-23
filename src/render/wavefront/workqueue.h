@@ -49,6 +49,7 @@ public:
 
 	KRR_CALLABLE int size() const { return m_size.load(); }
 	KRR_CALLABLE int capacity() const { return nAlloc; }
+	KRR_CALLABLE void setSize(int size) { m_size.store(size); }
 	KRR_CALLABLE void reset() { m_size.store(0); }
 
 	KRR_CALLABLE int push(const WorkItem& w) {
@@ -177,15 +178,14 @@ public:
 	using WorkQueue::WorkQueue;     // use parent constructor
 	using WorkQueue::push;
 
-	KRR_CALLABLE int pushCameraRay(Ray ray, uint pixelId) {
-		int index = allocateEntry();
+	KRR_CALLABLE void setCameraRay(Ray ray, uint pixelId) {
+		int index = pixelId;
 		this->depth[index]	 = 0;
 		this->thp[index]	 = Spectrum::Ones();
 		this->pu[index]		 = Spectrum::Ones();
 		this->pl[index]		 = Spectrum::Ones();
 		this->pixelId[index] = pixelId;
 		this->ray[index]	 = ray;
-		return index;
 	}
 
 	KRR_CALLABLE int push(const Ray& ray, const LightSampleContext& ctx, const Spectrum& thp, 

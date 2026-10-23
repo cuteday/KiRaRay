@@ -64,6 +64,7 @@ SET(ASSIMP_INCLUDE_DIRS ${ASSIMP_INCLUDE_DIRS} PARENT_SCOPE)
 SET(IMAGEIO_INCLUDE_DIRS 
 	${CMAKE_CURRENT_SOURCE_DIR}/image )
 SET(IMAGEIO_INCLUDE_DIRS ${IMAGEIO_INCLUDE_DIRS} PARENT_SCOPE)
+include(openexr.cmake)
 
 # json
 SET(JSON_INCLUDE_DIRS
@@ -84,10 +85,16 @@ SET( PBRTPARSER_INCLUDE_DIRS
 	${CMAKE_CURRENT_SOURCE_DIR}/pbrtparser/pbrtParser/include)
 SET( PBRTPARSER_INCLUDE_DIRS ${PBRTPARSER_INCLUDE_DIRS} PARENT_SCOPE)
 
-# openvdb
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/openvdb)
+# NanoVDB remains available without the legacy OpenVDB import libraries.
+add_library(krr_nanovdb INTERFACE)
+set(NANOVDB_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/openvdb/nanovdb/include)
+target_include_directories(krr_nanovdb INTERFACE ${NANOVDB_INCLUDE_DIRS})
+if(KRR_ENABLE_OPENVDB_IO)
+	include(openvdb.cmake)
+endif()
 
 ADD_LIBRARY(krr_ext INTERFACE)
+add_library(krr_mikktspace STATIC mikktspace/mikktspace.c)
 
 TARGET_LINK_LIBRARIES(krr_ext INTERFACE
 	glfw
@@ -99,8 +106,13 @@ TARGET_LINK_LIBRARIES(krr_ext INTERFACE
 	nvrhi
 	nvrhi_vk
 	Vulkan::Headers
-	openvdb
+	krr_nanovdb
+	krr_mikktspace
 )
+if(KRR_ENABLE_OPENVDB_IO)
+	target_link_libraries(krr_ext INTERFACE openvdb
+		"${CMAKE_CURRENT_SOURCE_DIR}/openvdb/openvdb/lib/$<IF:$<CONFIG:Debug>,openvdb_d,openvdb>.lib")
+endif()
 if(KRR_ENABLE_D3D12)
 	target_link_libraries(krr_ext INTERFACE nvrhi_d3d12 dxgi dxguid)
 	target_compile_definitions(krr_ext INTERFACE KRR_ENABLE_D3D12=1)
@@ -129,6 +141,7 @@ SET(KRR_EXT_INCLUDES
 	${IMAGEIO_INCLUDE_DIRS}
 	${PBRTPARSER_INCLUDE_DIRS}
 	${NVRHI_INCLUDE_DIRS}
+	${NANOVDB_INCLUDE_DIRS}
 	${OPENVDB_INCLUDE_DIRS}
 )
 SET(KRR_EXT_INCLUDES ${KRR_EXT_INCLUDES} PARENT_SCOPE)

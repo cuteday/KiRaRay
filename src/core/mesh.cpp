@@ -43,18 +43,19 @@ void rt::InstanceData::getObjectData(std::shared_ptr<SceneGraphLeaf> object,
 			rt::MeshData &meshData		   = meshes[mesh->getMeshId()];
 			rt::TextureData textureData    = materialData.getTexture(Material::TextureType::Emissive);
 			rt::InstanceData &instanceData = instances[inst->getInstanceId()];
+			bool programEmission = material && material->mDescription && material->hasEmission();
 			RGB Le = material->hasEmission() ? RGB(textureData.getConstant()) : mesh->Le;
-			Log(Debug, "Emissive diffuse area light detected, number of shapes: %lld",
-				" constant emission(?): %f", mesh->indices.size(), luminance(Le));
-			float scale = Le.maxCoeff();
-			Le /= scale;
+			Log(Debug, "Emissive diffuse area light detected, number of shapes: %zu; emission: %f",
+				mesh->indices.size(), luminance(Le));
+			float scale = programEmission ? 1.f : Le.maxCoeff();
+			if (scale > 0) Le /= scale;
 			std::vector<Triangle> primitives = createTrianglePrimitives(mesh, const_cast<rt::InstanceData*>(this));
 			size_t n_primitives = primitives.size();
 			gdata->primitives.alloc_and_copy_from_host(primitives);
 			std::vector<rt::DiffuseAreaLight> lights(n_primitives);
 			Log(Debug, "Uploading a light with scale %f; emission %s", scale, Le.string().c_str());
 			for (size_t triId = 0; triId < n_primitives; triId++) {
-				lights[triId] =
+				lights[triId] = programEmission ? rt::DiffuseAreaLight(Shape(&gdata->primitives[triId]), &materialData) :
 					rt::DiffuseAreaLight(Shape(&gdata->primitives[triId]), textureData, Le, false, scale);
 			}
 			gdata->lights.alloc_and_copy_from_host(lights);

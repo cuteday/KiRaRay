@@ -36,9 +36,13 @@ void Camera::renderUI() {
 }
 
 
-Matrix4f Camera::getViewMatrix() const { return look_at(getPosition(), getTarget(), getUp()); }
+Matrix4f Camera::getViewMatrix() const {
+	if (mData.externalProjection) return getTransform().inverse().matrix();
+	return look_at(getPosition(), getTarget(), getUp());
+}
 
 Matrix4f Camera::getProjectionMatrix() const {
+	if (mData.externalProjection) return mData.projection;
 	float fovy = 2 * atan2(mData.filmSize[1] * 0.5f, mData.focalLength);
 	return perspective(fovy, mData.aspectRatio, 0.01f, 1000.f);
 }

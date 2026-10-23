@@ -6,8 +6,57 @@ NAMESPACE_BEGIN(krr)
 class ConductorBsdf {
 public:
 	ConductorBsdf() = default;
+	KRR_CALLABLE ConductorBsdf(Spectrum color, float alphaX, float alphaY) {
+		reflectance = color.cwiseMax(0.f).cwiseMin(.9999f);
+		eta = Spectrum(1);
+		k = 2 * reflectance.sqrt() / (Spectrum::Ones() - reflectance).sqrt();
+		distribution = GGXMicrofacetDistribution(alphaX, alphaY);
+	}
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(ConductorBsdf);
+
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi,
+							 TransportMode mode = TransportMode::Radiance) const {
+		return {fImpl(wo, wi, mode, distribution), pdfImpl(wo, wi, mode, distribution)};
+	}
+
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi, TransportMode mode, MicrofacetType type) const {
+		if (type == MicrofacetType::Beckmann) {
+			auto d = beckmann();
+			return {fImpl(wo, wi, mode, d), pdfImpl(wo, wi, mode, d)};
+		}
+		return eval(wo, wi, mode);
+	}
+
+	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
+		TransportMode mode = TransportMode::Radiance) const {
+		return fImpl(wo, wi, mode, distribution);
+	}
+
+	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi, TransportMode mode, MicrofacetType type) const {
+		if (type == MicrofacetType::Beckmann) return fImpl(wo, wi, mode, beckmann());
+		return fImpl(wo, wi, mode, distribution);
+	}
+
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
+		TransportMode mode = TransportMode::Radiance) const {
+		return pdfImpl(wo, wi, mode, distribution);
+	}
+
+	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi, TransportMode mode, MicrofacetType type) const {
+		if (type == MicrofacetType::Beckmann) return pdfImpl(wo, wi, mode, beckmann());
+		return pdfImpl(wo, wi, mode, distribution);
+	}
+
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
+		TransportMode mode = TransportMode::Radiance) const {
+		return sampleImpl(wo, sg, mode, distribution);
+	}
+
+	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg, TransportMode mode, MicrofacetType type) const {
+		if (type == MicrofacetType::Beckmann) return sampleImpl(wo, sg, mode, beckmann());
+		return sampleImpl(wo, sg, mode, distribution);
+	}
 
 	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
 		Spectra eta_spec = intr.material->mMaterialParams.spectralEta, k_spec;
@@ -31,8 +80,14 @@ public:
 			k = 2 * reflectance.sqrt() / (Spectrum::Ones() - reflectance).cwiseMax(0).sqrt();
 	}
 
-	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,
-							TransportMode mode = TransportMode::Radiance) const {
+	KRR_CALLABLE BSDFType flags() const {
+		return BSDF_REFLECTION | (distribution.isDelta() ? BSDF_SPECULAR : BSDF_GLOSSY);
+	}
+
+private:
+	template<class Distribution>
+	KRR_CALLABLE Spectrum fImpl(Vector3f wo, Vector3f wi,
+							TransportMode mode, const Distribution &distribution) const {
 		if (!SameHemisphere(wo, wi)) return Spectrum::Zero();
 		if (distribution.isDelta()) return Spectrum::Zero();
 		// Evaluate rough conductor BRDF
@@ -49,8 +104,9 @@ public:
 		return distribution.D(wm) * F * distribution.G(wo, wi) / (4 * cosTheta_i * cosTheta_o);
 	}
 
-	KRR_CALLABLE BSDFSample sample(Vector3f wo, Sampler &sg,
-								   TransportMode mode = TransportMode::Radiance) const {
+	template<class Distribution>
+	KRR_CALLABLE BSDFSample sampleImpl(Vector3f wo, Sampler &sg,
+								   TransportMode mode, const Distribution &distribution) const {
 		if (distribution.isDelta()) {
 			// Sample perfect specular conductor BRDF
 			Vector3f wi(-wo.x(), -wo.y(), wo.z());
@@ -77,8 +133,9 @@ public:
 		return BSDFSample(f, wi, pdf, BSDFType::BSDF_GLOSSY_REFLECTION);
 	}
 
-	KRR_CALLABLE float pdf(Vector3f wo, Vector3f wi,
-						   TransportMode mode = TransportMode::Radiance) const {
+	template<class Distribution>
+	KRR_CALLABLE float pdfImpl(Vector3f wo, Vector3f wi,
+						   TransportMode mode, const Distribution &distribution) const {
 		if (!SameHemisphere(wo, wi)) return 0;
 		if (distribution.isDelta()) return 0;
 		// Evaluate sampling PDF of rough conductor BRDF
@@ -88,11 +145,11 @@ public:
 		return distribution.Pdf(wo, wm) / (4 * AbsDot(wo, wm));
 	}
 
-	KRR_CALLABLE BSDFType flags() const {
-		return BSDF_REFLECTION | (distribution.isDelta() ? BSDF_SPECULAR : BSDF_GLOSSY);
+	KRR_CALLABLE BeckmannMicrofacetDistribution beckmann() const {
+		Vector2f alpha = distribution.alpha();
+		return {alpha[0], alpha[1]};
 	}
 
-private:
 	Spectrum eta, k;
 	Spectrum reflectance;
 	GGXMicrofacetDistribution distribution;

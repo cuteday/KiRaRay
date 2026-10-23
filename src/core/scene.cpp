@@ -52,8 +52,10 @@ void Scene::renderUI() {
 	if (mCamera && ui::TreeNode("Camera")) {
 		ui::Text("Camera parameters");
 		mCamera->renderUI();
-		ui::Text("Orbit controller");
-		mCameraController->renderUI();
+		if (mCameraController) {
+			ui::Text("Orbit controller");
+			mCameraController->renderUI();
+		}
 		ui::TreePop();
 	}
 	if (mGraph && ui::TreeNode("Scene Graph")) {
@@ -166,6 +168,11 @@ void Scene::initializeSceneRT() {
 	if (mConfig.contains("options"))
 		optixSceneParameters = mConfig["options"].get<OptixSceneParameters>();
 	mSceneRT->uploadSceneData(optixSceneParameters);
+}
+
+void Scene::releaseDeviceResources() {
+	mGraphicsScene.reset();
+	mSceneRT.reset();
 }
 
 void Scene::setConfig(const json& config, bool update) {

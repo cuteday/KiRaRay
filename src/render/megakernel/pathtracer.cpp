@@ -11,16 +11,18 @@ extern "C" char PATHTRACER_PTX[];
 
 void MegakernelPathTracer::compilePrograms() {
 	auto params = optixBackend->getParameters();
+	params.raygenEntries = {launchParams.authoredMaterials ? "Pathtracer" : "PathtracerLegacy"};
 	params.boundValues.clear();
 	params.addBoundValue(offsetof(LaunchParameters<MegakernelPathTracer>, spp),
 						 sizeof(launchParams.spp), &launchParams.spp, "Samples per pixel");
+	params.addBoundValue(offsetof(LaunchParameters<MegakernelPathTracer>, authoredMaterials),
+		sizeof(launchParams.authoredMaterials), &launchParams.authoredMaterials, "Authored materials");
 	optixBackend->initialize(params);
 	needsRecompile = false;
 }
 
 void MegakernelPathTracer::resize(const Vector2i &size) {
 	launchParams.fbSize = getFrameSize();
-	needsRecompile		= true;
 }
 
 void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
@@ -28,13 +30,13 @@ void MegakernelPathTracer::setScene(Scene::SharedPtr scene) {
 	if (!optixBackend) optixBackend = std::make_shared<OptixBackend>();
 	auto params = OptixInitializeParameters()
 					  .setPTX(PATHTRACER_PTX)
-					  .addRaygenEntry("Pathtracer")
 					  .addRayType("Radiance", true, true, false)
 					  .addRayType("ShadowRay", true, true, false)
 					  .setMaxTraversableDepth(scene->getMaxGraphDepth());
 	optixBackend->setScene(scene);
-	optixBackend->initialize(params);
-	needsRecompile = true;
+	optixBackend->setParameters(params);
+	launchParams.authoredMaterials = scene->getSceneRT()->hasAuthoredMaterials();
+	compilePrograms();
 }
 
 void MegakernelPathTracer::renderUI() {
@@ -53,6 +55,10 @@ void MegakernelPathTracer::renderUI() {
 
 void MegakernelPathTracer::render(RenderContext *context) {
 	if (getFrameSize().isZero()) return;
+	if (launchParams.authoredMaterials != mScene->getSceneRT()->hasAuthoredMaterials()) {
+		launchParams.authoredMaterials = mScene->getSceneRT()->hasAuthoredMaterials();
+		needsRecompile = true;
+	}
 	launchParams.colorSpace	 = KRR_DEFAULT_COLORSPACE;
 	launchParams.colorBuffer = context->getColorTexture()->getCudaRenderTarget();
 	launchParams.camera		 = mScene->getCamera()->getCameraData();
@@ -63,8 +69,9 @@ void MegakernelPathTracer::render(RenderContext *context) {
 	{
 		PROFILE("Megakernel Path Tracer");
 		if (needsRecompile) compilePrograms();
-		optixBackend->launch(launchParams, "Pathtracer", getFrameSize()[0], getFrameSize()[1],
-			1, KRR_DEFAULT_STREAM);
+		optixBackend->launch(launchParams,
+			launchParams.authoredMaterials ? "Pathtracer" : "PathtracerLegacy",
+			getFrameSize()[0], getFrameSize()[1], 1, KRR_DEFAULT_STREAM);
 	}
 }
 

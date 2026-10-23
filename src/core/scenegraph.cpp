@@ -156,13 +156,15 @@ SceneGraphNode::SharedPtr SceneGraph::attach(const SceneGraphNode::SharedPtr &pa
 			copy->mParent				   = currentParent;
 			copy->mContentFlags			   = walker->mContentFlags;
 			copy->mGraph				   = weak_from_this();
-			if (walker->mHasLocalTransform) 
+			if (walker->mExplicitTransform)
+				copy->setLocalTransform(walker->mLocalTransform);
+			else if (walker->mHasLocalTransform)
 				copy->setTransform(&walker->getTranslation(), &walker->getRotation(),
 								   &walker->getScaling());
 			if (walker->mLeaf) 
 				copy->setLeaf(walker->mLeaf->clone());
 			if (currentParent) {
-				copy->mNextSibling		   = parent->mFirstChild;
+				copy->mNextSibling		   = currentParent->mFirstChild;
 				currentParent->mFirstChild = copy;
 			} else { // parent do not exist at the beginning...
 				mRoot = copy;
@@ -381,7 +383,7 @@ void SceneGraph::update(size_t frameIndex) {
 		if (context.superGraphTransformUpdated || currentTransformUpdated) {
 			// The global transformation of the current node has changed, special treats goes to mesh instances.
 			if (std::dynamic_pointer_cast<MeshInstance>(current->getLeaf())) 
-				current->getLeaf()->setUpdated(true);
+				current->getLeaf()->mUpdated = true;
 		}
 
 		// whether we need to go deeper into the subgraph?

@@ -76,7 +76,8 @@ json getBuildInfo() {
 	json info = {{"spectral", bool(KRR_RENDER_SPECTRAL)}, {"cuda_version", CUDART_VERSION},
 		{"optix_version", OPTIX_VERSION}, {"build_type", KRR_BUILD_TYPE},
 		{"project_root", KRR_PROJECT_DIR}, {"optix_profiling", bool(KRR_PROFILE_OPTIX)},
-		{"debug_build", KRR_DEBUG_SELECT(true, false)}};
+		{"debug_build", KRR_DEBUG_SELECT(true, false)}, {"openvdb_io", bool(KRR_ENABLE_OPENVDB_IO)},
+		{"usd", bool(KRR_ENABLE_USD)}};
 	info["graphics_apis"] = json::array({"vulkan"});
 #ifdef KRR_ENABLE_D3D12
 	info["graphics_apis"].push_back("d3d12");

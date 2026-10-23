@@ -45,7 +45,6 @@ struct PixelState {
 	Spectrum L;
 	RGB pixel;
 	PCGSampler sampler;
-	CameraSample cameraSample;
 	SampledWavelengths lambda;
 };
 
@@ -58,6 +57,7 @@ struct BSDFData {
 	float metallic;
 	float anisotropic;
 	MaterialType bsdfType;
+	BSDFType authoredFlags;
 };
 
 struct SurfaceInteraction {

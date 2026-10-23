@@ -21,6 +21,11 @@ public:
 
 	_DEFINE_BSDF_INTERNAL_ROUTINES(NullBsdf);
 
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi,
+							 TransportMode mode = TransportMode::Radiance) const {
+		return {f(wo, wi, mode), pdf(wo, wi, mode)};
+	}
+
 	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {}
 
 	KRR_CALLABLE Spectrum f(Vector3f wo, Vector3f wi,

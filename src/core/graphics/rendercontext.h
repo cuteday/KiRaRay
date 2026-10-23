@@ -2,12 +2,15 @@
 
 #include "rendertarget.h"
 #include <scene.h>
+#include <array>
 
 namespace krr {
 
 class RenderContext {
 public:
 	using SharedPtr = std::shared_ptr<RenderContext>;
+	struct Readback;
+	using ReadbackHandle = std::shared_ptr<Readback>;
 	struct CudaScope {
 		explicit CudaScope(RenderContext *context);
 		~CudaScope() noexcept(false);
@@ -40,13 +43,20 @@ public:
 	void removeSharedBuffer(nvrhi::IBuffer *buffer);
 	void clear();
 	std::vector<float> readback();
+	ReadbackHandle enqueueReadback();
+	bool isReadbackReady(const ReadbackHandle &readback);
+	std::vector<float> collectReadback(const ReadbackHandle &readback, bool wait = false);
 
 private:
 	std::vector<nvrhi::IBuffer *> getSharedBuffers() const;
+	std::vector<float> copyReadback(nvrhi::IStagingTexture *staging);
+	void releaseReadbacks();
 	nvrhi::DeviceHandle mDevice;
 	std::unique_ptr<GraphicsInterop> mInterop;
 	Scene::SharedPtr mScene;
 	nvrhi::CommandListHandle mCommandList;
+	nvrhi::StagingTextureHandle mReadback;
+	std::array<ReadbackHandle, 2> mAsyncReadbacks;
 	RenderTarget::SharedPtr mRenderTarget;
 	std::vector<nvrhi::BufferHandle> mSharedBuffers;
 	std::vector<nvrhi::ITexture *> mCudaTextures;

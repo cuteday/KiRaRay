@@ -12,6 +12,7 @@ NAMESPACE_BEGIN(krr)
 
 void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 	PROFILE("Sample medium interaction");
+	bool hasEnvironment = backend->getSceneData().infiniteLights.size() != 0;
 	ForAllQueued(mediumSampleQueue, maxQueueSize,
 				 KRR_DEVICE_LAMBDA(const MediumSampleWorkItem &w){
 			/* Each ray is either absorped or scattered after some null collisions... */
@@ -78,7 +79,8 @@ void WavefrontPathTracer::sampleMediumInteraction(int depth) {
 			// [I am free...] The ray escaped from our sight...
 			if (w.tMax == M_FLOAT_INF) {
 				/* [CHECK] Is it correct to use w.bsdfType here? */
-				missRayQueue->push(ray, w.ctx, thp, pu, pl, w.bsdfType, w.depth, w.pixelId);
+				if (hasEnvironment)
+					missRayQueue->push(ray, w.ctx, thp, pu, pl, w.bsdfType, w.depth, w.pixelId);
 				return;
 			}
 
@@ -111,8 +113,8 @@ void WavefrontPathTracer::sampleMediumScattering(int depth) {
 			const SampledWavelengths &lambda = pixelState->lambda[w.pixelId];
 			LightSampleContext ctx{w.p, Vector3f::Zero()};
 			// [PART-A] Sample direct lighting with ShadowRayTr
-			if (enableNEE) {
-				SampledLight sampledLight = lightSampler.sample(sampler.get1D());
+			if (SampledLight sampledLight = enableNEE
+				? lightSampler.sample(sampler.get1D()) : SampledLight{}) {
 				Light light				  = sampledLight.light;
 				LightSample ls			  = light.sampleLi(sampler.get2D(), ctx, lambda);
 				Ray shadowRay			  = Interaction(w.p, w.time, w.medium).spawnRayTo(ls.intr);

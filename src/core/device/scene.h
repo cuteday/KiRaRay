@@ -158,6 +158,7 @@ public:
 	rt::SceneData getSceneData();
 	std::shared_ptr<Scene> getScene() const;
 	std::shared_ptr<OptixScene> getOptixScene() const { return mOptixScene; }
+	bool hasAuthoredMaterials() const { return mHasAuthoredMaterials; }
 
 	gpu::vector<rt::MaterialData> &getMaterialData() { return mMaterials; }
 	gpu::vector<rt::MeshData> &getMeshData() { return mMeshes; }
@@ -167,9 +168,11 @@ public:
 
 private:
 	void uploadSceneMaterialData();
+	void updateMaterialTypes();
 	void uploadSceneMeshData();
 	void uploadSceneInstanceData();
 	void uploadSceneLightData();
+	void updateLightSampler();
 	void uploadSceneMediumData();
 
 	gpu::vector<rt::MaterialData> mMaterials;
@@ -186,6 +189,7 @@ private:
 
 	std::weak_ptr<Scene> mScene;
 	std::shared_ptr<OptixScene> mOptixScene;
+	bool mHasAuthoredMaterials{};
 };
 
 template <typename Integrator> 

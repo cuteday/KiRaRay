@@ -1,0 +1,18 @@
+{
+    "Plugins": [{
+        "Info": {
+            "Types": {
+                "HdKrrProbeRendererPlugin": {
+                    "bases": ["HdRendererPlugin"],
+                    "displayName": "KiRaRay ABI probe",
+                    "priority": 0
+                }
+            }
+        },
+        "LibraryPath": "hdKrrProbe.dll",
+        "Name": "hdKrrProbe",
+        "ResourcePath": ".",
+        "Root": ".",
+        "Type": "library"
+    }]
+}

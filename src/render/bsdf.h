@@ -9,6 +9,8 @@
 #include "materials/disney.h"
 #include "materials/conductor.h"
 #include "materials/dielectric.h"
+#include "materials/openpbr.h"
+#include "materials/composite.h"
 
 NAMESPACE_BEGIN(krr)
 
@@ -16,11 +18,14 @@ NAMESPACE_BEGIN(krr)
 *  avoiding initializing a BSDF multiple times within in a scope, 
 *  but needs a maximum size of variant to be known at compile time.
 */
-class BSDF : public VariantClass<NullBsdf, DiffuseBrdf, DielectricBsdf, ConductorBsdf, DisneyBsdf> {
+template <typename... Models> class BasicBSDF : public VariantClass<Models...> {
 public:
-	using VariantClass::VariantClass;
+	using Base = VariantClass<Models...>;
+	using Base::Base;
+	using Base::dispatch;
+	using Base::defaultConstruct;
 
-	KRR_CALLABLE BSDF(const SurfaceInteraction &intr) { setup(intr); }
+	KRR_CALLABLE BasicBSDF(const SurfaceInteraction &intr) { setup(intr); }
 
 	KRR_CALLABLE void setup(const SurfaceInteraction &intr) {
 		defaultConstruct(static_cast<size_t>(intr.sd.bsdfType));
@@ -47,6 +52,12 @@ public:
 		return dispatch(pdf);
 	}
 
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi,
+							 TransportMode mode = TransportMode::Radiance) const {
+		auto eval = [&](auto ptr) -> BSDFEval { return ptr->eval(wo, wi, mode); };
+		return dispatch(eval);
+	}
+
 	KRR_CALLABLE BSDFType flags() const {
 		auto flags = [&](auto ptr) -> BSDFType { return ptr->flags(); };
 		return dispatch(flags);
@@ -57,10 +68,11 @@ public:
 *  But it does not bother to take the maximum size among all types.
 */
 
-class BxDF :public TaggedPointer<NullBsdf, DiffuseBrdf, 
-	DielectricBsdf, ConductorBsdf, DisneyBsdf>{
+template <typename... Models> class BasicBxDF : public TaggedPointer<Models...> {
 public:
-	using TaggedPointer::TaggedPointer;
+	using Base = TaggedPointer<Models...>;
+	using Base::Base;
+	using Base::dispatch;
 
 	KRR_CALLABLE static BSDFSample sample(const SurfaceInteraction &intr, Vector3f wo, Sampler &sg,
 										  TransportMode mode = TransportMode::Radiance) {
@@ -78,6 +90,12 @@ public:
 								  TransportMode mode = TransportMode::Radiance) {
 		auto pdf = [&](auto ptr)->float {return ptr->pdfInternal(intr, wo, wi, mode); };
 		return dispatch(pdf, static_cast<int>(intr.sd.bsdfType));
+	}
+
+	KRR_CALLABLE static BSDFEval eval(const SurfaceInteraction &intr, Vector3f wo, Vector3f wi,
+									TransportMode mode = TransportMode::Radiance) {
+		auto eval = [&](auto ptr) -> BSDFEval { return ptr->evalInternal(intr, wo, wi, mode); };
+		return dispatch(eval, static_cast<int>(intr.sd.bsdfType));
 	}
 
 	KRR_CALLABLE static BSDFType flags(const SurfaceInteraction& intr) {
@@ -109,10 +127,23 @@ public:
 		return dispatch(pdf);
 	}
 
+	KRR_CALLABLE BSDFEval eval(Vector3f wo, Vector3f wi,
+							 TransportMode mode = TransportMode::Radiance) const {
+		auto eval = [&](auto ptr) -> BSDFEval { return ptr->eval(wo, wi, mode); };
+		return dispatch(eval);
+	}
+
 	KRR_CALLABLE BSDFType flags() const {
 		auto flags = [&](auto ptr) -> BSDFType { return ptr->flags(); };
 		return dispatch(flags);
 	}
 };
+
+using LegacyBSDF = BasicBSDF<NullBsdf, DiffuseBrdf, DielectricBsdf, ConductorBsdf, DisneyBsdf>;
+using LegacyBxDF = BasicBxDF<NullBsdf, DiffuseBrdf, DielectricBsdf, ConductorBsdf, DisneyBsdf>;
+using BSDF = BasicBSDF<NullBsdf, DiffuseBrdf, DielectricBsdf, ConductorBsdf, DisneyBsdf,
+	OpenPbrBsdf, PreviewSurfaceBsdf, CompositeBsdf>;
+using BxDF = BasicBxDF<NullBsdf, DiffuseBrdf, DielectricBsdf, ConductorBsdf, DisneyBsdf,
+	OpenPbrBsdf, PreviewSurfaceBsdf, CompositeBsdf>;
 
 NAMESPACE_END(krr)

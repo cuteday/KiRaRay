@@ -15,7 +15,6 @@ struct PixelState {
 	Spectrum L;
 	RGB pixel;
 	PCGSampler sampler;
-	CameraSample cameraSample;
 	SampledWavelengths lambda;
 };
 

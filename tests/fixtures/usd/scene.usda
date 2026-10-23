@@ -1,0 +1,75 @@
+#usda 1.0
+(
+    metersPerUnit = 0.01
+    upAxis = "Z"
+    startTimeCode = 3
+    endTimeCode = 4
+)
+
+def Xform "Root"
+{
+    def Material "Surface"
+    {
+        token outputs:surface.connect = </Root/Surface/Shader.outputs:surface>
+        def Shader "Shader"
+        {
+            uniform token info:id = "UsdPreviewSurface"
+            color3f inputs:diffuseColor = (0.4, 0.2, 0.1)
+            float inputs:roughness = 0.3
+            token outputs:surface
+        }
+    }
+    def Xform "Prototype" (
+        instanceable = true
+    )
+    {
+        def Mesh "Mesh" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </Root/Surface>
+            point3f[] points = [(0, 0, 0), (100, 0, 0), (0, 100, 0)]
+            int[] faceVertexCounts = [3]
+            int[] faceVertexIndices = [0, 1, 2]
+            normal3f[] normals = [(0, 0, 1)] (interpolation = "constant")
+            texCoord2f[] primvars:st = [(0, 0), (1, 0), (0, 1)] (interpolation = "faceVarying")
+            uniform token subdivisionScheme = "none"
+        }
+    }
+    def Xform "Instance" (
+        instanceable = true
+        references = </Root/Prototype>
+    )
+    {
+        double3 xformOp:translate.timeSamples = {3: (100, 200, 300), 4: (200, 200, 300)}
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    def Camera "A"
+    {
+        token projection = "perspective"
+        float horizontalAperture = 36
+        float verticalAperture = 24
+        float focalLength = 50
+        double3 xformOp:translate = (0, 0, 500)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    def Camera "B"
+    {
+        token projection = "perspective"
+        float horizontalAperture = 36
+        float verticalAperture = 24
+        float focalLength = 80
+        double3 xformOp:translate = (200, 0, 500)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    def RectLight "Light"
+    {
+        float inputs:width = 100
+        float inputs:height = 200
+        float inputs:intensity = 2
+        float inputs:exposure = 1
+        bool inputs:normalize = true
+        double3 xformOp:translate = (0, 0, 300)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+}
