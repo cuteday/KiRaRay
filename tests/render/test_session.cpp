@@ -42,6 +42,250 @@ void checkContext(CUcontext expected) {
 		"Session did not restore the caller's CUDA context");
 }
 
+void testMegakernelMaterialUpdates(json config) {
+	config["passes"][0]["name"] = "MegakernelPathTracer";
+	auto description = std::make_shared<MaterialDescription>();
+	description->model = MaterialModel::OpenPBR;
+	description->set(MaterialParameter::BaseColor,
+		description->constant(MaterialValue(.05f, .15f, .8f), MaterialValueType::Vector3));
+	description->set(MaterialParameter::SpecularRoughness, description->constant(MaterialValue(.3f)));
+	description->set(MaterialParameter::CoatWeight, description->constant(MaterialValue(.35f)));
+	auto findMaterial = [](const Scene::SharedPtr &scene) {
+		auto &materials = scene->getMaterials();
+		auto material = std::find_if(materials.begin(), materials.end(),
+			[](const auto &value) { return value->getName() == "leftWall"; });
+		require(material != materials.end(), "Cornell fixture has no left wall material");
+		return *material;
+	};
+	std::vector<float> edited, resized;
+	{
+		RenderSession session(config);
+		session.initialize(17);
+		session.step(4);
+		const auto legacy = session.snapshot();
+		auto scene = session.getScene();
+		auto rtScene = scene->getSceneRT();
+		auto optixScene = rtScene->getOptixScene();
+		auto material = findMaterial(scene);
+		Material original;
+		original.updateFrom(*material);
+		require(!rtScene->hasAuthoredMaterials(), "Megakernel fixture is not a legacy scene");
+		material->setDescription(description);
+		session.reset(17);
+		session.step(4);
+		edited = session.snapshot().image;
+		require(rtScene->hasAuthoredMaterials() && edited != legacy.image,
+			"Megakernel ignored an authored material edit");
+		material->updateFrom(original);
+		session.reset(17);
+		session.step(4);
+		compare(session.snapshot().image, legacy.image);
+		require(!rtScene->hasAuthoredMaterials() && scene->getSceneRT() == rtScene &&
+			rtScene->getOptixScene() == optixScene,
+			"Megakernel material updates replaced the scene or retained authored scattering");
+		session.resize({16, 24});
+		session.step(4);
+		const auto snapshot = session.snapshot();
+		require(snapshot.size == Vector2i(16, 24) && snapshot.image.size() == 16 * 24 * 3,
+			"Megakernel resize did not update the rendered image");
+		resized = snapshot.image;
+		session.resize(legacy.size);
+		session.step(4);
+		compare(session.snapshot().image, legacy.image);
+	}
+	{
+		auto resizedConfig = config;
+		resizedConfig["resolution"] = {16, 24};
+		RenderSession reference(resizedConfig);
+		reference.initialize(17);
+		reference.step(4);
+		compare(resized, reference.snapshot().image);
+	}
+	auto fresh = std::make_shared<Scene>();
+	require(SceneImporter().import(config["scene"], fresh), "Could not create authored reference scene");
+	findMaterial(fresh)->setDescription(description);
+	fresh->update(0, 0.0);
+	RenderSession reference(config);
+	reference.initialize(17, fresh);
+	reference.step(4);
+	compare(edited, reference.snapshot().image);
+	std::cout << "Megakernel material transitions and resize completed\n";
+}
+
+void testWavefrontEnvironmentUpdates(json config) {
+	config["passes"][0]["name"] = "WavefrontPathTracer";
+	config["passes"][0]["params"]["nee"] = false;
+	auto makeScene = [&](bool withEnvironment) {
+		auto scene = std::make_shared<Scene>();
+		require(SceneImporter().import(config["scene"], scene), "Could not create environment test scene");
+		if (withEnvironment) {
+			auto light = std::make_shared<InfiniteLight>(
+				std::make_shared<Texture>(RGBA{.1f, .2f, .4f, 1.f}));
+			scene->getSceneGraph()->attachLeaf(scene->getSceneGraph()->getRoot(), light);
+		}
+		scene->update(0, 0.0);
+		return scene;
+	};
+	RenderSession session(config);
+	session.initialize(17, makeScene(false));
+	session.step(4);
+	const auto original = session.snapshot().image;
+	require(session.getScene()->getSceneRT()->getSceneData().infiniteLights.size() == 0,
+		"Environment fixture unexpectedly contains an infinite light");
+	session.replaceScene(makeScene(true));
+	session.step(4);
+	const auto illuminated = session.snapshot().image;
+	require(session.getScene()->getSceneRT()->getSceneData().infiniteLights.size() == 1 && illuminated != original,
+		"Replacing the scene did not enable environment lighting");
+	for (float value : illuminated) require(std::isfinite(value), "Environment lighting returned an invalid value");
+	auto environment = session.getScene()->getLights().back();
+	environment->setScale(0.f);
+	session.reset(17);
+	session.step(4);
+	compare(session.snapshot().image, original);
+	environment->setScale(1.f);
+	session.reset(17);
+	session.step(4);
+	compare(session.snapshot().image, illuminated);
+	session.replaceScene(makeScene(false));
+	session.step(4);
+	require(session.getScene()->getSceneRT()->getSceneData().infiniteLights.size() == 0,
+		"Scene replacement retained an environment light");
+	compare(session.snapshot().image, original);
+	std::cout << "Wavefront environment replacement and intensity updates completed\n";
+}
+
+void testAuthoredOpacity(json config) {
+	auto findMaterial = [](const Scene::SharedPtr &scene) {
+		const auto &materials = scene->getMaterials();
+		auto material = std::find_if(materials.begin(), materials.end(),
+			[](const auto &value) { return value->getName() == "shortBox"; });
+		require(material != materials.end(), "Cornell fixture has no short box material");
+		return *material;
+	};
+	auto description = [](float opacity, MaterialProgramKind kind) {
+		auto material = std::make_shared<MaterialDescription>();
+		int alpha;
+		if (kind == MaterialProgramKind::Constant) {
+			alpha = material->constant(MaterialValue(opacity));
+		} else {
+			auto texture = std::make_shared<Texture>();
+			texture->mImage = std::make_shared<Image>(Vector2i(1, 1), Image::Format::RGBAfloat, false);
+			auto pixels = reinterpret_cast<float *>(texture->mImage->data());
+			pixels[0] = pixels[1] = pixels[2] = 1.f;
+			pixels[3] = opacity;
+			MaterialTexture binding;
+			binding.texture = texture;
+			binding.filter = MaterialFilter::Closest;
+			material->textures.push_back(binding);
+			int uv = material->add({MaterialOp::UV, MaterialValueType::Vector2});
+			int image = material->add({MaterialOp::Image, MaterialValueType::Color4, {uv}});
+			MaterialNode extract{MaterialOp::Extract, MaterialValueType::Float, {image}};
+			extract.auxiliary = 3;
+			alpha = material->add(extract);
+			if (kind == MaterialProgramKind::Program) {
+				MaterialNode uniform;
+				uniform.op = MaterialOp::Uniform;
+				uniform.value = MaterialValue(1);
+				int weight = material->add(uniform);
+				alpha = material->add({MaterialOp::Multiply, MaterialValueType::Float, {alpha, weight}});
+			}
+		}
+		material->set(MaterialParameter::Opacity, alpha);
+		require(compileMaterial(*material).kind == kind, "Opacity fixture selected the wrong evaluator");
+		return material;
+	};
+	auto makeScene = [&](std::shared_ptr<MaterialDescription> material, bool removeBox = false) {
+		auto scene = std::make_shared<Scene>();
+		require(SceneImporter().import(config["scene"], scene), "Could not create opacity test scene");
+		auto box = findMaterial(scene);
+		box->setDescription(material);
+		if (removeBox) {
+			std::vector<SceneGraphNode::SharedPtr> nodes;
+			for (const auto &instance : scene->getMeshInstances())
+				if (instance->getMesh()->getMaterial() == box) nodes.push_back(instance->getNodeSharedPtr());
+			require(!nodes.empty(), "Opacity fixture has no short box geometry");
+			for (const auto &node : nodes) scene->getSceneGraph()->detach(node);
+		}
+		scene->update(0, 0.0);
+		return scene;
+	};
+	for (const char *integrator : {"WavefrontPathTracer", "MegakernelPathTracer"}) {
+		config["passes"][0]["name"] = integrator;
+		std::vector<float> transparent, fractional;
+		{
+			RenderSession session(config);
+			auto scene = makeScene(std::make_shared<MaterialDescription>());
+			session.initialize(17, scene);
+			session.step(4);
+			const auto opaque = session.snapshot().image;
+			auto render = [&](float opacity, MaterialProgramKind kind) {
+				findMaterial(scene)->setDescription(description(opacity, kind));
+				session.reset(17);
+				session.step(4);
+				return session.snapshot().image;
+			};
+			compare(render(1.f, MaterialProgramKind::Constant), opaque);
+			transparent = render(0.f, MaterialProgramKind::Constant);
+			fractional = render(.5f, MaterialProgramKind::Constant);
+			require(transparent != opaque && fractional != opaque && fractional != transparent,
+				"Opacity changes did not affect coverage");
+			for (auto kind : {MaterialProgramKind::Simple, MaterialProgramKind::Program}) {
+				compare(render(0.f, kind), transparent);
+				compare(render(.5f, kind), fractional);
+				compare(render(1.f, kind), opaque);
+			}
+		}
+		{
+			RenderSession reference(config);
+			reference.initialize(17, makeScene(description(0.f, MaterialProgramKind::Constant), true));
+			reference.step(4);
+			compare(reference.snapshot().image, transparent);
+		}
+		{
+			RenderSession reference(config);
+			reference.initialize(17, makeScene(description(.5f, MaterialProgramKind::Program)));
+			reference.step(4);
+			compare(reference.snapshot().image, fractional);
+		}
+		std::cout << integrator << " constant, textured and interpreted opacity completed\n";
+	}
+}
+
+void testWavefrontEmissiveMedium(json config) {
+	config["passes"][0]["name"] = "WavefrontPathTracer";
+	config["passes"][0]["params"]["nee"] = false;
+	auto makeScene = [&](bool withEnvironment) {
+		auto scene = std::make_shared<Scene>();
+		require(SceneImporter().import(config["scene"], scene), "Could not create emissive medium test scene");
+		// Every primary ray must miss geometry while still inside the medium.
+		for (auto &mesh : scene->getMeshes()) mesh->cameraVisible = false;
+		auto medium = std::make_shared<HomogeneousVolume>(RGB(5.f), RGB::Zero(), 0.f,
+			RGB{2.f, 1.f, .5f}, AABB(Vector3f::Constant(-10.f), Vector3f::Constant(10.f)));
+		auto graph = scene->getSceneGraph();
+		graph->attachLeaf(graph->getRoot(), medium);
+		if (withEnvironment) {
+			auto light = std::make_shared<InfiniteLight>(std::make_shared<Texture>(RGBA{1.f, 1.f, 1.f, 1.f}));
+			graph->attachLeaf(graph->getRoot(), light);
+			light->setScale(0.f);
+		}
+		scene->update(0, 0.0);
+		return scene;
+	};
+	RenderSession session(config);
+	session.initialize(17, makeScene(false));
+	session.step(4);
+	const auto emitted = session.snapshot().image;
+	require(bool(session.getScene()->getCamera()->getCameraData().medium), "Camera is outside the emissive medium");
+	for (float value : emitted) require(std::isfinite(value), "Emissive medium returned an invalid value");
+	require(std::any_of(emitted.begin(), emitted.end(), [](float value) { return value > 0.f; }),
+		"Missing environment suppressed medium emission");
+	session.replaceScene(makeScene(true));
+	session.step(4);
+	compare(session.snapshot().image, emitted);
+	std::cout << "Wavefront emissive medium with and without an environment completed\n";
+}
+
 void reportMemory(const char *stage) {
 	CUcontext previous{};
 	size_t free{}, total{};
@@ -306,6 +550,13 @@ int main(int argc, char **argv) {
 			require(!replacement->getSceneRT(), "Close retained replacement GPU resources");
 		}
 		require(CUDATrackedMemory::singleton.BytesAllocated() == idleBytes, "Scene replacement leaked GPU memory");
+		testMegakernelMaterialUpdates(config);
+		require(CUDATrackedMemory::singleton.BytesAllocated() == idleBytes, "Megakernel material updates leaked GPU memory");
+		testWavefrontEnvironmentUpdates(config);
+		testWavefrontEmissiveMedium(config);
+		require(CUDATrackedMemory::singleton.BytesAllocated() == idleBytes, "Wavefront environment or medium tests leaked GPU memory");
+		testAuthoredOpacity(config);
+		require(CUDATrackedMemory::singleton.BytesAllocated() == idleBytes, "Opacity tests leaked GPU memory");
 		for (bool multilevel : {false, true}) {
 			json hierarchyConfig = config;
 			hierarchyConfig["scene"]["options"]["multilevel"] = multilevel;

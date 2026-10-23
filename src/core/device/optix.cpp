@@ -1,5 +1,6 @@
 #include <regex>
 #include <optix_function_table_definition.h>
+#include <optix_stack_size.h>
 
 #include "logger.h"
 #include "context.h"
@@ -302,14 +303,21 @@ void OptixBackend::createOptixPipeline() {
 											 log, &logSize, &optixPipeline),
 						 log);
 
+	OptixStackSizes stackSizes{};
+	for (auto group : allPGs) {
+#if (OPTIX_VERSION >= 70700)
+		OPTIX_CHECK(optixUtilAccumulateStackSizes(group, &stackSizes, optixPipeline));
+#else
+		OPTIX_CHECK(optixUtilAccumulateStackSizes(group, &stackSizes));
+#endif
+	}
+	unsigned int traversalStack{}, stateStack{}, continuationStack{};
+	// These pipelines do not use direct or continuation callables.
+	OPTIX_CHECK(optixUtilComputeStackSizes(&stackSizes, pipelineLinkOptions.maxTraceDepth, 0, 0,
+		&traversalStack, &stateStack, &continuationStack));
 	Log(Debug, "Setting max traversable graph depth to %d", optixParameters.maxTraversableDepth);
-	OPTIX_CHECK(
-		optixPipelineSetStackSize(/* [in] The pipeline to configure the
-									 stack size for */
-								  optixPipeline, 2 * 1024, 2 * 1024, 2 * 1024,
-								  std::min(
-									  static_cast<unsigned int>(31), 2 * optixParameters
-																			 .maxTraversableDepth) /* max traversable graph depth */));
+	OPTIX_CHECK(optixPipelineSetStackSize(optixPipeline, traversalStack, stateStack, continuationStack,
+		std::min(31u, 2 * optixParameters.maxTraversableDepth)));
 	/* [TODO] current setup on maxTraversableDepth is just a temporal workaround,
 	 * making sure the actual depth (plus motion nodes) would never exceeds 2*graphDepth.
 	 * This is somewhat acceptable since its performace impact seems to be small.

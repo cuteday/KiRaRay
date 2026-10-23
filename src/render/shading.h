@@ -86,13 +86,18 @@ KRR_DEVICE_FUNCTION HitInfo getHitInfo() {
 	return hitInfo;
 }
 
+static KRR_DEVICE KRR_NOINLINE float evaluateAuthoredOpacity(
+	const rt::MaterialProgramData &program, const MaterialContext &context) {
+	return program.evaluate(context, rt::MaterialEvaluation::Opacity)[MaterialParameter::Opacity][0];
+}
+
 static KRR_DEVICE KRR_NOINLINE bool authoredAlphaKilled(const HitInfo &hitInfo) {
 	const auto &program = hitInfo.getMaterial().mProgram;
 	if (program.opacity.count == 0 && program.defaults[MaterialParameter::Opacity][0] >= 1)
 		return false;
 	auto context = materialContext(hitInfo.getMesh(), hitInfo.primitiveId,
 		hitInfo.barycentric, getInstanceTransform());
-	float alpha = program.evaluate(context, rt::MaterialEvaluation::Opacity)[MaterialParameter::Opacity][0];
+	float alpha = evaluateAuthoredOpacity(program, context);
 	if (alpha >= 1) return false;
 	if (alpha <= 0) return true;
 	return HashFloat(optixGetWorldRayOrigin(), optixGetWorldRayDirection()) > alpha;
@@ -126,7 +131,10 @@ KRR_DEVICE_FUNCTION bool alphaKilled(const HitInfo& hitInfo, bool authoredMateri
 }
 
 static KRR_DEVICE KRR_NOINLINE void prepareAuthoredMaterial(SurfaceInteraction &intr,
-	const HitInfo &hitInfo, const Transformation &transform, const SampledWavelengths &lambda) {
+	const SampledWavelengths &lambda) {
+	HitInfo hitInfo = getHitInfo();
+	Transformation transform = getInstanceTransform();
+	intr.p = transform.transform() * intr.p;
 	const rt::MaterialData &material = hitInfo.getMaterial();
 	auto context = materialContext(hitInfo.getMesh(), hitInfo.primitiveId,
 		hitInfo.barycentric, transform);
@@ -157,7 +165,11 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 
 	intr.medium = ray.medium;			// if this surface is inside a medium
 	intr.time	= ray.time;				// pass down camera sample time
-	intr.wo		= normalize(hitInfo.wo);
+	// Keep the reduction order stable for reproducible ray directions.
+	const Vector3f wo = hitInfo.wo;
+	float woLength2 = __fmaf_rn(wo[0], wo[0],
+		__fmaf_rn(wo[1], wo[1], __fmul_rn(wo[2], wo[2])));
+	intr.wo = woLength2 > 0 ? Vector3f(wo / sqrtf(woLength2)) : wo;
 
 	Vector3f p0 = mesh.positions[v[0]], p1 = mesh.positions[v[1]],
 			 p2 = mesh.positions[v[2]];
@@ -173,10 +185,8 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 	if (mesh.mediumInterface.isTransition())
 		intr.mediumInterface = &mesh.mediumInterface;
 
-	Transformation transform = getInstanceTransform();
-	intr.p = transform.transform() * intr.p;
 	if (authoredMaterials && intr.material && intr.material->mProgram.enabled) {
-		prepareAuthoredMaterial(intr, hitInfo, transform, lambda);
+		prepareAuthoredMaterial(intr, lambda);
 		return;
 	}
 
@@ -200,6 +210,8 @@ KRR_DEVICE_FUNCTION void prepareSurfaceInteraction(SurfaceInteraction &intr, con
 
 	// transform local interaction to world space
 	// [TODO: refactor this, maybe via an integrated SurfaceInteraction struct]
+	Transformation transform = getInstanceTransform();
+	intr.p = transform.transform() * intr.p;
 	intr.n		   = (transform.transposedInverse() * intr.n).normalized();
 	intr.tangent   = (transform.transposedInverse() * intr.tangent).normalized();
 	intr.bitangent = (transform.transposedInverse() * intr.bitangent).normalized();

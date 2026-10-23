@@ -45,7 +45,7 @@ class CompositeBsdf {
 public:
 	_DEFINE_BSDF_INTERNAL_ROUTINES(CompositeBsdf);
 
-	KRR_CALLABLE void setup(const SurfaceInteraction &interaction) {
+	KRR_CALLABLE KRR_NOINLINE void setup(const SurfaceInteraction &interaction) {
 		intr = &interaction;
 		context.uv = {intr->uv[0], intr->uv[1], 0};
 		context.normal = {intr->n[0], intr->n[1], intr->n[2]};

@@ -67,10 +67,11 @@ KRR_RT_KERNEL KRR_RT_AH(Closest)() {
 }
 
 KRR_RT_KERNEL KRR_RT_MS(Closest)() {
+	if (!launchParams.mediumSampleQueue && !launchParams.missRayQueue) return;
 	const RayWorkItem &r = getRayWorkItem();
 	if (launchParams.mediumSampleQueue && r.ray.medium)
 		launchParams.mediumSampleQueue->push(r, M_FLOAT_INF); 
-	else launchParams.missRayQueue->push(r);
+	else if (launchParams.missRayQueue) launchParams.missRayQueue->push(r);
 }
 
 KRR_RT_KERNEL KRR_RT_RG(Closest)() {

@@ -49,7 +49,6 @@ WavefrontPathTracer::~WavefrontPathTracer() {
 
 void WavefrontPathTracer::initialize() {
 	mResourceOwner = this;
-	/* [TODO] Disable missRayQueue if no environment light exist. */
 	Allocator &alloc = *gpContext->alloc;
 	maxQueueSize	 = getFrameSize()[0] * getFrameSize()[1];
 	cudaDeviceSynchronize(); // necessary, preventing kernel accessing memories tobe free'ed...
@@ -84,7 +83,7 @@ void WavefrontPathTracer::traceClosest(int depth) {
 	params.sceneData		   = backend->getSceneData();
 	params.colorSpace		   = KRR_DEFAULT_COLORSPACE;
 	params.currentRayQueue	   = currentRayQueue(depth);
-	params.missRayQueue		   = missRayQueue;
+	params.missRayQueue		   = params.sceneData.infiniteLights.size() ? missRayQueue : nullptr;
 	params.hitLightRayQueue	   = hitLightRayQueue;
 	params.scatterRayQueue	   = scatterRayQueue;
 	params.nextRayQueue		   = nextRayQueue(depth);
@@ -126,8 +125,9 @@ template <bool AuthoredMaterials> void WavefrontPathTracer::handleHitImpl() {
 }
 
 void WavefrontPathTracer::handleMiss() {
-	PROFILE("Process escaped rays");
 	const auto &infiniteLights = backend->getSceneData().infiniteLights;
+	if (!infiniteLights.size()) return;
+	PROFILE("Process escaped rays");
 	ForAllQueued(
 		missRayQueue, maxQueueSize, KRR_DEVICE_LAMBDA(const MissRayWorkItem &w) {
 			Spectrum L		  = {};
@@ -214,12 +214,13 @@ void WavefrontPathTracer::generateCameraRays() {
 	auto frameSize			 = getFrameSize();
 	GPUParallelFor(
 		maxQueueSize, KRR_DEVICE_LAMBDA(int pixelId) {
-			Sampler sampler		= &pixelState->sampler[pixelId];
+			// Consumers run after this kernel on the same stream.
+			if (pixelId == 0) cameraRayQueue->setSize(maxQueueSize);
 			Vector2i pixelCoord = {pixelId % frameSize[0], pixelId / frameSize[0]};
+			Sampler sampler = &pixelState->sampler[pixelId];
 			CameraSample cameraSample = camera->generateSample(sampler);
 			Ray cameraRay			  = camera->getRay(pixelCoord, frameSize, cameraSample);
-			cameraRayQueue->pushCameraRay(cameraRay, pixelId);
-			pixelState->cameraSample[pixelId] = cameraSample;
+			cameraRayQueue->setCameraRay(cameraRay, pixelId);
 		}, KRR_DEFAULT_STREAM);
 }
 
@@ -280,7 +281,6 @@ void WavefrontPathTracer::render(RenderContext *context) {
 	CudaRenderTarget frameBuffer = context->getColorTexture()->getCudaRenderTarget();
 	for (int sampleId = 0; sampleId < samplesPerPixel; sampleId++) {
 		// [STEP#1] generate camera / primary rays
-		GPUCall(KRR_DEVICE_LAMBDA() { currentRayQueue(0)->reset(); }, KRR_DEFAULT_STREAM);
 		generateCameraRays();
 		// [STEP#2] do radiance estimation recursively
 		for (int depth = 0; true; depth++) {

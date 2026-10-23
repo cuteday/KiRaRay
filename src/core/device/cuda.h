@@ -1,9 +1,5 @@
 #pragma once
 
-#include <map>
-#include <typeinfo>
-#include <typeindex>
-
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
@@ -67,19 +63,10 @@ public:
 };
 
 template <typename F>
-inline int GetBlockSize(F kernel) {
+inline int GetBlockSize(F kernel, size_t shmemSize = 0) {
 	// https://developer.nvidia.com/blog/cuda-pro-tip-occupancy-api-simplifies-launch-configuration/
-	static std::map<std::type_index, int> kernelBlockSizes;
-
-	std::type_index index = std::type_index(typeid(F));
-
-	auto iter = kernelBlockSizes.find(index);
-	if (iter != kernelBlockSizes.end())
-		return iter->second;
-
 	int minGridSize, blockSize;
-	CUDA_CHECK(cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, kernel, 0, 0));
-	kernelBlockSizes[index] = blockSize;
+	CUDA_CHECK(cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, kernel, shmemSize, 0));
 	return blockSize;
 }
 
@@ -108,7 +95,7 @@ __global__ void Kernel(F func, int nElements) {
 template <typename F>
 inline void GPUParallelFor(int nElements, F func, CUstream stream) {
 	auto kernel = &Kernel<F>;
-	int blockSize = GetBlockSize(kernel);
+	static const int blockSize = GetBlockSize(kernel);
 	int gridSize = (nElements + blockSize - 1) / blockSize;
 	kernel <<<gridSize, blockSize, 0, stream>>> (func, nElements);
 }
@@ -122,7 +109,7 @@ template <typename K, typename T, typename... Types>
 inline void LinearKernelShmem(K kernel, uint32_t shmemSize, cudaStream_t stream, T nElements,
 						  Types... args) {
 	if (nElements <= 0) return;
-	int blockSize = GetBlockSize(kernel);
+	int blockSize = GetBlockSize(kernel, shmemSize);
 	int gridSize  = (nElements + blockSize - 1) / blockSize;
 	kernel<<<gridSize, blockSize, shmemSize, stream>>>(
 		(uint32_t) nElements, args...);

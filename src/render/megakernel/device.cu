@@ -44,10 +44,11 @@ template <typename... Args> KRR_DEVICE_FUNCTION void print(const char *fmt, Args
 	if (pixel == launchParams.debugPixel) printf(fmt, std::forward<Args>(args)...);
 }
 
-KRR_DEVICE_FUNCTION void handleHit(PathData &path) {
-	const SurfaceInteraction &intr = path.intr;
+template <bool AuthoredMaterials>
+KRR_DEVICE_FUNCTION void handleHit(PathData &path, const RadiancePayload &payload) {
+	const SurfaceInteraction &intr = payload.intr;
 	const rt::Light &light		   = intr.light;
-	Spectrum Le					   = light.L(intr.p, intr.n, intr.uv, intr.wo, path.lambda);
+	Spectrum Le = light.L<AuthoredMaterials>(intr.p, intr.n, intr.uv, intr.wo, payload.lambda);
 
 	float weight{1};
 	if (launchParams.NEE && path.depth > 0) {
@@ -60,8 +61,7 @@ KRR_DEVICE_FUNCTION void handleHit(PathData &path) {
 	path.L += Le * weight * path.throughput;
 }
 
-KRR_DEVICE_FUNCTION void handleMiss(PathData &path) {
-	const SurfaceInteraction &intr = path.intr;
+KRR_DEVICE_FUNCTION void handleMiss(PathData &path, const RadiancePayload &payload) {
 	for (const rt::InfiniteLight &light : launchParams.sceneData.infiniteLights) {
 		float weight{1};
 		if (launchParams.NEE && path.depth > 0 && !(path.bsdfType & BSDF_SPECULAR)) {
@@ -70,18 +70,21 @@ KRR_DEVICE_FUNCTION void handleMiss(PathData &path) {
 			weight		   = evalMIS(1, bsdfPdf, launchParams.lightSamples, lightPdf);
 			if (isnan(weight) || isinf(weight)) weight = 1;
 		}
-		path.L += path.throughput * weight * light.Li(path.ray.dir, path.lambda);
+		path.L += path.throughput * weight * light.Li(payload.ray.dir, payload.lambda);
 	}
 }
 
-KRR_DEVICE_FUNCTION void generateShadowRay(PathData &path, const BSDF &bsdf) {
-	const SurfaceInteraction &intr = path.intr;
+template <typename BSDFModel>
+KRR_DEVICE_FUNCTION void generateShadowRay(PathData &path, const RadiancePayload &payload,
+	const BSDFModel &bsdf) {
+	const SurfaceInteraction &intr = payload.intr;
 	Vector3f woLocal			   = intr.toLocal(intr.wo);
 
 	SampledLight sampledLight = path.lightSampler.sample(path.sampler.get1D());
 	if (!sampledLight) return;
 	Light light				  = sampledLight.light;
-	LightSample ls			  = light.sampleLi(path.sampler.get2D(), {intr.p, intr.n}, path.lambda);
+	LightSample ls = light.sampleLi<std::is_same_v<BSDFModel, BSDF>>(
+		path.sampler.get2D(), {intr.p, intr.n}, payload.lambda);
 
 	Vector3f wiWorld = normalize(ls.intr.p - intr.p);
 	Vector3f wiLocal = intr.toLocal(wiWorld);
@@ -101,22 +104,28 @@ KRR_DEVICE_FUNCTION void generateShadowRay(PathData &path, const BSDF &bsdf) {
 			path.throughput * bsdfVal * misWeight / (launchParams.lightSamples * lightPdf) * ls.L;
 }
 
-KRR_DEVICE_FUNCTION void evalDirect(PathData &path, const BSDF &bsdf) {
-	BSDFType bsdfType = path.intr.getBsdfType();
+template <typename BSDFModel>
+KRR_DEVICE_FUNCTION void evalDirect(PathData &path, const RadiancePayload &payload,
+	const BSDFModel &bsdf) {
+	BSDFType bsdfType = payload.intr.getBsdfType();
 	if (bsdfType & BSDF_SMOOTH) { /* Disable NEE on specular surfaces. */
-		for (int i = 0; i < launchParams.lightSamples; i++) generateShadowRay(path, bsdf);
+		for (int i = 0; i < launchParams.lightSamples; i++) generateShadowRay(path, payload, bsdf);
 	}
 }
 
-KRR_DEVICE_FUNCTION bool generateScatterRay(PathData &path, const BSDF &bsdf) {
-	const SurfaceInteraction &intr = path.intr;
+template <typename BSDFModel>
+KRR_DEVICE_FUNCTION bool generateScatterRay(PathData &path, RadiancePayload &payload,
+	const BSDFModel &bsdf) {
+	const SurfaceInteraction &intr = payload.intr;
 	Vector3f woLocal			   = intr.toLocal(intr.wo);
-	BSDFSample sample			   = bsdf.sample(woLocal, path.sampler);
+	// Keep transport state out of noinline BSDF calls; the copy shares RNG state.
+	Sampler sampler			   = path.sampler;
+	BSDFSample sample			   = bsdf.sample(woLocal, sampler);
 	if (sample.pdf == 0 || !any(sample.f)) return false;
 
 	Vector3f wiWorld = intr.toWorld(sample.wi);
 	path.bsdfType	 = sample.flags;
-	path.ray		 = intr.spawnRayTowards(wiWorld);
+	payload.ray		 = intr.spawnRayTowards(wiWorld);
 	path.ctx		 = {intr.p, intr.n};
 	path.pdf		 = sample.pdf;
 	path.throughput *= sample.f * fabs(sample.wi[2]) / sample.pdf;
@@ -124,37 +133,38 @@ KRR_DEVICE_FUNCTION bool generateScatterRay(PathData &path, const BSDF &bsdf) {
 }
 
 KRR_RT_KERNEL KRR_RT_CH(Radiance)() {
-	HitInfo hitInfo			 = getHitInfo();
-	PathData *path			 = getPRD<PathData>();
-	SurfaceInteraction &intr = path->intr;
-	prepareSurfaceInteraction(intr, hitInfo, path->ray, path->lambda);
+	HitInfo hitInfo = getHitInfo();
+	auto *payload = getPRD<RadiancePayload>();
+	prepareSurfaceInteraction(payload->intr, hitInfo, payload->ray, payload->lambda,
+		launchParams.authoredMaterials);
 }
 
 KRR_RT_KERNEL KRR_RT_AH(Radiance)() {
-	if (alphaKilled(getHitInfo())) optixIgnoreIntersection();
+	if (alphaKilled(getHitInfo(), launchParams.authoredMaterials)) optixIgnoreIntersection();
 }
 
 KRR_RT_KERNEL KRR_RT_MS(Radiance)() { optixSetPayload_2(1); }
 
 KRR_RT_KERNEL KRR_RT_AH(ShadowRay)() {
-	if (alphaKilled(getHitInfo())) optixIgnoreIntersection();
+	if (alphaKilled(getHitInfo(), launchParams.authoredMaterials)) optixIgnoreIntersection();
 }
 
 KRR_RT_KERNEL KRR_RT_CH(ShadowRay)() {} /* skipped */
 
 KRR_RT_KERNEL KRR_RT_MS(ShadowRay)() { optixSetPayload_0(1); }
 
-KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() {
+template <typename BSDFModel> KRR_DEVICE_FUNCTION void renderPath() {
 	Vector3ui launchIndex = optixGetLaunchIndex();
 	Vector2ui pixel		  = {launchIndex[0], launchIndex[1]};
 
 	const uint frameID	   = launchParams.frameID;
 	const uint32_t fbIndex = pixel[0] + pixel[1] * launchParams.fbSize[0];
 
-	rt::CameraData camera = launchParams.camera;
+	const rt::CameraData &camera = launchParams.camera;
 	CudaSampler sampler;
 	sampler.setPixelSample(pixel, frameID * 512, launchParams.seed);
 
+	RadiancePayload payload{};
 	PathData path	  = {};
 	path.lightSampler = launchParams.sceneData.lightSampler;
 	path.sampler	  = &sampler;
@@ -163,17 +173,17 @@ KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() {
 	for (int i = 0; i < launchParams.spp; i++) {
 		path.throughput = Spectrum::Ones();
 		path.L			= Spectrum::Zero();
-		path.ray		= camera.getRay(pixel, launchParams.fbSize, path.sampler);
-		path.lambda		= SampledWavelengths::sampleUniform(sampler.get1D());
+		payload.ray		= camera.getRay(pixel, launchParams.fbSize, path.sampler);
+		payload.lambda		= SampledWavelengths::sampleUniform(sampler.get1D());
 
 		for (int &depth = path.depth; true; depth++) {
-			bool hit = traceRay(launchParams.traversable, path.ray, M_FLOAT_INF,
-				RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, depth == 0 ? 1 : 255, (void *) &path);
+			bool hit = traceRay(launchParams.traversable, payload.ray, M_FLOAT_INF,
+				RADIANCE_RAY_TYPE, OPTIX_RAY_FLAG_NONE, depth == 0 ? 1 : 255, (void *) &payload);
 			if (!hit) {
-				handleMiss(path);
+				handleMiss(path, payload);
 				break;
 			}
-			if (path.intr.light) handleHit(path);
+			if (payload.intr.light) handleHit<std::is_same_v<BSDFModel, BSDF>>(path, payload);
 			/* If the path is terminated by this vertex, then NEE should not be evaluated
 			 * otherwise the MIS weight of this NEE action will be meaningless. */
 			if (depth == launchParams.maxDepth ||
@@ -182,16 +192,20 @@ KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() {
 			path.throughput /= launchParams.probRR;
 #if (OPTIX_VERSION >= 80000)
 			// Regroup surviving paths before shading.
-			optixReorder(static_cast<unsigned int>(path.intr.sd.bsdfType), 3);
+			optixReorder(static_cast<unsigned int>(payload.intr.sd.bsdfType), 3);
 #endif
-			BSDF bsdf(path.intr);
-			if (launchParams.NEE) evalDirect(path, bsdf);
-			if (!generateScatterRay(path, bsdf)) break;
+			BSDFModel bsdf(payload.intr);
+			if (launchParams.NEE) evalDirect(path, payload, bsdf);
+			if (!generateScatterRay(path, payload, bsdf)) break;
 		}
-		color += path.L.toRGB(path.lambda, *launchParams.colorSpace);
+		color += path.L.toRGB(payload.lambda, *launchParams.colorSpace);
 	}
 
 	launchParams.colorBuffer.write(RGBA(color, 1.f), fbIndex);
 }
+
+KRR_RT_KERNEL KRR_RT_RG(Pathtracer)() { renderPath<BSDF>(); }
+
+KRR_RT_KERNEL KRR_RT_RG(PathtracerLegacy)() { renderPath<LegacyBSDF>(); }
 
 NAMESPACE_END(krr)

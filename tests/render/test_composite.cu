@@ -142,6 +142,14 @@ __global__ void cubic(rt::TextureData texture, float *output) {
 	output[i] = fabsf(value[0] - (x + 3.f));
 }
 
+__global__ void cubicImpulse(rt::TextureData texture, float *output) {
+	int channel = threadIdx.x;
+	RGBA value = texture.evaluate({1.75f / 4, 2.f / 4});
+	// Catmull-Rom weights at (.25, .5), with one impulse per channel.
+	const float expected[] = {999.f / 2048, 261.f / 2048, -81.f / 2048, -27.f / 2048};
+	output[channel] = fabsf(value[channel] - expected[channel]);
+}
+
 void checkCubic() {
 	auto texture = std::make_shared<Texture>();
 	texture->mImage = std::make_shared<Image>(Vector2i(4, 4), Image::Format::RGBAfloat, false);
@@ -162,6 +170,18 @@ void checkCubic() {
 		for (int i = 0; i < 4; ++i)
 			if (!std::isfinite(errors[i]) || errors[i] > 2e-5f)
 				throw std::runtime_error("Cubic image sampling failed linear reconstruction at " +
+					std::to_string(i) + ": " + std::to_string(errors[i]));
+		data.release();
+		for (int i = 0; i < 4 * 4 * 4; ++i) pixels[i] = 0;
+		const int columns[] = {1, 2, 0, 3};
+		for (int c = 0; c < 4; ++c) pixels[(4 + columns[c]) * 4 + c] = 1;
+		data.initializeFromHost(texture, &sampling);
+		cubicImpulse<<<1, 4>>>(data, errors);
+		CUDA_CHECK(cudaGetLastError());
+		CUDA_CHECK(cudaDeviceSynchronize());
+		for (int i = 0; i < 4; ++i)
+			if (!std::isfinite(errors[i]) || errors[i] > 2e-5f)
+				throw std::runtime_error("Cubic image sampling failed impulse reconstruction in channel " +
 					std::to_string(i) + ": " + std::to_string(errors[i]));
 		cudaFree(errors);
 		data.release();
